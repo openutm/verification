@@ -1,0 +1,56 @@
+resources:
+  audience: 'testflight.argonserver.com'
+  scopes: ['argon_server.write']
+  urls:
+    set_flight_declaration: 'http://localhost:8000/flight_declaration_ops/set_flight_declaration'
+    del_flight_declaration: 'http://localhost:8000/flight_declaration_ops/flight_declaration/{operation_id}/delete'
+    update_flight_declaration_state: 'http://localhost:8000/flight_declaration_ops/flight_declaration_state/{operation_id}'
+    set_telemetry: 'http://localhost:8000/flight_stream/set_telemetry'
+  uas:
+    registration_id: 'CHE-5bisi9bpsiesw'
+    serial_number: 'd29dbf50-f411-4488-a6f1-cf2ae4d4237a'
+    utm_id: '07a06bba-5092-48e4-8253-7a523f885bfe'
+  operator:
+    lat: 46.97615311620088
+    lng: 7.476099729537965
+    operator_id: 'CHE-076dh0dq'
+
+scenarios:
+  - flow: F1
+    steps:
+      - sub_flow: upload_flight_declaration
+        input: '../flight_declarations_samples/flight-1-bern.json'
+        expected_state: 1
+        expected_result: "Expected output for F1.1 with input flight-1-bern.json"
+      - sub_flow: update_operation_state
+        input: ""
+        new_state: 2
+        expected_state: 2
+        expected_result: "Expected output for F1.2 with new state 2"
+      - sub_flow: update_operation_state
+        input: ""
+        new_state: 5
+        expected_state: 5
+        expected_result: "Expected output for F1.2 with new state 2"
+      - sub_flow: del_flight_declaration
+        input: ""
+        expected_result: "Expected output for F1.2 with new state 2"
+  - flow: F2
+    steps:
+      - sub_flow: upload_flight_declaration
+        input: '../flight_declarations_samples/flight-2-bern.json'
+        expected_state: 1
+        expected_result: "Expected output for F1.1 with input flight-1-bern.json"
+      - sub_flow: update_operation_state
+        input: ""
+        new_state: 2
+        expected_state: 2
+        expected_result: "Expected output for F1.2 with new state 2"
+      - sub_flow: update_operation_state
+        input: ""
+        new_state: 5
+        expected_state: 5
+        expected_result: "Expected output for F1.2 with new state 2"
+      - sub_flow: del_flight_declaration
+        input: ""
+        expected_result: "Expected output for F1.2 with new state 2"
