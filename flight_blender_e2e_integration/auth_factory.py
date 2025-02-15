@@ -82,14 +82,14 @@ class PassportCredentialsGetter():
         
         now = datetime.now()        
         
-        token_details = r.get('argon_server_write_air_traffic_token')
+        token_details = r.get('flight_blender_write_air_traffic_token')
         if token_details:    
             token_details = json.loads(token_details)
             created_at = token_details['created_at']
             set_date = datetime.strptime(created_at,"%Y-%m-%dT%H:%M:%S.%f")
             if now < (set_date - timedelta(minutes=58)):
                 credentials = self.get_write_credentials(audience = audience, scopes = scopes_str)
-                r.set('argon_server_write_air_traffic_token', json.dumps({'credentials': credentials, 'created_at':now.isoformat()}))
+                r.set('flight_blender_write_air_traffic_token', json.dumps({'credentials': credentials, 'created_at':now.isoformat()}))
             else: 
                 credentials = token_details['credentials']
         else:               
@@ -97,8 +97,8 @@ class PassportCredentialsGetter():
             if 'error' in credentials.keys():
                 pass
             else:
-                r.set('argon_server_write_air_traffic_token', json.dumps({'credentials': credentials, 'created_at':now.isoformat()}))
-                r.expire("argon_server_write_air_traffic_token", timedelta(minutes=58))
+                r.set('flight_blender_write_air_traffic_token', json.dumps({'credentials': credentials, 'created_at':now.isoformat()}))
+                r.expire("flight_blender_write_air_traffic_token", timedelta(minutes=58))
             
         return credentials
             

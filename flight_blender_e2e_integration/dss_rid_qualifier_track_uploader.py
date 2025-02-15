@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
-    credentials = my_credentials.get_cached_credentials(audience='testflight.argonserver.com', scopes=['argon_server.write'])
+    credentials = my_credentials.get_cached_credentials(audience='testflight.flightblender.com', scopes=['flight_blender.write'])
     
     parent_dir = dirname(abspath(__file__))  #<-- absolute dir the raw input file  is in
     rel_path = "aircraft_states/flight_1_rid_aircraft_state.json"

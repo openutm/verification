@@ -1,2 +1,2 @@
 # verification
-A repository to host verification tools for Argon Server and XTM Alliance products
+A repository to host verification tools for Flight Blender and XTM Alliance products

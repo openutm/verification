@@ -34,11 +34,11 @@ if __name__ == '__main__':
   args = parse_args(sys.argv[1:])
 
   if args.scopes is None:
-    print ("Scopes has not been set please set it as a command argument e.g. --scopes 'argon_server.read argon_server.write'")
+    print ("Scopes has not been set please set it as a command argument e.g. --scopes 'flight_blender.read flight_blender.write'")
     sys.exit()
 
   if args.audience is None:
-    print ("audience has not been has been set set it as command argument e.g. --audience 'alpha.argonserver.com'")
+    print ("audience has not been has been set set it as command argument e.g. --audience 'alpha.flightblender.com'")
     sys.exit()
 
   print(get_access_token(args.scopes, args.audience))

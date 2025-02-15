@@ -26,7 +26,7 @@ ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
 
-class ArgonServerUploader:
+class FlightBlenderUploader:
     def __init__(self, credentials):
         self.credentials = credentials
 
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
     credentials = my_credentials.get_cached_credentials(
-        audience="testflight.argonserver.com", scopes=["argon_server.write"]
+        audience="testflight.flightblender.com", scopes=["flight_blender.write"]
     )
     parent_dir = dirname(
         abspath(__file__)
@@ -160,7 +160,7 @@ if __name__ == "__main__":
 
     rel_path = "../flight_declarations_samples/flight-1-bern.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
-    my_uploader = ArgonServerUploader(credentials=credentials)
+    my_uploader = FlightBlenderUploader(credentials=credentials)
     flight_declaration_response = my_uploader.upload_flight_declaration(
         filename=abs_file_path
     )
@@ -193,7 +193,7 @@ if __name__ == "__main__":
 
     rel_path = "../rid_samples/non-conforming/flight_1_bern_fully_nonconforming.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
-    my_uploader = ArgonServerUploader(credentials=credentials)
+    my_uploader = FlightBlenderUploader(credentials=credentials)
     thread = threading.Thread(
         target=my_uploader.submit_telemetry,
         args=(

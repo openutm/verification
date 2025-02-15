@@ -4,7 +4,7 @@ from os.path import dirname, abspath
 import os, sys
 from auth_factory import PassportCredentialsGetter, NoAuthCredentialsGetter
     
-class ArgonServerUploader():
+class FlightBlenderUploader():
     
     def __init__(self, credentials):        
         
@@ -50,12 +50,12 @@ class ArgonServerUploader():
 if __name__ == '__main__':
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
-    credentials = my_credentials.get_cached_credentials(audience='testflight.argonserver.com', scopes=['argon_server.write'])
+    credentials = my_credentials.get_cached_credentials(audience='testflight.flightblender.com', scopes=['flight_blender.write'])
 
     if 'error' in credentials:     
         sys.exit("Error in getting credentials.")
     parent_dir = dirname(abspath(__file__))  #<-- absolute dir the raw input file  is in
     rel_path = "air_traffic_samples/micro_flight_data_single.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
-    my_uploader = ArgonServerUploader(credentials=credentials)
+    my_uploader = FlightBlenderUploader(credentials=credentials)
     my_uploader.upload_to_server(filename=abs_file_path)
