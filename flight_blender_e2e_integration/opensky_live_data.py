@@ -9,7 +9,7 @@ if __name__ == '__main__':
 
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()    
-    credentials = my_credentials.get_cached_credentials(audience='testflight.argonserver.com', scopes=['argon_server.write'])
+    credentials = my_credentials.get_cached_credentials(audience='testflight.flightblender.com', scopes=['flight_blender.write'])
     
     
     username = os.environ.get('OPENSKY_NETWORK_USERNAME')

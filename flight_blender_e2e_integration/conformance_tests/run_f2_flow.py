@@ -20,7 +20,7 @@ ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
 
-class ArgonServerUploader():
+class FlightBlenderUploader():
     
     def __init__(self, credentials):        
     
@@ -99,12 +99,12 @@ if __name__ == '__main__':
     # my_credentials = PassportSpotlightCredentialsGetter()
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()    
-    credentials = my_credentials.get_cached_credentials(audience='testflight.argonserver.com', scopes=['argon_server.write'])
+    credentials = my_credentials.get_cached_credentials(audience='testflight.flightblender.com', scopes=['flight_blender.write'])
     parent_dir = dirname(abspath(__file__))  #<-- absolute dir the raw input file  is in
     
     rel_path = '../flight_declarations_samples/flight-1-bern.json'
     abs_file_path = os.path.join(parent_dir, rel_path)
-    my_uploader = ArgonServerUploader(credentials=credentials)
+    my_uploader = FlightBlenderUploader(credentials=credentials)
     flight_declaration_response = my_uploader.upload_flight_declaration(filename=abs_file_path)
     
     if flight_declaration_response.status_code == 200:
@@ -133,7 +133,7 @@ if __name__ == '__main__':
 
     rel_path = "../rid_samples/flight_1_rid_aircraft_state.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
-    my_uploader = ArgonServerUploader(credentials=credentials)
+    my_uploader = FlightBlenderUploader(credentials=credentials)
     thread = threading.Thread(target=my_uploader.submit_telemetry,args =(abs_file_path,flight_declaration_id,))
     thread.start()
     print("Telemetry submission for 30 seconds...")
