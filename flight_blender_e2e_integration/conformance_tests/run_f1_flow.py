@@ -1,5 +1,5 @@
 """
-This script is used to import flight data into the Secured Flight Spotlight instance. It defines a class `FlightBlenderUploader` 
+This script is used to import flight data into the Secured Flight Spotlight instance. It defines a class `FlightBlenderUploader`
 that provides methods to upload flight declarations, update operation states, and submit telemetry data.
 Classes:
     FlightBlenderUploader: Handles uploading flight declarations, updating operation states, and submitting telemetry data.
@@ -38,11 +38,15 @@ from rid_definitions import (
     OperatorLocation,
     UAClassificationEU,
 )
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
+
 
 def log_info(message):
     """
@@ -51,6 +55,8 @@ def log_info(message):
         message (str): The message to log.
     """
     logging.info(message)
+
+
 class FlightBlenderUploader:
     def __init__(self, credentials):
         self.credentials = credentials
@@ -181,7 +187,6 @@ class FlightBlenderUploader:
 
 
 if __name__ == "__main__":
-
     # my_credentials = PassportSpotlightCredentialsGetter()
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
