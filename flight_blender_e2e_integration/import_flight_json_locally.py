@@ -3,6 +3,7 @@ import json, time, requests
 from os.path import dirname, abspath
 import os, sys
 from auth_factory import PassportCredentialsGetter, NoAuthCredentialsGetter
+import uuid
 
 
 class FlightBlenderUploader:
@@ -19,7 +20,7 @@ class FlightBlenderUploader:
     def upload_to_server(self, filename):
         with open(filename, "r") as traffic_json_file:
             traffic_json = traffic_json_file.read()
-
+        session_id = uuid.uuid4()
         traffic_json = json.loads(traffic_json)
 
         for timestamp in self.timestamps:
@@ -57,11 +58,15 @@ class FlightBlenderUploader:
                     ]
                 }
 
-                securl = "http://localhost:8000/flight_stream/set_air_traffic"  # set this to self (Post the json to itself)
+                securl = "http://localhost:8000/flight_stream/set_air_traffic/{session_id}".format(
+                    session_id=session_id
+                )  # set this to self (Post the json to itself)
                 try:
                     response = requests.post(securl, json=payload, headers=headers)
                     if response.status_code not in [200, 201]:
-                        print(f"Non-successful status code received: {response.status_code}, message: {response.text}")
+                        print(
+                            f"Non-successful status code received: {response.status_code}, message: {response.text}"
+                        )
                         response.raise_for_status()
 
                 except requests.exceptions.HTTPError as http_err:
@@ -77,6 +82,7 @@ class FlightBlenderUploader:
                 else:
                     print("Sleeping 10 seconds..")
                     time.sleep(10)
+
 
 if __name__ == "__main__":
     # my_credentials = PassportCredentialsGetter()
