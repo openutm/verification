@@ -180,8 +180,8 @@ class FlightBlenderUploader:
                 log_info(e)
             else:
                 if response.status_code == 201:
-                    log_info("Sleeping 3 seconds..")
-                    time.sleep(3)
+                    log_info("Sleeping 1 seconds..")
+                    time.sleep(1)
                 else:
                     log_info(response.json())
 
