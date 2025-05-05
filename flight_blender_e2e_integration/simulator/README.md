@@ -24,12 +24,6 @@ The `adjacent_circular_flights_simulation` generates flight paths that simulate 
     ```
 3. The simulation will generate flight data and output it to the `output` directory.
 
-### Configuration
-You can modify the simulation parameters by editing the `config.json` file in the simulator directory. Key parameters include:
-- `radius`: The radius of the circular flight paths.
-- `flight_count`: The number of flights to simulate.
-- `duration`: The duration of each flight.
-
 ### Output
 The generated flight data will be stored in JSON format in the `output` directory. This data can be used for further analysis or integration testing.
 
