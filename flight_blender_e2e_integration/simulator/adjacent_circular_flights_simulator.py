@@ -29,6 +29,8 @@ from utils import (
     FlightPoint,
     GridCellFlight,
 )
+from geojson import FeatureCollection, Feature
+from geojson import Polygon as GeoJSONPolygon
 
 # Configure logging
 logging.basicConfig(
@@ -86,18 +88,20 @@ class AdjacentCircularFlightsSimulator:
         """This method checks if the input extents are valid i.e. small enough, if the extent is too large, we reject them, at the moment it checks for extents less than 500m x 500m square but can be changed as necessary."""
 
         box = shapely.geometry.box(self.minx, self.miny, self.maxx, self.maxy)
-        # Create a box that is half the diagonal of the original box
-        diagonal_length = self.geod.geometry_length(box.exterior)
-        half_diagonal_length = diagonal_length / 2
-        center = box.centroid
-        half_box_buffer = center.buffer(half_diagonal_length / 2, cap_style=3)
-        self.half_box = shapely.geometry.box(
-            half_box_buffer.bounds[0],
-            half_box_buffer.bounds[1],
-            half_box_buffer.bounds[2],
-            half_box_buffer.bounds[3],
-        )
         self.box = box
+
+        # Create a box half the size of the original box
+        center_x = (self.minx + self.maxx) / 2
+        center_y = (self.miny + self.maxy) / 2
+        half_width = (self.maxx - self.minx) / 4
+        half_height = (self.maxy - self.miny) / 4
+        self.half_box = shapely.geometry.box(
+            center_x - half_width,
+            center_y - half_height,
+            center_x + half_width,
+            center_y + half_height,
+        )
+
         area = abs(self.geod.geometry_area_perimeter(box)[0])
         # get the diagonal length of the box
         diagonal_length = self.geod.geometry_length(box.exterior)
@@ -412,6 +416,9 @@ def generate_aircraft_states(
 
 if __name__ == "__main__":
     # Load configuration from config.json
+    MAX_ALTITUDEE_WGS84 = 150
+    MIN_ALTITUDE_WGS84 = 100
+
     config_file_path = "config.json"
     if os.path.exists(config_file_path):
         with open(config_file_path, "r", encoding="utf-8") as config_file:
@@ -448,9 +455,9 @@ if __name__ == "__main__":
     os.makedirs(output_dir, exist_ok=True)
     logger.info(f"Output directory created or already exists: {output_dir}")
 
-    bbox_file = os.path.join(output_dir, "flight_declaration_bounding_box.geojson")
+    bbox_file = os.path.join(output_dir, "flight_declaration_bounding_box.json")
     half_box_bbox_file = os.path.join(
-        output_dir, "flight_declaration_half_bounding_box.geojson"
+        output_dir, "flight_declaration_half_bounding_box.json"
     )
     flight_data_file = os.path.join(output_dir, "flight_data.json")
 
@@ -476,11 +483,36 @@ if __name__ == "__main__":
         my_flight_generator.reference_time.shift(minutes=10).datetime.isoformat()
     )
 
+    bbox_polygon = GeoJSONPolygon(coordinates=bbox_geojson["coordinates"])
+    bbox_geojson_feature = Feature(
+        geometry=bbox_polygon,
+        properties={
+            "max_altitude": {"meters": MAX_ALTITUDEE_WGS84, "datum": "WGS84"},
+            "min_altitude": {"meters": MIN_ALTITUDE_WGS84, "datum": "WGS84"},
+        },
+    )
+    bbox_geojson_feature_collection = FeatureCollection(features=[bbox_geojson_feature])
     # Update the GeoJSON with the bounding box
-    flight_declaration_geojson["flight_declaration_geo_json"] = bbox_geojson
+    flight_declaration_geojson["flight_declaration_geo_json"] = (
+        bbox_geojson_feature_collection.__geo_interface__
+    )
+
+    halfbox_bbox_polygon = GeoJSONPolygon(coordinates=half_bbox_geojson["coordinates"])
+    halfbox_bbox_geojson_feature = Feature(
+        geometry=halfbox_bbox_polygon,
+        properties={
+            "max_altitude": MAX_ALTITUDEE_WGS84,
+            "min_altitude": MIN_ALTITUDE_WGS84,
+        },
+    )
+    halfbox_bbox_geojson_feature_collection = FeatureCollection(
+        features=[halfbox_bbox_geojson_feature]
+    )
 
     half_box_flight_declaration = flight_declaration_geojson.copy()
-    half_box_flight_declaration["flight_declaration_geo_json"] = half_bbox_geojson
+    half_box_flight_declaration["flight_declaration_geo_json"] = (
+        halfbox_bbox_geojson_feature_collection.__geo_interface__
+    )
 
     with open(bbox_file, "w", encoding="utf-8") as updated_file:
         json.dump(flight_declaration_geojson, updated_file, indent=2)
