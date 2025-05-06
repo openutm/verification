@@ -411,13 +411,28 @@ def generate_aircraft_states(
 
 
 if __name__ == "__main__":
+    # Load configuration from config.json
+    config_file_path = "config.json"
+    if os.path.exists(config_file_path):
+        with open(config_file_path, "r", encoding="utf-8") as config_file:
+            config_data = json.load(config_file)
+            minx = config_data.get("minx", 7.441250483123781)
+            miny = config_data.get("miny", 46.94967429343589)
+            maxx = config_data.get("maxx", 7.441630364614923)
+            maxy = config_data.get("maxy", 46.9498720814052)
+    else:
+        logger.warning(f"Config file not found. Using default values.")
+        minx = 7.441250483123781
+        miny = 46.94967429343589
+        maxx = 7.441630364614923
+        maxy = 46.9498720814052
     my_flight_generator = AdjacentCircularFlightsSimulator(
         config=AdjacentCircularFlightsSimulatorConfiguration(
             reference_time=arrow.utcnow(),
-            minx=7.441250483123781,
-            miny= 46.94967429343589,
-            maxx=7.441630364614923,
-            maxy=46.9498720814052,
+            minx=minx,
+            miny=miny,
+            maxx=maxx,
+            maxy=maxy,
             altitude_of_ground_level_wgs_84=200,
             random_seed=None,
         )
@@ -428,40 +443,59 @@ if __name__ == "__main__":
     my_flight_generator.generate_query_bboxes()
     my_flight_generator.generate_rid_state(duration=30)
     # Add the bounding box as GeoJSON to the flight declaration
-
     # Create the output directory if it does not exist
     output_dir = "output"
     os.makedirs(output_dir, exist_ok=True)
-    bbox_file = os.path.join(output_dir, "bounding_box.geojson")
-    half_bbox_file = os.path.join(output_dir, "half_bounding_box.geojson")
-    flight_data_file = os.path.join(output_dir, "flight_data.json")
+    logger.info(f"Output directory created or already exists: {output_dir}")
 
+    bbox_file = os.path.join(output_dir, "flight_declaration_bounding_box.geojson")
+    half_box_bbox_file = os.path.join(
+        output_dir, "flight_declaration_half_bounding_box.geojson"
+    )
+    flight_data_file = os.path.join(output_dir, "flight_data.json")
 
     half_bbox_geojson = shapely.geometry.mapping(my_flight_generator.half_box)
     bbox_geojson = shapely.geometry.mapping(my_flight_generator.box)
-    try:
-        json.dump(half_bbox_geojson, open(half_bbox_file, "w"), indent=2)
-        logger.info(f"Half bounding box GeoJSON saved to {half_bbox_file}")
-    except Exception as e:
-        logger.error(f"Failed to save half bounding box GeoJSON: {e}")
 
-    try:
-        json.dump(bbox_geojson, open(bbox_file, "w"), indent=2)
-        logger.info(f"Bounding box GeoJSON saved to {bbox_file}")
-    except Exception as e:
-        logger.error(f"Failed to save bounding box GeoJSON: {e}")
+    logger.info("Generated GeoJSON for bounding boxes.")
 
-    try:
-        all_flights = []
-        for flight in my_flight_generator.flights:
-            all_flights.append(json.loads(json.dumps(flight)))
-        with open(flight_data_file, "w") as f:
-            f.write(
-                json.dumps(
-                    all_flights
-                )
-            )
+    # Read the flight declaration template
+    template_file = os.path.join("templates", "flight_declaration_template.json")
+    logger.info(f"Reading flight declaration template from: {template_file}")
 
-        logger.info(f"Flight data saved to {flight_data_file}")
-    except Exception as e:
-        logger.error(f"Failed to save flight data: {e}")
+    with open(template_file, "r", encoding="utf-8") as template:
+        flight_declaration_geojson = json.load(template)
+
+    logger.info("Flight declaration template loaded successfully.")
+
+    # Update the start and end datetime
+    flight_declaration_geojson["start_datetime"] = (
+        my_flight_generator.reference_time.datetime.isoformat()
+    )
+    flight_declaration_geojson["end_datetime"] = (
+        my_flight_generator.reference_time.shift(minutes=10).datetime.isoformat()
+    )
+
+    # Update the GeoJSON with the bounding box
+    flight_declaration_geojson["flight_declaration_geo_json"] = bbox_geojson
+
+    half_box_flight_declaration = flight_declaration_geojson.copy()
+    half_box_flight_declaration["flight_declaration_geo_json"] = half_bbox_geojson
+
+    with open(bbox_file, "w", encoding="utf-8") as updated_file:
+        json.dump(flight_declaration_geojson, updated_file, indent=2)
+    logger.info(f"Bounding box GeoJSON saved to: {bbox_file}")
+
+    # Save the updated flight declaration
+    with open(half_box_bbox_file, "w", encoding="utf-8") as updated_file:
+        json.dump(half_box_flight_declaration, updated_file, indent=2)
+    logger.info(f"Half bounding box GeoJSON saved to: {half_box_bbox_file}")
+
+    logger.info(f"Number of flights generated: {len(my_flight_generator.flights)}")
+    all_flights = []
+    for flight in my_flight_generator.flights:
+        all_flights.append(json.loads(json.dumps(flight)))
+        break
+    with open(flight_data_file, "w", encoding="utf-8") as f:
+        f.write(json.dumps(all_flights))
+    logger.info(f"Flight data saved to: {flight_data_file}")
