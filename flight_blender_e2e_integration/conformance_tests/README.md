@@ -12,4 +12,4 @@ The following flows are enabled in this directory to mimic interactions with GCS
 # Flight Blender Conformance Monitoring 
 The image below shows how the internal mechanism of Flight Blender works in the context of conformance monitoring
 
-[Flight Blender Conformance High level architecture](https://github.com/openutm/argon-server/blob/master/images/flightblender-conformance-monitoring.png)
+[Flight Blender Conformance High level architecture](https://github.com/openutm/flight-blender/blob/master/images/flightblender-conformance-monitoring.png)

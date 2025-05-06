@@ -1,3 +1,3 @@
-# Importers
+# Verification Tests
 
-This folder has scripts that demonstrate how different type of data can be imported into Flight Blender
+This folder contains scripts that demonstrate how various types of data can be imported into Flight Blender. These scripts serve as examples to help users integrate their data seamlessly.
