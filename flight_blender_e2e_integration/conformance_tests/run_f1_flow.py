@@ -60,6 +60,7 @@ def log_info(message):
 class FlightBlenderUploader:
     def __init__(self, credentials):
         self.credentials = credentials
+        self.FLIGHT_BLENDER_BASE_URL = "http://flight-blender:8000"
 
     def upload_flight_declaration(self, filename):
         """
@@ -86,7 +87,7 @@ class FlightBlenderUploader:
             "Content-Type": "application/json",
             "Authorization": "Bearer " + self.credentials["access_token"],
         }
-        securl = "http://localhost:8000/flight_declaration_ops/set_flight_declaration"  # set this to self (Post the json to itself)
+        securl = f"{self.FLIGHT_BLENDER_BASE_URL}/flight_declaration_ops/set_flight_declaration"  # set this to self (Post the json to itself)
         response = requests.post(securl, json=flight_declaration, headers=headers)
         return response
 
@@ -106,9 +107,7 @@ class FlightBlenderUploader:
         }
 
         payload = {"state": new_state, "submitted_by": "hh@auth.com"}
-        securl = "http://localhost:8000/flight_declaration_ops/flight_declaration_state/{operation_id}".format(
-            operation_id=operation_id
-        )  # set this to self (Post the json to itself)
+        securl = f"{self.FLIGHT_BLENDER_BASE_URL}/flight_declaration_ops/flight_declaration_state/{operation_id}"
         response = requests.put(securl, json=payload, headers=headers)
         return response
 
@@ -172,7 +171,7 @@ class FlightBlenderUploader:
                     }
                 ]
             }
-            securl = "http://localhost:8000/flight_stream/set_telemetry"  # set this to self (Post the json to itself)
+            securl = f"{self.FLIGHT_BLENDER_BASE_URL}/flight_stream/set_telemetry"  # set this to self (Post the json to itself)
             try:
                 response = requests.put(securl, json=payload, headers=headers)
 
@@ -219,6 +218,7 @@ if __name__ == "__main__":
     flight_state_activted_response = my_uploader.update_operation_state(
         operation_id=flight_declaration_id, new_state=2
     )
+    log_info(flight_state_activted_response.json())
     if flight_state_activted_response.status_code == 200:
         flight_state_activated = flight_state_activted_response.json()
     else:
