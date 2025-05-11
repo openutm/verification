@@ -214,16 +214,16 @@ if __name__ == "__main__":
         sys.exit()
     log_info("Wait 20 secs...")
     time.sleep(20)
-    log_info("Setting state as activted...")
+    log_info("Setting state as activated...")
     # GCS Activates Flights
-    flight_state_activted_response = my_uploader.update_operation_state(
+    flight_state_activated_response = my_uploader.update_operation_state(
         operation_id=flight_declaration_id, new_state=2
     )
-    if flight_state_activted_response.status_code == 200:
-        flight_state_activated = flight_state_activted_response.json()
+    if flight_state_activated_response.status_code == 200:
+        flight_state_activated = flight_state_activated_response.json()
     else:
         log_info("Error in activating flight...")
-        log_info(flight_state_activted_response.json())
+        log_info(flight_state_activated_response.json())
         sys.exit()
 
     log_info("State set as activated...")

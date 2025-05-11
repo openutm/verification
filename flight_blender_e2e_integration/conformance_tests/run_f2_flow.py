@@ -31,7 +31,7 @@ if ENV_FILE:
 class FlightBlenderUploader:
     def __init__(self, credentials):
         self.credentials = credentials
-        self.FLIGHT_BLENDER_BASE_URL = "http://flight-blender:8000"
+        self.FLIGHT_BLENDER_BASE_URL = "http://localhost:8000"
 
     def upload_flight_declaration(self, filename):
         with open(filename, "r") as flight_declaration_file:
@@ -39,18 +39,20 @@ class FlightBlenderUploader:
 
         flight_declaration = json.loads(f_d)
         now = arrow.now()
-        one_minute_from_now = now.shift(minutes=1)
+        few_seconds_from_now = now.shift(seconds=5)
         four_minutes_from_now = now.shift(minutes=4)
 
         # Update start and end time
-        flight_declaration["start_datetime"] = one_minute_from_now.isoformat()
+        flight_declaration["start_datetime"] = few_seconds_from_now.isoformat()
         flight_declaration["end_datetime"] = four_minutes_from_now.isoformat()
         headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer " + self.credentials["access_token"],
         }
         securl = f"{self.FLIGHT_BLENDER_BASE_URL}/flight_declaration_ops/set_flight_declaration"  # set this to self (Post the json to itself)
-        response = requests.post(securl, json=flight_declaration, headers=headers)
+        response = requests.post(
+            securl, json=flight_declaration, headers=headers, timeout=10
+        )
         return response
 
     def update_operation_state(self, operation_id: str, new_state: int):
@@ -63,11 +65,11 @@ class FlightBlenderUploader:
         securl = f"{self.FLIGHT_BLENDER_BASE_URL}/flight_declaration_ops/flight_declaration_state/{operation_id}".format(
             operation_id=operation_id
         )  # set this to self (Post the json to itself)
-        response = requests.put(securl, json=payload, headers=headers)
+        response = requests.put(securl, json=payload, headers=headers, timeout=10)
         return response
 
     def submit_telemetry(self, filename, operation_id):
-        with open(filename, "r") as rid_json_file:
+        with open(filename, "r", encoding="utf-8") as rid_json_file:
             rid_json = rid_json_file.read()
 
         rid_json = json.loads(rid_json)
@@ -114,14 +116,16 @@ class FlightBlenderUploader:
             }
             securl = f"{self.FLIGHT_BLENDER_BASE_URL}/flight_stream/set_telemetry"  # set this to self (Post the json to itself)
             try:
-                response = requests.put(securl, json=payload, headers=headers)
+                response = requests.put(
+                    securl, json=payload, headers=headers, timeout=10
+                )
 
             except Exception as e:
                 print(e)
             else:
                 if response.status_code == 201:
                     print("Sleeping 3 seconds..")
-                    time.sleep(3)
+                    time.sleep(4)
                 else:
                     print(response.json())
 
@@ -154,16 +158,16 @@ if __name__ == "__main__":
 
     print("Wait 20 secs...")
     time.sleep(20)
-    print("Setting state as activted...")
+    print("Setting state as activated...")
     # GCS Activates Flights
-    flight_state_activted_response = my_uploader.update_operation_state(
+    flight_state_activated_response = my_uploader.update_operation_state(
         operation_id=flight_declaration_id, new_state=2
     )
-    if flight_state_activted_response.status_code == 200:
-        flight_state_activated = flight_state_activted_response.json()
+    if flight_state_activated_response.status_code == 200:
+        flight_state_activated = flight_state_activated_response.json()
     else:
         print("Error in activating flight...")
-        print(flight_state_activted_response.json())
+        print(flight_state_activated_response.json())
         sys.exit()
 
     print("State set as activated...")
@@ -190,7 +194,7 @@ if __name__ == "__main__":
         operation_id=flight_declaration_id, new_state=4
     )
 
-    time.sleep(20)
+    time.sleep(7)
     print("Setting state as ended...")
     # GCS Ends Flights
     flight_state_ended = my_uploader.update_operation_state(

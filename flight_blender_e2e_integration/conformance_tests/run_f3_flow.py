@@ -175,16 +175,16 @@ if __name__ == "__main__":
 
     print("Wait 10 secs...")
     time.sleep(10)
-    print("Setting state as activted...")
+    print("Setting state as activated...")
     # GCS Activates Flights
-    flight_state_activted_response = my_uploader.update_operation_state(
+    flight_state_activated_response = my_uploader.update_operation_state(
         operation_id=flight_declaration_id, new_state=2
     )
-    if flight_state_activted_response.status_code == 200:
-        flight_state_activated = flight_state_activted_response.json()
+    if flight_state_activated_response.status_code == 200:
+        flight_state_activated = flight_state_activated_response.json()
     else:
         print("Error in activating flight...")
-        print(flight_state_activted_response.json())
+        print(flight_state_activated_response.json())
         sys.exit()
 
     print("State set as activated...")
