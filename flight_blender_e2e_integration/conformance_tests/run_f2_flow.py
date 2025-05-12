@@ -10,7 +10,7 @@ import os
 from dataclasses import asdict
 from os.path import dirname, abspath
 import sys
-
+import logging
 sys.path.insert(1, "../")
 
 from auth_factory import NoAuthCredentialsGetter
@@ -23,9 +23,23 @@ from rid_definitions import (
 )
 
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
+
+
+def log_info(message):
+    """
+    Logs an informational message with a timestamp.
+    Args:
+        message (str): The message to log.
+    """
+    logging.info(message)
+
 
 
 class FlightBlenderUploader:
@@ -79,7 +93,7 @@ class FlightBlenderUploader:
 
         uas_id = UASID(
             registration_id="CHE-5bisi9bpsiesw",
-            serial_number="d29dbf50-f411-4488-a6f1-cf2ae4d4237a",
+            serial_number="a5dd8899-bc19-c8c4-2dd7-57f786d1379d",
             utm_id="07a06bba-5092-48e4-8253-7a523f885bfe",
         )
         # eu_classification =from_dict(data_class= UAClassificationEU, data= rid_operator_details['rid_details']['eu_classification'])
@@ -106,11 +120,7 @@ class FlightBlenderUploader:
                 "observations": [
                     {
                         "current_states": [state],
-                        "flight_details": {
-                            "rid_details": asdict(rid_operator_details),
-                            "aircraft_type": "Helicopter",
-                            "operator_name": "Thomas-Roberts",
-                        },
+                        "flight_details": asdict(rid_operator_details)
                     }
                 ]
             }
@@ -151,14 +161,14 @@ if __name__ == "__main__":
     if flight_declaration_response.status_code == 200:
         flight_declaration_success = flight_declaration_response.json()
         flight_declaration_id = flight_declaration_success["id"]
-        print("Flight Declaration Submitted...")
+        log_info("Flight Declaration Submitted...")
     else:
-        print("Error in submitting flight declaration...")
+        log_info("Error in submitting flight declaration...")
         sys.exit()
 
-    print("Wait 20 secs...")
+    log_info("Wait 20 secs...")
     time.sleep(20)
-    print("Setting state as activated...")
+    log_info("Setting state as activated...")
     # GCS Activates Flights
     flight_state_activated_response = my_uploader.update_operation_state(
         operation_id=flight_declaration_id, new_state=2
@@ -166,11 +176,11 @@ if __name__ == "__main__":
     if flight_state_activated_response.status_code == 200:
         flight_state_activated = flight_state_activated_response.json()
     else:
-        print("Error in activating flight...")
-        print(flight_state_activated_response.json())
+        log_info("Error in activating flight...")
+        log_info(flight_state_activated_response.json())
         sys.exit()
 
-    print("State set as activated...")
+    log_info("State set as activated...")
 
     # submit telemetry
 
@@ -185,19 +195,19 @@ if __name__ == "__main__":
         ),
     )
     thread.start()
-    print("Telemetry submission for 30 seconds...")
+    log_info("Telemetry submission for 30 seconds...")
     time.sleep(10)
 
-    print("Setting state as contingent...")
+    log_info("Setting state as contingent...")
     # GCS Ends Flights
     flight_state_ended = my_uploader.update_operation_state(
         operation_id=flight_declaration_id, new_state=4
     )
 
     time.sleep(7)
-    print("Setting state as ended...")
+    log_info("Setting state as ended...")
     # GCS Ends Flights
     flight_state_ended = my_uploader.update_operation_state(
         operation_id=flight_declaration_id, new_state=5
     )
-    print("Flight state declared ended...")
+    log_info("Flight state declared ended...")

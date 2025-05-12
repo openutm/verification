@@ -60,7 +60,8 @@ def log_info(message):
 class FlightBlenderUploader:
     def __init__(self, credentials):
         self.credentials = credentials
-        self.FLIGHT_BLENDER_BASE_URL = "http://flight-blender:8000"
+        self.FLIGHT_BLENDER_BASE_URL = "http://localhost:8000"
+
 
     def upload_flight_declaration(self, filename):
         """
@@ -136,7 +137,7 @@ class FlightBlenderUploader:
 
         uas_id = UASID(
             registration_id="CHE-5bisi9bpsiesw",
-            serial_number="d29dbf50-f411-4488-a6f1-cf2ae4d4237a",
+            serial_number="a5dd8899-bc19-c8c4-2dd7-57f786d1379d",
             utm_id="07a06bba-5092-48e4-8253-7a523f885bfe",
         )
         # eu_classification =from_dict(data_class= UAClassificationEU, data= rid_operator_details['rid_details']['eu_classification'])
@@ -163,11 +164,7 @@ class FlightBlenderUploader:
                 "observations": [
                     {
                         "current_states": [state],
-                        "flight_details": {
-                            "rid_details": asdict(rid_operator_details),
-                            "aircraft_type": "Helicopter",
-                            "operator_name": "Thomas-Roberts",
-                        },
+                        "flight_details":  asdict(rid_operator_details)
                     }
                 ]
             }
