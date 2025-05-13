@@ -228,7 +228,7 @@ if __name__ == "__main__":
     log_info("Telemetry submission for 30 seconds...")
     time.sleep(20)
 
-    # # log_info("Flight Blender should set the state as non-conforming...")
+    log_info("Flight Blender should set the state as non-conforming...")
 
     # log_info("Checking Flight Blender State...")
     # thread = threading.Thread(
