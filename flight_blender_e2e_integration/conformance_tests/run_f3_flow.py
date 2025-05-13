@@ -230,19 +230,19 @@ if __name__ == "__main__":
 
     log_info("Flight Blender should set the state as non-conforming...")
 
-    # log_info("Checking Flight Blender State...")
-    # thread = threading.Thread(
-    #     target=my_uploader.check_operation_state_every_five_seconds,
-    #     args=(
-    #         flight_declaration_id,
-    #     ),
-    # )
-    # thread.start()
+    log_info("Checking Flight Blender State...")
+    thread = threading.Thread(
+        target=my_uploader.check_operation_state_every_five_seconds,
+        args=(
+            flight_declaration_id,
+        ),
+    )
+    thread.start()
 
-    # time.sleep(50)
-    # log_info("Setting state as ended...")
-    # # GCS Ends Flights
-    # flight_state_ended = my_uploader.update_operation_state(
-    #     operation_id=flight_declaration_id, new_state=5
-    # )
-    # log_info("Flight state declared ended...")
+    time.sleep(20)
+    log_info("Setting state as ended...")
+    # GCS Ends Flights
+    flight_state_ended = my_uploader.update_operation_state(
+        operation_id=flight_declaration_id, new_state=5
+    )
+    log_info("Flight state declared ended...")

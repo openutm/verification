@@ -62,7 +62,9 @@ class FlightBlenderUploader:
                     session_id=session_id
                 )  # set this to self (Post the json to itself)
                 try:
-                    response = requests.post(securl, json=payload, headers=headers)
+                    response = requests.post(
+                        securl, json=payload, headers=headers, timeout=10
+                    )
                     if response.status_code not in [200, 201]:
                         print(
                             f"Non-successful status code received: {response.status_code}, message: {response.text}"
