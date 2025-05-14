@@ -140,10 +140,8 @@ class PassportCredentialsGetter:
             "scope": scopes,
         }
         url = env.get("PASSPORT_URL") + env.get("PASSPORT_TOKEN_URL")
-
-        token_data = requests.post(url, data=payload)
-        t_data = token_data.json()
-
+        token_data = requests.post(url, data=payload, headers={"Content-Type": "application/x-www-form-urlencoded"},timeout=10)
+        t_data = token_data.json()        
         return t_data
 
 
