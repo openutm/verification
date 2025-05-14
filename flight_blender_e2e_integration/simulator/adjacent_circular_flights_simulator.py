@@ -502,8 +502,8 @@ if __name__ == "__main__":
     halfbox_bbox_geojson_feature = Feature(
         geometry=halfbox_bbox_polygon,
         properties={
-            "max_altitude": MAX_ALTITUDEE_WGS84,
-            "min_altitude": MIN_ALTITUDE_WGS84,
+            "max_altitude": {"meters": MAX_ALTITUDEE_WGS84, "datum": "WGS84"},
+            "min_altitude": {"meters": MIN_ALTITUDE_WGS84, "datum": "WGS84"},
         },
     )
     halfbox_bbox_geojson_feature_collection = FeatureCollection(
