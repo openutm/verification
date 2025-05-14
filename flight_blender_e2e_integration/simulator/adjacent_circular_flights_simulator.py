@@ -16,13 +16,14 @@ from flight_data import (
 from operator_flight_details import OperatorFlightDataGenerator
 import logging
 import os
-from uas_standards.astm.f3411.v19.api import (
+from uas_standards.astm.f3411.v22a.api import (
     HorizontalAccuracy,
     VerticalAccuracy,
     RIDAircraftPosition,
     RIDAircraftState,
     RIDHeight,
     RIDFlightDetails,
+    Time,
 )
 from utils import (
     QueryBoundingBox,
@@ -112,7 +113,7 @@ class AdjacentCircularFlightsSimulator:
             return
         else:
             raise ValueError(
-                "The extents provided are not of the correct size: {diagonal_length}m, please provide extents that are less than 500m x 500m and more than 300m x 300m square".format(
+                "The extents provided are not of the correct diagonal length: {diagonal_length}m, please provide extents that are less than 500m x 500m and more than 300m x 300m square".format(
                     diagonal_length=diagonal_length.__round__(2)
                 )
             )
@@ -366,7 +367,7 @@ class AdjacentCircularFlightsSimulator:
                     )
 
                     rid_aircraft_state = RIDAircraftState(
-                        timestamp=timestamp_isoformat,
+                        timestamp=Time(value=timestamp_isoformat, format="RFC3339"),
                         operational_status="Airborne",
                         position=aircraft_position,
                         height=aircraft_height,
