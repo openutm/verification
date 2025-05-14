@@ -113,7 +113,7 @@ class AdjacentCircularFlightsSimulator:
             return
         else:
             raise ValueError(
-                "The extents provided are not of the correct diagonal length: {diagonal_length}m, please provide extents that are less than 500m x 500m and more than 300m x 300m square".format(
+                "The extents provided are not of the correct diagonal length: {diagonal_length}m, please provide the diagonal length between 800m -1.6 kms".format(
                     diagonal_length=diagonal_length.__round__(2)
                 )
             )
