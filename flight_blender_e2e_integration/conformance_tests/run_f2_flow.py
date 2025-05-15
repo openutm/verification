@@ -166,8 +166,11 @@ if __name__ == "__main__":
         log_info("Error in submitting flight declaration...")
         sys.exit()
 
-    log_info("Wait 20 secs...")
-    time.sleep(20)
+    user_input = input("Press any key to set state as activated or 'c' to exit: ").strip().lower()
+    if user_input == 'c':
+        log_info("Exiting as per user request...")
+        sys.exit()
+        
     log_info("Setting state as activated...")
     # GCS Activates Flights
     flight_state_activated_response = my_uploader.update_operation_state(
@@ -182,6 +185,10 @@ if __name__ == "__main__":
 
     log_info("State set as activated...")
 
+    user_input = input("Press any key to submit telemetry or 'c' to exit: ").strip().lower()
+    if user_input == 'c':
+        log_info("Exiting as per user request...")
+        sys.exit()
     # submit telemetry
 
     rel_path = "../rid_samples/flight_1_rid_aircraft_state.json"

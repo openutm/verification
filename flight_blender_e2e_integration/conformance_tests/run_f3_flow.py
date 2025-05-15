@@ -196,8 +196,11 @@ if __name__ == "__main__":
         log_info("Error in submitting flight declaration...")
         sys.exit()
 
-    log_info("Wait 10 secs...")
-    time.sleep(10)
+    user_input = input("Press any key to set state as activated or 'c' to exit: ").strip().lower()
+    if user_input == 'c':
+        log_info("Exiting as per user request...")
+        sys.exit()
+        
     log_info("Setting state as activated...")
     # GCS Activates Flights
     flight_state_activated_response = my_uploader.update_operation_state(
@@ -214,6 +217,10 @@ if __name__ == "__main__":
 
     # submit telemetry, this telemetry is partly conformant, this is generated
 
+    user_input = input("Press any key to submit telemetry or 'c' to exit: ").strip().lower()
+    if user_input == 'c':
+        log_info("Exiting as per user request...")
+        sys.exit()
     rel_path = "../rid_samples/non-conforming/flight_1_bern_fully_nonconforming.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
     my_uploader = FlightBlenderUploader(credentials=credentials)
