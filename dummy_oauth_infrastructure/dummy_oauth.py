@@ -112,7 +112,7 @@ class NoAuth(AuthAdapter):
                 "aud": intended_audience,
                 "nbf": timestamp - 1,
                 "exp": timestamp + NoAuth.EXPIRATION,
-                "iss": "NoAuth",
+                "iss": "http://noauth.dev",
                 "jti": str(uuid.uuid4()),
             },
             algs=["RS256"],
