@@ -175,7 +175,7 @@ if __name__ == "__main__":
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
     credentials = my_credentials.get_cached_credentials(
-        audience="testflight.flightblender.com", scopes=["flight_blender.write"]
+        audience="testflight.flightblender.com", scopes=["flightblender.write"]
     )
     parent_dir = dirname(
         abspath(__file__)
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     if user_input == 'c':
         log_info("Exiting as per user request...")
         sys.exit()
-        
+
     log_info("Setting state as activated...")
     # GCS Activates Flights
     flight_state_activated_response = my_uploader.update_operation_state(

@@ -187,7 +187,7 @@ if __name__ == "__main__":
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
     credentials = my_credentials.get_cached_credentials(
-        audience="testflight.flightblender.com", scopes=["flight_blender.write"]
+        audience="testflight.flightblender.com", scopes=["flightblender.write"]
     )
     parent_dir = dirname(
         abspath(__file__)
@@ -208,7 +208,7 @@ if __name__ == "__main__":
 
     else:
         sys.exit()
-    
+
     user_input = input("Press any key to set state as activated or 'c' to exit: ").strip().lower()
     if user_input == 'c':
         log_info("Exiting as per user request...")
