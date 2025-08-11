@@ -46,7 +46,7 @@ class MyHTTPSignatureKeyResolver(HTTPSignatureKeyResolver):
 
 class FlightBlenderUploader:
     def upload_to_server(self, filename):
-        # Create a session that is re-used
+        # Create a session that is reused
         s = requests.Session()
         # Open the provided file name
         with open(filename, "r") as rid_json_file:
@@ -128,7 +128,7 @@ class FlightBlenderUploader:
                 try:
                     decoded_data = jwt.decode(flight_blender_response["signed"]["signature"], key=public_key, algorithms="RS256")
                 except (ExpiredSignatureError, InvalidSignatureError, InvalidTokenError, InvalidKeyError, DecodeError) as decode_error:
-                    print("Error in verifying signed response from ArgonServer or it is not JWT, please check ArgonServer setttings")
+                    print("Error in verifying signed response from ArgonServer or it is not JWT, please check ArgonServer settings")
 
                 if response.status_code == 201:
                     print("Sleeping 3 seconds..")

@@ -194,7 +194,7 @@ if __name__ == "__main__":
     if user_input == "c":
         log_info("Exiting as per user request...")
         sys.exit()
-    log_info("Setting state as activted...")
+    log_info("Setting state as activated...")
     # GCS Activates Flights
     flight_state_activted_response = my_uploader.update_operation_state(operation_id=flight_declaration_id, new_state=2)
     log_info(flight_state_activted_response.json())

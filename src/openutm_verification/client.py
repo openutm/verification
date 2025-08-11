@@ -30,11 +30,11 @@ class PassportSpotlightCredentialsGetter:
         r = get_redis()
 
         if not audience:
-            return {"error": "An audience paramter must be provided"}
+            return {"error": "An audience parameter must be provided"}
         try:
             scopes_str = " ".join(scopes)
         except Exception as e:
-            return {"error": "An list of scopes paramter must be provided"}
+            return {"error": "An list of scopes parameter must be provided"}
 
         now = datetime.now()
 
@@ -85,11 +85,11 @@ class PassportCredentialsGetter:
         r = get_redis()
 
         if not audience:
-            return {"error": "An audience paramter must be provided"}
+            return {"error": "An audience parameter must be provided"}
         try:
             scopes_str = " ".join(scopes)
         except Exception as e:
-            return {"error": "An list of scopes paramter must be provided"}
+            return {"error": "An list of scopes parameter must be provided"}
 
         scopes_str = " ".join(scopes)
 
@@ -141,11 +141,11 @@ class NoAuthCredentialsGetter:
 
     def get_cached_credentials(self, audience: str, scopes: List[str]):
         if not audience:
-            return {"error": "An audience paramter must be provided"}
+            return {"error": "An audience parameter must be provided"}
         try:
             scopes_str = " ".join(scopes)
         except Exception as e:
-            return {"error": "An list of scopes paramter must be provided"}
+            return {"error": "An list of scopes parameter must be provided"}
 
         audience = audience
         scopes = scopes_str

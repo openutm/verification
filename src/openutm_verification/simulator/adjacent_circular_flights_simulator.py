@@ -49,7 +49,9 @@ logger = logging.getLogger(__name__)
 
 
 class AdjacentCircularFlightsSimulator:
-    """A class to generate Flight Paths given a bounding box, this is the main module to generate flight path datasets, the data is generated as latitude / longitude pairs with assoiated with the flights. Additional flight metadata e.g. flight id, altitude, registration number can also be generated"""
+    """A class to generate Flight Paths given a bounding box, this is the main module to generate flight path datasets,
+    the data is generated as latitude / longitude pairs with associated with the flights.
+    Additional flight metadata e.g. flight id, altitude, registration number can also be generated"""
 
     def __init__(self, config: AdjacentCircularFlightsSimulatorConfiguration) -> None:
         """Create an AdjacentCircularFlightsSimulator with the specified bounding box.
@@ -87,7 +89,8 @@ class AdjacentCircularFlightsSimulator:
         self.input_extents_valid()
 
     def input_extents_valid(self) -> None:
-        """This method checks if the input extents are valid i.e. small enough, if the extent is too large, we reject them, at the moment it checks for extents less than 500m x 500m square but can be changed as necessary."""
+        """This method checks if the input extents are valid i.e. small enough, if the extent is too large, we reject them,
+        at the moment it checks for extents less than 500m x 500m square but can be changed as necessary."""
 
         box = shapely.geometry.box(self.minx, self.miny, self.maxx, self.maxy)
         self.box = box
@@ -120,12 +123,12 @@ class AdjacentCircularFlightsSimulator:
             )
 
     def generate_query_bboxes(self):
-        """For the differnet Remote ID checks: No, we need to generate three bounding boxes for the display provider, this method generates the 1 km diagonal length bounding box"""
+        """For the different Remote ID checks: No, we need to generate three bounding boxes for the display provider, this method generates the 1 km diagonal length bounding box"""
         # Get center of of the bounding box that is inputted into the generator
         box = shapely.geometry.box(self.minx, self.miny, self.maxx, self.maxy)
         center = box.centroid
         self.bbox_center.append(center)
-        # Transform to geographic co-ordinates to get areas
+        # Transform to geographic coordinates to get areas
         transformer = Transformer.from_crs("epsg:4326", "epsg:3857")
         transformed_x, transformed_y = transformer.transform(center.x, center.y)
         pt = Point(transformed_x, transformed_y)
@@ -183,7 +186,9 @@ class AdjacentCircularFlightsSimulator:
             )
 
     def generate_flight_speed_bearing(self, adjacent_points: List, delta_time_secs: int) -> List[float]:
-        """A method to generate flight speed, assume that the flight has to traverse two adjecent points in x number of seconds provided, calculating speed in meters / second. It also generates bearing between this and next point, this is used to populate the 'track' paramater in the Aircraft State JSON."""
+        """A method to generate flight speed, assume that the flight has to traverse two adjacent points in x number of seconds provided,
+        calculating speed in meters / second. It also generates bearing between this and next point,
+        this is used to populate the 'track' parameter in the Aircraft State JSON."""
 
         first_point = adjacent_points[0]
         second_point = adjacent_points[1]
@@ -217,7 +222,10 @@ class AdjacentCircularFlightsSimulator:
 
     def generate_flight_grid_and_path_points(self, altitude_of_ground_level_wgs_84: float):
         """Generate a series of boxes (grid) within the given bounding box to have areas for different flight tracks within each box"""
-        # Compute the box where the flights will be created. For a the sample bounds given, over Bern, Switzerland, a division by 2 produces a cell_size of 0.0025212764739985793, a division of 3 is 0.0016808509826657196 and division by 4 0.0012606382369992897. As the cell size goes smaller more number of flights can be accomodated within the grid. For the study area bounds we build a 3x2 box for six flights by creating 3 column 2 row grid.
+        # Compute the box where the flights will be created. For a the sample bounds given, over Bern, Switzerland,
+        # a division by 2 produces a cell_size of 0.0025212764739985793, a division of 3 is 0.0016808509826657196 and division by 4 0.0012606382369992897.
+        # As the cell size goes smaller more number of flights can be accommodated within the grid. For the study area bounds we build a 3x2 box
+        # for six flights by creating 3 column 2 row grid.
         N_COLS = 3
         N_ROWS = 2
         cell_size_x = (self.maxx - self.minx) / (N_COLS)  # create three columns
