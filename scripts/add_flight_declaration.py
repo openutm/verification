@@ -14,6 +14,7 @@ Usage:
 """
 
 import json
+import logging
 import os
 import sys
 import threading
@@ -24,10 +25,6 @@ from os.path import abspath, dirname
 import arrow
 import requests
 from dotenv import find_dotenv, load_dotenv
-
-sys.path.insert(1, "../")
-
-import logging
 
 from openutm_verification.client import NoAuthCredentialsGetter
 from openutm_verification.rid import (

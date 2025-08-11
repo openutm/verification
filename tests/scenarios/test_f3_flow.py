@@ -12,8 +12,6 @@ import arrow
 import requests
 from dotenv import find_dotenv, load_dotenv
 
-sys.path.insert(1, "../")
-
 from openutm_verification.client import NoAuthCredentialsGetter
 from openutm_verification.rid import (
     UASID,
@@ -135,7 +133,6 @@ class FlightBlenderUploader:
                 "Content-Type": "application/json",
                 "Authorization": "Bearer " + self.credentials["access_token"],
             }
-            # payload = {"observations":[{"icao_address" : icao_address,"traffic_source" :traffic_source, "source_type" : source_type, "lat_dd" : lat_dd, "lon_dd" : lon_dd, "time_stamp" : time_stamp,"altitude_mm" : altitude_mm, 'metadata':metadata}]}
 
             payload = {"observations": [{"current_states": [state], "flight_details": asdict(rid_operator_details)}]}
             securl = f"{self.FLIGHT_BLENDER_BASE_URL}/flight_stream/set_telemetry"  # set this to self (Post the json to itself)
