@@ -93,7 +93,7 @@ if __name__ == "__main__":
     if "error" in credentials:
         sys.exit("Error in getting credentials.")
     parent_dir = dirname(abspath(__file__))  # <-- absolute dir the raw input file  is in
-    rel_path = "air_traffic_samples/micro_flight_data_single.json"
+    rel_path = "../tests/assets/air_traffic_samples/micro_flight_data_single.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
     my_uploader = FlightBlenderUploader(credentials=credentials)
     my_uploader.upload_to_server(filename=abs_file_path)

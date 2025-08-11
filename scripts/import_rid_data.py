@@ -82,7 +82,7 @@ if __name__ == "__main__":
     credentials = my_credentials.get_cached_credentials(audience="testflight.flightblender.com", scopes=["flight_blender.write"])
     parent_dir = dirname(abspath(__file__))  # <-- absolute dir the raw input file  is in
 
-    rel_path = "rid_samples/flight_1_rid_aircraft_state.json"
+    rel_path = "../tests/assets/rid_samples/flight_1_rid_aircraft_state.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
     my_uploader = FlightBlenderUploader(credentials=credentials)
     my_uploader.upload_to_server(filename=abs_file_path)

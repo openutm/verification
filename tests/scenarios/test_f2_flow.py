@@ -128,7 +128,7 @@ if __name__ == "__main__":
     credentials = my_credentials.get_cached_credentials(audience="testflight.flightblender.com", scopes=["flightblender.write"])
     parent_dir = dirname(abspath(__file__))  # <-- absolute dir the raw input file  is in
 
-    rel_path = "../flight_declarations_samples/flight-1-bern.json"
+    rel_path = "../assets/flight_declarations_samples/flight-1-bern.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
     my_uploader = FlightBlenderUploader(credentials=credentials)
     flight_declaration_response = my_uploader.upload_flight_declaration(filename=abs_file_path)
@@ -164,7 +164,7 @@ if __name__ == "__main__":
         sys.exit()
     # submit telemetry
 
-    rel_path = "../rid_samples/flight_1_rid_aircraft_state.json"
+    rel_path = "../assets/rid_samples/flight_1_rid_aircraft_state.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
     my_uploader = FlightBlenderUploader(credentials=credentials)
     thread = threading.Thread(

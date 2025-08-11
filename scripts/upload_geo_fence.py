@@ -1,5 +1,6 @@
 ## A file to import flight data into the Secured Flight Spotlight instance.
 import json
+import os
 import sys
 from os import environ as env
 from os.path import abspath, dirname
@@ -54,4 +55,6 @@ if __name__ == "__main__":
     parent_dir = dirname(abspath(__file__))  # <-- absolute dir the raw input file  is in
 
     my_uploader = FlightBlenderUploader(credentials=credentials)
-    my_uploader.upload_to_server(filename="aoi_geo_fence_samples/geo_fence.geojson")
+    rel_path = "../tests/assets/aoi_geo_fence_samples/geo_fence.geojson"
+    abs_file_path = os.path.join(parent_dir, rel_path)
+    my_uploader.upload_to_server(filename=abs_file_path)
