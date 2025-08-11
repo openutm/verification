@@ -13,35 +13,32 @@ Usage:
 
 """
 
-import requests
-from dotenv import load_dotenv, find_dotenv
 import json
+import os
+import sys
 import threading
+import time
 from dataclasses import asdict
+from os.path import abspath, dirname
 
 import arrow
-import json
-import time
-import os
-from dataclasses import asdict
-from os.path import dirname, abspath
-import sys
+import requests
+from dotenv import find_dotenv, load_dotenv
 
 sys.path.insert(1, "../")
 
-from openutm_verification.client import NoAuthCredentialsGetter
 import logging
+
+from openutm_verification.client import NoAuthCredentialsGetter
 from openutm_verification.rid import (
-    LatLngPoint,
-    RIDOperatorDetails,
     UASID,
+    LatLngPoint,
     OperatorLocation,
+    RIDOperatorDetails,
     UAClassificationEU,
 )
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
@@ -142,9 +139,7 @@ class FlightBlenderUploader:
         )
         # eu_classification =from_dict(data_class= UAClassificationEU, data= rid_operator_details['rid_details']['eu_classification'])
         eu_classification = UAClassificationEU()
-        operator_location = OperatorLocation(
-            position=LatLngPoint(lat=46.97615311620088, lng=7.476099729537965)
-        )
+        operator_location = OperatorLocation(position=LatLngPoint(lat=46.97615311620088, lng=7.476099729537965))
         rid_operator_details = RIDOperatorDetails(
             id=operation_id,
             uas_id=uas_id,
@@ -190,19 +185,13 @@ if __name__ == "__main__":
     # my_credentials = PassportSpotlightCredentialsGetter()
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
-    credentials = my_credentials.get_cached_credentials(
-        audience="testflight.flightblender.com", scopes=["flight_blender.write"]
-    )
-    parent_dir = dirname(
-        abspath(__file__)
-    )  # <-- absolute dir the raw input file  is in
+    credentials = my_credentials.get_cached_credentials(audience="testflight.flightblender.com", scopes=["flight_blender.write"])
+    parent_dir = dirname(abspath(__file__))  # <-- absolute dir the raw input file  is in
 
     rel_path = "../flight_declarations_samples/flight-1-bern.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
     my_uploader = FlightBlenderUploader(credentials=credentials)
-    flight_declaration_response = my_uploader.upload_flight_declaration(
-        filename=abs_file_path
-    )
+    flight_declaration_response = my_uploader.upload_flight_declaration(filename=abs_file_path)
 
     if flight_declaration_response.status_code == 200:
         flight_declaration_success = flight_declaration_response.json()
@@ -216,9 +205,7 @@ if __name__ == "__main__":
     time.sleep(20)
     log_info("Setting state as activated...")
     # GCS Activates Flights
-    flight_state_activated_response = my_uploader.update_operation_state(
-        operation_id=flight_declaration_id, new_state=2
-    )
+    flight_state_activated_response = my_uploader.update_operation_state(operation_id=flight_declaration_id, new_state=2)
     if flight_state_activated_response.status_code == 200:
         flight_state_activated = flight_state_activated_response.json()
     else:
@@ -245,7 +232,5 @@ if __name__ == "__main__":
     time.sleep(30)
     log_info("Setting state as ended...")
     # GCS Ends Flights
-    flight_state_ended = my_uploader.update_operation_state(
-        operation_id=flight_declaration_id, new_state=5
-    )
+    flight_state_ended = my_uploader.update_operation_state(operation_id=flight_declaration_id, new_state=5)
     log_info("Flight state declared ended...")

@@ -34,6 +34,7 @@ For more information about the DRIP protocol and the Basic ID message format, re
 
 import openutm_verification.drip.drip_messages as common
 
+
 class BasicIDDecoder:
     @staticmethod
     def decode_basic_id(uas_data, raw_data):

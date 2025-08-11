@@ -1,25 +1,25 @@
-import requests
-from dotenv import load_dotenv, find_dotenv
 import json
-from os import environ as env
-import threading
-import arrow
-import json
-import time
-import os
-from dataclasses import asdict
-from os.path import dirname, abspath
-import sys
 import logging
+import os
+import sys
+import threading
+import time
+from dataclasses import asdict
+from os import environ as env
+from os.path import abspath, dirname
+
+import arrow
+import requests
+from dotenv import find_dotenv, load_dotenv
 
 sys.path.insert(1, "../")
 
 from openutm_verification.client import NoAuthCredentialsGetter
 from openutm_verification.rid import (
-    LatLngPoint,
-    RIDOperatorDetails,
     UASID,
+    LatLngPoint,
     OperatorLocation,
+    RIDOperatorDetails,
     UAClassificationEU,
 )
 
@@ -27,9 +27,7 @@ ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
@@ -67,9 +65,7 @@ class FlightBlenderUploader:
             "Authorization": "Bearer " + self.credentials["access_token"],
         }
         securl = f"{self.FLIGHT_BLENDER_BASE_URL}/flight_declaration_ops/set_flight_declaration"  # set this to self (Post the json to itself)
-        response = requests.post(
-            securl, json=flight_declaration, headers=headers, timeout=10
-        )
+        response = requests.post(securl, json=flight_declaration, headers=headers, timeout=10)
         return response
 
     def check_operation_state_every_five_seconds(self, operation_id: str):
@@ -87,11 +83,7 @@ class FlightBlenderUploader:
             response = requests.get(securl, headers=headers, timeout=10)
             if response.status_code == 200:
                 r = response.json()
-                log_info(
-                    "Operation State is {operation_state}".format(
-                        operation_state=r["state"]
-                    )
-                )
+                log_info("Operation State is {operation_state}".format(operation_state=r["state"]))
                 log_info("Sleeping 5 seconds..")
                 time.sleep(5)
             else:
@@ -129,9 +121,7 @@ class FlightBlenderUploader:
         )
         # eu_classification =from_dict(data_class= UAClassificationEU, data= rid_operator_details['rid_details']['eu_classification'])
         eu_classification = UAClassificationEU()
-        operator_location = OperatorLocation(
-            position=LatLngPoint(lat=46.97615311620088, lng=7.476099729537965)
-        )
+        operator_location = OperatorLocation(position=LatLngPoint(lat=46.97615311620088, lng=7.476099729537965))
         rid_operator_details = RIDOperatorDetails(
             id=operation_id,
             uas_id=uas_id,
@@ -147,19 +137,10 @@ class FlightBlenderUploader:
             }
             # payload = {"observations":[{"icao_address" : icao_address,"traffic_source" :traffic_source, "source_type" : source_type, "lat_dd" : lat_dd, "lon_dd" : lon_dd, "time_stamp" : time_stamp,"altitude_mm" : altitude_mm, 'metadata':metadata}]}
 
-            payload = {
-                "observations": [
-                    {
-                        "current_states": [state],
-                        "flight_details":  asdict(rid_operator_details)
-                    }
-                ]
-            }
+            payload = {"observations": [{"current_states": [state], "flight_details": asdict(rid_operator_details)}]}
             securl = f"{self.FLIGHT_BLENDER_BASE_URL}/flight_stream/set_telemetry"  # set this to self (Post the json to itself)
             try:
-                response = requests.put(
-                    securl, json=payload, headers=headers, timeout=10
-                )
+                response = requests.put(securl, json=payload, headers=headers, timeout=10)
             except Exception as e:
                 log_info(e)
             else:
@@ -174,19 +155,13 @@ if __name__ == "__main__":
     # my_credentials = PassportSpotlightCredentialsGetter()
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
-    credentials = my_credentials.get_cached_credentials(
-        audience="testflight.flightblender.com", scopes=["flightblender.write"]
-    )
-    parent_dir = dirname(
-        abspath(__file__)
-    )  # <-- absolute dir the raw input file  is in
+    credentials = my_credentials.get_cached_credentials(audience="testflight.flightblender.com", scopes=["flightblender.write"])
+    parent_dir = dirname(abspath(__file__))  # <-- absolute dir the raw input file  is in
 
     rel_path = "../flight_declarations_samples/flight-1-bern.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
     my_uploader = FlightBlenderUploader(credentials=credentials)
-    flight_declaration_response = my_uploader.upload_flight_declaration(
-        filename=abs_file_path
-    )
+    flight_declaration_response = my_uploader.upload_flight_declaration(filename=abs_file_path)
 
     if flight_declaration_response.status_code == 200:
         flight_declaration_success = flight_declaration_response.json()
@@ -197,15 +172,13 @@ if __name__ == "__main__":
         sys.exit()
 
     user_input = input("Press any key to set state as activated or 'c' to exit: ").strip().lower()
-    if user_input == 'c':
+    if user_input == "c":
         log_info("Exiting as per user request...")
         sys.exit()
 
     log_info("Setting state as activated...")
     # GCS Activates Flights
-    flight_state_activated_response = my_uploader.update_operation_state(
-        operation_id=flight_declaration_id, new_state=2
-    )
+    flight_state_activated_response = my_uploader.update_operation_state(operation_id=flight_declaration_id, new_state=2)
     if flight_state_activated_response.status_code == 200:
         flight_state_activated = flight_state_activated_response.json()
     else:
@@ -218,7 +191,7 @@ if __name__ == "__main__":
     # submit telemetry, this telemetry is partly conformant, this is generated
 
     user_input = input("Press any key to submit telemetry or 'c' to exit: ").strip().lower()
-    if user_input == 'c':
+    if user_input == "c":
         log_info("Exiting as per user request...")
         sys.exit()
     rel_path = "../rid_samples/non-conforming/flight_1_bern_fully_nonconforming.json"
@@ -240,16 +213,12 @@ if __name__ == "__main__":
     log_info("Checking Flight Blender State...")
     thread = threading.Thread(
         target=my_uploader.check_operation_state_every_five_seconds,
-        args=(
-            flight_declaration_id,
-        ),
+        args=(flight_declaration_id,),
     )
     thread.start()
 
     time.sleep(20)
     log_info("Setting state as ended...")
     # GCS Ends Flights
-    flight_state_ended = my_uploader.update_operation_state(
-        operation_id=flight_declaration_id, new_state=5
-    )
+    flight_state_ended = my_uploader.update_operation_state(operation_id=flight_declaration_id, new_state=5)
     log_info("Flight state declared ended...")

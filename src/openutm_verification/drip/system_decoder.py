@@ -29,7 +29,9 @@ For more information about the DRIP protocol and the System message format, refe
 """
 
 import ctypes
+
 from openutm_verification.drip import drip_messages as common
+
 
 class SystemDecoder:
     @staticmethod
@@ -46,19 +48,19 @@ class SystemDecoder:
         uas_data.System.OperatorLocationType = raw_bytes[1] & 0x03
         uas_data.System.ClassificationType = (raw_bytes[1] >> 2) & 0x07
 
-        uas_data.System.OperatorLatitude = (int.from_bytes(raw_bytes[2:6], byteorder='little', signed=True))/10000000.0
-        uas_data.System.OperatorLongitude = (int.from_bytes(raw_bytes[6:10], byteorder='little', signed=True))/10000000.0
+        uas_data.System.OperatorLatitude = (int.from_bytes(raw_bytes[2:6], byteorder="little", signed=True)) / 10000000.0
+        uas_data.System.OperatorLongitude = (int.from_bytes(raw_bytes[6:10], byteorder="little", signed=True)) / 10000000.0
 
-        uas_data.System.AreaCount = int.from_bytes(raw_bytes[10:12], byteorder='little')
+        uas_data.System.AreaCount = int.from_bytes(raw_bytes[10:12], byteorder="little")
         uas_data.System.AreaRadius = raw_bytes[12] * 10
-        uas_data.System.AreaCeiling = (int.from_bytes(raw_bytes[13:15], byteorder='little') * common.DRIP_ALT_DIV) - common.DRIP_ALT_ADDER
-        uas_data.System.AreaFloor = (int.from_bytes(raw_bytes[15:17], byteorder='little') * common.DRIP_ALT_DIV) - common.DRIP_ALT_ADDER
+        uas_data.System.AreaCeiling = (int.from_bytes(raw_bytes[13:15], byteorder="little") * common.DRIP_ALT_DIV) - common.DRIP_ALT_ADDER
+        uas_data.System.AreaFloor = (int.from_bytes(raw_bytes[15:17], byteorder="little") * common.DRIP_ALT_DIV) - common.DRIP_ALT_ADDER
 
         uas_data.System.ClassEU = raw_bytes[17] & 0x0F
         uas_data.System.CategoryEU = (raw_bytes[17] >> 4) & 0x0F
 
-        uas_data.System.OperatorAltitudeGeo = (int.from_bytes(raw_bytes[18:20], byteorder='little') * common.DRIP_ALT_DIV) - common.DRIP_ALT_ADDER
-        uas_data.System.Timestamp = int.from_bytes(raw_bytes[20:24], byteorder='little')
+        uas_data.System.OperatorAltitudeGeo = (int.from_bytes(raw_bytes[18:20], byteorder="little") * common.DRIP_ALT_DIV) - common.DRIP_ALT_ADDER
+        uas_data.System.Timestamp = int.from_bytes(raw_bytes[20:24], byteorder="little")
 
         uas_data.SystemValid = 1
 

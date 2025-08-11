@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from implicitdict import ImplicitDict, StringBasedDateTime 
+from implicitdict import ImplicitDict, StringBasedDateTime
 from uas_standards.astm.f3411.v19.api import RIDAircraftState, RIDFlightDetails
 
 

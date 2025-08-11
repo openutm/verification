@@ -1,16 +1,16 @@
-import os
-import requests
-from typing import Optional
-import pandas as pd
 import logging
-from openutm_verification.client import PassportCredentialsGetter, NoAuthCredentialsGetter
-from dataclasses import dataclass
+import os
 import time
+from dataclasses import dataclass
+from typing import Optional
+
+import pandas as pd
+import requests
+
+from openutm_verification.client import NoAuthCredentialsGetter, PassportCredentialsGetter
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 
 @dataclass
@@ -30,9 +30,7 @@ class SingleObservation:
 if __name__ == "__main__":
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
-    credentials = my_credentials.get_cached_credentials(
-        audience="testflight.flightblender.com", scopes=["flight_blender.write"]
-    )
+    credentials = my_credentials.get_cached_credentials(audience="testflight.flightblender.com", scopes=["flight_blender.write"])
 
     username = os.environ.get("OPENSKY_NETWORK_USERNAME")
     password = os.environ.get("OPENSKY_NETWORK_PASSWORD")

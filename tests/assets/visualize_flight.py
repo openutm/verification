@@ -12,8 +12,9 @@ Usage:
 """
 
 import json
-import os
 import math
+import os
+
 import numpy as np
 
 try:
@@ -23,8 +24,8 @@ except ImportError:
     exit()
 
 try:
-    import pythreejs as three
     import ipywidgets
+    import pythreejs as three
     from ipywidgets import embed
 except ImportError:
     print("This script requires pythreejs and ipywidgets. Please install them using 'pip install pythreejs ipywidgets'")
@@ -58,9 +59,7 @@ def visualize_flight_path_2d(telemetry_file_path, declaration_file_path, output_
 
     states = telemetry_data.get("current_states", [])
     path_points_with_alt = [
-        (s["position"]["lat"], s["position"]["lng"], s["position"]["alt"])
-        for s in states
-        if "position" in s and "alt" in s["position"]
+        (s["position"]["lat"], s["position"]["lng"], s["position"]["alt"]) for s in states if "position" in s and "alt" in s["position"]
     ]
     coordinates = [(p[0], p[1]) for p in path_points_with_alt]
     geofence = declaration_data.get("flight_declaration_geo_json")

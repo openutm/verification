@@ -32,9 +32,11 @@ Note: This module requires the 'drip_messages' module to be imported.
 For more information about the DRIP protocol and the Location message format, refer to the ASTM F3411 specification.
 """
 
-import openutm_verification.drip.drip_messages as common
 import ctypes
 import struct
+
+import openutm_verification.drip.drip_messages as common
+
 
 def decodeHorizontalAccuracy(Accuracy):
     if Accuracy == 0:
@@ -137,11 +139,13 @@ def decodeTimestampAccuracy(Accuracy):
     else:
         return 0.0
 
+
 def decodeTimeStamp(Seconds_enc):
     if Seconds_enc == common.DRIP_INV_TIMESTAMP:
         return common.DRIP_INV_TIMESTAMP
     else:
         return Seconds_enc / 10.0
+
 
 class LocationDecoder:
     @staticmethod
@@ -193,12 +197,12 @@ class LocationDecoder:
         HorizVertAccuracy_bytes = raw_bytes[19:20]
         HorizVertAccuracy_value = struct.unpack("<B", HorizVertAccuracy_bytes)[0]
         uas_data.Location.HorizAccuracy = decodeHorizontalAccuracy(HorizVertAccuracy_value & 0xF)
-        uas_data.Location.VertAccuracy =  decodeVerticalAccuracy(HorizVertAccuracy_value >> 4)
+        uas_data.Location.VertAccuracy = decodeVerticalAccuracy(HorizVertAccuracy_value >> 4)
 
         SpeedBaroAccuracy_bytes = raw_bytes[20:21]
         SpeedBaroAccuracy_bytes = struct.unpack("<B", SpeedBaroAccuracy_bytes)[0]
         uas_data.Location.SpeedAccuracy = decodeSpeedAccuracy(SpeedBaroAccuracy_bytes & 0xF)
-        uas_data.Location.BaroAccuracy =  decodeVerticalAccuracy(SpeedBaroAccuracy_bytes >> 4)
+        uas_data.Location.BaroAccuracy = decodeVerticalAccuracy(SpeedBaroAccuracy_bytes >> 4)
 
         TS_bytes = raw_bytes[21:23]
         TS_value = struct.unpack("<H", TS_bytes)[0]

@@ -1,9 +1,14 @@
 ## A file to import flight data into the Tile 38 instance.
-import json, time, requests
-from os.path import dirname, abspath
-import os, sys
-from openutm_verification.client import PassportCredentialsGetter, NoAuthCredentialsGetter
+import json
+import os
+import sys
+import time
 import uuid
+from os.path import abspath, dirname
+
+import requests
+
+from openutm_verification.client import NoAuthCredentialsGetter, PassportCredentialsGetter
 
 
 class FlightBlenderUploader:
@@ -24,9 +29,7 @@ class FlightBlenderUploader:
         traffic_json = json.loads(traffic_json)
 
         for timestamp in self.timestamps:
-            current_timestamp_readings = [
-                x for x in traffic_json if x["timestamp"] == timestamp
-            ]
+            current_timestamp_readings = [x for x in traffic_json if x["timestamp"] == timestamp]
 
             for current_reading in current_timestamp_readings:
                 icao_address = current_reading["icao_address"]
@@ -62,13 +65,9 @@ class FlightBlenderUploader:
                     session_id=session_id
                 )  # set this to self (Post the json to itself)
                 try:
-                    response = requests.post(
-                        securl, json=payload, headers=headers, timeout=10
-                    )
+                    response = requests.post(securl, json=payload, headers=headers, timeout=10)
                     if response.status_code not in [200, 201]:
-                        print(
-                            f"Non-successful status code received: {response.status_code}, message: {response.text}"
-                        )
+                        print(f"Non-successful status code received: {response.status_code}, message: {response.text}")
                         response.raise_for_status()
 
                 except requests.exceptions.HTTPError as http_err:
@@ -89,15 +88,11 @@ class FlightBlenderUploader:
 if __name__ == "__main__":
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
-    credentials = my_credentials.get_cached_credentials(
-        audience="testflight.flightblender.com", scopes=["flight_blender.write"]
-    )
+    credentials = my_credentials.get_cached_credentials(audience="testflight.flightblender.com", scopes=["flight_blender.write"])
 
     if "error" in credentials:
         sys.exit("Error in getting credentials.")
-    parent_dir = dirname(
-        abspath(__file__)
-    )  # <-- absolute dir the raw input file  is in
+    parent_dir = dirname(abspath(__file__))  # <-- absolute dir the raw input file  is in
     rel_path = "air_traffic_samples/micro_flight_data_single.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
     my_uploader = FlightBlenderUploader(credentials=credentials)

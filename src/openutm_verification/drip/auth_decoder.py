@@ -33,10 +33,12 @@ Note: This module requires the 'drip_messages' module to be imported.
 For more information about the DRIP protocol and the Authentication message format, refer to the ASTM F3411 specification.
 """
 
-from ctypes import Structure, c_uint8, c_uint16, c_uint32, c_char, c_float, c_double, c_void_p, sizeof, POINTER
-import struct
 import ctypes
+import struct
+from ctypes import POINTER, Structure, c_char, c_double, c_float, c_uint8, c_uint16, c_uint32, c_void_p, sizeof
+
 import openutm_verification.drip.drip_messages as common
+
 
 class AuthDecoder:
     @staticmethod
@@ -59,16 +61,10 @@ class AuthDecoder:
             uasData.Auth.LastPageIndex = inEncoded.page_zero.LastPageIndex
             uasData.Auth.Length = inEncoded.page_zero.Length
             uasData.Auth.Timestamp = inEncoded.page_zero.Timestamp
-            ctypes.memmove(
-                ctypes.addressof(uasData.Auth[pageNum].AuthData),
-                inEncoded.page_zero.AuthData,
-                common.DRIP_AUTH_PAGE_ZERO_DATA_SIZE
-            )
+            ctypes.memmove(ctypes.addressof(uasData.Auth[pageNum].AuthData), inEncoded.page_zero.AuthData, common.DRIP_AUTH_PAGE_ZERO_DATA_SIZE)
         else:
             ctypes.memmove(
-                ctypes.addressof(uasData.Auth[pageNum].AuthData),
-                inEncoded.page_non_zero.AuthData,
-                common.DRIP_AUTH_PAGE_NONZERO_DATA_SIZE
+                ctypes.addressof(uasData.Auth[pageNum].AuthData), inEncoded.page_non_zero.AuthData, common.DRIP_AUTH_PAGE_NONZERO_DATA_SIZE
             )
 
         common.printAuthData(uasData, pageNum)
@@ -76,11 +72,12 @@ class AuthDecoder:
 
     @staticmethod
     def getAuthPageNum(inEncoded):
-        if not inEncoded or \
-                inEncoded.page_zero.MessageType != common.DRIP_MESSAGE_AUTH or \
-                not common.intInRange(inEncoded.page_zero.AuthType, 0, 15) or \
-                not common.intInRange(inEncoded.page_zero.DataPage, 0, common.DRIP_AUTH_MAX_PAGES - 1):
-
+        if (
+            not inEncoded
+            or inEncoded.page_zero.MessageType != common.DRIP_MESSAGE_AUTH
+            or not common.intInRange(inEncoded.page_zero.AuthType, 0, 15)
+            or not common.intInRange(inEncoded.page_zero.DataPage, 0, common.DRIP_AUTH_MAX_PAGES - 1)
+        ):
             return common.DRIP_FAIL
 
         return inEncoded.page_zero.DataPage
@@ -96,7 +93,7 @@ class AuthDecoder:
         ctypes.memmove(ctypes.addressof(auth_encoded), bytes(raw_data), ctypes.sizeof(auth_encoded))
 
         page = AuthDecoder.getAuthPageNum(auth_encoded)
-        print('AuthPage:' + str(page))
+        print("AuthPage:" + str(page))
 
         if AuthDecoder.decodeAuthMessage(uas_data, auth_encoded, page) == common.DRIP_SUCCESS:
             uas_data.AuthValid[page] = 1

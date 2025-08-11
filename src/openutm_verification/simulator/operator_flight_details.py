@@ -1,9 +1,9 @@
-from faker import Faker
-import string
 import random
+import string
 import uuid
-from uas_standards.ansi_cta_2063_a import SerialNumber
 
+from faker import Faker
+from uas_standards.ansi_cta_2063_a import SerialNumber
 from uas_standards.astm.f3411.v19.api import LatLngPoint
 
 
@@ -18,9 +18,7 @@ class OperatorFlightDataGenerator:
         return str(SerialNumber.generate_valid())
 
     def generate_registration_number(self, prefix="CHE"):
-        registration_number = prefix + "".join(
-            self.random.choices(string.ascii_lowercase + string.digits, k=13)
-        )
+        registration_number = prefix + "".join(self.random.choices(string.ascii_lowercase + string.digits, k=13))
         return registration_number
 
     def generate_operation_description(self):
@@ -42,9 +40,7 @@ class OperatorFlightDataGenerator:
         return operator_location
 
     def generate_operator_id(self, prefix="OP-"):
-        operator_id = prefix + "".join(
-            self.random.choices(string.ascii_lowercase + string.digits, k=8)
-        )
+        operator_id = prefix + "".join(self.random.choices(string.ascii_lowercase + string.digits, k=8))
         return operator_id
 
     def generate_company_name(self):

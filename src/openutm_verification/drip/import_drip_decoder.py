@@ -26,17 +26,19 @@ Note: This script requires the 'drip_messages' module and the DRIP decoder modul
 For more information about the DRIP protocol and the message decoding process, refer to the DRIP specification and the individual decoder modules.
 """
 
+import argparse
+import ctypes
+import os
+import struct
+
 import openutm_verification.drip.drip_messages as common
+from openutm_verification.drip.auth_decoder import AuthDecoder
 from openutm_verification.drip.basic_id_decoder import BasicIDDecoder
 from openutm_verification.drip.location_decoder import LocationDecoder
-from openutm_verification.drip.auth_decoder import AuthDecoder
+from openutm_verification.drip.operator_id_decoder import OperatorIDDecoder
 from openutm_verification.drip.self_id_decoder import SelfIDDecoder
 from openutm_verification.drip.system_decoder import SystemDecoder
-from openutm_verification.drip.operator_id_decoder import OperatorIDDecoder
-import struct
-import ctypes
-import argparse
-import os
+
 
 def decode_drone_id(uas_data, raw_data):
     if not uas_data or not raw_data:
@@ -46,42 +48,42 @@ def decode_drone_id(uas_data, raw_data):
 
     if common.DRIP_MESSAGE_SIZE <= message_size:
         msg_type = raw_data[0] >> 4
-        message_type_bytes = struct.pack('B', raw_data[0])
+        message_type_bytes = struct.pack("B", raw_data[0])
 
         if msg_type == common.DRIP_MESSAGE_BASIC_ID:
             print("DRIP_MESSAGE_BASIC_ID")
             # Decode basic ID message
-            BasicIDDecoder.decode_basic_id(uas_data, raw_data[:common.DRIP_MESSAGE_SIZE])
+            BasicIDDecoder.decode_basic_id(uas_data, raw_data[: common.DRIP_MESSAGE_SIZE])
             print("*********************")
 
         elif msg_type == common.DRIP_MESSAGE_LOCATION:
             print("DRIP_MESSAGE_LOCATION")
             # Decode location message
-            LocationDecoder.decode_location(uas_data, raw_data[:common.DRIP_MESSAGE_SIZE])
+            LocationDecoder.decode_location(uas_data, raw_data[: common.DRIP_MESSAGE_SIZE])
             print("*********************")
 
         elif msg_type == common.DRIP_MESSAGE_AUTH:
             print("DRIP_MESSAGE_AUTH")
             # Decode authentication message
-            AuthDecoder.decode_authentication(uas_data, raw_data[:common.DRIP_MESSAGE_SIZE])
+            AuthDecoder.decode_authentication(uas_data, raw_data[: common.DRIP_MESSAGE_SIZE])
             print("*********************")
 
         elif msg_type == common.DRIP_MESSAGE_SELF_ID:
             print("DRIP_MESSAGE_SELF_ID")
             # Decode self ID message
-            SelfIDDecoder.decode_self_id(uas_data, raw_data[:common.DRIP_MESSAGE_SIZE])
+            SelfIDDecoder.decode_self_id(uas_data, raw_data[: common.DRIP_MESSAGE_SIZE])
             print("*********************")
 
         elif msg_type == common.DRIP_MESSAGE_SYSTEM:
             print("DRIP_MESSAGE_SYSTEM")
             # Decode system message
-            SystemDecoder.decode_system(uas_data, raw_data[:common.DRIP_MESSAGE_SIZE])
+            SystemDecoder.decode_system(uas_data, raw_data[: common.DRIP_MESSAGE_SIZE])
             print("*********************")
 
         elif msg_type == common.DRIP_MESSAGETYPE_OPERATOR_ID:
             print("DRIP_MESSAGE_OPERATOR_ID")
             # Decode operator id message
-            OperatorIDDecoder.decode_operatorid(uas_data, raw_data[:common.DRIP_MESSAGE_SIZE])
+            OperatorIDDecoder.decode_operatorid(uas_data, raw_data[: common.DRIP_MESSAGE_SIZE])
             print("*********************")
 
         else:
@@ -100,7 +102,7 @@ def decode_message_pack(uas_data, pack, data):
 
     for i in range(pack.MsgPackSize):
         if common.DRIP_DEBUG:
-            print("Raw Data:", ' '.join([hex(byte) for byte in pack.Messages[i].rawData[:common.DRIP_MESSAGE_SIZE]]))
+            print("Raw Data:", " ".join([hex(byte) for byte in pack.Messages[i].rawData[: common.DRIP_MESSAGE_SIZE]]))
         decode_drone_id(uas_data, pack.Messages[i].rawData)
 
     return common.DRIP_SUCCESS
@@ -115,12 +117,11 @@ def decodeMessagePack(data):
     return uasData
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     # Create an argument parser
-    parser = argparse.ArgumentParser(description='DRIP Test Decoder')
-    #parse rid test vector path ex: '/opt/rid-test-vectors'
-    parser.add_argument('file_path', type=str, help='Path to the file containing DRIP test vectors')
+    parser = argparse.ArgumentParser(description="DRIP Test Decoder")
+    # parse rid test vector path ex: '/opt/rid-test-vectors'
+    parser.add_argument("file_path", type=str, help="Path to the file containing DRIP test vectors")
 
     # Parse the command-line arguments
     args = parser.parse_args()

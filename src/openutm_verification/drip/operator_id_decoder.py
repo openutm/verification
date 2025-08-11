@@ -31,7 +31,9 @@ For more information about the DRIP protocol and the Operator ID message format,
 """
 
 import ctypes
+
 from openutm_verification.drip import drip_messages as common
+
 
 class OperatorIDDecoder:
     @staticmethod

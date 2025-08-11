@@ -1,17 +1,19 @@
-import os
 import json
-from os.path import dirname, abspath
+import os
 import time
-import requests
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
+from os.path import abspath, dirname
 from typing import Optional
-from openutm_verification.client import PassportCredentialsGetter, NoAuthCredentialsGetter
+
+import requests
 from dacite import from_dict
+
+from openutm_verification.client import NoAuthCredentialsGetter, PassportCredentialsGetter
 from openutm_verification.rid import (
-    LatLngPoint,
-    RIDOperatorDetails,
     UASID,
+    LatLngPoint,
     OperatorLocation,
+    RIDOperatorDetails,
     UAClassificationEU,
 )
 
@@ -36,9 +38,7 @@ class FlightBlenderUploader:
         )
         # eu_classification =from_dict(data_class= UAClassificationEU, data= rid_operator_details['rid_details']['eu_classification'])
         eu_classification = UAClassificationEU()
-        operator_location = OperatorLocation(
-            position=LatLngPoint(lat=46.97615311620088, lng=7.476099729537965)
-        )
+        operator_location = OperatorLocation(position=LatLngPoint(lat=46.97615311620088, lng=7.476099729537965))
         rid_operator_details = RIDOperatorDetails(
             id="382b3308-fa11-4629-a966-84bb96d3b4db",
             uas_id=uas_id,
@@ -64,9 +64,7 @@ class FlightBlenderUploader:
             }
             securl = "http://localhost:8000/flight_stream/set_telemetry"  # set this to self (Post the json to itself)
             try:
-                response = requests.put(
-                    securl, json=payload, headers=headers, timeout=10
-                )
+                response = requests.put(securl, json=payload, headers=headers, timeout=10)
 
             except Exception as e:
                 print(e)
@@ -81,12 +79,8 @@ class FlightBlenderUploader:
 if __name__ == "__main__":
     # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
-    credentials = my_credentials.get_cached_credentials(
-        audience="testflight.flightblender.com", scopes=["flight_blender.write"]
-    )
-    parent_dir = dirname(
-        abspath(__file__)
-    )  # <-- absolute dir the raw input file  is in
+    credentials = my_credentials.get_cached_credentials(audience="testflight.flightblender.com", scopes=["flight_blender.write"])
+    parent_dir = dirname(abspath(__file__))  # <-- absolute dir the raw input file  is in
 
     rel_path = "rid_samples/flight_1_rid_aircraft_state.json"
     abs_file_path = os.path.join(parent_dir, rel_path)

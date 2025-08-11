@@ -1,17 +1,19 @@
+import inspect
 import os
 import sys
-import inspect
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
 import json
-import requests
 from datetime import datetime, timedelta
-from typing import List
-from dotenv import load_dotenv, find_dotenv
 from os import environ as env
+from typing import List
+
+import requests
+from dotenv import find_dotenv, load_dotenv
+
 from openutm_verification.common import get_redis
 from openutm_verification.dev_auth import NoAuth
 
@@ -45,9 +47,7 @@ class PassportSpotlightCredentialsGetter:
                 credentials = self.get_write_credentials()
                 r.set(
                     "spotlight_write_air_traffic_token",
-                    json.dumps(
-                        {"credentials": credentials, "created_at": now.isoformat()}
-                    ),
+                    json.dumps({"credentials": credentials, "created_at": now.isoformat()}),
                 )
             else:
                 credentials = token_details["credentials"]
@@ -101,33 +101,23 @@ class PassportCredentialsGetter:
             created_at = token_details["created_at"]
             set_date = datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%S.%f")
             if now < (set_date - timedelta(minutes=58)):
-                credentials = self.get_write_credentials(
-                    audience=audience, scopes=scopes_str
-                )
+                credentials = self.get_write_credentials(audience=audience, scopes=scopes_str)
                 r.set(
                     "flight_blender_write_air_traffic_token",
-                    json.dumps(
-                        {"credentials": credentials, "created_at": now.isoformat()}
-                    ),
+                    json.dumps({"credentials": credentials, "created_at": now.isoformat()}),
                 )
             else:
                 credentials = token_details["credentials"]
         else:
-            credentials = self.get_write_credentials(
-                audience=audience, scopes=scopes_str
-            )
+            credentials = self.get_write_credentials(audience=audience, scopes=scopes_str)
             if "error" in credentials.keys():
                 pass
             else:
                 r.set(
                     "flight_blender_write_air_traffic_token",
-                    json.dumps(
-                        {"credentials": credentials, "created_at": now.isoformat()}
-                    ),
+                    json.dumps({"credentials": credentials, "created_at": now.isoformat()}),
                 )
-                r.expire(
-                    "flight_blender_write_air_traffic_token", timedelta(minutes=58)
-                )
+                r.expire("flight_blender_write_air_traffic_token", timedelta(minutes=58))
 
         return credentials
 
@@ -140,7 +130,7 @@ class PassportCredentialsGetter:
             "scope": scopes,
         }
         url = env.get("PASSPORT_URL") + env.get("PASSPORT_TOKEN_URL")
-        token_data = requests.post(url, data=payload, headers={"Content-Type": "application/x-www-form-urlencoded"},timeout=10)
+        token_data = requests.post(url, data=payload, headers={"Content-Type": "application/x-www-form-urlencoded"}, timeout=10)
         t_data = token_data.json()
         return t_data
 

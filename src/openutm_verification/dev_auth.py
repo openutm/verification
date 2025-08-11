@@ -1,8 +1,7 @@
-
 import datetime
-from typing import Dict, List, Optional
 import urllib.parse
 import uuid
+from typing import Dict, List, Optional
 
 import jwcrypto.common
 import jwcrypto.jwk
@@ -19,7 +18,7 @@ ALL_SCOPES = [
     "utm.constraint_consumption",
 ]
 
-EPOCH = datetime.datetime.fromtimestamp(0, tz = datetime.timezone.utc)
+EPOCH = datetime.datetime.fromtimestamp(0, tz=datetime.timezone.utc)
 TOKEN_REFRESH_MARGIN = datetime.timedelta(seconds=15)
 CLIENT_TIMEOUT = 60  # seconds
 
@@ -65,8 +64,6 @@ class AuthAdapter(object):
                 if "sub" in payload:
                     return payload["sub"]
         return None
-
-
 
 
 class NoAuth(AuthAdapter):
