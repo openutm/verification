@@ -17,6 +17,7 @@
     "type_of_operation": 0,
     "vehicle_id": "157de9bb-6b49-496b-bf3f-0b768ce6a3b6",
     "operator_id": "4a725cb5-02d2-4f78-888f-b93088d324be",
+    "aircraft_id": "a6a5c294e45b-a23c-4e83-8bb8-a5b5484c",
     "flight_declaration_geo_json": {
         "type": "FeatureCollection",
         "features": [{
@@ -26,11 +27,11 @@
                 "start_time": "2020-08-15T15:00:00+00:00",
                 "end_time": "2020-08-15T15:30:00+00:00",
                 "max_altitude": {
-                    "metres": 152.4,
+                    "meters": 152.4,
                     "datum": "agl"
                 },
                 "min_altitude": {
-                    "metres": 102.4,
+                    "meters": 102.4,
                     "datum": "agl"
                 }
             },
