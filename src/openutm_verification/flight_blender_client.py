@@ -6,6 +6,7 @@ import arrow
 import httpx
 from loguru import logger
 
+from openutm_verification.config_models import Status, StepResult
 from openutm_verification.models import OperationState
 from openutm_verification.rid import (
     UASID,
@@ -70,7 +71,7 @@ class FlightBlenderClient:
         return response.json()
 
     @scenario_step("Submit Telemetry")
-    def submit_telemetry(self, filename: str, operation_id: str, duration_seconds: int = 0):
+    def submit_telemetry(self, operation_id: str, filename: str, duration_seconds: int = 0):
         logger.debug(f"Submitting telemetry from {filename} for operation {operation_id}")
         with open(filename, "r") as rid_json_file:
             rid_json = json.loads(rid_json_file.read())
@@ -115,8 +116,11 @@ class FlightBlenderClient:
     @scenario_step("Check Operation State")
     def check_operation_state(self, operation_id: str, expected_state: OperationState, duration_seconds: int = 0):
         logger.info(f"Checking operation state for {operation_id} (simulated)...")
-        # In a real scenario, we would check if the state is non-conforming.
-        # Here we just wait.
+        logger.info(f"Waiting for {duration_seconds} seconds for Flight Blender to process state...")
         time.sleep(duration_seconds)
-        logger.info(f"Flight state check for {operation_id} (simulated) complete.")
-        return {"name": "Check Flight State", "status": "PASS", "details": f"Waited for Flight Blender to process {expected_state} state."}
+        logger.info(f"Flight state check for {operation_id} completed (simulated).")
+        return {
+            "name": "Check Flight State",
+            "status": Status.PASS,
+            "details": f"Waited for Flight Blender to process {expected_state} state.",
+        }

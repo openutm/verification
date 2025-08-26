@@ -24,7 +24,7 @@ scenarios:
 # Reporting configuration
 reporting:
   output_dir: "reports"
-  formats: ["json", "html"] # 'json' is raw, 'html' is summarized
+  formats: ["json", "html", "log"] # 'json' is raw, 'html' is summarized
   # A place to add metadata about the system under test
   deployment_details:
     name: "Local Flight Blender Dev Instance"

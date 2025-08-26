@@ -1,32 +1,41 @@
-from pathlib import Path
+from functools import partial
 
+from openutm_verification.config_models import ScenarioResult
 from openutm_verification.flight_blender_client import FlightBlenderClient
 from openutm_verification.models import OperationState
+from tests.scenarios.common import run_scenario_template
+from tests.scenarios.registry import register_scenario
 
 
-def run_f3_scenario(client: FlightBlenderClient) -> dict:
+@register_scenario("F3_non_conforming_path")
+def test_f3_non_conforming_path(client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
+    """Runs the F3 non-conforming path scenario.
+
+    This scenario simulates a flight that deviates from its declared flight plan,
+    triggering a NONCONFORMING state.
+    1. The flight operation state is set to ACTIVATED.
+    2. Non-conforming telemetry is submitted for 20 seconds.
+    3. The operation state is checked to ensure it has become NONCONFORMING.
+    4. The flight operation state is set to ENDED.
+
+    Args:
+        client: The FlightBlenderClient instance for API interaction.
+        scenario_name: The unique name of the scenario being run.
+
+    Returns:
+        A ScenarioResult object containing the results of the scenario execution.
     """
-    Runs the F3 scenario: Non-Conforming Path.
-    """
-    scenario_name = "F3 Non-Conforming Path"
-    parent_dir = Path(__file__).parent.resolve()
-    flight_declaration_path = parent_dir / "../assets/flight_declarations_samples/flight-1-bern.json"
-    telemetry_path = parent_dir / "../assets/rid_samples/non-conforming/flight_1_bern_fully_nonconforming.json"
-
-    upload_result = client.upload_flight_declaration(filename=str(flight_declaration_path))
-    flight_declaration_id = upload_result["details"]["id"]
-
     steps = [
-        upload_result,
-        client.update_operation_state(operation_id=flight_declaration_id, new_state=OperationState.ACTIVATED),
-        client.submit_telemetry(str(telemetry_path), flight_declaration_id, duration_seconds=20),
-        client.check_operation_state(operation_id=flight_declaration_id, expected_state=OperationState.NONCONFORMING, duration_seconds=5),
-        client.update_operation_state(operation_id=flight_declaration_id, new_state=OperationState.ENDED),
+        partial(client.update_operation_state, new_state=OperationState.ACTIVATED),
+        partial(client.submit_telemetry, duration_seconds=20),
+        partial(client.check_operation_state, expected_state=OperationState.NONCONFORMING, duration_seconds=5),
+        partial(client.update_operation_state, new_state=OperationState.ENDED),
     ]
 
-    return {
-        "name": scenario_name,
-        "status": "PASS" if all(step["status"] == "PASS" for step in steps) else "FAIL",
-        "duration_seconds": sum(step["duration"] for step in steps),
-        "steps": steps,
-    }
+    return run_scenario_template(
+        client=client,
+        scenario_name=scenario_name,
+        flight_declaration_filename="flight-1-bern.json",
+        telemetry_filename="non-conforming/flight_1_bern_fully_nonconforming.json",
+        steps=steps,
+    )

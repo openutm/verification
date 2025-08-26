@@ -1,32 +1,38 @@
-from pathlib import Path
-from typing import Any, Dict
+from functools import partial
 
+from openutm_verification.config_models import ScenarioResult
 from openutm_verification.flight_blender_client import FlightBlenderClient
 from openutm_verification.models import OperationState
+from tests.scenarios.common import run_scenario_template
+from tests.scenarios.registry import register_scenario
 
 
-def run_f1_scenario(client: FlightBlenderClient) -> Dict[str, Any]:
+@register_scenario("F1_happy_path")
+def test_f1_happy_path(client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
+    """Runs the F1 happy path scenario.
+
+    This scenario simulates a complete, successful flight operation:
+    1. The flight operation state is set to ACTIVATED.
+    2. Telemetry data is submitted for a duration of 30 seconds.
+    3. The flight operation state is set to ENDED.
+
+    Args:
+        client: The FlightBlenderClient instance for API interaction.
+        scenario_name: The unique name of the scenario being run.
+
+    Returns:
+        A ScenarioResult object containing the results of the scenario execution.
     """
-    Runs the F1 scenario: Happy Path.
-    """
-    scenario_name = "F1 Happy Path"
-    parent_dir = Path(__file__).parent.resolve()
-    flight_declaration_path = parent_dir / "../assets/flight_declarations_samples/flight-1-bern.json"
-    telemetry_path = parent_dir / "../assets/rid_samples/flight_1_rid_aircraft_state.json"
-
-    upload_result = client.upload_flight_declaration(filename=str(flight_declaration_path))
-    flight_declaration_id = upload_result["details"]["id"]
-
     steps = [
-        upload_result,
-        client.update_operation_state(operation_id=flight_declaration_id, new_state=OperationState.ACTIVATED),
-        client.submit_telemetry(str(telemetry_path), flight_declaration_id, duration_seconds=30),
-        client.update_operation_state(operation_id=flight_declaration_id, new_state=OperationState.ENDED),
+        partial(client.update_operation_state, new_state=OperationState.ACTIVATED),
+        partial(client.submit_telemetry, duration_seconds=30),
+        partial(client.update_operation_state, new_state=OperationState.ENDED),
     ]
 
-    return {
-        "name": scenario_name,
-        "status": "PASS" if all(step["status"] == "PASS" for step in steps) else "FAIL",
-        "duration_seconds": sum(step["duration"] for step in steps),
-        "steps": steps,
-    }
+    return run_scenario_template(
+        client=client,
+        scenario_name=scenario_name,
+        flight_declaration_filename="flight-1-bern.json",
+        telemetry_filename="flight_1_rid_aircraft_state.json",
+        steps=steps,
+    )
