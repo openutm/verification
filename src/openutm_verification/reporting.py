@@ -38,7 +38,7 @@ def _generate_json_report(report_data: ReportData, output_dir: Path, base_filena
         base_filename: The base name for the report file (without extension).
     """
     report_path = output_dir / f"{base_filename}.json"
-    with open(report_path, "w") as f:
+    with open(report_path, "w", encoding="utf-8") as f:
         f.write(report_data.model_dump_json(indent=2))
     return report_path
 
@@ -62,6 +62,6 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
     html_content = template.render(report_data=report_data)
 
     report_path = output_dir / f"{base_filename}.html"
-    with open(report_path, "w") as f:
+    with open(report_path, "w", encoding="utf-8") as f:
         f.write(html_content)
     return report_path

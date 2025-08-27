@@ -1,0 +1,10 @@
+services:
+  verification-tool:
+    image: openutm/verification:latest
+    # Mount local directories into the container
+    # This allows you to edit configs on your host and get reports back
+    volumes:
+      - ./config:/app/config
+      - ./reports:/app/reports
+    # Allows the tool to talk to Flight Blender running on localhost
+    network_mode: "host"

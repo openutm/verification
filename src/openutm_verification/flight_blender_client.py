@@ -38,7 +38,7 @@ class FlightBlenderClient:
     @scenario_step("Upload Flight Declaration")
     def upload_flight_declaration(self, filename):
         logger.debug(f"Uploading flight declaration from {filename}")
-        with open(filename, "r") as flight_declaration_file:
+        with open(filename, "r", encoding="utf-8") as flight_declaration_file:
             f_d = flight_declaration_file.read()
 
         flight_declaration = json.loads(f_d)
@@ -73,7 +73,7 @@ class FlightBlenderClient:
     @scenario_step("Submit Telemetry")
     def submit_telemetry(self, operation_id: str, filename: str, duration_seconds: int = 0):
         logger.debug(f"Submitting telemetry from {filename} for operation {operation_id}")
-        with open(filename, "r") as rid_json_file:
+        with open(filename, "r", encoding="utf-8") as rid_json_file:
             rid_json = json.loads(rid_json_file.read())
 
         states = rid_json["current_states"]
