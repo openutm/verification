@@ -1,88 +1,92 @@
 # --- Builder Stage ---
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
-# Install necessary build-time dependencies for compiling Python extensions and other tools.
-RUN apt-get -y update \
+# Build arguments
+ARG UV_COMPILE_BYTECODE=1
+ARG UV_LINK_MODE=copy
+
+# Install necessary build-time dependencies for compiling Python extensions
+RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        build-essential \
+        pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory for the application in the builder image.
+# Set working directory for the application in the builder image
 WORKDIR /app
 
-# Enable bytecode compilation for performance in production.
-ENV UV_COMPILE_BYTECODE=1
-
-# Ensure unbuffered Python output for immediate logging in container environments.
+# Configure UV for optimal Docker layer caching and performance
+ENV UV_COMPILE_BYTECODE=${UV_COMPILE_BYTECODE}
+ENV UV_LINK_MODE=${UV_LINK_MODE}
 ENV PYTHONUNBUFFERED=1
 
-# Copy from the cache instead of linking. This is safer for potential volume mount scenarios
-# in development/CI and ensures consistent behavior in production builds.
-ENV UV_LINK_MODE=copy
-
 # --- Dependency Installation Layer ---
-# Copy only the lockfile and pyproject.toml to leverage Docker layer caching.
-# This ensures dependencies are re-installed only when these files change.
-COPY uv.lock pyproject.toml ./
+# Copy dependency files first for better layer caching
+COPY pyproject.toml uv.lock ./
 
-# Install project dependencies using uv sync with a cache mount for faster builds.
+# Install project dependencies using uv sync with cache mount for faster builds
 # --frozen: ensures reproducible builds from uv.lock
 # --no-install-project: skips installing the project itself (we do this later)
-# --no-dev: excludes development dependencies
+# --no-dev: excludes development dependencies for production builds
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # --- Application Installation Layer ---
-# Copy the rest of the application source code.
-COPY README.md LICENSE run_verification.py ./
-COPY pyproject.toml ./
+# Copy the rest of the application source code
+COPY LICENSE README.md run_verification.py ./
 COPY src ./src
 COPY tests ./tests
 
-# Install the project itself in the builder stage after copying source code.
-# --no-deps:  Dependencies are already installed in the previous step, so skip dependency resolution.
-RUN uv pip install --no-deps . && rm -f README.md
+# Install the project itself in the builder stage
+# --no-deps: Dependencies are already installed, skip resolution
+RUN uv pip install --no-deps . && rm -f LICENSE
 
 # --- Production Stage ---
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS production
 
+# Build arguments for production stage
+ARG APP_USER=appuser
+ARG APP_GROUP=appgrp
+ARG UID=1000
+ARG GID=1000
 
-# Ensure unbuffered Python output for immediate logging in container environments.
-ENV PYTHONUNBUFFERED=1
-
-# Install runtime dependencies required for the application to run.
-# In this case, only libpq5 is needed for PostgreSQL runtime connectivity.
-RUN apt-get -y update \
+# Install minimal runtime dependencies
+RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        curl \
+        tzdata \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# --- Security: Create a non-root user and group for enhanced security ---
-ENV APP_USER=appuser
-ENV APP_GROUP=appgrp
-ENV UID=1000
-ENV GID=1000
-RUN groupadd -g "$GID" "$APP_GROUP" && useradd -u "$UID" -g "$APP_GROUP" -s /bin/sh "$APP_USER"
-
-# Copy application artifacts from the builder stage to the production image.
-# --chown ensures the files are owned by the non-root user and group.
-COPY --chown=$APP_USER:$APP_GROUP --from=builder /app /app
-
-# Set working directory in the production image.
-WORKDIR /app
-
-# Set executable path to include the virtual environment's bin directory.
+# Configure environment
+ENV PYTHONUNBUFFERED=1
+ENV TZ=UTC
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Set timezone to UTC for consistent timekeeping across environments.
-ENV TZ=UTC
+# Create non-root user and group for enhanced security
+RUN groupadd -g "${GID}" "${APP_GROUP}" \
+    && useradd -u "${UID}" -g "${APP_GROUP}" -s /bin/sh -m "${APP_USER}"
 
+# Copy application artifacts from builder stage
+COPY --chown=${APP_USER}:${APP_GROUP} --from=builder /app /app
 
-# --- Switch to the non-root user for running the application ---
-USER $APP_USER:$APP_GROUP
+# Set working directory
+WORKDIR /app
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/config /app/reports /app/logs \
+    && chown -R ${APP_USER}:${APP_GROUP} /app/config /app/reports /app/logs
+
+# Switch to non-root user
+USER ${APP_USER}:${APP_GROUP}
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import sys; print('OK'); sys.exit(0)" || exit 1
 
 # Define the entrypoint for the container
 ENTRYPOINT ["python", "run_verification.py"]
 
-# Set the default command with arguments for the entrypoint
+# Set the default command with arguments
 CMD ["--config", "config/default.yaml"]
