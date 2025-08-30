@@ -12,7 +12,7 @@ services:
       - ./src:/app/src:Z
       - ./tests:/app/tests:Z
     # Override command for development
-    command: ["uv", "run", "run_verification.py", "--config", "config/default.yaml", "--debug"]
+    command: ["openutm-verify", "--config", "config/default.yaml", "--debug"]
 
   # Development service for testing
   test-runner:

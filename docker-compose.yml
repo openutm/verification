@@ -37,7 +37,7 @@ services:
           cpus: '0.5'
     # Health check
     healthcheck:
-      test: ["CMD", "python", "-c", "import sys; print('OK'); sys.exit(0)"]
+      test: ["CMD", "openutm-verify", "--help"]
       interval: 30s
       timeout: 10s
       retries: 3

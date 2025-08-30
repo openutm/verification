@@ -40,7 +40,7 @@ class MyHTTPSignatureKeyResolver(HTTPSignatureKeyResolver):
     def resolve_private_key(self, key_id: str):
         # Use the private key to sign requests
         if key_id in self.known_pem_keys:
-            with open(f"../tests/assets/keys/{key_id}.key", "rb") as fh:
+            with open(f"../assets/keys/{key_id}.key", "rb") as fh:
                 return load_pem_private_key(fh.read(), password=None)
 
 
@@ -140,7 +140,7 @@ class FlightBlenderUploader:
 if __name__ == "__main__":
     parent_dir = dirname(abspath(__file__))  # <-- absolute dir the raw input file  is in
 
-    rel_path = "../tests/assets/rid_samples/flight_1_rid_aircraft_state.json"
+    rel_path = "../assets/rid_samples/flight_1_rid_aircraft_state.json"
     abs_file_path = os.path.join(parent_dir, rel_path)
     my_uploader = FlightBlenderUploader()
     my_uploader.upload_to_server(filename=abs_file_path)

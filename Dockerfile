@@ -34,7 +34,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # --- Application Installation Layer ---
 # Copy the rest of the application source code
-COPY LICENSE README.md run_verification.py ./
+COPY LICENSE README.md ./
 COPY src ./src
 COPY tests ./tests
 
@@ -86,7 +86,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import sys; print('OK'); sys.exit(0)" || exit 1
 
 # Define the entrypoint for the container
-ENTRYPOINT ["python", "run_verification.py"]
+ENTRYPOINT ["openutm-verify"]
 
 # Set the default command with arguments
 CMD ["--config", "config/default.yaml"]

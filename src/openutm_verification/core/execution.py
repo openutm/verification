@@ -1,5 +1,5 @@
 """
-This module contains the core logic for running verification scenarios.
+Core execution logic for running verification scenarios.
 """
 
 from datetime import datetime, timezone

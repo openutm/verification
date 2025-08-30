@@ -39,4 +39,4 @@ RUN mkdir -p /app/reports /app/logs /app/config
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Default command for development
-CMD ["uv", "run", "run_verification.py", "--config", "config/default.yaml"]
+CMD ["openutm-verify", "--config", "config/default.yaml"]

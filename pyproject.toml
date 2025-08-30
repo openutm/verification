@@ -45,6 +45,9 @@ dependencies = [
     "pydantic>=2.11.7",
 ]
 
+[project.scripts]
+openutm-verify = "openutm_verification.run_verification:main"
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.3.0",

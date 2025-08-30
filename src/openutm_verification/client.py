@@ -14,8 +14,8 @@ from typing import List
 import requests
 from dotenv import find_dotenv, load_dotenv
 
-from openutm_verification.common import get_redis
 from openutm_verification.dev_auth import NoAuth
+from openutm_verification.utils.redis_utils import get_redis
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:

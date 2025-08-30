@@ -3,8 +3,8 @@ from functools import partial
 from openutm_verification.config_models import ScenarioResult
 from openutm_verification.flight_blender_client import FlightBlenderClient
 from openutm_verification.models import OperationState
-from tests.scenarios.common import run_scenario_template
-from tests.scenarios.registry import register_scenario
+from openutm_verification.scenarios.common import run_scenario_template
+from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F1_happy_path")
