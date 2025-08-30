@@ -23,7 +23,6 @@ services:
     volumes:
       - ./config:/app/config:Z
       - ./reports:/app/reports:Z
-      - ./logs:/app/logs:Z
     # Network configuration for local Flight Blender access
     network_mode: host
     # Resource limits

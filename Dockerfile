@@ -75,8 +75,8 @@ COPY --chown=${APP_USER}:${APP_GROUP} --from=builder /app /app
 WORKDIR /app
 
 # Create necessary directories with proper permissions
-RUN mkdir -p /app/config /app/reports /app/logs \
-    && chown -R ${APP_USER}:${APP_GROUP} /app/config /app/reports /app/logs
+RUN mkdir -p /app/config /app/reports \
+    && chown -R ${APP_USER}:${APP_GROUP} /app/config /app/reports
 
 # Switch to non-root user
 USER ${APP_USER}:${APP_GROUP}

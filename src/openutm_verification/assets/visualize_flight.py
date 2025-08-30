@@ -13,7 +13,7 @@ Usage:
 
 import json
 import math
-import os
+from pathlib import Path
 
 import numpy as np
 
@@ -297,7 +297,11 @@ def visualize_flight_path_3d(telemetry_file_path, declaration_file_path, output_
 
 
 if __name__ == "__main__":
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+    current_dir = Path(__file__).parent
+    # Use the output directory instead of current directory for generated files
+    output_dir = current_dir.parent.parent.parent / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     conforming = ["rid_samples/flight_1_rid_aircraft_state.json", "flight_declarations_samples/flight-1-bern.json", "flight_path_map.html"]
     non_conforming = [
         "rid_samples/non-conforming/flight_1_bern_fully_nonconforming.json",
@@ -311,10 +315,10 @@ if __name__ == "__main__":
     ]
 
     for flight in [conforming, non_conforming, partial]:
-        telemetry_file = os.path.join(current_dir, flight[0])
-        declaration_file = os.path.join(current_dir, flight[1])
-        output_file_2d = os.path.join(current_dir, flight[2])
-        output_file_3d = os.path.join(current_dir, flight[2].replace(".html", "_3d.html"))
+        telemetry_file = current_dir / flight[0]
+        declaration_file = current_dir / flight[1]
+        output_file_2d = output_dir / flight[2]
+        output_file_3d = output_dir / flight[2].replace(".html", "_3d.html")
 
         visualize_flight_path_2d(telemetry_file, declaration_file, output_file_2d)
         visualize_flight_path_3d(telemetry_file, declaration_file, output_file_3d)
