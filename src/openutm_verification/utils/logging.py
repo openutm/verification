@@ -2,6 +2,7 @@
 Logging utilities for the OpenUTM Verification Tool.
 """
 
+import sys
 from pathlib import Path
 
 from loguru import logger
@@ -26,8 +27,9 @@ def setup_logging(output_dir: Path, base_filename: str, formats: list, debug: bo
         )
 
     logger.add(
-        lambda msg: print(msg, end=""),
+        sys.stderr,
         level=console_level,
         format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> [<level>{level}</level>] - <level>{message}</level>",
+        colorize=True,
     )
     return log_file_path

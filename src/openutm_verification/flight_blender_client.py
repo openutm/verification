@@ -7,7 +7,7 @@ import httpx
 from loguru import logger
 
 from openutm_verification.config_models import Status, StepResult
-from openutm_verification.models import OperationState
+from openutm_verification.models import FlightBlenderError, OperationState
 from openutm_verification.rid import (
     UASID,
     LatLngPoint,
@@ -53,7 +53,7 @@ class FlightBlenderClient:
         response = self.client.post(securl, json=flight_declaration)
         if response.status_code != 200:
             logger.error(f"Failed to upload flight declaration: {response.text}")
-            raise Exception(f"Failed to upload flight declaration: {response.text}")
+            raise FlightBlenderError(f"Failed to upload flight declaration: {response.text}")
         logger.debug(f"Response from flight declaration upload: {response.status_code} {response.text}")
         return response.json()
 
@@ -65,7 +65,7 @@ class FlightBlenderClient:
         response = self.client.put(securl, json=payload)
         if response.status_code != 200:
             logger.error(f"Failed to update operation state: {response.text}")
-            raise Exception(f"Failed to update operation state: {response.text}")
+            raise FlightBlenderError(f"Failed to update operation state: {response.text}")
         logger.debug(f"Response from update operation state: {response.status_code} {response.text}")
         time.sleep(duration_seconds)
         return response.json()
@@ -96,6 +96,7 @@ class FlightBlenderClient:
         )
 
         start_time = time.time()
+        last_response = None
         for state in states:
             if duration_seconds and (time.time() - start_time) > duration_seconds:
                 logger.info(f"Telemetry submission duration of {duration_seconds} seconds has passed.")
@@ -109,9 +110,13 @@ class FlightBlenderClient:
                     logger.warning(f"{response.status_code} {response.json()}")
                 else:
                     logger.info("Telemetry point submitted, sleeping 1 second...")
+                last_response = response.json()
+            except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                raise FlightBlenderError(f"Failed to submit telemetry: {e}") from e
             except Exception as e:
-                logger.error(e)
+                raise FlightBlenderError(f"Unexpected error during telemetry submission: {e}") from e
             time.sleep(1)
+        return last_response
 
     @scenario_step("Check Operation State")
     def check_operation_state(self, operation_id: str, expected_state: OperationState, duration_seconds: int = 0):

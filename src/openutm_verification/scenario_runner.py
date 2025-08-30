@@ -4,6 +4,7 @@ from functools import wraps
 from loguru import logger
 
 from .config_models import Status, StepResult
+from .models import FlightBlenderError
 
 
 def scenario_step(step_name):
@@ -18,7 +19,7 @@ def scenario_step(step_name):
                 duration = time.time() - start_time
                 logger.info(f"Step '{step_name}' successful in {duration:.2f} seconds.")
                 return StepResult(name=step_name, status=Status.PASS, duration=duration, details=result)
-            except Exception as e:
+            except FlightBlenderError as e:
                 duration = time.time() - start_time
                 logger.error(f"Step '{step_name}' failed after {duration:.2f} seconds: {e}")
                 return StepResult(

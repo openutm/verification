@@ -1,6 +1,12 @@
 from enum import Enum
 
 
+class FlightBlenderError(Exception):
+    """Custom exception for Flight Blender API errors."""
+
+    pass
+
+
 class OperationState(int, Enum):
     """An enumeration for the state of a flight operation."""
 
