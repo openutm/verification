@@ -231,6 +231,46 @@ docker build \
    ./scripts/run.sh -v
    ```
 
+## Version Management
+
+This project uses `uv` for dependency management and version control. The `uv version bump` command allows you to easily update the project version in `pyproject.toml`.
+
+### Basic Usage
+
+Bump the version to the next patch version (e.g., 1.0.0 → 1.0.1):
+
+```bash
+uv version bump --patch
+```
+
+Bump the version to the next minor version (e.g., 1.0.0 → 1.1.0):
+
+```bash
+uv version bump --minor
+```
+
+Bump the version to the next major version (e.g., 1.0.0 → 2.0.0):
+
+```bash
+uv version bump --major
+```
+
+### Advanced Options
+
+Bump to a specific version:
+
+```bash
+uv version bump 1.2.3
+```
+
+Preview the changes without applying them:
+
+```bash
+uv version bump --patch --dry-run
+```
+
+The version bump will update the `version` field in `pyproject.toml` and ensure consistency across the project.
+
 ## Maintenance
 
 ### Cleanup

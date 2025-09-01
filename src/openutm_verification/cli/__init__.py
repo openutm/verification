@@ -9,7 +9,7 @@ import yaml
 
 from openutm_verification.cli.parser import create_parser
 from openutm_verification.config_models import AppConfig
-from openutm_verification.core.execution import run_verification_scenarios
+from openutm_verification.core import run_verification_scenarios
 from openutm_verification.utils.logging import setup_logging
 
 

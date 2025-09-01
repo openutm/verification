@@ -3,6 +3,7 @@ Core execution logic for running verification scenarios.
 """
 
 from datetime import datetime, timezone
+from importlib.metadata import version
 from pathlib import Path
 
 from loguru import logger
@@ -60,7 +61,7 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
 
     report_data = ReportData(
         run_id=start_time_utc,
-        tool_version="1.0.0",
+        tool_version=version("openutm-verification"),
         start_time_utc=start_time_utc,
         end_time_utc=end_time_utc,
         total_duration_seconds=total_duration_seconds,

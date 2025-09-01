@@ -770,7 +770,7 @@ wheels = [
 
 [[package]]
 name = "openutm-verification"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "arrow" },
@@ -796,7 +796,6 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydeck" },
     { name = "pyproj" },
-    { name = "pytest" },
     { name = "python-dotenv" },
     { name = "pythreejs" },
     { name = "pyyaml" },
@@ -812,6 +811,7 @@ dev = [
     { name = "pre-commit" },
     { name = "pylint" },
     { name = "pylint-pytest" },
+    { name = "pytest" },
     { name = "ruff" },
     { name = "ty" },
     { name = "types-pyyaml" },
@@ -844,7 +844,6 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pydeck", specifier = ">=0.9.1" },
     { name = "pyproj", specifier = "==3.7.1" },
-    { name = "pytest", specifier = ">=8.4.1" },
     { name = "python-dotenv", specifier = "==1.0.1" },
     { name = "pythreejs", specifier = ">=2.4.2" },
     { name = "pyyaml", specifier = ">=6.0.2" },
@@ -862,6 +861,7 @@ dev = [
     { name = "pylint" },
     { name = "pylint", specifier = ">=3.3.2" },
     { name = "pylint-pytest", specifier = ">=1.1.7" },
+    { name = "pytest", specifier = ">=8.4.1" },
     { name = "ruff" },
     { name = "ruff", specifier = ">=0.12.10" },
     { name = "ty", specifier = ">=0.0.1a14" },
