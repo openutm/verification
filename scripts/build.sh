@@ -5,40 +5,21 @@
 
 set -euo pipefail
 
+# Source common functions
+SCRIPT_DIR="$(dirname "$0")"
+source "$SCRIPT_DIR/common.sh"
+
 # Configuration
 readonly NAMESPACE="${NAMESPACE:-openutm}"
 readonly APP="${APP:-verification}"
-readonly TIMESTAMP="$(date +%s)"
+TIMESTAMP="$(date +%s)"
+readonly TIMESTAMP
 readonly IMAGE="${APP}:${TIMESTAMP}"
 readonly IMAGE_LATEST="${APP}:latest"
 readonly IMAGE_DEV="${APP}:dev"
 
-# Colors for output
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly NC='\033[0m' # No Color
-
-# Logging functions
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1" >&2
-}
-
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1" >&2
-}
-
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1" >&2
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1" >&2
-}
-
-# Cleanup function
-cleanup() {
+# Cleanup function specific to build script
+cleanup_build() {
     local exit_code=$?
     if [ $exit_code -ne 0 ]; then
         log_error "Build failed with exit code $exit_code"
@@ -49,25 +30,10 @@ cleanup() {
 }
 
 # Set trap for cleanup
-trap cleanup EXIT
+trap cleanup_build EXIT
 
 # Check if Docker and Docker Compose are available
-check_dependencies() {
-    if ! command -v docker &> /dev/null; then
-        log_error "Docker is not installed or not in PATH"
-        exit 1
-    fi
-
-    if ! docker compose version &> /dev/null; then
-        log_error "Docker Compose is not available"
-        exit 1
-    fi
-
-    if ! docker info &> /dev/null; then
-        log_error "Docker daemon is not running"
-        exit 1
-    fi
-}
+# Note: check_dependencies is now sourced from common.sh
 
 # Build production image
 build_production() {

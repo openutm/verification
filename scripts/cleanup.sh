@@ -5,33 +5,25 @@
 
 set -euo pipefail
 
-# Colors for output
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly NC='\033[0m' # No Color
-
-# Logging functions
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1" >&2
-}
-
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1" >&2
-}
-
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1" >&2
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1" >&2
-}
+# Source common functions
+SCRIPT_DIR="$(dirname "$0")"
+source "$SCRIPT_DIR/common.sh"
 
 # Configuration
 readonly PROJECT_NAME="${COMPOSE_PROJECT_NAME:-openutm-verification}"
 readonly IMAGE_PREFIX="openutm/verification"
+
+# Cleanup function specific to cleanup script
+cleanup_cleanup() {
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        log_error "Script failed with exit code $exit_code"
+    fi
+    exit $exit_code
+}
+
+# Set trap for cleanup
+trap cleanup_cleanup EXIT
 
 # Show usage
 show_usage() {
@@ -194,36 +186,6 @@ clean_all() {
     fi
 }
 
-# Check if Docker and Docker Compose are available
-check_dependencies() {
-    if ! command -v docker &> /dev/null; then
-        log_error "Docker is not installed or not in PATH"
-        exit 1
-    fi
-
-    if ! docker compose version &> /dev/null; then
-        log_error "Docker Compose is not available"
-        exit 1
-    fi
-
-    if ! docker info &> /dev/null; then
-        log_error "Docker daemon is not running"
-        exit 1
-    fi
-}
-
-# Cleanup function
-cleanup() {
-    local exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        log_error "Script failed with exit code $exit_code"
-    fi
-    exit $exit_code
-}
-
-# Set trap for cleanup
-trap cleanup EXIT
-
 # Main execution
 main() {
     local CLEAN_CONTAINERS="false"
@@ -288,6 +250,9 @@ main() {
         show_usage
         exit 0
     fi
+
+    log_info "Starting cleanup process..."
+    check_dependencies
 
     # Execute cleanup actions
     if [[ "$CLEAN_CONTAINERS" == "true" ]]; then

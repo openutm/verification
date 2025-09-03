@@ -129,6 +129,7 @@ env.bak/
 venv.bak/
 context/
 output/
+reports/
 
 # Spyder project settings
 .spyderproject
