@@ -37,19 +37,11 @@ def run_scenario_template(
 
     # First step is always to upload the flight declaration
     upload_result: StepResult = client.upload_flight_declaration(filename=flight_declaration_path)
-    if upload_result.status == Status.FAIL:
-        return ScenarioResult(
-            name=scenario_name,
-            status=Status.FAIL,
-            duration_seconds=upload_result.duration,
-            steps=[upload_result],
-            error_message=upload_result.error_message,
-        )
 
-    if upload_result.details is None:
-        # This should not happen if the step passed, but as a safeguard:
-        error_message = "Flight declaration step passed but returned no details."
-        logger.error(error_message)
+    if upload_result.status == Status.FAIL or upload_result.details is None:
+        error_message: str | None = (
+            upload_result.error_message if upload_result.status == Status.FAIL else "Flight declaration step passed but returned no details."
+        )
         return ScenarioResult(
             name=scenario_name,
             status=Status.FAIL,
@@ -73,6 +65,10 @@ def run_scenario_template(
         all_steps.append(step_result)
         if step_result.status == Status.FAIL:
             break  # Stop scenario on first failure
+
+    # Teardown: Delete created flight declaration
+    teardown_result: StepResult = client.delete_flight_declaration(operation_id)
+    all_steps.append(teardown_result)
 
     final_status = Status.PASS if all(step.status == Status.PASS for step in all_steps) else Status.FAIL
     total_duration = sum(step.duration for step in all_steps)

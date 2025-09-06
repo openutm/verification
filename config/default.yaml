@@ -12,8 +12,9 @@ flight_blender:
     # type: "passport" # For using a real Passport instance
     # client_id: "your-client-id"
     # client_secret: "your-client-secret"
-    # audience: "your-blender-audience"
     # token_url: "/oauth/token"
+    audience: "testflight.flightblender.com" # Audience for OAuth tokens, default for local testing
+    scopes: ["flightblender.write", "flightblender.read"] # Scopes for write and read access
 
 # List of test scenario IDs to execute
 scenarios:

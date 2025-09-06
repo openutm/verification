@@ -28,7 +28,7 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
     logger.debug(f"Configuration details: {config.model_dump_json(indent=2)}")
 
     auth_provider = get_auth_provider(config.flight_blender.auth)
-    credentials = auth_provider.get_cached_credentials(audience="testflight.flightblender.com", scopes=["flightblender.write"])
+    credentials = auth_provider.get_cached_credentials(audience=config.flight_blender.auth.audience, scopes=config.flight_blender.auth.scopes)
 
     with FlightBlenderClient(
         base_url=config.flight_blender.url,

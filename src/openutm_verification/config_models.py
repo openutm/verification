@@ -21,8 +21,8 @@ class AuthConfig(BaseModel):
     type: Literal["none", "passport"] = "none"
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
-    audience: Optional[str] = None
-    token_url: Optional[str] = None
+    audience: str
+    scopes: List[str]
 
 
 class FlightBlenderConfig(BaseModel):

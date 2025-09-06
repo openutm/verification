@@ -136,3 +136,15 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             time.sleep(1)
 
         raise FlightBlenderError(f"Operation {operation_id} did not reach expected state {expected_state.name} within {duration_seconds} seconds")
+
+    @scenario_step("Delete Flight Declaration")
+    def delete_flight_declaration(self, operation_id: str):
+        endpoint = f"/flight_declaration_ops/flight_declaration/{operation_id}/delete"
+        logger.debug(f"Deleting flight declaration {operation_id}, {endpoint=}")
+        response = self.delete(endpoint, silent_status=[403])
+        logger.debug(f"Flight declaration deletion response: {response.text}")
+        if response.status_code == 403:
+            logger.warning(f"{response.status_code} {response.json()}")
+            # raise FlightBlenderError(f"Deletion forbidden for operation {operation_id}.")
+
+        return response.json()
