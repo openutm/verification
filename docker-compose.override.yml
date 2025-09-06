@@ -1,0 +1,36 @@
+# Development override configuration
+# This file is automatically loaded when running docker-compose
+
+services:
+  verification-tool:
+    # Override for development
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      - PYTHONPATH=/app/src
+    # Additional development volumes
+    volumes:
+      - ./src:/app/src:Z
+      - ./tests:/app/tests:Z
+    # Override command for development
+    command: ["openutm-verify", "--config", "config/default.yaml", "--debug"]
+
+  # Development service for testing
+  test-runner:
+    image: openutm/verification:dev
+    container_name: openutm-verification-test
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=UTC
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+    volumes:
+      - .:/app:Z
+      - /app/.venv
+    working_dir: /app
+    command: ["uv", "run", "pytest", "tests/", "-v", "--tb=short"]
+    network_mode: host
+    profiles:
+      - test

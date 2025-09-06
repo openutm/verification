@@ -1,0 +1,71 @@
+services:
+  verification-tool:
+    image: openutm/verification:latest
+    container_name: openutm-verification
+    # Build arguments for development
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UV_COMPILE_BYTECODE: 1
+        UV_LINK_MODE: copy
+        APP_USER: appuser
+        APP_GROUP: appgrp
+        UID: 1000
+        GID: 1000
+    # Environment variables
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=UTC
+      - FLIGHT_BLENDER_URL=${FLIGHT_BLENDER_URL:-http://localhost:8000}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    # Mount local directories for development
+    volumes:
+      - ./config:/app/config:Z
+      - ./reports:/app/reports:Z
+    # Network configuration for local Flight Blender access
+    network_mode: host
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    # Health check
+    healthcheck:
+      test: ["CMD", "openutm-verify", "--help"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Restart policy
+    restart: unless-stopped
+    # Labels for organization
+    labels:
+      - "project=openutm-verification"
+      - "component=verification-tool"
+      - "environment=${ENVIRONMENT:-development}"
+
+  # Optional: Add a development service with hot reload
+  verification-dev:
+    image: openutm/verification:dev
+    container_name: openutm-verification-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=UTC
+      - FLIGHT_BLENDER_URL=${FLIGHT_BLENDER_URL:-http://localhost:8000}
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+    volumes:
+      - .:/app:Z
+      - /app/.venv
+    working_dir: /app
+    network_mode: host
+    profiles:
+      - dev

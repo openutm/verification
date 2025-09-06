@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Run Report</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        h1, h2 { color: #111; }
+        h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .summary-table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .summary-table th { background-color: #f8f8f8; }
+        .scenario { border: 1px solid #ddd; border-radius: 5px; margin-bottom: 15px; }
+        .scenario-summary { padding: 15px; cursor: pointer; background-color: #f8f8f8; display: flex; justify-content: space-between; align-items: center; }
+        .scenario-summary:hover { background-color: #f1f1f1; }
+        .scenario-details { padding: 15px; border-top: 1px solid #ddd; }
+        .status { font-weight: bold; padding: 5px 10px; border-radius: 15px; color: white; }
+        .status-PASS { background-color: #28a745; }
+        .status-FAIL { background-color: #dc3545; }
+        .steps-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .steps-table th, .steps-table td { border: 1px solid #eee; padding: 8px; text-align: left; }
+        .steps-table th { background-color: #fafafa; }
+        pre { background-color: #f1f1f1; padding: 10px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <h1>Verification Run Report</h1>
+    <h2>Run Summary</h2>
+    <table class="summary-table">
+        <tr><th>Run ID</th><td>{{ report_data.run_id }}</td></tr>
+        <tr><th>Tool Version</th><td>{{ report_data.tool_version }}</td></tr>
+        <tr><th>Start Time (UTC)</th><td>{{ report_data.start_time_utc }}</td></tr>
+        <tr><th>End Time (UTC)</th><td>{{ report_data.end_time_utc }}</td></tr>
+        <tr><th>Duration</th><td>{{ "%.2f"|format(report_data.total_duration_seconds) }} seconds</td></tr>
+        <tr><th>Overall Status</th><td><span class="status status-{{ report_data.overall_status }}">{{ report_data.overall_status }}</span></td></tr>
+        <tr><th>Config File</th><td>{{ report_data.config_file }}</td></tr>
+    </table>
+
+    <h2>Scenario Summary</h2>
+    <table class="summary-table">
+        <tr>
+            <th>Total Scenarios</th>
+            <th>Passed</th>
+            <th>Failed</th>
+        </tr>
+        <tr>
+            <td>{{ report_data.summary.total_scenarios }}</td>
+            <td>{{ report_data.summary.passed }}</td>
+            <td>{{ report_data.summary.failed }}</td>
+        </tr>
+    </table>
+
+    <h2>Deployment Details</h2>
+    <table class="summary-table">
+        <tr><th>Name</th><td>{{ report_data.deployment_details.name }}</td></tr>
+        <tr><th>Flight Blender URL</th><td>{{ report_data.flight_blender_url }}</td></tr>
+        <tr><th>Version</th><td>{{ report_data.deployment_details.version }}</td></tr>
+        <tr><th>Notes</th><td>{{ report_data.deployment_details.notes }}</td></tr>
+    </table>
+
+    <h2>Scenario Results ({{ report_data.results|length }} executed)</h2>
+    {% for result in report_data.results %}
+    <div class="scenario" id="scenario-{{ loop.index }}">
+        <details>
+            <summary class="scenario-summary">
+                <span>{{ result.name }}</span>
+                <span class="status status-{{ result.status }}">{{ result.status }}</span>
+            </summary>
+            <div class="scenario-details">
+                <p><strong>Duration:</strong> {{ "%.2f"|format(result.duration_seconds) }} seconds</p>
+                {% if result.status == 'FAIL' and result.error_message %}
+                    <h4>Error Message:</h4>
+                    <pre>{{ result.error_message }}</pre>
+                {% endif %}
+                <h4>Steps:</h4>
+                <table class="steps-table">
+                    <thead>
+                        <tr>
+                            <th>Step Name</th>
+                            <th>Status</th>
+                            <th>Duration (s)</th>
+                            <th>Flight Blender Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for step in result.steps %}
+                        <tr>
+                            <td>{{ step.name }}</td>
+                            <td><span class="status status-{{ step.status }}">{{ step.status }}</span></td>
+                            <td>{{ "%.2f"|format(step.duration) }}</td>
+                            <td><pre>{{ step.details | tojson(indent=2) }}</pre></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    </div>
+    {% endfor %}
+
+    <h2>Full Configuration</h2>
+    <details>
+        <summary class="scenario-summary">
+            <span>Click to expand/collapse full configuration</span>
+        </summary>
+        <div class="scenario-details">
+            <pre>{{ report_data.config | tojson(indent=2) }}</pre>
+        </div>
+    </details>
+
+</body>
+</html>

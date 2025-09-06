@@ -1,0 +1,32 @@
+# config/default.yaml
+version: "1.0" # Configuration schema version
+
+run_id: "daily-conformance-check" # An optional identifier for the run
+
+# Details of the Flight Blender deployment under test
+flight_blender:
+  url: "http://localhost:8000"
+  # Auth can be 'none' or 'passport'
+  auth:
+    type: "none" # For using the dummy-oauth provider
+    # type: "passport" # For using a real Passport instance
+    # client_id: "your-client-id"
+    # client_secret: "your-client-secret"
+    # audience: "your-blender-audience"
+    # token_url: "/oauth/token"
+
+# List of test scenario IDs to execute
+scenarios:
+  - "F1_happy_path"
+  - "F2_contingent_path"
+  - "F3_non_conforming_path"
+
+# Reporting configuration
+reporting:
+  output_dir: "reports"
+  formats: ["json", "html", "log"] # 'json' is raw, 'html' is summarized
+  # A place to add metadata about the system under test
+  deployment_details:
+    name: "Local Flight Blender Dev Instance"
+    version: "v0.12.0"
+    notes: "Running against local Docker Compose setup."
