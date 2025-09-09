@@ -9,7 +9,7 @@ sys.path.insert(0, parentdir)
 import json
 from datetime import datetime, timedelta
 from os import environ as env
-from typing import List
+from typing import List, Optional
 
 import requests
 from dotenv import find_dotenv, load_dotenv
@@ -26,7 +26,7 @@ class PassportSpotlightCredentialsGetter:
     def __init__(self):
         pass
 
-    def get_cached_credentials(self, audience: str = None, scopes: List[str] = None):
+    def get_cached_credentials(self, audience: Optional[str] = None, scopes: Optional[List[str]] = None):
         r = get_redis()
 
         if not audience:
@@ -61,7 +61,7 @@ class PassportSpotlightCredentialsGetter:
 
         return credentials
 
-    def get_write_credentials(self, audience: str, scopes: List[str]):
+    def get_write_credentials(self, audience: str, scopes: str):
         payload = {
             "grant_type": "client_credentials",
             "client_id": env.get("SPOTLIGHT_WRITE_CLIENT_ID"),
@@ -81,7 +81,7 @@ class PassportCredentialsGetter:
     def __init__(self):
         pass
 
-    def get_cached_credentials(self, audience: str = None, scopes: List[str] = None):
+    def get_cached_credentials(self, audience: Optional[str] = None, scopes: Optional[List[str]] = None):
         r = get_redis()
 
         if not audience:
@@ -121,7 +121,7 @@ class PassportCredentialsGetter:
 
         return credentials
 
-    def get_write_credentials(self, audience: str, scopes: List[str]):
+    def get_write_credentials(self, audience: str, scopes: str):
         payload = {
             "grant_type": "client_credentials",
             "client_id": env.get("BLENDER_WRITE_CLIENT_ID"),
@@ -139,9 +139,11 @@ class NoAuthCredentialsGetter:
     def __init__(self):
         pass
 
-    def get_cached_credentials(self, audience: str, scopes: List[str]):
+    def get_cached_credentials(self, audience: Optional[str] = None, scopes: Optional[List[str]] = None):
         if not audience:
             return {"error": "An audience parameter must be provided"}
+        if not scopes:
+            return {"error": "A list of scopes parameter must be provided"}
         try:
             scopes_str = " ".join(scopes)
         except Exception as e:

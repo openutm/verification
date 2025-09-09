@@ -16,7 +16,7 @@ Example:
 SCENARIO_REGISTRY = {}
 
 
-def register_scenario(scenario_id):
+def register_scenario(scenario_id: str):
     """
     A decorator to register a test scenario function.
 
