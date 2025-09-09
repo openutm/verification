@@ -1,13 +1,15 @@
 import json
 import time
+import uuid
 from dataclasses import asdict
+from typing import Any, Dict, Optional
 
 import arrow
 from loguru import logger
 
-from openutm_verification.base_client import BaseBlenderAPIClient
-from openutm_verification.config_models import Status
+from openutm_verification.core.clients.flight_blender.base_client import BaseBlenderAPIClient
 from openutm_verification.models import FlightBlenderError, OperationState
+from openutm_verification.reporting_models import Status
 from openutm_verification.rid import (
     UASID,
     LatLngPoint,
@@ -19,7 +21,14 @@ from openutm_verification.scenario_runner import scenario_step
 
 
 def _create_rid_operator_details(operation_id: str) -> RIDOperatorDetails:
-    """Helper function to create RIDOperatorDetails."""
+    """Helper function to create RIDOperatorDetails.
+
+    Args:
+        operation_id: The unique identifier for the operation.
+
+    Returns:
+        A configured RIDOperatorDetails instance.
+    """
     uas_id = UASID(
         registration_id="CHE-5bisi9bpsiesw",
         serial_number="a5dd8899-bc19-c8c4-2dd7-57f786d1379d",
@@ -38,8 +47,28 @@ def _create_rid_operator_details(operation_id: str) -> RIDOperatorDetails:
 
 
 class FlightBlenderClient(BaseBlenderAPIClient):
+    """A client for interacting with the Flight Blender API for flight verification scenarios.
+
+    This class extends BaseBlenderAPIClient and provides methods for uploading flight declarations,
+    updating operation states, submitting telemetry, checking states, and managing declarations.
+    """
+
     @scenario_step("Upload Flight Declaration")
-    def upload_flight_declaration(self, filename):
+    def upload_flight_declaration(self, filename: str) -> Dict[str, Any]:
+        """Upload a flight declaration to the Flight Blender API.
+
+        Loads the declaration from file, adjusts datetimes, and posts it. Raises error if not approved.
+
+        Args:
+            filename: Path to the JSON flight declaration file.
+
+        Returns:
+            The JSON response from the API.
+
+        Raises:
+            FlightBlenderError: If the declaration is not approved or request fails.
+            json.JSONDecodeError: If the file content is invalid JSON.
+        """
         endpoint = "/flight_declaration_ops/set_flight_declaration"
         logger.debug(f"Uploading flight declaration from {filename}")
         with open(filename, "r", encoding="utf-8") as flight_declaration_file:
@@ -62,7 +91,22 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return response_json
 
     @scenario_step("Update Operation State")
-    def update_operation_state(self, operation_id: str, new_state: OperationState, duration_seconds: int = 0):
+    def update_operation_state(self, operation_id: str, new_state: OperationState, duration_seconds: int = 0) -> Dict[str, Any]:
+        """Update the state of a flight operation.
+
+        Posts the new state and waits for the specified duration.
+
+        Args:
+            operation_id: The ID of the operation to update.
+            new_state: The new OperationState to set.
+            duration_seconds: Optional seconds to sleep after update (default 0).
+
+        Returns:
+            The JSON response from the API.
+
+        Raises:
+            FlightBlenderError: If the update request fails.
+        """
         endpoint = f"/flight_declaration_ops/flight_declaration_state/{operation_id}"
         logger.debug(f"Updating operation {operation_id} to state {new_state.name}")
         payload = {"state": new_state.value, "submitted_by": "hh@auth.com"}
@@ -147,4 +191,26 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.warning(f"{response.status_code} {response.json()}")
             # raise FlightBlenderError(f"Deletion forbidden for operation {operation_id}.")
 
+        return response.json()
+
+    @scenario_step("Submit Air Traffic")
+    def submit_air_traffic(self, observations: list) -> Dict[str, Any]:
+        """Submit air traffic observations to the Flight Blender API.
+
+        Args:
+            observations: List of observation dictionaries containing flight data.
+
+        Returns:
+            The JSON response from the API.
+
+        Raises:
+            FlightBlenderError: If the submission request fails.
+        """
+        session_id = uuid.uuid4()
+        endpoint = f"/flight_stream/set_air_traffic/{session_id}"
+        logger.debug(f"Submitting {len(observations)} air traffic observations")
+        payload = {"observations": observations}
+
+        response = self.post(endpoint, json=payload)
+        logger.debug(f"Air traffic submission response: {response.text}")
         return response.json()

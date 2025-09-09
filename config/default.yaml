@@ -16,11 +16,20 @@ flight_blender:
     audience: "testflight.flightblender.com" # Audience for OAuth tokens, default for local testing
     scopes: ["flightblender.write", "flightblender.read"] # Scopes for write and read access
 
+# Details for connecting to the OpenSky Network API
+opensky:
+  auth:
+    type: "none" # 'none' for no auth, 'oauth2' for OAuth2 client credentials
+    client_id: "your-client-id"
+    client_secret: "your-client-secret"
+
 # List of test scenario IDs to execute
 scenarios:
   - "F1_happy_path"
   - "F2_contingent_path"
   - "F3_non_conforming_path"
+  - "opensky_live_data"
+  - "add_flight_declaration"
 
 # Reporting configuration
 reporting:
