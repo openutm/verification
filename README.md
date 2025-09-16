@@ -1,10 +1,20 @@
-# OpenUTM Verification Toolkit
+# OpenUTM Verification Toolkit v0.1.2
 
 A repository to host verification tools for Flight Blender and OpenUTM products.
 
 ## Overview
 
 This toolkit provides a configuration-driven framework for running automated conformance and integration test scenarios against a Flight Blender instance. It is designed to be run as a standalone tool or within a Docker container.
+
+### Key Features
+
+* **Automated Test Scenarios**: Pre-built scenarios for testing Flight Blender conformance and integration
+* **Automatic Cleanup**: Scenarios automatically clean up created resources (flight declarations) after execution
+* **Multiple Authentication Methods**: Support for dummy authentication (development) and OAuth2/Passport (production)
+* **Comprehensive Reporting**: Generate JSON, HTML, and log reports with detailed execution results
+* **Docker Integration**: Full containerization support for production and development environments
+* **Live Data Integration**: Support for OpenSky Network live flight data in test scenarios
+* **Configuration-Driven**: YAML-based configuration for easy customization and environment management
 
 ## Quick Start
 

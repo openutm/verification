@@ -30,6 +30,7 @@ scenarios:
   - "F3_non_conforming_path"
   - "opensky_live_data"
   - "add_flight_declaration"
+  - "geo_fence_upload"
 
 # Reporting configuration
 reporting:

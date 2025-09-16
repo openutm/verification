@@ -103,7 +103,7 @@ def _run_declaration_flow(
         if step_result.status == Status.FAIL:
             break
 
-    teardown_result: StepResult = fb_client.delete_flight_declaration(operation_id)
+    teardown_result: StepResult = cast(StepResult, fb_client.delete_flight_declaration(operation_id))
     all_steps.append(teardown_result)
     return all_steps
 
@@ -171,3 +171,9 @@ def get_flight_declaration_path(flight_declaration_filename: str) -> str:
     """Helper to get the full path to a flight declaration file."""
     parent_dir = Path(__file__).parent.resolve()
     return str(parent_dir / f"../assets/flight_declarations_samples/{flight_declaration_filename}")
+
+
+def get_geo_fence_path(geo_fence_filename: str) -> str:
+    """Helper to get the full path to a geo-fence file."""
+    parent_dir = Path(__file__).parent.resolve()
+    return str(parent_dir / f"../assets/aoi_geo_fence_samples/{geo_fence_filename}")
