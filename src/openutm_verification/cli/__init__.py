@@ -2,13 +2,13 @@
 Command Line Interface for OpenUTM Verification Tool.
 """
 
-import argparse
+from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
 
 from openutm_verification.cli.parser import create_parser
-from openutm_verification.config_models import AppConfig
+from openutm_verification.config_models import AppConfig, ConfigProxy
 from openutm_verification.core import run_verification_scenarios
 from openutm_verification.utils.logging import setup_logging
 
@@ -23,13 +23,12 @@ def main():
     # Load configuration
     with open(args.config, "r", encoding="utf-8") as f:
         config_data = yaml.safe_load(f)
-    config = AppConfig(**config_data)
+    config = AppConfig.model_validate(config_data)
+    ConfigProxy.initialize(config)
 
     # Setup logging
     output_dir = Path(config.reporting.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    from datetime import datetime, timezone
 
     run_timestamp = datetime.now(timezone.utc)
     base_filename = f"report_{run_timestamp.strftime('%Y-%m-%dT%H-%M-%SZ')}"

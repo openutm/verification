@@ -7,15 +7,16 @@ from openutm_verification.scenarios.common import run_scenario_template
 from openutm_verification.scenarios.registry import register_scenario
 
 
-@register_scenario("F2_contingent_path")
-def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
-    """Runs the F2 contingent path scenario.
+@register_scenario("add_flight_declaration")
+def test_add_flight_declaration(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
+    """Runs the add flight declaration scenario.
 
-    This scenario simulates a flight operation that enters a contingent state:
-    1. The flight operation state is set to ACTIVATED.
-    2. Telemetry data is submitted for 10 seconds.
-    3. The flight operation state is updated to CONTINGENT and held for 7 seconds.
-    4. The flight operation state is set to ENDED.
+    This scenario replicates the behavior of the add_flight_declaration.py importer:
+    1. Upload flight declaration (handled by template).
+    2. Wait 20 seconds.
+    3. Set flight operation state to ACTIVATED.
+    4. Submit telemetry data for 30 seconds.
+    5. Set flight operation state to ENDED.
 
     Args:
         fb_client: The FlightBlenderClient instance for API interaction.
@@ -25,9 +26,8 @@ def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_name: str) 
         A ScenarioResult object containing the results of the scenario execution.
     """
     steps = [
-        partial(fb_client.update_operation_state, new_state=OperationState.ACTIVATED),
-        partial(fb_client.submit_telemetry, duration_seconds=10),
-        partial(fb_client.update_operation_state, new_state=OperationState.CONTINGENT, duration_seconds=7),
+        partial(fb_client.update_operation_state, new_state=OperationState.ACTIVATED, duration_seconds=20),
+        partial(fb_client.submit_telemetry, duration_seconds=30),
         partial(fb_client.update_operation_state, new_state=OperationState.ENDED),
     ]
 

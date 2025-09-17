@@ -1,10 +1,20 @@
-# OpenUTM Verification Toolkit
+# OpenUTM Verification Toolkit v0.1.2
 
 A repository to host verification tools for Flight Blender and OpenUTM products.
 
 ## Overview
 
 This toolkit provides a configuration-driven framework for running automated conformance and integration test scenarios against a Flight Blender instance. It is designed to be run as a standalone tool or within a Docker container.
+
+### Key Features
+
+* **Automated Test Scenarios**: Pre-built scenarios for testing Flight Blender conformance and integration
+* **Automatic Cleanup**: Scenarios automatically clean up created resources (flight declarations) after execution
+* **Multiple Authentication Methods**: Support for dummy authentication (development) and OAuth2/Passport (production)
+* **Comprehensive Reporting**: Generate JSON, HTML, and log reports with detailed execution results
+* **Docker Integration**: Full containerization support for production and development environments
+* **Live Data Integration**: Support for OpenSky Network live flight data in test scenarios
+* **Configuration-Driven**: YAML-based configuration for easy customization and environment management
 
 ## Quick Start
 
@@ -123,6 +133,15 @@ The toolkit uses environment variables for configuration. Key variables include:
 * `LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
 * `ENVIRONMENT`: Environment name for labeling
 
+#### Authentication Configuration
+
+For authentication, the following fields can be configured in `config/default.yaml` under `flight_blender.auth`:
+
+* `audience`: The OAuth audience for token requests. Default: "testflight.flightblender.com"
+* `scopes`: The list of scopes for token requests. Default: ["flightblender.write", "flightblender.read"]
+
+When using `type: "passport"`, also set `client_id`, `client_secret`, and `token_url` as needed.
+
 ### Docker Compose Services
 
 #### Production Service (`verification-tool`)
@@ -160,7 +179,6 @@ The following directories are mounted as volumes:
 
 * `./config:/app/config`: Configuration files
 * `./reports:/app/reports`: Generated reports
-* `./logs:/app/logs`: Application logs
 * `./src:/app/src`: Source code (development only)
 
 ### Network Configuration

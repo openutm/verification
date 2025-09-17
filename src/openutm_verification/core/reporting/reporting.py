@@ -4,7 +4,8 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 
-from .config_models import ReportData, ReportingConfig
+from ...config_models import ReportingConfig
+from ...reporting_models import ReportData
 
 
 def generate_reports(
@@ -52,7 +53,7 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
         output_dir: The directory where the report will be saved.
         base_filename: The base name for the report file (without extension).
     """
-    template_dir = Path(__file__).parent / "templates"
+    template_dir = Path(__file__).parent.parent / "templates"
     env = Environment(
         loader=FileSystemLoader(template_dir),
         autoescape=select_autoescape(enabled_extensions=("html", "xml"), default_for_string=True, default=True),
