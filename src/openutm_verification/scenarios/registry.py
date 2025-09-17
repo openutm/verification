@@ -6,7 +6,7 @@ To register a new scenario, apply the `@register_scenario` decorator to your
 scenario function.
 
 Example:
-    from .registry import register_scenario
+    from openutm_verification.scenarios.registry import register_scenario
 
     @register_scenario("my_scenario_id")
     def run_my_scenario(client, scenario_id):

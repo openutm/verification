@@ -13,12 +13,12 @@ from loguru import logger
 from pydantic import ValidationError
 
 from openutm_verification.auth import get_auth_provider
-from openutm_verification.config_models import AppConfig
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.clients.opensky.base_client import OpenSkyError, create_opensky_settings
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
+from openutm_verification.core.execution.config_models import AppConfig
 from openutm_verification.core.reporting.reporting import generate_reports
-from openutm_verification.reporting_models import ReportData, ReportSummary, ScenarioResult, Status
+from openutm_verification.core.reporting.reporting_models import ReportData, ReportSummary, ScenarioResult, Status
 from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 
 

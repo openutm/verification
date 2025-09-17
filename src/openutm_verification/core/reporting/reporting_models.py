@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from openutm_verification.config_models import DeploymentDetails
+from openutm_verification.core.execution.config_models import DeploymentDetails
 
 
 class Status(StrEnum):
@@ -35,6 +35,10 @@ class ScenarioResult(BaseModel):
     duration_seconds: float
     steps: List[StepResult]
     error_message: Optional[str] = None
+    flight_declaration_filename: Optional[str] = None
+    telemetry_filename: Optional[str] = None
+    visualization_2d_path: Optional[str] = None
+    visualization_3d_path: Optional[str] = None
 
 
 class ReportSummary(BaseModel):

@@ -6,7 +6,7 @@ from loguru import logger
 
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
-from openutm_verification.reporting_models import ScenarioResult, Status, StepResult
+from openutm_verification.core.reporting.reporting_models import ScenarioResult, Status, StepResult
 
 
 def _callable_name(func_like: Any) -> str:
@@ -153,11 +153,14 @@ def run_scenario_template(
 
     final_status = Status.PASS if all(s.status == Status.PASS for s in step_results) else Status.FAIL
     total_duration = sum(s.duration for s in step_results)
+
     return ScenarioResult(
         name=scenario_name,
         status=final_status,
         duration_seconds=total_duration,
         steps=step_results,
+        flight_declaration_filename=flight_declaration_filename,
+        telemetry_filename=telemetry_filename,
     )
 
 

@@ -4,7 +4,7 @@ Authentication providers for Flight Blender API.
 
 from openutm_verification.auth.noauth import NoAuthCredentialsGetter
 from openutm_verification.auth.passport import PassportCredentialsGetter
-from openutm_verification.config_models import AuthConfig
+from openutm_verification.core.execution.config_models import AuthConfig
 
 
 def get_auth_provider(auth_config: AuthConfig):

@@ -5,7 +5,7 @@ from loguru import logger
 from pydantic import BaseModel
 
 from openutm_verification.core.clients.opensky.base_client import BaseOpenSkyAPIClient, OpenSkySettings
-from openutm_verification.scenario_runner import scenario_step
+from openutm_verification.core.execution.scenario_runner import scenario_step
 
 
 class SingleObservation(BaseModel):

@@ -32,30 +32,18 @@ except ImportError:
     exit()
 
 import folium
+from loguru import logger
 
 
-def visualize_flight_path_2d(telemetry_file_path, declaration_file_path, output_html_path):
+def visualize_flight_path_2d(telemetry_data, declaration_data, output_html_path):
     """
-    Reads flight data and declaration from JSON files and creates an interactive 2D map.
+    Creates an interactive 2D map from flight telemetry and declaration data.
 
     Args:
-        telemetry_file_path (str): The full path to the flight telemetry JSON file.
-        declaration_file_path (str): The full path to the flight declaration JSON file.
+        telemetry_data (dict): The flight telemetry data as a dictionary.
+        declaration_data (dict): The flight declaration data as a dictionary.
         output_html_path (str): The full path where the output HTML map will be saved.
     """
-    try:
-        with open(telemetry_file_path, "r") as f:
-            telemetry_data = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error reading telemetry file {telemetry_file_path}: {e}")
-        return
-
-    try:
-        with open(declaration_file_path, "r") as f:
-            declaration_data = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error reading declaration file {declaration_file_path}: {e}")
-        return
 
     states = telemetry_data.get("current_states", [])
     path_points_with_alt = [
@@ -65,14 +53,15 @@ def visualize_flight_path_2d(telemetry_file_path, declaration_file_path, output_
     geofence = declaration_data.get("flight_declaration_geo_json")
 
     if not coordinates and not geofence:
-        print("No coordinates or geofence found in the JSON files.")
+        logger.warning("No coordinates or geofence found in the data.")
         return
 
     if geofence:
         first_coord = geofence["features"][0]["geometry"]["coordinates"][0][1]
         map_center = [first_coord[1], first_coord[0]]
     elif coordinates:
-        map_center = coordinates[0]
+        lat, lng = coordinates[0]
+        map_center = [lat, lng]
     else:
         map_center = [46.97, 7.47]
 
@@ -114,7 +103,7 @@ def visualize_flight_path_2d(telemetry_file_path, declaration_file_path, output_
         ).add_to(flight_map)
 
     flight_map.save(output_html_path)
-    print(f"2D flight path visualization saved to: {output_html_path}")
+    logger.info(f"2D flight path visualization saved to: {output_html_path}")
 
 
 # ==============================================================================
@@ -214,16 +203,8 @@ def _create_geofence_box_group(projected_geofence_corners_2d, min_alt, max_alt):
     return geofence_group
 
 
-def visualize_flight_path_3d(telemetry_file_path, declaration_file_path, output_html_path):
+def visualize_flight_path_3d(telemetry_data, declaration_data, output_html_path):
     """Creates an interactive 3D visualization of the flight path and geofence."""
-    try:
-        with open(telemetry_file_path, "r") as f:
-            telemetry_data = json.load(f)
-        with open(declaration_file_path, "r") as f:
-            declaration_data = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error reading data file: {e}")
-        return
 
     states = telemetry_data.get("current_states", [])
     path_coords_ll = [[s["position"]["lng"], s["position"]["lat"], s["position"]["alt"]] for s in states if "position" in s]
@@ -236,7 +217,7 @@ def visualize_flight_path_3d(telemetry_file_path, declaration_file_path, output_
         max_alt = feature["properties"]["max_altitude"]["meters"]
 
     if not path_coords_ll and not geofence_coords_ll:
-        print("No data to visualize in 3D.")
+        logger.warning("No data to visualize in 3D.")
         return
 
     all_lons = [p[0] for p in path_coords_ll] + [p[0] for p in geofence_coords_ll]
@@ -293,7 +274,7 @@ def visualize_flight_path_3d(telemetry_file_path, declaration_file_path, output_
     renderer = three.Renderer(camera=camera, scene=scene, controls=controls, width=1000, height=800)
 
     embed.embed_minimal_html(output_html_path, views=[renderer], title="3D Flight Visualization")
-    print(f"3D flight path visualization saved to: {output_html_path}")
+    logger.info(f"3D flight path visualization saved to: {output_html_path}")
 
 
 if __name__ == "__main__":
