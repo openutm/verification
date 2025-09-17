@@ -6,7 +6,7 @@ from loguru import logger
 
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
-from openutm_verification.reporting_models import ScenarioResult, Status, StepResult
+from openutm_verification.core.reporting.reporting_models import ScenarioResult, Status, StepResult
 
 
 def _callable_name(func_like: Any) -> str:

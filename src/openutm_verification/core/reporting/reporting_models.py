@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from openutm_verification.config_models import DeploymentDetails
+from openutm_verification.core.execution.config_models import DeploymentDetails
 
 
 class Status(StrEnum):

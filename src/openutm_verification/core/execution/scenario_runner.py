@@ -6,8 +6,8 @@ from loguru import logger
 
 from openutm_verification.core.clients.opensky.base_client import OpenSkyError
 
-from .models import FlightBlenderError
-from .reporting_models import Status, StepResult
+from ...models import FlightBlenderError
+from ..reporting.reporting_models import Status, StepResult
 
 
 def scenario_step(step_name: str) -> Callable:

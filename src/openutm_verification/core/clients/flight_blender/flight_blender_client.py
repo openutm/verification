@@ -8,8 +8,9 @@ import arrow
 from loguru import logger
 
 from openutm_verification.core.clients.flight_blender.base_client import BaseBlenderAPIClient
+from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.core.reporting.reporting_models import Status
 from openutm_verification.models import FlightBlenderError, OperationState
-from openutm_verification.reporting_models import Status
 from openutm_verification.rid import (
     UASID,
     LatLngPoint,
@@ -17,7 +18,6 @@ from openutm_verification.rid import (
     RIDOperatorDetails,
     UAClassificationEU,
 )
-from openutm_verification.scenario_runner import scenario_step
 
 
 def _create_rid_operator_details(operation_id: str) -> RIDOperatorDetails:

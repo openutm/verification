@@ -4,8 +4,8 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 
-from ...config_models import ReportingConfig
-from ...reporting_models import ReportData
+from ..execution.config_models import ReportingConfig
+from .reporting_models import ReportData
 
 
 def generate_reports(
