@@ -2,6 +2,6 @@
 Core execution logic for the OpenUTM Verification Tool.
 """
 
-from .execution import run_verification_scenarios
+from openutm_verification.core.execution import run_verification_scenarios
 
 __all__ = ["run_verification_scenarios"]

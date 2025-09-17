@@ -153,11 +153,14 @@ def run_scenario_template(
 
     final_status = Status.PASS if all(s.status == Status.PASS for s in step_results) else Status.FAIL
     total_duration = sum(s.duration for s in step_results)
+
     return ScenarioResult(
         name=scenario_name,
         status=final_status,
         duration_seconds=total_duration,
         steps=step_results,
+        flight_declaration_filename=flight_declaration_filename,
+        telemetry_filename=telemetry_filename,
     )
 
 

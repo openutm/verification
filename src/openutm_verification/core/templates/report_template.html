@@ -69,6 +69,17 @@
             </summary>
             <div class="scenario-details">
                 <p><strong>Duration:</strong> {{ "%.2f"|format(result.duration_seconds) }} seconds</p>
+                {% if result.visualization_2d_path or result.visualization_3d_path %}
+                    <p><strong>Flight Visualizations:</strong>
+                    {% if result.visualization_2d_path %}
+                        <a href="{{ result.visualization_2d_path }}" target="_blank">View 2D Map</a>
+                    {% endif %}
+                    {% if result.visualization_2d_path and result.visualization_3d_path %} | {% endif %}
+                    {% if result.visualization_3d_path %}
+                        <a href="{{ result.visualization_3d_path }}" target="_blank">View 3D Map</a>
+                    {% endif %}
+                    </p>
+                {% endif %}
                 {% if result.status == 'FAIL' and result.error_message %}
                     <h4>Error Message:</h4>
                     <pre>{{ result.error_message }}</pre>

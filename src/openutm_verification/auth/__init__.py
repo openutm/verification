@@ -2,9 +2,9 @@
 Authentication providers for the OpenUTM Verification Tool.
 """
 
-from .noauth import NoAuthCredentialsGetter
-from .passport import PassportCredentialsGetter
-from .providers import get_auth_provider
+from openutm_verification.auth.noauth import NoAuthCredentialsGetter
+from openutm_verification.auth.passport import PassportCredentialsGetter
+from openutm_verification.auth.providers import get_auth_provider
 
 __all__ = [
     "NoAuthCredentialsGetter",
