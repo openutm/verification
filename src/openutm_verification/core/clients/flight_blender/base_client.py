@@ -47,6 +47,9 @@ class BaseBlenderAPIClient:
     def put(self, endpoint: str, json: dict, silent_status: list[int] | None = None) -> httpx.Response:
         return self._request("PUT", endpoint, json=json, silent_status=silent_status)
 
+    def delete(self, endpoint: str, silent_status: list[int] | None = None) -> httpx.Response:
+        return self._request("DELETE", endpoint, silent_status=silent_status)
+
     def __enter__(self):
         return self
 
