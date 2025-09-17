@@ -4,9 +4,9 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 
-from openutm_verification.assets.visualize_flight import visualize_flight_path_2d, visualize_flight_path_3d
 from openutm_verification.core.execution.config_models import ReportingConfig
 from openutm_verification.core.reporting.reporting_models import ReportData
+from openutm_verification.core.reporting.visualize_flight import visualize_flight_path_2d, visualize_flight_path_3d
 
 
 def generate_reports(
