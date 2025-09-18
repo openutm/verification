@@ -1,5 +1,6 @@
 import shapely
 from pyproj import Geod, Proj, Transformer
+
 if __name__ == "__main__":
     geojson = {
         "type": "FeatureCollection",
@@ -33,7 +34,7 @@ if __name__ == "__main__":
     diagonal_length = geod.inv(minx, miny, maxx, maxy)[2]
     print(f"Diagonal length: {diagonal_length} meters")
 
-    #compute the area in m2
+    # compute the area in m2
     box = shapely.geometry.box(minx, miny, maxx, maxy)
     area = abs(geod.geometry_area_perimeter(box)[0])
     print(f"Area: {area} m²")

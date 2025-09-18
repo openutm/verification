@@ -2,33 +2,34 @@ import json
 import logging
 import os
 import random
+import sys
 from datetime import timedelta
 from typing import List
-from geojson import LineString as GeoJSONLineString
+
 import arrow
 import shapely.geometry
 from geojson import Feature, FeatureCollection
-from geojson import Polygon as GeoJSONPolygon
+from geojson import LineString as GeoJSONLineString
 from geojson import Point as GeoJSONPoint
+from geojson import Polygon as GeoJSONPolygon
 from implicitdict import ImplicitDict
 from pyproj import Geod, Proj, Transformer
-from shapely.geometry import Point, LineString
-import sys
+from shapely.geometry import LineString, Point
 from uas_standards.astm.f3411.v22a.api import (
     HorizontalAccuracy,
+    LatLngPoint,
     RIDAircraftPosition,
     RIDAircraftState,
     RIDFlightDetails,
     RIDHeight,
     Time,
     VerticalAccuracy,
-    LatLngPoint,
 )
 
 from openutm_verification.simulator.flight_data import (
-    GeoJSONFlightsSimulatorConfiguration,
     FlightRecordCollection,
     FullFlightRecord,
+    GeoJSONFlightsSimulatorConfiguration,
 )
 from openutm_verification.simulator.operator_flight_details import (
     OperatorFlightDataGenerator,
@@ -111,9 +112,7 @@ class GeoJSONFlightsSimulator(object):
 
         coordinates = geometry["coordinates"]
         if len(coordinates) < 2:
-            raise RuntimeError(
-                "Invalid geojson data, LineString must have at least two coordinates"
-            )
+            raise RuntimeError("Invalid geojson data, LineString must have at least two coordinates")
 
         self.start_point = GeoJSONPoint(coordinates[0])
         self.end_point = GeoJSONPoint(coordinates[-1])
@@ -128,9 +127,7 @@ class GeoJSONFlightsSimulator(object):
             line_length += distance
         # ensure that the line string is at least 300 meters long
         if line_length < 300:
-            raise RuntimeError(
-                "Invalid geojson file, LineString must be at least 300 meters long"
-            )
+            raise RuntimeError("Invalid geojson file, LineString must be at least 300 meters long")
 
         # Use Shapely's LineString for interpolation
         shapely_line = shapely.geometry.LineString(coordinates)
@@ -144,13 +141,12 @@ class GeoJSONFlightsSimulator(object):
         )
         logger.info(f"Bounding box of LineString: {self.box.bounds}")
 
-
         num_points = int(line_length / 2)
-        distances = (0.004 * i for i in range(num_points)) # speed of 5 meters per second
+        distances = (0.004 * i for i in range(num_points))  # speed of 5 meters per second
         logger.info(f"Generating {num_points} flight path points along the LineString")
         for i in distances:
             point = shapely_line.interpolate(i, normalized=True)
-            
+
             self.flight_path_points.append(Point(point.x, point.y))
 
         logger.info(f"Generated {len(self.flight_path_points)} flight path points")
@@ -169,9 +165,7 @@ class GeoJSONFlightsSimulator(object):
         logger.info(f"Bounds: {self.bounds}")
         return True
 
-    def generate_flight_speed_bearing(
-        self, adjacent_points: List, delta_time_secs: int
-    ) -> List[float]:
+    def generate_flight_speed_bearing(self, adjacent_points: List, delta_time_secs: int) -> List[float]:
         """A method to generate flight speed, assume that the flight has to traverse two adjacent points in x number of seconds provided,
         calculating speed in meters / second. It also generates bearing between this and next point,
         this is used to populate the 'track' parameter in the Aircraft State JSON."""
@@ -179,9 +173,7 @@ class GeoJSONFlightsSimulator(object):
         first_point = adjacent_points[0]
         second_point = adjacent_points[1]
 
-        fwd_azimuth, back_azimuth, adjacent_point_distance_mts = self.geod.inv(
-            first_point.x, first_point.y, second_point.x, second_point.y
-        )
+        fwd_azimuth, back_azimuth, adjacent_point_distance_mts = self.geod.inv(first_point.x, first_point.y, second_point.x, second_point.y)
 
         speed_mts_per_sec = adjacent_point_distance_mts / delta_time_secs
         speed_mts_per_sec = float("{:.2f}".format(speed_mts_per_sec))
@@ -191,9 +183,7 @@ class GeoJSONFlightsSimulator(object):
 
         return [speed_mts_per_sec, fwd_azimuth]
 
-    def utm_converter(
-        self, shapely_shape: shapely.geometry, inverse: bool = False
-    ) -> shapely.geometry.shape:
+    def utm_converter(self, shapely_shape: shapely.geometry, inverse: bool = False) -> shapely.geometry.shape:
         """A helper function to convert from lat / lon to UTM coordinates for buffering. tracks. This is the UTM projection (https://en.wikipedia.org/wiki/Universal_Transverse_Mercator_coordinate_system), we use Zone 33T which encompasses Switzerland, this zone has to be set for each locale / city. Adapted from https://gis.stackexchange.com/questions/325926/buffering-geometry-with-points-in-wgs84-using-shapely"""
 
         proj = Proj(proj="utm", zone=self.utm_zone, ellps="WGS84", datum="WGS84")
@@ -202,30 +192,19 @@ class GeoJSONFlightsSimulator(object):
         point_or_polygon = geo_interface["type"]
         coordinates = geo_interface["coordinates"]
         if point_or_polygon == "Polygon":
-            new_coordinates = [
-                [proj(*point, inverse=inverse) for point in linring]
-                for linring in coordinates
-            ]
+            new_coordinates = [[proj(*point, inverse=inverse) for point in linring] for linring in coordinates]
         elif point_or_polygon == "Point":
             new_coordinates = proj(*coordinates, inverse=inverse)
         elif point_or_polygon == "LineString":
             new_coordinates = [proj(*point, inverse=inverse) for point in coordinates]
         else:
-            raise RuntimeError(
-                "Unexpected geo_interface type: {}".format(point_or_polygon)
-            )
+            raise RuntimeError("Unexpected geo_interface type: {}".format(point_or_polygon))
 
-        return shapely.geometry.shape(
-            {"type": point_or_polygon, "coordinates": tuple(new_coordinates)}
-        )
+        return shapely.geometry.shape({"type": point_or_polygon, "coordinates": tuple(new_coordinates)})
 
-    def generate_flight_grid_and_path_points(
-        self, altitude_of_ground_level_wgs_84: float
-    ):
+    def generate_flight_grid_and_path_points(self, altitude_of_ground_level_wgs_84: float):
         flight_points_with_altitude: List[FlightPoint] = []
-        logger.info(
-            f"Generating flight grid and path points at altitude {altitude_of_ground_level_wgs_84} meters"
-        )
+        logger.info(f"Generating flight grid and path points at altitude {altitude_of_ground_level_wgs_84} meters")
         all_grid_cell_tracks = []
         for coord in range(0, len(self.flight_path_points) - 1):
             cur_coord = coord
@@ -241,9 +220,7 @@ class GeoJSONFlightsSimulator(object):
                     self.flight_path_points[next_coord].y,
                 ),
             ]
-            flight_speed, bearing = self.generate_flight_speed_bearing(
-                adjacent_points=adjacent_points, delta_time_secs=1
-            )
+            flight_speed, bearing = self.generate_flight_speed_bearing(adjacent_points=adjacent_points, delta_time_secs=1)
 
             flight_points_with_altitude.append(
                 FlightPoint(
@@ -256,9 +233,7 @@ class GeoJSONFlightsSimulator(object):
             )
         bounds_box = shapely.geometry.box(*self.bounds)
 
-        all_grid_cell_tracks.append(
-            GridCellFlight(bounds=bounds_box, track=flight_points_with_altitude)
-        )
+        all_grid_cell_tracks.append(GridCellFlight(bounds=bounds_box, track=flight_points_with_altitude))
 
         self.grid_cells_flight_tracks = all_grid_cell_tracks
 
@@ -266,10 +241,8 @@ class GeoJSONFlightsSimulator(object):
         """This class generates details of flights and operator details for a flight, this data is required for identifying flight, operator and operation"""
 
         my_flight_details_generator = OperatorFlightDataGenerator(self.random)
-        
-        operator_location = my_flight_details_generator.generate_operator_location(
-            centroid=self.center_point
-        )
+
+        operator_location = my_flight_details_generator.generate_operator_location(centroid=self.center_point)
 
         # TODO: Put operator_location in center of circle rather than stacking operators of all flights on top of each other
         return RIDFlightDetails(
@@ -318,17 +291,11 @@ class GeoJSONFlightsSimulator(object):
             timestamp = timestamp.shift(seconds=time_increment_seconds)
 
             for k in range(num_flights):
-                timestamp_isoformat = timestamp.shift(
-                    seconds=k * self.flight_start_shift_time
-                ).isoformat()
-                list_end = (
-                    flight_track_details[k]["track_length"] - flight_current_index[k]
-                )
+                timestamp_isoformat = timestamp.shift(seconds=k * self.flight_start_shift_time).isoformat()
+                list_end = flight_track_details[k]["track_length"] - flight_current_index[k]
 
                 if list_end != 1:
-                    flight_point = self.grid_cells_flight_tracks[k].track[
-                        flight_current_index[k]
-                    ]
+                    flight_point = self.grid_cells_flight_tracks[k].track[flight_current_index[k]]
                     aircraft_position = RIDAircraftPosition(
                         lat=flight_point.lat,
                         lng=flight_point.lng,
@@ -337,9 +304,7 @@ class GeoJSONFlightsSimulator(object):
                         accuracy_v=VerticalAccuracy.VAUnknown,
                         extrapolated=False,
                     )
-                    aircraft_height = RIDHeight(
-                        distance=self.altitude_agl, reference="TakeoffLocation"
-                    )
+                    aircraft_height = RIDHeight(distance=self.altitude_agl, reference="TakeoffLocation")
 
                     rid_aircraft_state = RIDAircraftState(
                         timestamp=Time(value=timestamp_isoformat, format="RFC3339"),
@@ -376,9 +341,7 @@ def generate_aircraft_states(
 ) -> FlightRecordCollection:
     my_path_generator = GeoJSONFlightsSimulator(config)
 
-    my_path_generator.generate_flight_grid_and_path_points(
-        altitude_of_ground_level_wgs_84=config.altitude_of_ground_level_wgs_84
-    )
+    my_path_generator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=config.altitude_of_ground_level_wgs_84)
 
     my_path_generator.generate_rid_state(duration=30)
     flights = my_path_generator.flights
@@ -413,10 +376,8 @@ if __name__ == "__main__":
             random_seed=None,
         )
     )
-    my_flight_generator.generate_flight_grid_and_path_points(
-        altitude_of_ground_level_wgs_84=500
-    )
-    
+    my_flight_generator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=500)
+
     my_flight_generator.generate_rid_state(duration=30)
     # Add the bounding box as GeoJSON to the flight declaration
     # Create the output directory if it does not exist
@@ -425,9 +386,7 @@ if __name__ == "__main__":
     logger.info(f"Output directory created or already exists: {output_dir}")
 
     bbox_file = os.path.join(output_dir, "flight_declaration_bounding_box.json")
-    half_box_bbox_file = os.path.join(
-        output_dir, "flight_declaration_half_bounding_box.json"
-    )
+    half_box_bbox_file = os.path.join(output_dir, "flight_declaration_half_bounding_box.json")
     flight_data_file = os.path.join(output_dir, "flight_data.json")
 
     half_bbox_geojson = shapely.geometry.mapping(my_flight_generator.half_box)
