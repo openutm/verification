@@ -27,7 +27,9 @@ from openutm_verification.simulator.flight_data import (
     FlightRecordCollection,
     FullFlightRecord,
 )
-from openutm_verification.simulator.operator_flight_details import OperatorFlightDataGenerator
+from openutm_verification.simulator.operator_flight_details import (
+    OperatorFlightDataGenerator,
+)
 from openutm_verification.simulator.utils import (
     FlightPoint,
     GridCellFlight,
@@ -51,7 +53,8 @@ logger = logging.getLogger(__name__)
 class AdjacentCircularFlightsSimulator:
     """A class to generate Flight Paths given a bounding box, this is the main module to generate flight path datasets,
     the data is generated as latitude / longitude pairs with associated with the flights.
-    Additional flight metadata e.g. flight id, altitude, registration number can also be generated"""
+    Additional flight metadata e.g. flight id, altitude, registration number can also be generated
+    """
 
     def __init__(self, config: AdjacentCircularFlightsSimulatorConfiguration) -> None:
         """Create an AdjacentCircularFlightsSimulator with the specified bounding box.
@@ -89,38 +92,51 @@ class AdjacentCircularFlightsSimulator:
         self.input_extents_valid()
 
     def input_extents_valid(self) -> None:
-        """This method checks if the input extents are valid i.e. small enough, if the extent is too large, we reject them,
-        at the moment it checks for extents less than 500m x 500m square but can be changed as necessary."""
+        """
+        Validates and adjusts the input bounding box extents to ensure the area matches a target value.
+        This method recalculates the bounding box defined by `minx`, `miny`, `maxx`, and `maxy` so that its area
+        is scaled to a target area (default: 250,000 m², equivalent to 500m x 500m). The box is scaled about its center,
+        and the new bounds are updated accordingly. The method logs the scale factor, new bounds, new area, and the
+        diagonal length of the adjusted box.
+        Side Effects:
+            - Updates `self.minx`, `self.miny`, `self.maxx`, `self.maxy` to new scaled values.
+            - Updates `self.box` with the new bounding box geometry.
+            - Logs relevant information about the scaling process.
+        Returns:
+            None
+        """
+        
 
         box = shapely.geometry.box(self.minx, self.miny, self.maxx, self.maxy)
         self.box = box
-
-        # Create a box half the size of the original box
+        area = abs(self.geod.geometry_area_perimeter(box)[0])
+        target_area = 250000  # 500m x 500m
+        scale_factor = (target_area / area) ** 0.5
+        logger.info(f"Scale factor: {scale_factor}")
         center_x = (self.minx + self.maxx) / 2
         center_y = (self.miny + self.maxy) / 2
-        half_width = (self.maxx - self.minx) / 4
-        half_height = (self.maxy - self.miny) / 4
-        self.half_box = shapely.geometry.box(
-            center_x - half_width,
-            center_y - half_height,
-            center_x + half_width,
-            center_y + half_height,
+        width = (self.maxx - self.minx) * scale_factor
+        height = (self.maxy - self.miny) * scale_factor
+        self.minx = center_x - width / 2
+        self.maxx = center_x + width / 2
+        self.miny = center_y - height / 2
+        self.maxy = center_y + height / 2
+        # Generate a half-sized bounding box centered at the same location
+        half_width = width / 2
+        half_height = height / 2
+        half_minx = center_x - half_width / 2
+        half_maxx = center_x + half_width / 2
+        half_miny = center_y - half_height / 2
+        half_maxy = center_y + half_height / 2
+        self.half_box = shapely.geometry.box(half_minx, half_miny, half_maxx, half_maxy)
+        logger.info(
+            f"New bounds: minx: {self.minx}, miny: {self.miny}, maxx: {self.maxx}, maxy: {self.maxy}"
         )
-
+        box = shapely.geometry.box(self.minx, self.miny, self.maxx, self.maxy)
         area = abs(self.geod.geometry_area_perimeter(box)[0])
-        # get the diagonal length of the box
-        diagonal_length = self.geod.geometry_length(box.exterior)
-        logger.info(f"Area of the bounding box: {area:.2f} m²")
-        logger.info(f"Diagonal length of the bounding box: {diagonal_length:.2f} m")
-        # Have a area less than 500m x 500m square and more than 300m x 300m square to ensure a 50 m diameter tracks
-        if (area) < 250000 and (area) > 90000:
-            return
-        else:
-            raise ValueError(
-                "The extents provided are not of the correct diagonal length: {diagonal_length}m, please provide the diagonal length between 800m -1.6 kms".format(
-                    diagonal_length=diagonal_length.__round__(2)
-                )
-            )
+        logger.info(f"New area: {area} m²")
+        diagonal_length = self.geod.inv(self.minx, self.miny, self.maxx, self.maxy)[2]
+        logger.info(f"New diagonal length: {diagonal_length} meters")
 
     def generate_query_bboxes(self):
         """For the different Remote ID checks: No, we need to generate three bounding boxes for the display provider, this method generates the 1 km diagonal length bounding box"""
@@ -160,7 +176,9 @@ class AdjacentCircularFlightsSimulator:
             # Buffer the point with the appropriate length
             buffer = pt.buffer(box_diagonal["length"])
             buffer_bounds = buffer.bounds
-            buffer_bounds_polygon = shapely.geometry.box(buffer_bounds[0], buffer_bounds[1], buffer_bounds[2], buffer_bounds[3])
+            buffer_bounds_polygon = shapely.geometry.box(
+                buffer_bounds[0], buffer_bounds[1], buffer_bounds[2], buffer_bounds[3]
+            )
             buffer_points = zip(
                 buffer_bounds_polygon.exterior.coords.xy[0],
                 buffer_bounds_polygon.exterior.coords.xy[1],
@@ -185,7 +203,9 @@ class AdjacentCircularFlightsSimulator:
                 )
             )
 
-    def generate_flight_speed_bearing(self, adjacent_points: List, delta_time_secs: int) -> List[float]:
+    def generate_flight_speed_bearing(
+        self, adjacent_points: List, delta_time_secs: int
+    ) -> List[float]:
         """A method to generate flight speed, assume that the flight has to traverse two adjacent points in x number of seconds provided,
         calculating speed in meters / second. It also generates bearing between this and next point,
         this is used to populate the 'track' parameter in the Aircraft State JSON."""
@@ -193,7 +213,9 @@ class AdjacentCircularFlightsSimulator:
         first_point = adjacent_points[0]
         second_point = adjacent_points[1]
 
-        fwd_azimuth, back_azimuth, adjacent_point_distance_mts = self.geod.inv(first_point.x, first_point.y, second_point.x, second_point.y)
+        fwd_azimuth, back_azimuth, adjacent_point_distance_mts = self.geod.inv(
+            first_point.x, first_point.y, second_point.x, second_point.y
+        )
 
         speed_mts_per_sec = adjacent_point_distance_mts / delta_time_secs
         speed_mts_per_sec = float("{:.2f}".format(speed_mts_per_sec))
@@ -203,7 +225,9 @@ class AdjacentCircularFlightsSimulator:
 
         return [speed_mts_per_sec, fwd_azimuth]
 
-    def utm_converter(self, shapely_shape: shapely.geometry, inverse: bool = False) -> shapely.geometry.shape:
+    def utm_converter(
+        self, shapely_shape: shapely.geometry, inverse: bool = False
+    ) -> shapely.geometry.shape:
         """A helper function to convert from lat / lon to UTM coordinates for buffering. tracks. This is the UTM projection (https://en.wikipedia.org/wiki/Universal_Transverse_Mercator_coordinate_system), we use Zone 33T which encompasses Switzerland, this zone has to be set for each locale / city. Adapted from https://gis.stackexchange.com/questions/325926/buffering-geometry-with-points-in-wgs84-using-shapely"""
 
         proj = Proj(proj="utm", zone=self.utm_zone, ellps="WGS84", datum="WGS84")
@@ -212,15 +236,24 @@ class AdjacentCircularFlightsSimulator:
         point_or_polygon = geo_interface["type"]
         coordinates = geo_interface["coordinates"]
         if point_or_polygon == "Polygon":
-            new_coordinates = [[proj(*point, inverse=inverse) for point in linring] for linring in coordinates]
+            new_coordinates = [
+                [proj(*point, inverse=inverse) for point in linring]
+                for linring in coordinates
+            ]
         elif point_or_polygon == "Point":
             new_coordinates = proj(*coordinates, inverse=inverse)
         else:
-            raise RuntimeError("Unexpected geo_interface type: {}".format(point_or_polygon))
+            raise RuntimeError(
+                "Unexpected geo_interface type: {}".format(point_or_polygon)
+            )
 
-        return shapely.geometry.shape({"type": point_or_polygon, "coordinates": tuple(new_coordinates)})
+        return shapely.geometry.shape(
+            {"type": point_or_polygon, "coordinates": tuple(new_coordinates)}
+        )
 
-    def generate_flight_grid_and_path_points(self, altitude_of_ground_level_wgs_84: float):
+    def generate_flight_grid_and_path_points(
+        self, altitude_of_ground_level_wgs_84: float
+    ):
         """Generate a series of boxes (grid) within the given bounding box to have areas for different flight tracks within each box"""
         # Compute the box where the flights will be created. For a the sample bounds given, over Bern, Switzerland,
         # a division by 2 produces a cell_size of 0.0025212764739985793, a division of 3 is 0.0016808509826657196 and division by 4 0.0012606382369992897.
@@ -247,7 +280,9 @@ class AdjacentCircularFlightsSimulator:
             center_utm = self.utm_converter(center)
             buffer_shape_utm = center_utm.buffer(50)
             buffered_path = self.utm_converter(buffer_shape_utm, inverse=True)
-            altitude = altitude_of_ground_level_wgs_84 + self.altitude_agl  # meters WGS 84
+            altitude = (
+                altitude_of_ground_level_wgs_84 + self.altitude_agl
+            )  # meters WGS 84
             flight_points_with_altitude = []
             x, y = buffered_path.exterior.coords.xy
 
@@ -259,7 +294,9 @@ class AdjacentCircularFlightsSimulator:
                     Point(x[cur_coord], y[cur_coord]),
                     Point(x[next_coord], y[next_coord]),
                 ]
-                flight_speed, bearing = self.generate_flight_speed_bearing(adjacent_points=adjacent_points, delta_time_secs=1)
+                flight_speed, bearing = self.generate_flight_speed_bearing(
+                    adjacent_points=adjacent_points, delta_time_secs=1
+                )
 
                 flight_points_with_altitude.append(
                     FlightPoint(
@@ -271,7 +308,9 @@ class AdjacentCircularFlightsSimulator:
                     )
                 )
 
-            all_grid_cell_tracks.append(GridCellFlight(bounds=grid_cell, track=flight_points_with_altitude))
+            all_grid_cell_tracks.append(
+                GridCellFlight(bounds=grid_cell, track=flight_points_with_altitude)
+            )
 
         self.grid_cells_flight_tracks = all_grid_cell_tracks
 
@@ -285,7 +324,9 @@ class AdjacentCircularFlightsSimulator:
             id=id,
             serial_number=my_flight_details_generator.generate_serial_number(),
             operation_description=my_flight_details_generator.generate_operation_description(),
-            operator_location=my_flight_details_generator.generate_operator_location(centroid=self.bbox_center[0]),
+            operator_location=my_flight_details_generator.generate_operator_location(
+                centroid=self.bbox_center[0]
+            ),
             operator_id=my_flight_details_generator.generate_operator_id(),
             registration_number=my_flight_details_generator.generate_registration_number(),
         )
@@ -327,11 +368,17 @@ class AdjacentCircularFlightsSimulator:
             timestamp = timestamp.shift(seconds=time_increment_seconds)
 
             for k in range(num_flights):
-                timestamp_isoformat = timestamp.shift(seconds=k * self.flight_start_shift_time).isoformat()
-                list_end = flight_track_details[k]["track_length"] - flight_current_index[k]
+                timestamp_isoformat = timestamp.shift(
+                    seconds=k * self.flight_start_shift_time
+                ).isoformat()
+                list_end = (
+                    flight_track_details[k]["track_length"] - flight_current_index[k]
+                )
 
                 if list_end != 1:
-                    flight_point = self.grid_cells_flight_tracks[k].track[flight_current_index[k]]
+                    flight_point = self.grid_cells_flight_tracks[k].track[
+                        flight_current_index[k]
+                    ]
                     aircraft_position = RIDAircraftPosition(
                         lat=flight_point.lat,
                         lng=flight_point.lng,
@@ -340,7 +387,9 @@ class AdjacentCircularFlightsSimulator:
                         accuracy_v=VerticalAccuracy.VAUnknown,
                         extrapolated=False,
                     )
-                    aircraft_height = RIDHeight(distance=self.altitude_agl, reference="TakeoffLocation")
+                    aircraft_height = RIDHeight(
+                        distance=self.altitude_agl, reference="TakeoffLocation"
+                    )
 
                     rid_aircraft_state = RIDAircraftState(
                         timestamp=Time(value=timestamp_isoformat, format="RFC3339"),
@@ -377,7 +426,9 @@ def generate_aircraft_states(
 ) -> FlightRecordCollection:
     my_path_generator = AdjacentCircularFlightsSimulator(config)
 
-    my_path_generator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=config.altitude_of_ground_level_wgs_84)
+    my_path_generator.generate_flight_grid_and_path_points(
+        altitude_of_ground_level_wgs_84=config.altitude_of_ground_level_wgs_84
+    )
     my_path_generator.generate_query_bboxes()
 
     my_path_generator.generate_rid_state(duration=30)
@@ -395,19 +446,21 @@ if __name__ == "__main__":
     MIN_ALTITUDE_WGS84 = 100
 
     config_file_path = "config.json"
+
+    print(f"Loading configuration from: {config_file_path}")
     if os.path.exists(config_file_path):
         with open(config_file_path, "r", encoding="utf-8") as config_file:
             config_data = json.load(config_file)
-            minx = config_data.get("minx", 7.441250483123781)
-            miny = config_data.get("miny", 46.94967429343589)
-            maxx = config_data.get("maxx", 7.441630364614923)
-            maxy = config_data.get("maxy", 46.9498720814052)
+            minx = config_data.get("minx", 7.4719589491516558)
+            miny = config_data.get("miny", 46.9799127188803993)
+            maxx = config_data.get("maxx", 7.4870457729811619)
+            maxy = config_data.get("maxy", 46.9865389634242945)
     else:
         logger.warning(f"Config file not found. Using default values.")
-        minx = 7.441250483123781
-        miny = 46.94967429343589
-        maxx = 7.441630364614923
-        maxy = 46.9498720814052
+        minx = 7.4719589491516558
+        miny = 46.9799127188803993
+        maxx = 7.4870457729811619
+        maxy = 46.9865389634242945
     my_flight_generator = AdjacentCircularFlightsSimulator(
         config=AdjacentCircularFlightsSimulatorConfiguration(
             reference_time=arrow.utcnow(),
@@ -419,7 +472,9 @@ if __name__ == "__main__":
             random_seed=None,
         )
     )
-    my_flight_generator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=500)
+    my_flight_generator.generate_flight_grid_and_path_points(
+        altitude_of_ground_level_wgs_84=500
+    )
     my_flight_generator.generate_query_bboxes()
     my_flight_generator.generate_rid_state(duration=30)
     # Add the bounding box as GeoJSON to the flight declaration
@@ -429,7 +484,9 @@ if __name__ == "__main__":
     logger.info(f"Output directory created or already exists: {output_dir}")
 
     bbox_file = os.path.join(output_dir, "flight_declaration_bounding_box.json")
-    half_box_bbox_file = os.path.join(output_dir, "flight_declaration_half_bounding_box.json")
+    half_box_bbox_file = os.path.join(
+        output_dir, "flight_declaration_half_bounding_box.json"
+    )
     flight_data_file = os.path.join(output_dir, "flight_data.json")
 
     half_bbox_geojson = shapely.geometry.mapping(my_flight_generator.half_box)
@@ -447,8 +504,12 @@ if __name__ == "__main__":
     logger.info("Flight declaration template loaded successfully.")
 
     # Update the start and end datetime
-    flight_declaration_geojson["start_datetime"] = my_flight_generator.reference_time.datetime.isoformat()
-    flight_declaration_geojson["end_datetime"] = my_flight_generator.reference_time.shift(minutes=10).datetime.isoformat()
+    flight_declaration_geojson["start_datetime"] = (
+        my_flight_generator.reference_time.datetime.isoformat()
+    )
+    flight_declaration_geojson["end_datetime"] = (
+        my_flight_generator.reference_time.shift(minutes=10).datetime.isoformat()
+    )
 
     bbox_polygon = GeoJSONPolygon(coordinates=bbox_geojson["coordinates"])
     bbox_geojson_feature = Feature(
@@ -460,7 +521,9 @@ if __name__ == "__main__":
     )
     bbox_geojson_feature_collection = FeatureCollection(features=[bbox_geojson_feature])
     # Update the GeoJSON with the bounding box
-    flight_declaration_geojson["flight_declaration_geo_json"] = bbox_geojson_feature_collection.__geo_interface__
+    flight_declaration_geojson["flight_declaration_geo_json"] = (
+        bbox_geojson_feature_collection.__geo_interface__
+    )
 
     halfbox_bbox_polygon = GeoJSONPolygon(coordinates=half_bbox_geojson["coordinates"])
     halfbox_bbox_geojson_feature = Feature(
@@ -470,10 +533,14 @@ if __name__ == "__main__":
             "min_altitude": {"meters": MIN_ALTITUDE_WGS84, "datum": "WGS84"},
         },
     )
-    halfbox_bbox_geojson_feature_collection = FeatureCollection(features=[halfbox_bbox_geojson_feature])
+    halfbox_bbox_geojson_feature_collection = FeatureCollection(
+        features=[halfbox_bbox_geojson_feature]
+    )
 
     half_box_flight_declaration = flight_declaration_geojson.copy()
-    half_box_flight_declaration["flight_declaration_geo_json"] = halfbox_bbox_geojson_feature_collection.__geo_interface__
+    half_box_flight_declaration["flight_declaration_geo_json"] = (
+        halfbox_bbox_geojson_feature_collection.__geo_interface__
+    )
 
     with open(bbox_file, "w", encoding="utf-8") as updated_file:
         json.dump(flight_declaration_geojson, updated_file, indent=2)

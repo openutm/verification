@@ -53,3 +53,24 @@ class AdjacentCircularFlightsSimulatorConfiguration(ImplicitDict):
 
     flight_start_shift: int = 0
     """Delay generated flight starts from the reference time to spread flights over time. Expressed in seconds. Use 0 to disable."""
+
+
+class GeoJSONFlightsSimulatorConfiguration(ImplicitDict):
+    reference_time: StringBasedDateTime = StringBasedDateTime("2022-01-01T00:00:00Z")
+    """The reference time relative to which flight data should be generated.
+
+    The time should be irrelevant in real-world use as times are adjusted to be
+    relative to a time close to the time of test.
+    """
+
+    random_seed: Optional[int] = 12345
+    """Pseudorandom seed that should be used, or specify None to use default Random."""
+    geojson: dict
+    utm_zone: int = 32
+    """UTM Zone integer for the location, see https://en.wikipedia.org/wiki/Universal_Transverse_Mercator_coordinate_system to identify the zone for the location."""
+
+    altitude_of_ground_level_wgs_84 = 570
+    """Height of the geoid above the WGS84 ellipsoid (using EGM 96) for Bern, rom https://geographiclib.sourceforge.io/cgi-bin/GeoidEval?input=46%B056%26%238242%3B53%26%238243%3BN+7%B026%26%238242%3B51%26%238243%3BE&option=Submit"""
+
+    flight_start_shift: int = 0
+    """Delay generated flight starts from the reference time to spread flights over time. Expressed in seconds. Use 0 to disable."""
