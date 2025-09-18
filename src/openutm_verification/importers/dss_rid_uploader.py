@@ -8,7 +8,7 @@ import arrow
 import requests
 from dotenv import find_dotenv, load_dotenv
 
-from openutm_verification.client import NoAuthCredentialsGetter, PassportCredentialsGetter
+from openutm_verification.auth.passport_client import NoAuthCredentialsGetter, PassportCredentialsGetter
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:

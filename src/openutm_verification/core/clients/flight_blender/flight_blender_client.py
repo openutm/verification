@@ -69,7 +69,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self.latest_flight_declaration_id: Optional[str] = None
         logger.debug(f"Initialized FlightBlenderClient with base_url={base_url}, request_timeout={request_timeout}")
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Optional[bool]:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         # Best-effort cleanup of resources created during the session
         logger.info("Exiting FlightBlenderClient, performing cleanup")
         if self.latest_geo_fence_id:

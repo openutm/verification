@@ -1,4 +1,4 @@
-# OpenUTM Verification Toolkit v0.1.2
+# OpenUTM Verification Toolkit v0.1.3
 
 A repository to host verification tools for Flight Blender and OpenUTM products.
 

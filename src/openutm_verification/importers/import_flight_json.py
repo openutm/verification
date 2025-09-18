@@ -8,7 +8,7 @@ from os.path import abspath, dirname
 
 import requests
 
-from openutm_verification.client import NoAuthCredentialsGetter, PassportCredentialsGetter
+from openutm_verification.auth.passport_client import NoAuthCredentialsGetter, PassportCredentialsGetter
 
 
 class FlightBlenderUploader:

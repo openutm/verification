@@ -4,7 +4,7 @@ No-authentication credentials provider for development/testing.
 
 from typing import List
 
-from openutm_verification.dev_auth import NoAuth
+from openutm_verification.auth.dev_auth import NoAuth
 
 
 class NoAuthCredentialsGetter:
