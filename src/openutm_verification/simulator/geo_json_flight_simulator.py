@@ -85,9 +85,9 @@ class GeoJSONFlightsSimulator:
         second_point = adjacent_points[1]
 
         fwd_azimuth, _, adjacent_point_distance_mts = self.geod.inv(first_point.x, first_point.y, second_point.x, second_point.y)
-        speed_mts_per_sec = float(f"{(adjacent_point_distance_mts / delta_time_secs):.2f}")
-        if fwd_azimuth < 0:
-            fwd_azimuth = 360 + fwd_azimuth
+        speed_mts_per_sec = round(adjacent_point_distance_mts / delta_time_secs, 2)
+        # Normalize azimuth to [0, 360)
+        fwd_azimuth = (fwd_azimuth + 360.0) % 360.0
         return [speed_mts_per_sec, fwd_azimuth]
 
     def utm_converter(self, shapely_shape: BaseGeometry, inverse: bool = False) -> BaseGeometry:
@@ -115,14 +115,16 @@ class GeoJSONFlightsSimulator:
 
         return shape({"type": gtype, "coordinates": tuple(new_coords)})
 
-    def generate_flight_grid_and_path_points(self, altitude_of_ground_level_wgs_84: float):
+    def generate_flight_grid_and_path_points(self, altitude_of_ground_level_wgs_84: float, *, loop_path: bool = False) -> None:
         flight_points_with_altitude: List[FlightPoint] = []
         logger.info(f"Generating flight grid and path points at altitude {altitude_of_ground_level_wgs_84} meters")
         all_grid_cell_tracks = []
-        for coord in range(0, len(self.flight_path_points) - 1):
-            cur_coord = coord
-            next_coord = coord + 1
-            next_coord = 0 if next_coord == len(self.flight_path_points) else next_coord
+        if not self.flight_path_points:
+            raise RuntimeError("No flight path points available")
+        n_points = len(self.flight_path_points)
+        end = n_points if loop_path else max(n_points - 1, 0)
+        for cur_coord in range(0, end):
+            next_coord = (cur_coord + 1) % n_points if loop_path else cur_coord + 1
             adjacent_points = [
                 Point(self.flight_path_points[cur_coord].x, self.flight_path_points[cur_coord].y),
                 Point(self.flight_path_points[next_coord].x, self.flight_path_points[next_coord].y),
@@ -162,7 +164,7 @@ class GeoJSONFlightsSimulator:
             registration_number=my_flight_details_generator.generate_registration_number(),
         )
 
-    def generate_rid_state(self, duration: int):
+    def generate_rid_state(self, duration: int) -> None:
         """
         Generate rid_state objects that can be submitted as flight telemetry.
         """
@@ -188,37 +190,35 @@ class GeoJSONFlightsSimulator:
 
             for k in range(num_flights):
                 timestamp_isoformat = timestamp.shift(seconds=k * self.flight_start_shift_time).isoformat()
-                list_end = flight_track_details[k]["track_length"] - flight_current_index[k]
+                track_len = flight_track_details[k]["track_length"]
+                if track_len == 0:
+                    continue
+                idx = flight_current_index[k] % track_len
+                flight_point = self.grid_cells_flight_tracks[k].track[idx]
+                aircraft_position = RIDAircraftPosition(
+                    lat=flight_point.lat,
+                    lng=flight_point.lng,
+                    alt=flight_point.alt,
+                    accuracy_h=HorizontalAccuracy.HAUnknown,
+                    accuracy_v=VerticalAccuracy.VAUnknown,
+                    extrapolated=False,
+                )
+                aircraft_height = RIDHeight(distance=self.altitude_agl, reference="TakeoffLocation")
 
-                if list_end != 1:
-                    flight_point = self.grid_cells_flight_tracks[k].track[flight_current_index[k]]
-                    aircraft_position = RIDAircraftPosition(
-                        lat=flight_point.lat,
-                        lng=flight_point.lng,
-                        alt=flight_point.alt,
-                        accuracy_h=HorizontalAccuracy.HAUnknown,
-                        accuracy_v=VerticalAccuracy.VAUnknown,
-                        extrapolated=False,
-                    )
-                    aircraft_height = RIDHeight(distance=self.altitude_agl, reference="TakeoffLocation")
+                rid_aircraft_state = RIDAircraftState(
+                    timestamp=Time(value=timestamp_isoformat, format="RFC3339"),
+                    operational_status="Airborne",
+                    position=aircraft_position,
+                    height=aircraft_height,
+                    track=flight_point.bearing,
+                    speed=flight_point.speed,
+                    timestamp_accuracy=0.0,
+                    speed_accuracy="SA3mps",
+                    vertical_speed=0.0,
+                )
 
-                    rid_aircraft_state = RIDAircraftState(
-                        timestamp=Time(value=timestamp_isoformat, format="RFC3339"),
-                        operational_status="Airborne",
-                        position=aircraft_position,
-                        height=aircraft_height,
-                        track=flight_point.bearing,
-                        speed=flight_point.speed,
-                        timestamp_accuracy=0.0,
-                        speed_accuracy="SA3mps",
-                        vertical_speed=0.0,
-                    )
-
-                    all_flight_telemetry[k].append(rid_aircraft_state)
-
-                    flight_current_index[k] += 1
-                else:
-                    flight_current_index[k] = 0
+                all_flight_telemetry[k].append(rid_aircraft_state)
+                flight_current_index[k] = (flight_current_index[k] + 1) % max(track_len, 1)
 
         flights: List[FullFlightRecord] = []
         for m in range(num_flights):
@@ -244,7 +244,8 @@ def generate_aircraft_states(
 
     result = FlightRecordCollection(flights=flights)
 
-    return ImplicitDict.parse(result, FlightRecordCollection)
+    # Already the correct type; no need to re-parse via ImplicitDict
+    return result
 
 
 if __name__ == "__main__":
@@ -267,11 +268,14 @@ if __name__ == "__main__":
         config=GeoJSONFlightsSimulatorConfiguration(
             reference_time=arrow.utcnow(),
             geojson=geojson_data,
-            altitude_of_ground_level_wgs_84=200,
+            altitude_of_ground_level_wgs_84=500,
             random_seed=None,
         )
     )
-    my_flight_generator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=500)
+    # Use the configured altitude consistently
+    my_flight_generator.generate_flight_grid_and_path_points(
+        altitude_of_ground_level_wgs_84=my_flight_generator.config.altitude_of_ground_level_wgs_84
+    )
 
     my_flight_generator.generate_rid_state(duration=30)
     # Add the bounding box as GeoJSON to the flight declaration
@@ -290,6 +294,11 @@ if __name__ == "__main__":
     bbox_geojson = mapping(my_flight_generator.box)
 
     logger.info("Generated GeoJSON for bounding boxes.")
+    # Persist bounding boxes
+    with bbox_file.open("w", encoding="utf-8") as f:
+        json.dump(bbox_geojson, f)
+    with half_box_bbox_file.open("w", encoding="utf-8") as f:
+        json.dump(half_bbox_geojson, f)
 
     logger.info(f"Number of flights generated: {len(my_flight_generator.flights)}")
     all_flights: List[dict] = []
