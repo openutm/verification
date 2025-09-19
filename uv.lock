@@ -881,14 +881,11 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "mypy" },
     { name = "mypy", specifier = ">=1.11.2" },
     { name = "pre-commit", specifier = ">=4.3.0" },
-    { name = "pylint" },
     { name = "pylint", specifier = ">=3.3.2" },
     { name = "pylint-pytest", specifier = ">=1.1.7" },
     { name = "pytest", specifier = ">=8.4.1" },
-    { name = "ruff" },
     { name = "ruff", specifier = ">=0.12.10" },
     { name = "ty", specifier = ">=0.0.1a14" },
     { name = "types-pyyaml" },
