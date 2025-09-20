@@ -3,6 +3,21 @@ import os
 from dataclasses import dataclass
 from shapely.geometry import box
 import arrow
+from pyproj import Geod, Proj, Transformer
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),  # Log to console
+        logging.FileHandler("simulator.log", mode="w"),  # Log to a file
+    ],
+)
+
+# Create a logger instance
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -31,6 +46,7 @@ class FlightDeclarationGenerator:
             "flight_declaration_template.json",
         )
         template_path = os.path.abspath(template_path)
+        self.geod = Geod(ellps="WGS84")
 
         # Load the JSON template
         with open(template_path, "r") as f:
@@ -44,6 +60,13 @@ class FlightDeclarationGenerator:
         bbox = box(
             self.bounds.min_x, self.bounds.min_y, self.bounds.max_x, self.bounds.max_y
         )
+        diagonal_length = self.geod.inv(
+            self.bounds.min_x, self.bounds.min_y, self.bounds.max_x, self.bounds.max_y
+        )[2]
+        logger.info(f"New diagonal length: {diagonal_length} meters")
+        if diagonal_length <= 500:
+            logger.warning("Diagonal length is less than or equal to 500 meters.")
+            raise ValueError("The diagonal length of the bounding box must be greater than 500 meters.")
         # write the bos as a geojson feature collection
         geojson_bbox = {
             "type": "FeatureCollection",
