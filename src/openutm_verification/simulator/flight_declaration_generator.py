@@ -66,7 +66,9 @@ class FlightDeclarationGenerator:
         logger.info(f"New diagonal length: {diagonal_length} meters")
         if diagonal_length <= 500:
             logger.warning("Diagonal length is less than or equal to 500 meters.")
-            raise ValueError("The diagonal length of the bounding box must be greater than 500 meters.")
+            raise ValueError(
+                "The diagonal length of the bounding box must be greater than 500 meters."
+            )
         # write the bos as a geojson feature collection
         geojson_bbox = {
             "type": "FeatureCollection",
