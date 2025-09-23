@@ -235,16 +235,29 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             time.sleep(duration_seconds)
         return response.json()
 
-    @scenario_step("Submit Telemetry")
-    def submit_telemetry(self, operation_id: str, filename: str, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
-        """Submit telemetry data for a flight operation.
+    def _load_telemetry_file(self, filename: str) -> List[Dict[str, Any]]:
+        """Load telemetry states from a JSON file.
 
-        Loads telemetry states from file and submits them sequentially, with optional
-        duration limiting and error handling for rate limits.
+        Args:
+            filename: Path to the JSON file containing telemetry data.
+
+        Returns:
+            List of telemetry state dictionaries.
+
+        Raises:
+            json.JSONDecodeError: If the file content is invalid JSON.
+        """
+        logger.debug(f"Loading telemetry from {filename}")
+        with open(filename, "r", encoding="utf-8") as rid_json_file:
+            rid_json = json.loads(rid_json_file.read())
+        return rid_json["current_states"]
+
+    def _submit_telemetry_states_impl(self, operation_id: str, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+        """Internal implementation for submitting telemetry states.
 
         Args:
             operation_id: The ID of the operation for telemetry submission.
-            filename: Path to the JSON file containing telemetry data.
+            states: List of telemetry state dictionaries.
             duration_seconds: Optional maximum duration in seconds to submit telemetry (default 0 for unlimited).
 
         Returns:
@@ -254,11 +267,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             FlightBlenderError: If maximum waiting time is exceeded due to rate limits.
         """
         endpoint = "/flight_stream/set_telemetry"
-        logger.debug(f"Submitting telemetry from {filename} for operation {operation_id}")
-        with open(filename, "r", encoding="utf-8") as rid_json_file:
-            rid_json = json.loads(rid_json_file.read())
+        logger.debug(f"Submitting telemetry for operation {operation_id}")
 
-        states = rid_json["current_states"]
         rid_operator_details = _create_rid_operator_details(operation_id)
 
         last_response = None
@@ -289,6 +299,47 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             time.sleep(sleep_interval)
         logger.info("Telemetry submission completed")
         return last_response
+
+    @scenario_step("Submit Telemetry")
+    def submit_telemetry(self, operation_id: str, filename: str, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+        """Submit telemetry data for a flight operation.
+
+        Loads telemetry states from file and submits them sequentially, with optional
+        duration limiting and error handling for rate limits.
+
+        Args:
+            operation_id: The ID of the operation for telemetry submission.
+            filename: Path to the JSON file containing telemetry data.
+            duration_seconds: Optional maximum duration in seconds to submit telemetry (default 0 for unlimited).
+
+        Returns:
+            The JSON response from the last telemetry submission, or None if no submissions occurred.
+
+        Raises:
+            FlightBlenderError: If maximum waiting time is exceeded due to rate limits.
+        """
+        states = self._load_telemetry_file(filename)
+        return self._submit_telemetry_states_impl(operation_id, states, duration_seconds)
+
+    @scenario_step("Submit Telemetry (in-memory)")
+    def submit_telemetry_states(self, operation_id: str, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+        """Submit telemetry data for a flight operation from in-memory states.
+
+        Submits telemetry states sequentially from the provided list, with optional
+        duration limiting and error handling for rate limits.
+
+        Args:
+            operation_id: The ID of the operation for telemetry submission.
+            states: List of telemetry state dictionaries.
+            duration_seconds: Optional maximum duration in seconds to submit telemetry (default 0 for unlimited).
+
+        Returns:
+            The JSON response from the last telemetry submission, or None if no submissions occurred.
+
+        Raises:
+            FlightBlenderError: If maximum waiting time is exceeded due to rate limits.
+        """
+        return self._submit_telemetry_states_impl(operation_id, states, duration_seconds)
 
     @scenario_step("Check Operation State")
     def check_operation_state(self, operation_id: str, expected_state: OperationState, duration_seconds: int = 0) -> Dict[str, Any]:

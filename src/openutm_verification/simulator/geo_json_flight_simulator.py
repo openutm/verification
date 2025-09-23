@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import List, Optional
 
 import arrow
-from implicitdict import ImplicitDict
 from loguru import logger
 from pyproj import Geod, Transformer
 from shapely.geometry import LineString, Point, Polygon, box, mapping, shape
@@ -35,7 +34,6 @@ from openutm_verification.simulator.operator_flight_details import (
 from openutm_verification.simulator.utils import (
     FlightPoint,
     GridCellFlight,
-    QueryBoundingBox,
 )
 
 
@@ -58,14 +56,16 @@ class GeoJSONFlightsSimulator:
         self.center_point: Optional[Point] = None
         self.bounds: Optional[tuple[float, float, float, float]] = None
 
-        # This object holds the name and the polygon object of the query boxes.
-        self.query_bboxes: List[QueryBoundingBox] = []
-
-        self.flights: List[FullFlightRecord] = []
-        self.bbox_center: List[Point] = []
+        self.flights: list[FullFlightRecord] = []
         self.box: Optional[Polygon] = None
         self.half_box: Optional[Polygon] = None
-        self.grid_cells_flight_tracks: List[GridCellFlight] = []
+        self.grid_cells_flight_tracks: list[GridCellFlight] = []
+
+        # Cache pyproj transformers for performance
+        wgs84 = "EPSG:4326"
+        utm = f"+proj=utm +zone={self.utm_zone} +ellps=WGS84 +datum=WGS84"
+        self._tx_wgs84_to_utm = Transformer.from_crs(wgs84, utm, always_xy=True)
+        self._tx_utm_to_wgs84 = Transformer.from_crs(utm, wgs84, always_xy=True)
 
         # Validate input GeoJSON and precompute derived values via Pydantic models
         vfp = ValidatedFlightPath.from_feature_collection(self.config.geojson)
@@ -79,7 +79,7 @@ class GeoJSONFlightsSimulator:
         self.flight_path_points = [Point(lon, lat) for lon, lat in vfp.path_points]
         logger.info(f"Validated LineString length: {vfp.line_length_m:.1f} m, generated {len(self.flight_path_points)} path points")
 
-    def generate_flight_speed_bearing(self, adjacent_points: List[Point], delta_time_secs: int) -> List[float]:
+    def generate_flight_speed_bearing(self, adjacent_points: list[Point], delta_time_secs: int) -> tuple[float, float]:
         """Generate speed (m/s) and bearing between two adjacent Points."""
         first_point = adjacent_points[0]
         second_point = adjacent_points[1]
@@ -88,13 +88,11 @@ class GeoJSONFlightsSimulator:
         speed_mts_per_sec = round(adjacent_point_distance_mts / delta_time_secs, 2)
         # Normalize azimuth to [0, 360)
         fwd_azimuth = (fwd_azimuth + 360.0) % 360.0
-        return [speed_mts_per_sec, fwd_azimuth]
+        return speed_mts_per_sec, fwd_azimuth
 
     def utm_converter(self, shapely_shape: BaseGeometry, inverse: bool = False) -> BaseGeometry:
         """Convert between WGS84 (lon/lat) and UTM coordinates for buffering."""
-        wgs84 = "EPSG:4326"
-        utm = f"+proj=utm +zone={self.utm_zone} +ellps=WGS84 +datum=WGS84"
-        transformer = Transformer.from_crs(wgs84, utm, always_xy=True) if not inverse else Transformer.from_crs(utm, wgs84, always_xy=True)
+        transformer = self._tx_utm_to_wgs84 if inverse else self._tx_wgs84_to_utm
 
         gi = shapely_shape.__geo_interface__
         gtype: str = gi["type"]
@@ -116,18 +114,20 @@ class GeoJSONFlightsSimulator:
         return shape({"type": gtype, "coordinates": tuple(new_coords)})
 
     def generate_flight_grid_and_path_points(self, altitude_of_ground_level_wgs_84: float, *, loop_path: bool = False) -> None:
-        flight_points_with_altitude: List[FlightPoint] = []
+        flight_points_with_altitude: list[FlightPoint] = []
         logger.info(f"Generating flight grid and path points at altitude {altitude_of_ground_level_wgs_84} meters")
         all_grid_cell_tracks = []
         if not self.flight_path_points:
             raise RuntimeError("No flight path points available")
         n_points = len(self.flight_path_points)
+        if n_points < 2 and not loop_path:
+            raise ValueError("Path must have at least 2 points for non-looped paths")
         end = n_points if loop_path else max(n_points - 1, 0)
         for cur_coord in range(0, end):
             next_coord = (cur_coord + 1) % n_points if loop_path else cur_coord + 1
             adjacent_points = [
-                Point(self.flight_path_points[cur_coord].x, self.flight_path_points[cur_coord].y),
-                Point(self.flight_path_points[next_coord].x, self.flight_path_points[next_coord].y),
+                self.flight_path_points[cur_coord],
+                self.flight_path_points[next_coord],
             ]
             speed, bearing = self.generate_flight_speed_bearing(adjacent_points=adjacent_points, delta_time_secs=1)
 
@@ -164,7 +164,7 @@ class GeoJSONFlightsSimulator:
             registration_number=my_flight_details_generator.generate_registration_number(),
         )
 
-    def generate_rid_state(self, duration: int) -> None:
+    def generate_states(self, duration: int, loop_path: bool = False) -> List[RIDAircraftState]:
         """
         Generate rid_state objects that can be submitted as flight telemetry.
         """
@@ -193,7 +193,10 @@ class GeoJSONFlightsSimulator:
                 track_len = flight_track_details[k]["track_length"]
                 if track_len == 0:
                     continue
-                idx = flight_current_index[k] % track_len
+                if loop_path:
+                    idx = flight_current_index[k] % track_len
+                else:
+                    idx = min(flight_current_index[k], track_len - 1)
                 flight_point = self.grid_cells_flight_tracks[k].track[idx]
                 aircraft_position = RIDAircraftPosition(
                     lat=flight_point.lat,
@@ -218,7 +221,7 @@ class GeoJSONFlightsSimulator:
                 )
 
                 all_flight_telemetry[k].append(rid_aircraft_state)
-                flight_current_index[k] = (flight_current_index[k] + 1) % max(track_len, 1)
+                flight_current_index[k] = flight_current_index[k] + 1
 
         flights: List[FullFlightRecord] = []
         for m in range(num_flights):
@@ -231,6 +234,34 @@ class GeoJSONFlightsSimulator:
             flights.append(record)
         self.flights = flights
 
+        # Return states for flight 0 for in-memory use
+        return all_flight_telemetry[0] if all_flight_telemetry else []
+
+    def to_jsonable_state(self, state: RIDAircraftState) -> dict:
+        """Convert a RIDAircraftState to a JSON-serializable dict."""
+        return json.loads(json.dumps(state))
+
+    def to_jsonable_states(self, states: List[RIDAircraftState]) -> List[dict]:
+        """Convert a list of RIDAircraftState to a list of JSON-serializable dicts."""
+        return [self.to_jsonable_state(state) for state in states]
+
+    def generate_telemetry_payload(self, duration: int, loop_path: bool = False) -> dict:
+        """Generate a telemetry payload dict with reference_time and current_states.
+
+        Args:
+            duration: Duration in seconds.
+            loop_path: Whether to loop the path.
+
+        Returns:
+            Dict with 'reference_time' and 'current_states'.
+        """
+        states = self.generate_states(duration, loop_path)
+        jsonable_states = self.to_jsonable_states(states)
+        return {
+            "reference_time": self.reference_time.isoformat(),
+            "current_states": jsonable_states,
+        }
+
 
 def generate_aircraft_states(
     config: GeoJSONFlightsSimulatorConfiguration,
@@ -239,7 +270,7 @@ def generate_aircraft_states(
 
     my_path_generator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=config.altitude_of_ground_level_wgs_84)
 
-    my_path_generator.generate_rid_state(duration=30)
+    my_path_generator.generate_states(duration=30)
     flights = my_path_generator.flights
 
     result = FlightRecordCollection(flights=flights)
@@ -249,8 +280,17 @@ def generate_aircraft_states(
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run GeoJSON Flight Simulator")
+    parser.add_argument("--config", type=str, default="config.json", help="Path to config file")
+    parser.add_argument("--duration", type=int, default=30, help="Duration of simulation in seconds")
+    parser.add_argument("--loop-path", action="store_true", help="Loop the flight path")
+    parser.add_argument("--output-dir", type=str, default="output", help="Output directory for files")
+    args = parser.parse_args()
+
     # Load configuration from config.json
-    config_file_path = Path("config.json")
+    config_file_path = Path(args.config)
 
     logger.info(f"Loading configuration from: {config_file_path}")
     if config_file_path.exists():
@@ -274,13 +314,13 @@ if __name__ == "__main__":
     )
     # Use the configured altitude consistently
     my_flight_generator.generate_flight_grid_and_path_points(
-        altitude_of_ground_level_wgs_84=my_flight_generator.config.altitude_of_ground_level_wgs_84
+        altitude_of_ground_level_wgs_84=my_flight_generator.config.altitude_of_ground_level_wgs_84, loop_path=args.loop_path
     )
 
-    my_flight_generator.generate_rid_state(duration=30)
+    my_flight_generator.generate_states(duration=args.duration, loop_path=args.loop_path)
     # Add the bounding box as GeoJSON to the flight declaration
     # Create the output directory if it does not exist
-    output_dir = Path("output")
+    output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     logger.info(f"Output directory created or already exists: {output_dir}")
 
@@ -301,10 +341,8 @@ if __name__ == "__main__":
         json.dump(half_bbox_geojson, f)
 
     logger.info(f"Number of flights generated: {len(my_flight_generator.flights)}")
-    all_flights: List[dict] = []
-    for rec in my_flight_generator.flights:
-        all_flights.append(json.loads(json.dumps(rec)))
-        break
+    # Generate telemetry payload using the serialization helpers
+    payload = my_flight_generator.generate_telemetry_payload(duration=args.duration, loop_path=args.loop_path)
     with flight_data_file.open("w", encoding="utf-8") as f:
-        f.write(json.dumps(all_flights))
-    logger.info(f"Flight data saved to: {flight_data_file}")
+        json.dump(payload, f)
+    logger.info(f"Telemetry payload saved to: {flight_data_file}")

@@ -4,7 +4,7 @@ import uuid
 
 from faker import Faker
 from uas_standards.ansi_cta_2063_a import SerialNumber
-from uas_standards.astm.f3411.v19.api import LatLngPoint
+from uas_standards.astm.f3411.v22a.api import LatLngPoint
 
 
 class OperatorFlightDataGenerator:
