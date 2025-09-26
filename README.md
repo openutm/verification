@@ -1,4 +1,4 @@
-# OpenUTM Verification Toolkit v0.1.2
+# OpenUTM Verification Toolkit v0.1.3
 
 A repository to host verification tools for Flight Blender and OpenUTM products.
 
@@ -141,6 +141,31 @@ For authentication, the following fields can be configured in `config/default.ya
 * `scopes`: The list of scopes for token requests. Default: ["flightblender.write", "flightblender.read"]
 
 When using `type: "passport"`, also set `client_id`, `client_secret`, and `token_url` as needed.
+
+#### Scenario Data Configuration
+
+The verification scenarios are driven by configuration in `config/default.yaml`, which controls the in-memory generation of flight data. This approach eliminates the need for pre-generated data files.
+
+* **`data_files`**: This section defines the global default paths to the *configuration files* used for generating flight declarations and telemetry.
+* **`scenarios`**: This section allows for per-scenario overrides. If a scenario requires different data, you can specify its data configuration paths here.
+
+The paths point to configuration files, not generated data. For example:
+
+* `telemetry`: A GeoJSON file defining the flight path for telemetry generation.
+* `flight_declaration`: A JSON file defining the bounds and parameters for generating a flight declaration.
+
+**Example `config/default.yaml` structure:**
+
+```yaml
+data_files:
+  telemetry: "config/bern/telemetry_f1.json"
+  flight_declaration: "config/bern/flight_declaration.json"
+
+scenarios:
+  "F1_happy_path":
+    telemetry: "config/bern/telemetry_f1.json" # Optional override
+    flight_declaration: "config/bern/flight_declaration.json" # Optional override
+```
 
 ### Docker Compose Services
 

@@ -23,14 +23,24 @@ opensky:
     client_id: "your-client-id"
     client_secret: "your-client-secret"
 
+data_files:
+  telemetry: "config/bern/telemetry_f1.json" # Path to flight declarations JSON file
+  flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file
+  # geo_fence: "config/geo_fences.json" # Path to geo-fences
+
 # List of test scenario IDs to execute
 scenarios:
-  - "F1_happy_path"
-  - "F2_contingent_path"
-  - "F3_non_conforming_path"
-  - "opensky_live_data"
-  - "add_flight_declaration"
-  - "geo_fence_upload"
+  "F1_happy_path":
+    telemetry: "config/bern/telemetry_f1.json"
+  "F2_contingent_path":
+    telemetry: "config/bern/telemetry_f2.json"
+  "F3_non_conforming_path":
+    telemetry: "config/bern/telemetry_f3.json"
+  "F5_non_conforming_path":
+    telemetry: "config/bern/telemetry_f5.json"
+  "opensky_live_data":
+  "add_flight_declaration":
+  "geo_fence_upload":
 
 # Reporting configuration
 reporting:

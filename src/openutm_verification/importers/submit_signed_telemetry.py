@@ -19,7 +19,7 @@ from http_message_signatures import HTTPMessageSigner, HTTPMessageVerifier, HTTP
 from jwt.exceptions import DecodeError, ExpiredSignatureError, InvalidKeyError, InvalidSignatureError, InvalidTokenError
 
 import openutm_verification.rid
-from openutm_verification.client import NoAuthCredentialsGetter
+from openutm_verification.auth.passport_client import NoAuthCredentialsGetter
 
 # This file send signed requests to ArgonServer and verifies responses from Blendre
 # Source: https://github.com/pyauth/http-message-signatures/blob/main/test/test.py

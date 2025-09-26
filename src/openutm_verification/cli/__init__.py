@@ -21,9 +21,15 @@ def main():
     args = parser.parse_args()
 
     # Load configuration
-    with open(args.config, "r", encoding="utf-8") as f:
+    config_path = Path(args.config)
+    with open(config_path, "r", encoding="utf-8") as f:
         config_data = yaml.safe_load(f)
     config = AppConfig.model_validate(config_data)
+
+    # Resolve relative paths to absolute paths (relative to project root)
+    project_root = config_path.parent.parent  # config/ -> project root
+    config.resolve_paths(project_root)
+
     ConfigProxy.initialize(config)
 
     # Setup logging

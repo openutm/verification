@@ -4,7 +4,7 @@ import os
 import sys
 from typing import List
 
-from openutm_verification.dev_auth import NoAuth
+from openutm_verification.auth.dev_auth import NoAuth
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)

@@ -1,31 +1,73 @@
-# Simulator
+# GeoJSON Flight Simulator
 
-This folder contains tools and scripts for running flight simulations. The simulations are designed to generate realistic flight data for testing and integration purposes.
+This simulator generates ASTM F3411 RID aircraft states from a validated GeoJSON LineString. It pre-validates and derives geometry from the input, converts it into time-stepped flight points (with speed and bearing), then emits RIDAircraftState sequences and wraps them into FullFlightRecord objects.
 
-## Running the `adjacent_circular_flights_simulation`
+## What it does
 
-The `adjacent_circular_flights_simulation` generates flight paths that simulate adjacent circular flight patterns. Follow the steps below to run the simulation:
+- Validates the input FeatureCollection and extracts a LineString path
+- Computes derived geometry (bounds, center, LineString length, full and half bounding boxes)
+- Generates one flight track sampled at 1 Hz with per-segment speed and bearing
+- Produces RIDAircraftState objects for a requested duration
+- Assembles FullFlightRecord(s) with operator/flight details
+- Optionally writes first flight record to `output/flight_data.json` when run as a script
 
-### Prerequisites
-1. Ensure you have Python 3.8+ installed.
-2. Install the required dependencies by running:
-    ```bash
-    pip install -r requirements.txt
-    ```
+## Inputs
 
-### Steps to Run
-1. Navigate to the simulator directory:
-    ```bash
-    cd verification/flight_blender_e2e_integration/simulator
-    ```
-2. Run the simulation script:
-    ```bash
-    python adjacent_circular_flights_simulation.py
-    ```
-3. The simulation will generate flight data and output it to the `output` directory.
+- GeoJSON FeatureCollection containing a single LineString
+- Reference time (UTC) for timestamping
+- Altitude parameters (AGL and ground reference altitude)
+- Optional random seed and UTM zone
 
-### Output
-The generated flight data will be stored in JSON format in the `output` directory. This data can be used for further analysis or integration testing.
+## Outputs
 
-For more details, refer to the comments in the `adjacent_circular_flights_simulation.py` script.
-This repository uses files / data from the `interuss/monitoring` repository to build simulation data
+- In-memory: `FlightRecordCollection` with one or more `FullFlightRecord` entries
+- Script mode: `output/flight_data.json` (first flight only), plus computed bounding boxes in-memory
+
+## Workflow (Mermaid)
+
+```mermaid
+flowchart TD
+  A[config.json] --> B[Validate config]
+  B --> C[Build simulator config]
+  C --> D[Init simulator]
+  D --> E[Validate GeoJSON]
+  E --> F[Compute geometry]
+  F --> G[Generate path points]
+  G --> H[Create flight points]
+  H --> I[Build grid cell flight]
+  I --> J[Generate RID states]
+  J --> K[Assemble flight records]
+  K --> L[Flight record collection]
+
+  subgraph Script mode
+    A --> M[Write output flight_data json]
+    F --> N[Compute bounding boxes]
+  end
+```
+
+## Key classes and functions
+
+- `GeoJSONFlightsSimulator` (core):
+  - `__init__`: validates GeoJSON via `ValidatedFlightPath`, precomputes geometry (LineString, bounds, center, boxes)
+  - `generate_flight_grid_and_path_points(altitude)`: builds per-point speed/bearing and wraps them in a `GridCellFlight`
+  - `generate_rid_state(duration)`: emits 1 Hz `RIDAircraftState` series and assembles `FullFlightRecord`
+- `generate_aircraft_states(config)`: convenience function that returns a `FlightRecordCollection`
+
+## Usage
+
+Programmatic (recommended):
+
+- Construct a `GeoJSONFlightsSimulatorConfiguration` from your validated GeoJSON
+- Call `generate_aircraft_states(config)` to receive a `FlightRecordCollection`
+
+Script mode (`python geo_json_flight_simulator.py`):
+
+- Reads `config.json` from the current directory
+- Writes `output/flight_data.json` containing the first flight only
+
+## Notes
+
+- Speed is computed from geodesic distance between adjacent points at 1-second intervals
+- Bearing is normalized to [0, 360)
+- Operator/flight details are synthetic and generated deterministically when a `random_seed` is provided
+- Bounding boxes (`box`, `half_box`) are computed but only used in-memory by default

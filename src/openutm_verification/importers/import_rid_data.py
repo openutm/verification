@@ -8,7 +8,7 @@ from typing import Optional
 import requests
 from dacite import from_dict
 
-from openutm_verification.client import NoAuthCredentialsGetter, PassportCredentialsGetter
+from openutm_verification.auth.passport_client import NoAuthCredentialsGetter, PassportCredentialsGetter
 from openutm_verification.rid import (
     UASID,
     LatLngPoint,

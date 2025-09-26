@@ -37,6 +37,8 @@ class ScenarioResult(BaseModel):
     error_message: Optional[str] = None
     flight_declaration_filename: Optional[str] = None
     telemetry_filename: Optional[str] = None
+    flight_declaration_data: Optional[Any] = None
+    telemetry_data: Optional[Any] = None
     visualization_2d_path: Optional[str] = None
     visualization_3d_path: Optional[str] = None
 

@@ -69,7 +69,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self.latest_flight_declaration_id: Optional[str] = None
         logger.debug(f"Initialized FlightBlenderClient with base_url={base_url}, request_timeout={request_timeout}")
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Optional[bool]:
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         # Best-effort cleanup of resources created during the session
         logger.info("Exiting FlightBlenderClient, performing cleanup")
         if self.latest_geo_fence_id:
@@ -81,10 +81,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return super().__exit__(exc_type, exc_val, exc_tb)
 
     @scenario_step("Upload Geo Fence")
-    def upload_geo_fence(self, filename: str) -> Dict[str, Any]:
+    def upload_geo_fence(self, operation_id: Optional[str] = None, filename: Optional[str] = None) -> Dict[str, Any]:
         """Upload an Area-of-Interest (Geo Fence) to Flight Blender.
 
         Args:
+            operation_id: Not used for geo-fence upload (included for API consistency).
             filename: Path to the GeoJSON file containing the geo-fence definition.
 
         Returns:
@@ -94,6 +95,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             FlightBlenderError: If the upload request fails.
             json.JSONDecodeError: If the file content is invalid JSON.
         """
+        if filename is None:
+            raise ValueError("filename parameter is required for upload_geo_fence")
         endpoint = "/geo_fence_ops/set_geo_fence"
         logger.debug(f"Uploading geo fence from {filename}")
         with open(filename, "r", encoding="utf-8") as geo_fence_json_file:
@@ -110,8 +113,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return body
 
     @scenario_step("Get Geo Fence")
-    def get_geo_fence(self) -> Dict[str, Any]:
+    def get_geo_fence(self, operation_id: Optional[str] = None) -> Dict[str, Any]:
         """Retrieve the details of the most recently uploaded geo-fence.
+
+        Args:
+            operation_id: Not used for geo-fence retrieval (included for API consistency).
 
         Returns:
             The JSON response from the API containing geo-fence details, or a dict
@@ -162,28 +168,39 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return {"deleted": response.status_code in (200, 204), "id": op_id}
 
     @scenario_step("Upload Flight Declaration")
-    def upload_flight_declaration(self, filename: str) -> Dict[str, Any]:
+    def upload_flight_declaration(self, declaration: str | Any) -> Dict[str, Any]:
         """Upload a flight declaration to the Flight Blender API.
 
-        Loads the declaration from file, adjusts datetimes to current time + offsets,
+        Accepts either a filename (str) containing JSON declaration data, or a
+        FlightDeclaration model instance. Adjusts datetimes to current time + offsets,
         and posts it. Raises an error if the declaration is not approved.
 
         Args:
-            filename: Path to the JSON flight declaration file.
+            declaration: Either a path to the JSON flight declaration file (str),
+                or a FlightDeclaration model instance.
 
         Returns:
             The JSON response from the API.
 
         Raises:
             FlightBlenderError: If the declaration is not approved or the request fails.
-            json.JSONDecodeError: If the file content is invalid JSON.
+            json.JSONDecodeError: If the file content is invalid JSON (when using filename).
         """
         endpoint = "/flight_declaration_ops/set_flight_declaration"
-        logger.debug(f"Uploading flight declaration from {filename}")
-        with open(filename, "r", encoding="utf-8") as flight_declaration_file:
-            f_d = flight_declaration_file.read()
 
-        flight_declaration = json.loads(f_d)
+        # Handle different input types
+        if isinstance(declaration, str):
+            # Load from file
+            logger.debug(f"Uploading flight declaration from {declaration}")
+            with open(declaration, "r", encoding="utf-8") as flight_declaration_file:
+                f_d = flight_declaration_file.read()
+            flight_declaration = json.loads(f_d)
+        else:
+            # Assume it's a model with model_dump method
+            logger.debug("Uploading flight declaration from model")
+            flight_declaration = declaration.model_dump(mode="json")
+
+        # Adjust datetimes to current time + offsets
         now = arrow.now()
         few_seconds_from_now = now.shift(seconds=5)
         four_minutes_from_now = now.shift(minutes=4)
@@ -235,16 +252,29 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             time.sleep(duration_seconds)
         return response.json()
 
-    @scenario_step("Submit Telemetry")
-    def submit_telemetry(self, operation_id: str, filename: str, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
-        """Submit telemetry data for a flight operation.
+    def _load_telemetry_file(self, filename: str) -> List[Dict[str, Any]]:
+        """Load telemetry states from a JSON file.
 
-        Loads telemetry states from file and submits them sequentially, with optional
-        duration limiting and error handling for rate limits.
+        Args:
+            filename: Path to the JSON file containing telemetry data.
+
+        Returns:
+            List of telemetry state dictionaries.
+
+        Raises:
+            json.JSONDecodeError: If the file content is invalid JSON.
+        """
+        logger.debug(f"Loading telemetry from {filename}")
+        with open(filename, "r", encoding="utf-8") as rid_json_file:
+            rid_json = json.loads(rid_json_file.read())
+        return rid_json["current_states"]
+
+    def _submit_telemetry_states_impl(self, operation_id: str, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+        """Internal implementation for submitting telemetry states.
 
         Args:
             operation_id: The ID of the operation for telemetry submission.
-            filename: Path to the JSON file containing telemetry data.
+            states: List of telemetry state dictionaries.
             duration_seconds: Optional maximum duration in seconds to submit telemetry (default 0 for unlimited).
 
         Returns:
@@ -254,11 +284,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             FlightBlenderError: If maximum waiting time is exceeded due to rate limits.
         """
         endpoint = "/flight_stream/set_telemetry"
-        logger.debug(f"Submitting telemetry from {filename} for operation {operation_id}")
-        with open(filename, "r", encoding="utf-8") as rid_json_file:
-            rid_json = json.loads(rid_json_file.read())
+        logger.debug(f"Submitting telemetry for operation {operation_id}")
 
-        states = rid_json["current_states"]
         rid_operator_details = _create_rid_operator_details(operation_id)
 
         last_response = None
@@ -289,6 +316,47 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             time.sleep(sleep_interval)
         logger.info("Telemetry submission completed")
         return last_response
+
+    @scenario_step("Submit Telemetry (from file)")
+    def submit_telemetry_from_file(self, operation_id: str, filename: str, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+        """Submit telemetry data for a flight operation.
+
+        Loads telemetry states from file and submits them sequentially, with optional
+        duration limiting and error handling for rate limits.
+
+        Args:
+            operation_id: The ID of the operation for telemetry submission.
+            filename: Path to the JSON file containing telemetry data.
+            duration_seconds: Optional maximum duration in seconds to submit telemetry (default 0 for unlimited).
+
+        Returns:
+            The JSON response from the last telemetry submission, or None if no submissions occurred.
+
+        Raises:
+            FlightBlenderError: If maximum waiting time is exceeded due to rate limits.
+        """
+        states = self._load_telemetry_file(filename)
+        return self._submit_telemetry_states_impl(operation_id, states, duration_seconds)
+
+    @scenario_step("Submit Telemetry")
+    def submit_telemetry(self, operation_id: str, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+        """Submit telemetry data for a flight operation from in-memory states.
+
+        Submits telemetry states sequentially from the provided list, with optional
+        duration limiting and error handling for rate limits.
+
+        Args:
+            operation_id: The ID of the operation for telemetry submission.
+            states: List of telemetry state dictionaries.
+            duration_seconds: Optional maximum duration in seconds to submit telemetry (default 0 for unlimited).
+
+        Returns:
+            The JSON response from the last telemetry submission, or None if no submissions occurred.
+
+        Raises:
+            FlightBlenderError: If maximum waiting time is exceeded due to rate limits.
+        """
+        return self._submit_telemetry_states_impl(operation_id, states, duration_seconds)
 
     @scenario_step("Check Operation State")
     def check_operation_state(self, operation_id: str, expected_state: OperationState, duration_seconds: int = 0) -> Dict[str, Any]:
