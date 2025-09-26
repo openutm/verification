@@ -150,6 +150,7 @@ The verification scenarios are driven by configuration in `config/default.yaml`,
 * **`scenarios`**: This section allows for per-scenario overrides. If a scenario requires different data, you can specify its data configuration paths here.
 
 The paths point to configuration files, not generated data. For example:
+
 * `telemetry`: A GeoJSON file defining the flight path for telemetry generation.
 * `flight_declaration`: A JSON file defining the bounds and parameters for generating a flight declaration.
 

@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -70,29 +69,6 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(html_content)
     return report_path
-
-
-def _load_flight_data_for_scenario(result):
-    """
-    Loads flight declaration and telemetry data for a scenario.
-
-    Args:
-        result: ScenarioResult containing flight data filenames.
-
-    Returns:
-        tuple: (telemetry_data, declaration_data) or (None, None) if loading fails.
-    """
-    from openutm_verification.scenarios.common import get_flight_declaration_path, get_telemetry_path
-
-    try:
-        with open(get_flight_declaration_path(result.flight_declaration_filename), "r", encoding="utf-8") as f:
-            declaration_data = json.load(f)
-        with open(get_telemetry_path(result.telemetry_filename), "r", encoding="utf-8") as f:
-            telemetry_data = json.load(f)
-        return telemetry_data, declaration_data
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        logger.warning(f"Failed to load flight data for scenario '{result.name}': {e}")
-        return None, None
 
 
 def _generate_scenario_visualizations(result, telemetry_data, declaration_data, output_dir: Path, base_filename: str):

@@ -15,24 +15,11 @@ import json
 import math
 from pathlib import Path
 
-import numpy as np
-from loguru import logger
-
-try:
-    import pandas as pd
-except ImportError:
-    print("This script requires pandas. Please install it using 'pip install pandas'")
-    exit()
-
-try:
-    import ipywidgets
-    import pythreejs as three
-    from ipywidgets import embed
-except ImportError:
-    print("This script requires pythreejs and ipywidgets. Please install them using 'pip install pythreejs ipywidgets'")
-    exit()
-
 import folium
+import numpy as np
+import pythreejs as three
+from ipywidgets import embed
+from loguru import logger
 
 
 def visualize_flight_path_2d(telemetry_data, declaration_data, output_html_path):
