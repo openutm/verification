@@ -227,6 +227,8 @@ def run_scenario_template(
         status=final_status,
         duration_seconds=total_duration,
         steps=step_results,
+        flight_declaration_data=flight_declaration,
+        telemetry_data=telemetry_states,
     )
 
 

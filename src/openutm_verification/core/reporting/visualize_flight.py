@@ -16,6 +16,7 @@ import math
 from pathlib import Path
 
 import numpy as np
+from loguru import logger
 
 try:
     import pandas as pd
@@ -32,7 +33,6 @@ except ImportError:
     exit()
 
 import folium
-from loguru import logger
 
 
 def visualize_flight_path_2d(telemetry_data, declaration_data, output_html_path):
@@ -44,13 +44,17 @@ def visualize_flight_path_2d(telemetry_data, declaration_data, output_html_path)
         declaration_data (dict): The flight declaration data as a dictionary.
         output_html_path (str): The full path where the output HTML map will be saved.
     """
+    logger.info("Starting 2D flight path visualization")
 
-    states = telemetry_data.get("current_states", [])
+    states = telemetry_data
     path_points_with_alt = [
         (s["position"]["lat"], s["position"]["lng"], s["position"]["alt"]) for s in states if "position" in s and "alt" in s["position"]
     ]
     coordinates = [(p[0], p[1]) for p in path_points_with_alt]
     geofence = declaration_data.get("flight_declaration_geo_json")
+
+    logger.debug(f"Extracted {len(coordinates)} coordinate points from telemetry data")
+    logger.debug(f"Geofence data present: {geofence is not None}")
 
     if not coordinates and not geofence:
         logger.warning("No coordinates or geofence found in the data.")
@@ -59,13 +63,17 @@ def visualize_flight_path_2d(telemetry_data, declaration_data, output_html_path)
     if geofence:
         first_coord = geofence["features"][0]["geometry"]["coordinates"][0][1]
         map_center = [first_coord[1], first_coord[0]]
+        logger.debug(f"Using geofence center for map: {map_center}")
     elif coordinates:
         lat, lng = coordinates[0]
         map_center = [lat, lng]
+        logger.debug(f"Using first coordinate for map center: {map_center}")
     else:
         map_center = [46.97, 7.47]
+        logger.debug(f"Using default map center: {map_center}")
 
     flight_map = folium.Map(location=map_center, zoom_start=15)
+    logger.debug("Initialized Folium map")
 
     if geofence:
         g = folium.GeoJson(geofence, style_function=lambda x: {"color": "red", "weight": 2, "fillOpacity": 0.1}, tooltip="Declared Geofence")
@@ -79,6 +87,7 @@ def visualize_flight_path_2d(telemetry_data, declaration_data, output_html_path)
                             [lat, lng], popup=f"Corner {i + 1}:<br>Lat={lat}<br>Lng={lng}", icon=folium.Icon(color="purple", icon="info-sign")
                         ).add_to(g)
         g.add_to(flight_map)
+        logger.debug("Added geofence to map")
 
     if coordinates:
         folium.PolyLine(locations=coordinates, color="blue", weight=3, opacity=0.8, tooltip="Flight Path").add_to(flight_map)
@@ -101,6 +110,7 @@ def visualize_flight_path_2d(telemetry_data, declaration_data, output_html_path)
             popup=f"End Point: Lat={coordinates[-1][0]}, Lng={coordinates[-1][1]}",
             icon=folium.Icon(color="red", icon="stop"),
         ).add_to(flight_map)
+        logger.debug("Added flight path and markers to map")
 
     flight_map.save(output_html_path)
     logger.info(f"2D flight path visualization saved to: {output_html_path}")
@@ -205,8 +215,9 @@ def _create_geofence_box_group(projected_geofence_corners_2d, min_alt, max_alt):
 
 def visualize_flight_path_3d(telemetry_data, declaration_data, output_html_path):
     """Creates an interactive 3D visualization of the flight path and geofence."""
+    logger.info("Starting 3D flight path visualization")
 
-    states = telemetry_data.get("current_states", [])
+    states = telemetry_data
     path_coords_ll = [[s["position"]["lng"], s["position"]["lat"], s["position"]["alt"]] for s in states if "position" in s]
     geofence = declaration_data.get("flight_declaration_geo_json")
     geofence_coords_ll, min_alt, max_alt = [], 0, 0
@@ -215,6 +226,9 @@ def visualize_flight_path_3d(telemetry_data, declaration_data, output_html_path)
         geofence_coords_ll = feature["geometry"]["coordinates"][0][:-1]
         min_alt = feature["properties"]["min_altitude"]["meters"]
         max_alt = feature["properties"]["max_altitude"]["meters"]
+        logger.debug(f"Extracted geofence with {len(geofence_coords_ll)} corners, min_alt={min_alt}, max_alt={max_alt}")
+
+    logger.debug(f"Extracted {len(path_coords_ll)} path coordinates from telemetry data")
 
     if not path_coords_ll and not geofence_coords_ll:
         logger.warning("No data to visualize in 3D.")
@@ -223,8 +237,10 @@ def visualize_flight_path_3d(telemetry_data, declaration_data, output_html_path)
     all_lons = [p[0] for p in path_coords_ll] + [p[0] for p in geofence_coords_ll]
     all_lats = [p[1] for p in path_coords_ll] + [p[1] for p in geofence_coords_ll]
     if not all_lons:
+        logger.warning("No longitude data available for centering.")
         return
     center_lon, center_lat = sum(all_lons) / len(all_lons), sum(all_lats) / len(all_lats)
+    logger.debug(f"Calculated map center: lon={center_lon}, lat={center_lat}")
 
     def project(lon, lat, alt):
         R = 6371000
@@ -235,8 +251,10 @@ def visualize_flight_path_3d(telemetry_data, declaration_data, output_html_path)
 
     projected_path = [project(lon, lat, alt) for lon, lat, alt in path_coords_ll]
     projected_geofence_corners_2d = [project(lon, lat, 0)[::2] for lon, lat in geofence_coords_ll]
+    logger.debug(f"Projected {len(projected_path)} path points and {len(projected_geofence_corners_2d)} geofence corners")
 
     camera, scene = _setup_3d_scene()
+    logger.debug("Initialized 3D scene and camera")
 
     # --- Auto-framing logic ---
     all_points = []
@@ -263,25 +281,32 @@ def visualize_flight_path_3d(telemetry_data, declaration_data, output_html_path)
 
         # The OrbitControls will orbit around this target
         controls = [three.OrbitControls(controlling=camera, target=scene_center.tolist())]
+        logger.debug(f"Auto-framed scene: center={scene_center}, max_dimension={max_dimension}")
     else:
         controls = [three.OrbitControls(controlling=camera)]
+        logger.debug("No points for auto-framing, using default controls")
 
     if flight_path_group := _create_flight_path_group(projected_path):
         scene.add(flight_path_group)
+        logger.debug("Added flight path group to scene")
     if geofence_box_group := _create_geofence_box_group(projected_geofence_corners_2d, min_alt, max_alt):
         scene.add(geofence_box_group)
+        logger.debug("Added geofence box group to scene")
 
     renderer = three.Renderer(camera=camera, scene=scene, controls=controls, width=1000, height=800)
+    logger.debug("Created renderer")
 
     embed.embed_minimal_html(output_html_path, views=[renderer], title="3D Flight Visualization")
     logger.info(f"3D flight path visualization saved to: {output_html_path}")
 
 
 if __name__ == "__main__":
+    logger.info("Starting flight visualization script")
     current_dir = Path(__file__).parent
     # Use the output directory instead of current directory for generated files
     output_dir = current_dir.parent.parent.parent / "output"
     output_dir.mkdir(parents=True, exist_ok=True)
+    logger.debug(f"Output directory set to: {output_dir}")
 
     conforming = ["rid_samples/flight_1_rid_aircraft_state.json", "flight_declarations_samples/flight-1-bern.json", "flight_path_map.html"]
     non_conforming = [
@@ -296,10 +321,27 @@ if __name__ == "__main__":
     ]
 
     for flight in [conforming, non_conforming, partial]:
+        logger.info(f"Processing flight scenario: {flight[2].replace('.html', '')}")
         telemetry_file = current_dir / flight[0]
         declaration_file = current_dir / flight[1]
         output_file_2d = output_dir / flight[2]
         output_file_3d = output_dir / flight[2].replace(".html", "_3d.html")
 
-        visualize_flight_path_2d(telemetry_file, declaration_file, output_file_2d)
-        visualize_flight_path_3d(telemetry_file, declaration_file, output_file_3d)
+        logger.debug(f"Loading telemetry from: {telemetry_file}")
+        logger.debug(f"Loading declaration from: {declaration_file}")
+
+        # Load data (assuming JSON files)
+        try:
+            with open(telemetry_file, "r") as f:
+                telemetry_data = json.load(f)
+            with open(declaration_file, "r") as f:
+                declaration_data = json.load(f)
+            logger.debug("Successfully loaded telemetry and declaration data")
+        except Exception as e:
+            logger.error(f"Failed to load data files: {e}")
+            continue
+
+        visualize_flight_path_2d(telemetry_data, declaration_data, output_file_2d)
+        visualize_flight_path_3d(telemetry_data, declaration_data, output_file_3d)
+
+    logger.info("Flight visualization script completed")

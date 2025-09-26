@@ -81,10 +81,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return super().__exit__(exc_type, exc_val, exc_tb)
 
     @scenario_step("Upload Geo Fence")
-    def upload_geo_fence(self, filename: str) -> Dict[str, Any]:
+    def upload_geo_fence(self, operation_id: Optional[str] = None, filename: Optional[str] = None) -> Dict[str, Any]:
         """Upload an Area-of-Interest (Geo Fence) to Flight Blender.
 
         Args:
+            operation_id: Not used for geo-fence upload (included for API consistency).
             filename: Path to the GeoJSON file containing the geo-fence definition.
 
         Returns:
@@ -94,6 +95,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             FlightBlenderError: If the upload request fails.
             json.JSONDecodeError: If the file content is invalid JSON.
         """
+        if filename is None:
+            raise ValueError("filename parameter is required for upload_geo_fence")
         endpoint = "/geo_fence_ops/set_geo_fence"
         logger.debug(f"Uploading geo fence from {filename}")
         with open(filename, "r", encoding="utf-8") as geo_fence_json_file:
@@ -110,8 +113,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return body
 
     @scenario_step("Get Geo Fence")
-    def get_geo_fence(self) -> Dict[str, Any]:
+    def get_geo_fence(self, operation_id: Optional[str] = None) -> Dict[str, Any]:
         """Retrieve the details of the most recently uploaded geo-fence.
+
+        Args:
+            operation_id: Not used for geo-fence retrieval (included for API consistency).
 
         Returns:
             The JSON response from the API containing geo-fence details, or a dict

@@ -106,6 +106,10 @@ def _generate_scenario_visualizations(result, telemetry_data, declaration_data, 
         output_dir: Directory to save visualizations.
         base_filename: Base filename for consistent naming.
     """
+    # Convert models to dicts if necessary
+    telemetry_data = telemetry_data.model_dump() if hasattr(telemetry_data, "model_dump") else telemetry_data
+    declaration_data = declaration_data.model_dump() if hasattr(declaration_data, "model_dump") else declaration_data
+
     # Sanitize scenario name for filename
     sanitized_name = result.name.replace(" ", "_").replace("-", "_")
 
@@ -114,14 +118,12 @@ def _generate_scenario_visualizations(result, telemetry_data, declaration_data, 
     vis_2d_path = output_dir / vis_2d_filename
     visualize_flight_path_2d(telemetry_data, declaration_data, str(vis_2d_path))
     result.visualization_2d_path = str(vis_2d_path.relative_to(output_dir))
-    logger.info(f"Generated 2D visualization: {vis_2d_path}")
 
     # Generate 3D visualization
     vis_3d_filename = f"{base_filename}_{sanitized_name}_3d.html"
     vis_3d_path = output_dir / vis_3d_filename
     visualize_flight_path_3d(telemetry_data, declaration_data, str(vis_3d_path))
     result.visualization_3d_path = str(vis_3d_path.relative_to(output_dir))
-    logger.info(f"Generated 3D visualization: {vis_3d_path}")
 
 
 def _generate_visualizations(report_data: ReportData, output_dir: Path, base_filename: str):
@@ -134,10 +136,15 @@ def _generate_visualizations(report_data: ReportData, output_dir: Path, base_fil
         base_filename: The base filename used for consistent naming.
     """
     for result in report_data.results:
-        if result.flight_declaration_filename and result.telemetry_filename:
-            telemetry_data, declaration_data = _load_flight_data_for_scenario(result)
-            if telemetry_data and declaration_data:
-                try:
-                    _generate_scenario_visualizations(result, telemetry_data, declaration_data, output_dir, base_filename)
-                except Exception as e:
-                    logger.warning(f"Failed to generate visualizations for scenario '{result.name}': {e}")
+        # Try to get data from in-memory fields first, fall back to loading from files
+        if result.flight_declaration_data is not None and result.telemetry_data is not None:
+            telemetry_data = result.telemetry_data
+            declaration_data = result.flight_declaration_data
+        else:
+            continue  # No data available for visualization
+
+        if telemetry_data and declaration_data:
+            try:
+                _generate_scenario_visualizations(result, telemetry_data, declaration_data, output_dir, base_filename)
+            except Exception as e:
+                logger.warning(f"Failed to generate visualizations for scenario '{result.name}': {e}")
