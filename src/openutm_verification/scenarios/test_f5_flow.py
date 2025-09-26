@@ -20,7 +20,5 @@ def test_f5_non_conforming_contingent_path(fb_client: FlightBlenderClient, scena
     return run_scenario_template(
         fb_client=fb_client,
         scenario_name=scenario_name,
-        flight_declaration_filename="flight-1-bern.json",
-        telemetry_filename="non-conforming/flight_1_bern_fully_nonconforming.json",
         steps=steps,
     )

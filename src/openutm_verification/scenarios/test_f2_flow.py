@@ -34,7 +34,5 @@ def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_name: str) 
     return run_scenario_template(
         fb_client=fb_client,
         scenario_name=scenario_name,
-        flight_declaration_filename="flight-1-bern.json",
-        telemetry_filename="flight_1_rid_aircraft_state.json",
         steps=steps,
     )

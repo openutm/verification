@@ -1,5 +1,5 @@
 """
-Pydantic models for validating simulator config.json and GeoJSON content.
+Pydantic models for validating simulator config.json and GeoJSON content for telemetry.
 
 These models validate that the provided FeatureCollection contains at least one
 Feature with a LineString geometry of at least 300 meters, and compute useful
@@ -17,8 +17,10 @@ from pyproj import Geod
 
 LngLat = Tuple[float, float]
 
+MINIMUM_LINESTRING_LENGTH_M = 300.0  # meters
 
-class GeoJSONLineStringGeometry(BaseModel):
+
+class GeoJSONLineString(BaseModel):
     type: Literal["LineString"]
     coordinates: List[LngLat]
 
@@ -36,7 +38,7 @@ class GeoJSONLineStringGeometry(BaseModel):
 class GeoJSONFeature(BaseModel):
     type: Literal["Feature"] = "Feature"
     properties: Dict[str, Any] = Field(default_factory=dict)
-    geometry: GeoJSONLineStringGeometry
+    geometry: GeoJSONLineString
 
 
 class GeoJSONFeatureCollection(BaseModel):
@@ -103,8 +105,8 @@ class ValidatedFlightPath(BaseModel):
             _, _, d = geod.inv(lon1, lat1, lon2, lat2)
             length_m += d
 
-        if length_m < 300.0:
-            raise ValueError("LineString must be at least 300 meters long")
+        if length_m < MINIMUM_LINESTRING_LENGTH_M:
+            raise ValueError(f"LineString must be at least {MINIMUM_LINESTRING_LENGTH_M} meters long. Found length: {length_m:.2f} meters")
 
         # Bounds and center
         minx, miny, maxx, maxy = shapely_line.bounds
@@ -131,23 +133,3 @@ class ValidatedFlightPath(BaseModel):
             line_length_m=length_m,
             path_points=path_points,
         )
-
-
-class RawSimulatorConfig(BaseModel):
-    """Pydantic representation of simulator `config.json`.
-
-    Example structure:
-    {
-      "minx": 7.47,
-      "miny": 46.97,
-      "maxx": 7.48,
-      "maxy": 46.98,
-      "linear_geojson": { FeatureCollection ... }
-    }
-    """
-
-    minx: float
-    miny: float
-    maxx: float
-    maxy: float
-    linear_geojson: GeoJSONFeatureCollection

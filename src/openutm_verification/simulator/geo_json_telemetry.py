@@ -19,21 +19,21 @@ from uas_standards.astm.f3411.v22a.api import (
     VerticalAccuracy,
 )
 
-from openutm_verification.simulator.flight_data import (
+from openutm_verification.simulator.models.flight_data_types import (
     FlightRecordCollection,
     FullFlightRecord,
     GeoJSONFlightsSimulatorConfiguration,
 )
-from openutm_verification.simulator.geojson_models import (
-    RawSimulatorConfig,
+from openutm_verification.simulator.models.geo_json_models import (
+    GeoJSONFeatureCollection,
     ValidatedFlightPath,
 )
-from openutm_verification.simulator.operator_flight_details import (
-    OperatorFlightDataGenerator,
-)
-from openutm_verification.simulator.utils import (
+from openutm_verification.simulator.models.utils import (
     FlightPoint,
     GridCellFlight,
+)
+from openutm_verification.simulator.operator_flight_data import (
+    OperatorFlightDataGenerator,
 )
 
 
@@ -41,24 +41,19 @@ class GeoJSONFlightsSimulator:
     """Generate a flight path given a GeoJSON LineString with validated inputs."""
 
     def __init__(self, config: GeoJSONFlightsSimulatorConfiguration) -> None:
-        self.config = config
-        self.reference_time = arrow.get(config.reference_time.datetime)
-        self.flight_start_shift_time = config.flight_start_shift
-        self.random = random.Random() if config.random_seed is None else random.Random(x=config.random_seed)
+        self.config: GeoJSONFlightsSimulatorConfiguration = config
+        self.reference_time: arrow.Arrow = arrow.get(config.reference_time.datetime)
+        self.flight_start_shift_time: int = config.flight_start_shift
+        self.random: random.Random = random.Random() if config.random_seed is None else random.Random(x=config.random_seed)
 
-        self.utm_zone = config.utm_zone
-        self.altitude_agl = 50.0
+        self.utm_zone: int = config.utm_zone
+        self.altitude_agl: float = 50.0
 
         self.flight: Optional[FullFlightRecord] = None
 
-        self.geod = Geod(ellps="WGS84")
-        self.flight_path_points: list[Point] = []
-        self.center_point: Optional[Point] = None
-        self.bounds: Optional[tuple[float, float, float, float]] = None
+        self.geod: Geod = Geod(ellps="WGS84")
 
         self.flights: list[FullFlightRecord] = []
-        self.box: Optional[Polygon] = None
-        self.half_box: Optional[Polygon] = None
         self.grid_cells_flight_tracks: list[GridCellFlight] = []
 
         # Cache pyproj transformers for performance
@@ -68,15 +63,15 @@ class GeoJSONFlightsSimulator:
         self._tx_utm_to_wgs84 = Transformer.from_crs(utm, wgs84, always_xy=True)
 
         # Validate input GeoJSON and precompute derived values via Pydantic models
-        vfp = ValidatedFlightPath.from_feature_collection(self.config.geojson)
+        vfp: ValidatedFlightPath = ValidatedFlightPath.from_feature_collection(self.config.geojson)
         # Assign derived fields used by downstream logic
-        self.line_string = LineString(vfp.path_points)
-        self.box = box(*vfp.box_bounds)
-        self.half_box = box(*vfp.half_box_bounds)
-        self.center_point = Point(*vfp.center)
-        self.bounds = vfp.bounds
+        self.line_string: LineString = LineString(vfp.path_points)
+        self.box: Polygon = box(*vfp.box_bounds)
+        self.half_box: Polygon = box(*vfp.half_box_bounds)
+        self.center_point: Point = Point(*vfp.center)
+        self.bounds: tuple[float, float, float, float] = vfp.bounds
         # Convert to shapely Points for speed/bearing computations later
-        self.flight_path_points = [Point(lon, lat) for lon, lat in vfp.path_points]
+        self.flight_path_points: list[Point] = [Point(lon, lat) for lon, lat in vfp.path_points]
         logger.info(f"Validated LineString length: {vfp.line_length_m:.1f} m, generated {len(self.flight_path_points)} path points")
 
     def generate_flight_speed_bearing(self, adjacent_points: list[Point], delta_time_secs: int) -> tuple[float, float]:
@@ -302,8 +297,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Validate the JSON config and its GeoJSON payload
-    cfg = RawSimulatorConfig.model_validate(config_data)
-    geojson_data = cfg.linear_geojson.model_dump(mode="json")
+    cfg = GeoJSONFeatureCollection.model_validate(config_data)
+    geojson_data = cfg.model_dump(mode="json")
     my_flight_generator = GeoJSONFlightsSimulator(
         config=GeoJSONFlightsSimulatorConfiguration(
             reference_time=arrow.utcnow(),
@@ -336,13 +331,13 @@ if __name__ == "__main__":
     logger.info("Generated GeoJSON for bounding boxes.")
     # Persist bounding boxes
     with bbox_file.open("w", encoding="utf-8") as f:
-        json.dump(bbox_geojson, f)
+        json.dump(bbox_geojson, f, indent=2)
     with half_box_bbox_file.open("w", encoding="utf-8") as f:
-        json.dump(half_bbox_geojson, f)
+        json.dump(half_bbox_geojson, f, indent=2)
 
     logger.info(f"Number of flights generated: {len(my_flight_generator.flights)}")
     # Generate telemetry payload using the serialization helpers
     payload = my_flight_generator.generate_telemetry_payload(duration=args.duration, loop_path=args.loop_path)
     with flight_data_file.open("w", encoding="utf-8") as f:
-        json.dump(payload, f)
+        json.dump(payload, f, indent=2)
     logger.info(f"Telemetry payload saved to: {flight_data_file}")

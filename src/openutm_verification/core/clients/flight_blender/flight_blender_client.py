@@ -162,28 +162,39 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return {"deleted": response.status_code in (200, 204), "id": op_id}
 
     @scenario_step("Upload Flight Declaration")
-    def upload_flight_declaration(self, filename: str) -> Dict[str, Any]:
+    def upload_flight_declaration(self, declaration: str | Any) -> Dict[str, Any]:
         """Upload a flight declaration to the Flight Blender API.
 
-        Loads the declaration from file, adjusts datetimes to current time + offsets,
+        Accepts either a filename (str) containing JSON declaration data, or a
+        FlightDeclaration model instance. Adjusts datetimes to current time + offsets,
         and posts it. Raises an error if the declaration is not approved.
 
         Args:
-            filename: Path to the JSON flight declaration file.
+            declaration: Either a path to the JSON flight declaration file (str),
+                or a FlightDeclaration model instance.
 
         Returns:
             The JSON response from the API.
 
         Raises:
             FlightBlenderError: If the declaration is not approved or the request fails.
-            json.JSONDecodeError: If the file content is invalid JSON.
+            json.JSONDecodeError: If the file content is invalid JSON (when using filename).
         """
         endpoint = "/flight_declaration_ops/set_flight_declaration"
-        logger.debug(f"Uploading flight declaration from {filename}")
-        with open(filename, "r", encoding="utf-8") as flight_declaration_file:
-            f_d = flight_declaration_file.read()
 
-        flight_declaration = json.loads(f_d)
+        # Handle different input types
+        if isinstance(declaration, str):
+            # Load from file
+            logger.debug(f"Uploading flight declaration from {declaration}")
+            with open(declaration, "r", encoding="utf-8") as flight_declaration_file:
+                f_d = flight_declaration_file.read()
+            flight_declaration = json.loads(f_d)
+        else:
+            # Assume it's a model with model_dump method
+            logger.debug("Uploading flight declaration from model")
+            flight_declaration = declaration.model_dump(mode="json")
+
+        # Adjust datetimes to current time + offsets
         now = arrow.now()
         few_seconds_from_now = now.shift(seconds=5)
         four_minutes_from_now = now.shift(minutes=4)
@@ -300,8 +311,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.info("Telemetry submission completed")
         return last_response
 
-    @scenario_step("Submit Telemetry")
-    def submit_telemetry(self, operation_id: str, filename: str, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+    @scenario_step("Submit Telemetry (from file)")
+    def submit_telemetry_from_file(self, operation_id: str, filename: str, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
         """Submit telemetry data for a flight operation.
 
         Loads telemetry states from file and submits them sequentially, with optional
@@ -321,8 +332,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         states = self._load_telemetry_file(filename)
         return self._submit_telemetry_states_impl(operation_id, states, duration_seconds)
 
-    @scenario_step("Submit Telemetry (in-memory)")
-    def submit_telemetry_states(self, operation_id: str, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+    @scenario_step("Submit Telemetry")
+    def submit_telemetry(self, operation_id: str, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
         """Submit telemetry data for a flight operation from in-memory states.
 
         Submits telemetry states sequentially from the provided list, with optional

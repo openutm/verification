@@ -35,7 +35,5 @@ def test_f3_non_conforming_path(fb_client: FlightBlenderClient, scenario_name: s
     return run_scenario_template(
         fb_client=fb_client,
         scenario_name=scenario_name,
-        flight_declaration_filename="flight-1-bern.json",
-        telemetry_filename="non-conforming/flight_1_bern_fully_nonconforming.json",
         steps=steps,
     )
