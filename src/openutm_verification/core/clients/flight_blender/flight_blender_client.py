@@ -338,6 +338,14 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         states = self._load_telemetry_file(filename)
         return self._submit_telemetry_states_impl(operation_id, states, duration_seconds)
 
+    @scenario_step("Wait 5 seconds")
+    def wait_5_seconds(self) -> None:
+        """Wait for 5 seconds."""
+        logger.info("Waiting for 5 seconds...")
+        time.sleep(5)
+        logger.info("Waited for 5 seconds.")
+
+
     @scenario_step("Submit Telemetry")
     def submit_telemetry(self, operation_id: str, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
         """Submit telemetry data for a flight operation from in-memory states.
