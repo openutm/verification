@@ -1,0 +1,45 @@
+import time
+import uuid
+from functools import partial
+
+from loguru import logger
+
+from openutm_verification.core.clients.flight_blender.flight_blender_client import (
+    FlightBlenderClient,
+)
+from openutm_verification.models import SDSPSessionAction
+from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.core.reporting.reporting_models import ScenarioResult
+from openutm_verification.scenarios.common import run_scenario_template
+from openutm_verification.scenarios.registry import register_scenario
+
+
+@register_scenario("sdsp_heartbeat")
+def sdsp_heartbeat(
+    fb_client: FlightBlenderClient, scenario_name: str
+) -> ScenarioResult:
+    """Runs the SDSP heartbeat scenario.
+    This scenario
+    """
+    session_id = str(uuid.uuid4())
+    logger.info(f"Starting SDSP heartbeat scenario with session ID: {session_id}")
+    steps = [
+        partial(
+            fb_client.start_stop_sdsp_session,
+            action=SDSPSessionAction.START,
+            session_id=session_id,
+        ),
+        partial(time.sleep, 10),  # Wait for some time to simulate heartbeat period
+        partial(
+            fb_client.start_stop_sdsp_session,
+            action=SDSPSessionAction.STOP,
+            session_id=session_id,
+        ),
+    ]
+
+    return run_scenario_template(
+        fb_client=fb_client,
+        scenario_name=scenario_name,
+        steps=steps,
+        generate_telemetry_declaration_data=False,
+    )
