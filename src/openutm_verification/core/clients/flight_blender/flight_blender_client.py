@@ -393,6 +393,14 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             operation_id, states, duration_seconds
         )
 
+    @scenario_step("Wait X seconds")
+    def wait_x_seconds(self, wait_time_seconds:int = 5) -> None:
+        """Wait for a specified number of seconds."""
+        logger.info(f"Waiting for {wait_time_seconds} seconds...")
+        time.sleep(wait_time_seconds)
+        logger.info(f"Waited for {wait_time_seconds} seconds.")
+
+
     @scenario_step("Submit Telemetry")
     def submit_telemetry(
         self, operation_id: str, states: List[Dict[str, Any]], duration_seconds: int = 0
