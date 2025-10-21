@@ -166,6 +166,42 @@ def _generate_telemetry(
         raise
 
 
+def run_sdsp_scenario_template(
+    scenario_name: str,
+    *,
+    fb_client: FlightBlenderClient | None = None,
+    steps: list[partial[Any]],
+) -> ScenarioResult:
+
+    step_results: List[StepResult] = []
+
+    for step_func in steps:
+        logger.debug(f"Executing step: {step_func}")
+        params = step_func.keywords
+        logger.debug(f"Parameters in the step: {params}")
+        step_result: StepResult = step_func()
+        
+
+    # teardown_result: StepResult = cast(
+    #     StepResult, fb_client.start_stop_sdsp_session(operation_id)
+    # )
+    # step_results.append(teardown_result)
+
+    final_status = (
+        Status.PASS
+        if all(s.status == Status.PASS for s in step_results)
+        else Status.FAIL
+    )
+    total_duration = sum(s.duration for s in step_results)
+
+    return ScenarioResult(
+        name=scenario_name,
+        status=final_status,
+        duration_seconds=total_duration,
+        steps=step_results,
+    )
+
+
 def run_scenario_template(
     scenario_name: str,
     *,
@@ -173,7 +209,6 @@ def run_scenario_template(
     opensky_client: OpenSkyClient | None = None,
     steps: list[partial[Any]],
     duration: int = DEFAULT_TELEMETRY_DURATION,
-    generate_telemetry_declaration_data: bool = True,
 ) -> ScenarioResult:
     """Unified scenario runner supporting declaration and OpenSky flows.
 
@@ -206,48 +241,47 @@ def run_scenario_template(
     flight_declaration = None
     telemetry_states = None
     # Generate data in-memory
-    if generate_telemetry_declaration_data:
 
-        try:
-            flight_declaration = _generate_flight_declaration(flight_declaration_path)
-            telemetry_states = _generate_telemetry(telemetry_path, duration=duration)
-            logger.info(f"Generated {len(telemetry_states)} telemetry states")
-        except Exception as e:
-            logger.error(f"Failed to generate data for scenario '{scenario_name}': {e}")
-            return ScenarioResult(
-                name=scenario_name,
-                status=Status.FAIL,
-                duration_seconds=0,
-                steps=[],
-                error_message=f"Data generation failed: {e}",
-            )
+    try:
+        flight_declaration = _generate_flight_declaration(flight_declaration_path)
+        telemetry_states = _generate_telemetry(telemetry_path, duration=duration)
+        logger.info(f"Generated {len(telemetry_states)} telemetry states")
+    except Exception as e:
+        logger.error(f"Failed to generate data for scenario '{scenario_name}': {e}")
+        return ScenarioResult(
+            name=scenario_name,
+            status=Status.FAIL,
+            duration_seconds=0,
+            steps=[],
+            error_message=f"Data generation failed: {e}",
+        )
 
-        if fb_client or opensky_client:
-            logger.debug(
-                f"Running scenario '{scenario_name}' with FB={getattr(fb_client, '__class__', type('x', (), {})).__name__ if fb_client else 'None'}, "
-                f"OS={getattr(opensky_client, '__class__', type('x', (), {})).__name__ if opensky_client else 'None'}"
-            )
+    if fb_client or opensky_client:
+        logger.debug(
+            f"Running scenario '{scenario_name}' with FB={getattr(fb_client, '__class__', type('x', (), {})).__name__ if fb_client else 'None'}, "
+            f"OS={getattr(opensky_client, '__class__', type('x', (), {})).__name__ if opensky_client else 'None'}"
+        )
 
-        if fb_client is not None and opensky_client is None:
-            # Run declaration flow with generated data
-            step_results = _run_declaration_flow(
-                fb_client=fb_client,
-                flight_declaration=flight_declaration,
-                telemetry_states=telemetry_states,
-                steps=steps,
-            )
-        elif fb_client is not None and opensky_client is not None:
-            # OpenSky flow - requires both clients
-            step_results.append(_run_opensky_flow(steps))
-        else:
-            logger.error(f"Scenario '{scenario_name}' is not supported.")
-            return ScenarioResult(
-                name=scenario_name,
-                status=Status.FAIL,
-                duration_seconds=0,
-                steps=[],
-                error_message="Unsupported scenario configuration.",
-            )
+    if fb_client is not None and opensky_client is None:
+        # Run declaration flow with generated data
+        step_results = _run_declaration_flow(
+            fb_client=fb_client,
+            flight_declaration=flight_declaration,
+            telemetry_states=telemetry_states,
+            steps=steps,
+        )
+    elif fb_client is not None and opensky_client is not None:
+        # OpenSky flow - requires both clients
+        step_results.append(_run_opensky_flow(steps))
+    else:
+        logger.error(f"Scenario '{scenario_name}' is not supported.")
+        return ScenarioResult(
+            name=scenario_name,
+            status=Status.FAIL,
+            duration_seconds=0,
+            steps=[],
+            error_message="Unsupported scenario configuration.",
+        )
 
     final_status = (
         Status.PASS

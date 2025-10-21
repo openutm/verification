@@ -10,7 +10,7 @@ from openutm_verification.core.clients.flight_blender.flight_blender_client impo
 from openutm_verification.models import SDSPSessionAction
 from openutm_verification.core.execution.scenario_runner import scenario_step
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
-from openutm_verification.scenarios.common import run_scenario_template
+from openutm_verification.scenarios.common import run_sdsp_scenario_template
 from openutm_verification.scenarios.registry import register_scenario
 
 
@@ -29,7 +29,8 @@ def sdsp_heartbeat(
             action=SDSPSessionAction.START,
             session_id=session_id,
         ),
-        partial(time.sleep, 10),  # Wait for some time to simulate heartbeat period
+        # Wait for some time to simulate heartbeat period
+        partial(fb_client.wait_x_seconds, wait_time_seconds=5),
         partial(
             fb_client.start_stop_sdsp_session,
             action=SDSPSessionAction.STOP,
@@ -37,9 +38,8 @@ def sdsp_heartbeat(
         ),
     ]
 
-    return run_scenario_template(
+    return run_sdsp_scenario_template(
         fb_client=fb_client,
         scenario_name=scenario_name,
         steps=steps,
-        generate_telemetry_declaration_data=False,
     )

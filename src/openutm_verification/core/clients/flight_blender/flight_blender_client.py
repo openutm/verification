@@ -394,12 +394,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         )
 
     @scenario_step("Wait X seconds")
-    def wait_x_seconds(self, wait_time_seconds:int = 5) -> None:
+    def wait_x_seconds(self, wait_time_seconds: int = 5) -> None:
         """Wait for a specified number of seconds."""
         logger.info(f"Waiting for {wait_time_seconds} seconds...")
         time.sleep(wait_time_seconds)
         logger.info(f"Waited for {wait_time_seconds} seconds.")
-
 
     @scenario_step("Submit Telemetry")
     def submit_telemetry(
@@ -583,7 +582,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             ValueError: If the session_id is invalid or the action is not supported.
             ConnectionError: If there is an issue communicating with the Flight Blender service.
         """
-        endpoint = f"{{base_url}}/surveillance_monitoring_ops/start_stop_surveillance_heartbeat_track/{session_id}"
+
+        endpoint = f"/surveillance_monitoring_ops/start_stop_surveillance_heartbeat_track/{session_id}"
 
         payload = {"action": action.value}
         response = self.put(endpoint, json=payload)
@@ -600,5 +600,3 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 f"Failed to perform action {action.value} on SDSP session {session_id}. Response: {response.text}"
             )
             return False
-
-
