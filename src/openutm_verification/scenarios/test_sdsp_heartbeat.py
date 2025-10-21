@@ -30,7 +30,17 @@ def sdsp_heartbeat(
             session_id=session_id,
         ),
         # Wait for some time to simulate heartbeat period
-        partial(fb_client.wait_x_seconds, wait_time_seconds=5),
+        partial(fb_client.wait_x_seconds, wait_time_seconds=1),
+        partial(
+            fb_client.initialize_verify_sdsp_heartbeat,
+            session_id=session_id,
+            expected_heartbeat_interval_seconds=1,
+            expected_heartbeat_count=5,
+        ),
+        partial(
+            fb_client.wait_x_seconds,
+            wait_time_seconds=1,
+        ),
         partial(
             fb_client.start_stop_sdsp_session,
             action=SDSPSessionAction.STOP,

@@ -12,6 +12,7 @@ from openutm_verification.core.clients.flight_blender.base_client import (
 )
 from openutm_verification.core.execution.scenario_runner import scenario_step
 from openutm_verification.core.reporting.reporting_models import Status
+import time
 from openutm_verification.models import (
     FlightBlenderError,
     OperationState,
@@ -600,3 +601,47 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 f"Failed to perform action {action.value} on SDSP session {session_id}. Response: {response.text}"
             )
             return False
+
+    def initialize_websocket_connection(self, session_id: str) -> Any:
+        endpoint = f"/ws/surveillance/heartbeat/{session_id}"
+        ws = self.create_websocket_connection(endpoint=endpoint)
+        return ws
+
+    def initialize_verify_sdsp_heartbeat(
+        self,
+        expected_heartbeat_interval_seconds: int,
+        expected_heartbeat_count: int,
+        session_id: str,
+    ):
+        ws_connection = self.initialize_websocket_connection(session_id=session_id)
+
+        # Verify that heartbeat messages are received approximately every expected_heartbeat_interval_seconds
+
+        verification_passed = True
+        last_time = time.time()
+        tolerance = 0.1 * expected_heartbeat_interval_seconds  # Allow 10% tolerance
+        for _ in range(expected_heartbeat_count):
+            message = ws_connection.recv()
+            logger.info(f"Received WebSocket message: {message}")
+            current_time = time.time()
+            interval = current_time - last_time
+            if not (expected_heartbeat_interval_seconds - tolerance <= interval <= expected_heartbeat_interval_seconds + tolerance):
+                verification_passed = False
+            logger.warning(f"Heartbeat interval {interval:.2f}s not close to {expected_heartbeat_interval_seconds}s")
+            last_time = current_time
+
+        self.close_websocket_connection(ws_connection)
+
+        if not verification_passed:
+            logger.error(
+            f"Heartbeat frequency verification failed: messages not received every {expected_heartbeat_interval_seconds} seconds"
+            )
+            return False
+        else:
+            logger.info(
+            f"Heartbeat frequency verification passed: messages received approximately every {expected_heartbeat_interval_seconds} seconds"
+            )
+            return True
+
+    def close_websocket_connection(self, ws_connection: Any) -> None:
+        ws_connection.close()
