@@ -425,6 +425,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             operation_id, states, duration_seconds
         )
 
+    @scenario_step("Generate Air Traffic")
+    def generate_airtraffic(
+        self, session_id: str, duration_seconds: int = 0
+    ) -> Optional[Dict[str, Any]]:
+        pass
+
     @scenario_step("Check Operation State")
     def check_operation_state(
         self,
@@ -626,21 +632,27 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.debug(f"Received WebSocket message: {message}")
             current_time = time.time()
             interval = current_time - last_time
-            if not (expected_heartbeat_interval_seconds - tolerance <= interval <= expected_heartbeat_interval_seconds + tolerance):
+            if not (
+                expected_heartbeat_interval_seconds - tolerance
+                <= interval
+                <= expected_heartbeat_interval_seconds + tolerance
+            ):
                 verification_passed = False
-            logger.warning(f"Heartbeat interval {interval:.2f}s not close to {expected_heartbeat_interval_seconds}s")
+            logger.warning(
+                f"Heartbeat interval {interval:.2f}s not close to {expected_heartbeat_interval_seconds}s"
+            )
             last_time = current_time
 
         self.close_websocket_connection(ws_connection)
 
         if not verification_passed:
             logger.error(
-            f"Heartbeat frequency verification failed: messages not received every {expected_heartbeat_interval_seconds} seconds"
+                f"Heartbeat frequency verification failed: messages not received every {expected_heartbeat_interval_seconds} seconds"
             )
             return False
         else:
             logger.info(
-            f"Heartbeat frequency verification passed: messages received approximately every {expected_heartbeat_interval_seconds} seconds"
+                f"Heartbeat frequency verification passed: messages received approximately every {expected_heartbeat_interval_seconds} seconds"
             )
             return True
 
