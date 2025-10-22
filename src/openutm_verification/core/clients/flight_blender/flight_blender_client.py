@@ -613,6 +613,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         expected_heartbeat_count: int,
         session_id: str,
     ):
+
         ws_connection = self.initialize_websocket_connection(session_id=session_id)
 
         # Verify that heartbeat messages are received approximately every expected_heartbeat_interval_seconds
@@ -622,7 +623,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         tolerance = 0.1 * expected_heartbeat_interval_seconds  # Allow 10% tolerance
         for _ in range(expected_heartbeat_count):
             message = ws_connection.recv()
-            logger.info(f"Received WebSocket message: {message}")
+            logger.debug(f"Received WebSocket message: {message}")
             current_time = time.time()
             interval = current_time - last_time
             if not (expected_heartbeat_interval_seconds - tolerance <= interval <= expected_heartbeat_interval_seconds + tolerance):

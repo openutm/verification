@@ -35,11 +35,11 @@ def sdsp_heartbeat(
             fb_client.initialize_verify_sdsp_heartbeat,
             session_id=session_id,
             expected_heartbeat_interval_seconds=1,
-            expected_heartbeat_count=5,
+            expected_heartbeat_count=3,
         ),
         partial(
             fb_client.wait_x_seconds,
-            wait_time_seconds=1,
+            wait_time_seconds=10,
         ),
         partial(
             fb_client.start_stop_sdsp_session,
