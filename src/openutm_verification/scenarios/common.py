@@ -1,4 +1,5 @@
 import json
+from dataclasses import asdict
 from functools import partial
 from pathlib import Path
 from typing import Any, List, cast
@@ -19,6 +20,8 @@ from openutm_verification.core.reporting.reporting_models import (
 from openutm_verification.simulator.flight_declaration import FlightDeclarationGenerator
 from openutm_verification.simulator.geo_json_telemetry import GeoJSONFlightsSimulator
 from openutm_verification.simulator.models.flight_data_types import (
+    AirTrafficGeneratorConfiguration,
+    FlightObservationSchema,
     GeoJSONFlightsSimulatorConfiguration,
 )
 
@@ -56,12 +59,10 @@ def _redact_fetch_details(res: StepResult) -> tuple[StepResult, Any | None]:
     return res, observations
 
 
-def _run_opensky_flow(steps: list[partial[Any]]) -> List[StepResult]:
+def _run_submit_airtraffic_flow(steps: list[partial[Any]]) -> List[StepResult]:
     """Execute OpenSky flow steps returning the list of StepResults."""
 
-    def _execute_step(
-        step_func: partial[Any], current_observations: Any | None
-    ) -> tuple[StepResult, Any | None]:
+    def _execute_step(step_func: partial[Any], current_observations: Any | None) -> tuple[StepResult, Any | None]:
         name = _callable_name(step_func)
         # Submit step consumes observations
         if "submit_air_traffic" in name:
@@ -82,7 +83,7 @@ def _run_opensky_flow(steps: list[partial[Any]]) -> List[StepResult]:
 
         # Generic execution (fetch steps usually have opensky_client already bound via partial)
         res: StepResult = step_func()
-        if "fetch" in name:
+        if "fetch" in name or "generate" in name:
             res, observations = _redact_fetch_details(res)
             return res, observations
         return res, current_observations
@@ -104,9 +105,7 @@ def _run_declaration_flow(
     steps: list[partial[Any]],
 ) -> List[StepResult]:
     """Execute standard declaration + steps + teardown using generated data and return StepResults."""
-    upload_result = cast(
-        StepResult, fb_client.upload_flight_declaration(flight_declaration)
-    )
+    upload_result = cast(StepResult, fb_client.upload_flight_declaration(flight_declaration))
     if upload_result.status == Status.FAIL or upload_result.details is None:
         # Return early with failure
         return [upload_result]
@@ -126,9 +125,7 @@ def _run_declaration_flow(
         if step_result.status == Status.FAIL:
             break
 
-    teardown_result: StepResult = cast(
-        StepResult, fb_client.delete_flight_declaration(operation_id)
-    )
+    teardown_result: StepResult = cast(StepResult, fb_client.delete_flight_declaration(operation_id))
     all_steps.append(teardown_result)
     return all_steps
 
@@ -143,23 +140,17 @@ def _generate_flight_declaration(config_path: str) -> Any:
         raise
 
 
-def _generate_telemetry(
-    config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION
-) -> List[Any]:
+def _generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION) -> List[Any]:
     """Generate telemetry states from the GeoJSON config file at the given path."""
     try:
-        logger.debug(
-            f"Generating telemetry states from {config_path} for duration {duration} seconds"
-        )
+        logger.debug(f"Generating telemetry states from {config_path} for duration {duration} seconds")
         with open(config_path, "r", encoding="utf-8") as f:
             geojson_data = json.load(f)
 
         simulator_config = GeoJSONFlightsSimulatorConfiguration(geojson=geojson_data)
         simulator = GeoJSONFlightsSimulator(simulator_config)
 
-        simulator.generate_flight_grid_and_path_points(
-            altitude_of_ground_level_wgs_84=570
-        )
+        simulator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=570)
         return simulator.generate_states(duration=duration)
     except Exception as e:
         logger.error(f"Failed to generate telemetry states from {config_path}: {e}")
@@ -172,7 +163,6 @@ def run_sdsp_scenario_template(
     fb_client: FlightBlenderClient | None = None,
     steps: list[partial[Any]],
 ) -> ScenarioResult:
-
     step_results: List[StepResult] = []
 
     for step_func in steps:
@@ -180,18 +170,10 @@ def run_sdsp_scenario_template(
         params = step_func.keywords
         logger.debug(f"Parameters in the step: {params}")
         step_result: StepResult = step_func()
-        
+        step_results.append(step_result)
+        logger.debug(f"Step result: {step_result}")
 
-    # teardown_result: StepResult = cast(
-    #     StepResult, fb_client.start_stop_sdsp_session(operation_id)
-    # )
-    # step_results.append(teardown_result)
-
-    final_status = (
-        Status.PASS
-        if all(s.status == Status.PASS for s in step_results)
-        else Status.FAIL
-    )
+    final_status = Status.PASS if all(s.status == Status.PASS for s in step_results) else Status.FAIL
     total_duration = sum(s.duration for s in step_results)
 
     return ScenarioResult(
@@ -221,15 +203,15 @@ def run_scenario_template(
         scenario_config = config.data_files
 
     telemetry_path = scenario_config.telemetry or config.data_files.telemetry
-    flight_declaration_path = (
-        scenario_config.flight_declaration or config.data_files.flight_declaration
-    )
+    flight_declaration_path = scenario_config.flight_declaration or config.data_files.flight_declaration
     step_results: List[StepResult] = []
 
     logger.info(f"Running scenario '{scenario_name}'")
 
     if not telemetry_path or not flight_declaration_path:
-        error_msg = f"Scenario '{scenario_name}' missing required config paths: telemetry={telemetry_path}, flight_declaration={flight_declaration_path}"
+        error_msg = (
+            f"Scenario '{scenario_name}' missing required config paths: telemetry={telemetry_path}, flight_declaration={flight_declaration_path}"
+        )
         logger.error(error_msg)
         return ScenarioResult(
             name=scenario_name,
@@ -272,7 +254,7 @@ def run_scenario_template(
         )
     elif fb_client is not None and opensky_client is not None:
         # OpenSky flow - requires both clients
-        step_results.append(_run_opensky_flow(steps))
+        step_results = _run_submit_airtraffic_flow(steps)
     else:
         logger.error(f"Scenario '{scenario_name}' is not supported.")
         return ScenarioResult(
@@ -283,11 +265,7 @@ def run_scenario_template(
             error_message="Unsupported scenario configuration.",
         )
 
-    final_status = (
-        Status.PASS
-        if all(s.status == Status.PASS for s in step_results)
-        else Status.FAIL
-    )
+    final_status = Status.PASS if all(s.status == Status.PASS for s in step_results) else Status.FAIL
     total_duration = sum(s.duration for s in step_results)
 
     return ScenarioResult(
@@ -309,10 +287,7 @@ def get_telemetry_path(telemetry_filename: str) -> str:
 def get_flight_declaration_path(flight_declaration_filename: str) -> str:
     """Helper to get the full path to a flight declaration file."""
     parent_dir = Path(__file__).parent.resolve()
-    return str(
-        parent_dir
-        / f"../assets/flight_declarations_samples/{flight_declaration_filename}"
-    )
+    return str(parent_dir / f"../assets/flight_declarations_samples/{flight_declaration_filename}")
 
 
 def get_geo_fence_path(geo_fence_filename: str) -> str:

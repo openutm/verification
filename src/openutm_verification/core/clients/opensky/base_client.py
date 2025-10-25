@@ -29,12 +29,18 @@ class OpenSkySettings(BaseSettings):
     request_timeout: int = 10
     viewport: Tuple[float, float, float, float] = (45.8389, 47.8229, 5.9962, 10.5226)
 
+    # Simulation settings
+    simulation_config_path: str
+    simulation_duration_seconds: int = 30
+
 
 def create_opensky_settings() -> OpenSkySettings:
     """Factory function to create OpenSkySettings from config after initialization."""
     return OpenSkySettings(
         opensky_client_id=config.opensky.auth.client_id or "",
         opensky_client_secret=config.opensky.auth.client_secret or "",
+        simulation_config_path=config.data_files.telemetry or "",
+        simulation_duration_seconds=30,
     )
 
 
