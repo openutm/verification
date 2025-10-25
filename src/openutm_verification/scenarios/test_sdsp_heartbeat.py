@@ -7,17 +7,15 @@ from loguru import logger
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
-from openutm_verification.models import SDSPSessionAction
 from openutm_verification.core.execution.scenario_runner import scenario_step
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
+from openutm_verification.models import SDSPSessionAction
 from openutm_verification.scenarios.common import run_sdsp_scenario_template
 from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("sdsp_heartbeat")
-def sdsp_heartbeat(
-    fb_client: FlightBlenderClient, scenario_name: str
-) -> ScenarioResult:
+def sdsp_heartbeat(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
     """Runs the SDSP heartbeat scenario.
     This scenario
     """

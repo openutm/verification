@@ -2,6 +2,7 @@ import json
 from dataclasses import asdict
 from typing import Optional
 
+import arrow
 import pandas as pd
 from loguru import logger
 from pydantic import BaseModel
@@ -86,7 +87,23 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
             simulator = GeoJSONAirtrafficSimulator(simulator_config)
 
             generated_airtraffic_data: list[FlightObservationSchema] = simulator.generate_air_traffic_data(duration=duration)
-            return [asdict(obs) for obs in generated_airtraffic_data]
+
+            # Convert FlightObservationSchema to SingleObservation format for compatibility
+            observations = []
+            for obs in generated_airtraffic_data:
+                observation = SingleObservation(
+                    timestamp=arrow.get(obs.timestamp).int_timestamp,
+                    lat_dd=obs.latitude_dd,
+                    lon_dd=obs.longitude_dd,
+                    altitude_mm=obs.altitude_mm,
+                    traffic_source=obs.traffic_source,
+                    source_type=obs.source_type,
+                    icao_address=obs.icao_address,
+                    metadata=obs.metadata,
+                )
+                observations.append(observation.model_dump())
+
+            return observations
 
         except Exception as e:
             logger.error(f"Failed to generate telemetry states from {config_path}: {e}")

@@ -83,7 +83,7 @@ def _run_submit_airtraffic_flow(steps: list[partial[Any]]) -> List[StepResult]:
 
         # Generic execution (fetch steps usually have opensky_client already bound via partial)
         res: StepResult = step_func()
-        if "fetch" in name:
+        if "fetch" in name or "generate" in name:
             res, observations = _redact_fetch_details(res)
             return res, observations
         return res, current_observations
