@@ -9,26 +9,30 @@ from openutm_verification.core.clients.flight_blender.flight_blender_client impo
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
 from openutm_verification.core.execution.scenario_runner import scenario_step
 from openutm_verification.core.reporting.reporting_models import ScenarioResult, Status
-from openutm_verification.scenarios.common import run_air_traffic_scenario_template
+from openutm_verification.scenarios.common import run_scenario_template
 from openutm_verification.scenarios.registry import register_scenario
 
 
-@register_scenario("airtraffic_live_data")
-def test_airtraffic_live_data(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
-    """This test creates a sample data set of airtraffic data and submits it to Flight Blender using"""
+@register_scenario("openutm_sim_air_traffic_data")
+def test_openutm_sim_air_traffic_data(fb_client: FlightBlenderClient, opensky_client: OpenSkyClient, scenario_name: str) -> ScenarioResult:
+    """Fetch live flight data from OpenSky and submit to Flight Blender using template.
+
+    The OpenSky client is provided by the caller; this function focuses on orchestration only.
+    """
 
     aggregated_steps = []
     overall_status = Status.PASS
-    total_duration = 30.0
+    total_duration = 0.0
 
     steps = [
-        partial(fb_client.generate_air_traffic),
+        partial(opensky_client.generate_simulated_air_traffic_data),
         partial(fb_client.submit_air_traffic),
     ]
 
-    result = run_air_traffic_scenario_template(
+    result = run_scenario_template(
         fb_client=fb_client,
-        scenario_name=f"{scenario_name} - Generate and Submit Airtraffic Data",
+        opensky_client=opensky_client,
+        scenario_name=f"{scenario_name}",
         steps=steps,
     )
 

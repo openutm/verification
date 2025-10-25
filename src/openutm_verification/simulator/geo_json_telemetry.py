@@ -23,6 +23,7 @@ from uas_standards.astm.f3411.v22a.api import (
 
 from openutm_verification.simulator.models.flight_data_types import (
     AirTrafficGeneratorConfiguration,
+    FlightObservationSchema,
     FlightRecordCollection,
     FullFlightRecord,
     GeoJSONFlightsSimulatorConfiguration,
@@ -32,7 +33,6 @@ from openutm_verification.simulator.models.geo_json_models import (
     ValidatedFlightPath,
 )
 from openutm_verification.simulator.models.utils import (
-    FlightObservationSchema,
     FlightPoint,
     GridCellFlight,
 )
@@ -41,7 +41,7 @@ from openutm_verification.simulator.operator_flight_data import (
 )
 
 
-class GeoJSONAitrafficSimulator:
+class GeoJSONAirtrafficSimulator:
     """Generate air traffic flight paths given a GeoJSON LineString with validated inputs."""
 
     def __init__(self, config: AirTrafficGeneratorConfiguration) -> None:
@@ -77,6 +77,7 @@ class GeoJSONAitrafficSimulator:
             for point in coordinates:
                 airtraffic.append(
                     FlightObservationSchema(
+                        id=str(uuid.uuid4()),
                         timestamp=timestamp.isoformat(),
                         latitude_dd=point[1],
                         longitude_dd=point[0],

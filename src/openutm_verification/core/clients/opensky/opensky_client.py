@@ -1,11 +1,23 @@
+import json
+from dataclasses import asdict
 from typing import Optional
 
 import pandas as pd
 from loguru import logger
 from pydantic import BaseModel
 
-from openutm_verification.core.clients.opensky.base_client import BaseOpenSkyAPIClient, OpenSkySettings
+from openutm_verification.core.clients.opensky.base_client import (
+    BaseOpenSkyAPIClient,
+    OpenSkySettings,
+)
 from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.simulator.geo_json_telemetry import (
+    GeoJSONAirtrafficSimulator,
+)
+from openutm_verification.simulator.models.flight_data_types import (
+    AirTrafficGeneratorConfiguration,
+    FlightObservationSchema,
+)
 
 
 class SingleObservation(BaseModel):
@@ -62,6 +74,30 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
             "lamax": lat_max,
             "lomax": lng_max,
         }
+
+    def generate_air_traffic_data(self, config_path: str, duration: int = 30) -> list[dict]:
+        """Generate air traffic telemetry states from the config file at the given path."""
+        try:
+            logger.debug(f"Generating telemetry states from {config_path} for duration {duration} seconds")
+            with open(config_path, "r", encoding="utf-8") as f:
+                geojson_data = json.load(f)
+
+            simulator_config = AirTrafficGeneratorConfiguration(geojson=geojson_data)
+            simulator = GeoJSONAirtrafficSimulator(simulator_config)
+
+            generated_airtraffic_data: list[FlightObservationSchema] = simulator.generate_air_traffic_data(duration=duration)
+            return [asdict(obs) for obs in generated_airtraffic_data]
+
+        except Exception as e:
+            logger.error(f"Failed to generate telemetry states from {config_path}: {e}")
+            raise
+
+    @scenario_step("Generate Simulated Air Traffic Data")
+    def generate_simulated_air_traffic_data(self) -> Optional[list[dict]]:
+        return self.generate_air_traffic_data(
+            config_path=self.settings.simulation_config_path,
+            duration=self.settings.simulation_duration_seconds,
+        )
 
     def fetch_states_data(self) -> Optional[pd.DataFrame]:
         """Fetch current flight states from OpenSky Network."""

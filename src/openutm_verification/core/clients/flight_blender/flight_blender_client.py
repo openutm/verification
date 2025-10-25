@@ -24,7 +24,6 @@ from openutm_verification.rid import (
     RIDOperatorDetails,
     UAClassificationEU,
 )
-from openutm_verification.scenarios.common import _generate_air_traffic_data
 
 
 def _create_rid_operator_details(operation_id: str) -> RIDOperatorDetails:
@@ -382,10 +381,6 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             FlightBlenderError: If maximum waiting time is exceeded due to rate limits.
         """
         return self._submit_telemetry_states_impl(operation_id, states, duration_seconds)
-
-    @scenario_step("Generate Air Traffic")
-    def generate_air_traffic(self, session_id: str, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
-        return _generate_air_traffic_data(config_path=session_id, duration_seconds=duration_seconds)
 
     @scenario_step("Check Operation State")
     def check_operation_state(

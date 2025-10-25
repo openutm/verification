@@ -18,9 +18,6 @@ from openutm_verification.core.reporting.reporting_models import (
     StepResult,
 )
 from openutm_verification.simulator.flight_declaration import FlightDeclarationGenerator
-from openutm_verification.simulator.geo_json_aitraffic import (
-    GeoJSONAitrafficSimulator,
-)
 from openutm_verification.simulator.geo_json_telemetry import GeoJSONFlightsSimulator
 from openutm_verification.simulator.models.flight_data_types import (
     AirTrafficGeneratorConfiguration,
@@ -143,24 +140,6 @@ def _generate_flight_declaration(config_path: str) -> Any:
         raise
 
 
-def _generate_air_traffic_data(config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION) -> list[dict]:
-    """Generate air traffic telemetry states from the config file at the given path."""
-    try:
-        logger.debug(f"Generating telemetry states from {config_path} for duration {duration} seconds")
-        with open(config_path, "r", encoding="utf-8") as f:
-            geojson_data = json.load(f)
-
-        simulator_config = AirTrafficGeneratorConfiguration(geojson=geojson_data)
-        simulator = GeoJSONAitrafficSimulator(simulator_config)
-
-        generated_airtraffic_data: list[FlightObservationSchema] = simulator.generate_air_traffic_data(duration=duration)
-        return [asdict(obs) for obs in generated_airtraffic_data]
-
-    except Exception as e:
-        logger.error(f"Failed to generate telemetry states from {config_path}: {e}")
-        raise
-
-
 def _generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION) -> List[Any]:
     """Generate telemetry states from the GeoJSON config file at the given path."""
     try:
@@ -176,49 +155,6 @@ def _generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURA
     except Exception as e:
         logger.error(f"Failed to generate telemetry states from {config_path}: {e}")
         raise
-
-
-def run_air_traffic_scenario_template(
-    scenario_name: str,
-    *,
-    fb_client: FlightBlenderClient | None = None,
-    steps: list[partial[Any]],
-    duration: int = DEFAULT_TELEMETRY_DURATION,
-) -> ScenarioResult:
-    """Unified scenario runner supporting declaration and OpenSky flows.
-
-    For declaration flows: Generates flight declaration and telemetry data in-memory from config.
-    For OpenSky flows: Uses provided opensky_client to fetch live data.
-    """
-    # Get scenario-specific config paths, falling back to global defaults
-    scenario_config = config.scenarios.get(scenario_name)
-    if scenario_config is None:
-        scenario_config = config.data_files
-    step_results: List[StepResult] = []
-    try:
-        airtraffic_data = _generate_air_traffic_data(config_path=scenario_config, duration=duration)
-        logger.info(f"Generated {len(airtraffic_data)} air traffic observations")
-    except Exception as e:
-        logger.error(f"Failed to generate data for scenario '{scenario_name}': {e}")
-        return ScenarioResult(
-            name=scenario_name,
-            status=Status.FAIL,
-            duration_seconds=0,
-            steps=[],
-            error_message=f"Data generation failed: {e}",
-        )
-
-    step_results.append(_run_submit_airtraffic_flow(steps))
-
-    final_status = Status.PASS if all(s.status == Status.PASS for s in step_results) else Status.FAIL
-    total_duration = sum(s.duration for s in step_results)
-
-    return ScenarioResult(
-        name=scenario_name,
-        status=final_status,
-        duration_seconds=total_duration,
-        steps=step_results,
-    )
 
 
 def run_sdsp_scenario_template(
@@ -318,7 +254,7 @@ def run_scenario_template(
         )
     elif fb_client is not None and opensky_client is not None:
         # OpenSky flow - requires both clients
-        step_results.append(_run_submit_airtraffic_flow(steps))
+        step_results = _run_submit_airtraffic_flow(steps)
     else:
         logger.error(f"Scenario '{scenario_name}' is not supported.")
         return ScenarioResult(
