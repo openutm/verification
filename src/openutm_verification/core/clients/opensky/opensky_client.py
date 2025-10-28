@@ -1,11 +1,9 @@
 import json
-from dataclasses import asdict
 from typing import Optional
 
 import arrow
 import pandas as pd
 from loguru import logger
-from pydantic import BaseModel
 
 from openutm_verification.core.clients.opensky.base_client import (
     BaseOpenSkyAPIClient,
@@ -21,21 +19,8 @@ from openutm_verification.simulator.models.flight_data_types import (
 )
 
 
-class SingleObservation(BaseModel):
-    """Pydantic model for storing flight observation details."""
-
-    timestamp: int
-    lat_dd: float
-    lon_dd: float
-    altitude_mm: float
-    traffic_source: int
-    source_type: int
-    icao_address: str
-    metadata: Optional[dict] = None
-
-
 class OpenSkyClient(BaseOpenSkyAPIClient):
-    """Client for fetching and processing OpenSky Network flight data."""
+    """Client for fetching live flight data from OpenSky Network and generating simulated air traffic data."""
 
     # OpenSky API response column names
     COLUMN_NAMES = [
@@ -76,45 +61,41 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
             "lomax": lng_max,
         }
 
-    def generate_air_traffic_data(self, config_path: str, duration: int = 30) -> list[dict]:
-        """Generate air traffic telemetry states from the config file at the given path."""
+    @scenario_step("Generate Simulated Air Traffic Data")
+    def generate_simulated_air_traffic_data(
+        self,
+        config_path: Optional[str] = None,
+        duration: Optional[int] = None,
+    ) -> Optional[list[dict]]:
+        """Generate simulated air traffic data from GeoJSON configuration.
+
+        Loads GeoJSON data from the specified config path and uses it to generate
+        simulated flight observations for the given duration. If no config path
+        or duration is provided, uses the default settings from the client configuration.
+
+        Args:
+            config_path: Path to the GeoJSON configuration file. Defaults to settings value.
+            duration: Duration in seconds for which to generate data. Defaults to settings value.
+
+        Returns:
+            List of simulated flight observation dictionaries, or None if generation fails.
+        """
+        config_path = config_path or self.settings.simulation_config_path
+        duration = duration or self.settings.simulation_duration_seconds
+
         try:
             logger.debug(f"Generating telemetry states from {config_path} for duration {duration} seconds")
-            with open(config_path, "r", encoding="utf-8") as f:
-                geojson_data = json.load(f)
+            with open(config_path, "r", encoding="utf-8") as file_handle:
+                geojson_data = json.load(file_handle)
 
             simulator_config = AirTrafficGeneratorConfiguration(geojson=geojson_data)
             simulator = GeoJSONAirtrafficSimulator(simulator_config)
 
-            generated_airtraffic_data: list[FlightObservationSchema] = simulator.generate_air_traffic_data(duration=duration)
+            return simulator.generate_air_traffic_data(duration=duration)
 
-            # Convert FlightObservationSchema to SingleObservation format for compatibility
-            observations = []
-            for obs in generated_airtraffic_data:
-                observation = SingleObservation(
-                    timestamp=arrow.get(obs.timestamp).int_timestamp,
-                    lat_dd=obs.latitude_dd,
-                    lon_dd=obs.longitude_dd,
-                    altitude_mm=obs.altitude_mm,
-                    traffic_source=obs.traffic_source,
-                    source_type=obs.source_type,
-                    icao_address=obs.icao_address,
-                    metadata=obs.metadata,
-                )
-                observations.append(observation.model_dump())
-
-            return observations
-
-        except Exception as e:
-            logger.error(f"Failed to generate telemetry states from {config_path}: {e}")
+        except Exception as exc:  # noqa: BLE001
+            logger.error(f"Failed to generate telemetry states from {config_path}: {exc}")
             raise
-
-    @scenario_step("Generate Simulated Air Traffic Data")
-    def generate_simulated_air_traffic_data(self) -> Optional[list[dict]]:
-        return self.generate_air_traffic_data(
-            config_path=self.settings.simulation_config_path,
-            duration=self.settings.simulation_duration_seconds,
-        )
 
     def fetch_states_data(self) -> Optional[pd.DataFrame]:
         """Fetch current flight states from OpenSky Network."""
@@ -142,7 +123,7 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
             altitude = 0.0 if row["baro_altitude"] == "No Data" else row["baro_altitude"]
 
             # Create observation using Pydantic model
-            observation = SingleObservation(
+            observation = FlightObservationSchema(
                 timestamp=int(row["time_position"]),
                 icao_address=str(row["icao24"]),
                 traffic_source=2,  # ADS-B traffic source
@@ -166,4 +147,12 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
 
     @scenario_step("Fetch OpenSky Data")
     def fetch_data(self):
+        """Fetch and process live flight data from OpenSky Network.
+
+        Retrieves current flight states from the OpenSky API within the configured
+        viewport bounds and processes them into standardized observation format.
+
+        Returns:
+            List of flight observation dictionaries, or None if no data is available.
+        """
         return self.fetch_and_process_data()

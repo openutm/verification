@@ -42,9 +42,19 @@ from openutm_verification.simulator.operator_flight_data import (
 
 
 class GeoJSONAirtrafficSimulator:
-    """Generate air traffic flight paths given a GeoJSON LineString with validated inputs."""
+    """Generate simulated air traffic data from GeoJSON configurations.
+
+    This simulator creates random flight trajectories within specified geographic bounds
+    and generates flight observation data for air traffic simulation scenarios.
+    """
 
     def __init__(self, config: AirTrafficGeneratorConfiguration) -> None:
+        """Initialize the air traffic simulator with configuration.
+
+        Args:
+            config: Configuration object containing GeoJSON data, reference time,
+                   altitude settings, and other simulation parameters.
+        """
         self.config: AirTrafficGeneratorConfiguration = config
 
         self.geod: Geod = Geod(ellps="WGS84")
@@ -62,12 +72,27 @@ class GeoJSONAirtrafficSimulator:
         temp_box = box(*vfp.box_bounds)
         buffered_utm = temp_box.buffer(10000)  # Buffer by 10 km in UTM coordinates
         self.box: Polygon = buffered_utm if buffered_utm.is_valid else temp_box
+        logger.info(f"Initialized GeoJSONAirtrafficSimulator with UTM zone {self.utm_zone}")
 
-    def generate_air_traffic_data(self, duration: int, session_id: str = str(uuid.uuid4())) -> list[FlightObservationSchema]:
-        airtraffic = []
+    def generate_air_traffic_data(self, duration: int, session_id: str = str(uuid.uuid4())) -> list[dict]:
+        """Generate simulated air traffic observations for the specified duration.
+
+        Creates random flight trajectories within the configured geographic bounds
+        and generates flight observation data points at each second.
+
+        Args:
+            duration: Number of seconds to generate data for.
+            session_id: Unique identifier for the simulation session.
+
+        Returns:
+            List of flight observation dictionaries containing position, altitude,
+            and metadata for each generated data point.
+        """
+        logger.info(f"Generating air traffic data for {duration} seconds with session ID {session_id}")
+        airtraffic: list[dict] = []
 
         # Generate a random trajectory
-        # TODO: Improve to generate a trajectory where the speed of the aircraft can be controlled
+        # Improve to generate a trajectory where the speed of the aircraft can be controlled
         trajectory_geojson = generate_random_geojson("LineString", boundingBox=self.box.bounds, numberVertices=duration)
         # A GeoJSON LineString has 'coordinates' as a list of [lon, lat] pairs
         coordinates = trajectory_geojson["coordinates"]
@@ -75,27 +100,38 @@ class GeoJSONAirtrafficSimulator:
         for i in range(duration):
             timestamp = self.reference_time.shift(seconds=i)
             for point in coordinates:
+                metadata = {"session_id": session_id} if session_id else {}
                 airtraffic.append(
                     FlightObservationSchema(
-                        id=str(uuid.uuid4()),
-                        timestamp=timestamp.isoformat(),
-                        latitude_dd=point[1],
-                        longitude_dd=point[0],
+                        lat_dd=point[1],
+                        lon_dd=point[0],
                         altitude_mm=self.config.altitude_of_ground_level_wgs_84,
                         traffic_source=1,
                         source_type=2,
                         icao_address="TEST1234",
-                        metadata={},
-                        session_id=session_id,
-                    )
+                        timestamp=timestamp.int_timestamp,
+                        metadata=metadata,
+                    ).model_dump()
                 )
+        logger.info(f"Generated {len(airtraffic)} air traffic observations")
         return airtraffic
 
 
 class GeoJSONFlightsSimulator:
-    """Generate a flight path given a GeoJSON LineString with validated inputs."""
+    """Generate simulated flight telemetry from GeoJSON flight paths.
+
+    This simulator processes GeoJSON LineString geometries to create realistic
+    flight trajectories with speed, bearing, and altitude calculations for
+    unmanned aircraft system (UAS) verification scenarios.
+    """
 
     def __init__(self, config: GeoJSONFlightsSimulatorConfiguration) -> None:
+        """Initialize the flight simulator with configuration.
+
+        Args:
+            config: Configuration object containing GeoJSON flight path data,
+                   reference time, altitude settings, and simulation parameters.
+        """
         self.config: GeoJSONFlightsSimulatorConfiguration = config
         self.reference_time: arrow.Arrow = arrow.get(config.reference_time.datetime)
         self.flight_start_shift_time: int = config.flight_start_shift
@@ -128,9 +164,21 @@ class GeoJSONFlightsSimulator:
         # Convert to shapely Points for speed/bearing computations later
         self.flight_path_points: list[Point] = [Point(lon, lat) for lon, lat in vfp.path_points]
         logger.info(f"Validated LineString length: {vfp.line_length_m:.1f} m, generated {len(self.flight_path_points)} path points")
+        logger.info(f"Initialized GeoJSONFlightsSimulator with UTM zone {self.utm_zone}")
 
     def generate_flight_speed_bearing(self, adjacent_points: list[Point], delta_time_secs: int) -> tuple[float, float]:
-        """Generate speed (m/s) and bearing between two adjacent Points."""
+        """Generate speed (m/s) and bearing between two adjacent Points.
+
+        Calculates the forward azimuth and distance between two geographic points
+        to determine aircraft speed and bearing for flight simulation.
+
+        Args:
+            adjacent_points: List of two Point objects representing consecutive positions.
+            delta_time_secs: Time difference between the points in seconds.
+
+        Returns:
+            Tuple of (speed in m/s, bearing in degrees from north).
+        """
         first_point = adjacent_points[0]
         second_point = adjacent_points[1]
 
@@ -138,10 +186,22 @@ class GeoJSONFlightsSimulator:
         speed_mts_per_sec = round(adjacent_point_distance_mts / delta_time_secs, 2)
         # Normalize azimuth to [0, 360)
         fwd_azimuth = (fwd_azimuth + 360.0) % 360.0
+        logger.debug(f"Computed speed: {speed_mts_per_sec} m/s, bearing: {fwd_azimuth}°")
         return speed_mts_per_sec, fwd_azimuth
 
     def utm_converter(self, shapely_shape: BaseGeometry, inverse: bool = False) -> BaseGeometry:
-        """Convert between WGS84 (lon/lat) and UTM coordinates for buffering."""
+        """Convert between WGS84 (lon/lat) and UTM coordinates for buffering.
+
+        Transforms geometric shapes between geographic coordinates (WGS84)
+        and projected UTM coordinates for accurate spatial operations.
+
+        Args:
+            shapely_shape: Shapely geometry object to transform.
+            inverse: If True, convert from UTM back to WGS84.
+
+        Returns:
+            Transformed Shapely geometry object.
+        """
         transformer = self._tx_utm_to_wgs84 if inverse else self._tx_wgs84_to_utm
 
         gi = shapely_shape.__geo_interface__
@@ -164,8 +224,17 @@ class GeoJSONFlightsSimulator:
         return shape({"type": gtype, "coordinates": tuple(new_coords)})
 
     def generate_flight_grid_and_path_points(self, altitude_of_ground_level_wgs_84: float, *, loop_path: bool = False) -> None:
-        flight_points_with_altitude: list[FlightPoint] = []
+        """Generate flight path points with speed and bearing calculations.
+
+        Processes the validated flight path points to calculate speed and bearing
+        between consecutive points, creating a grid cell flight track.
+
+        Args:
+            altitude_of_ground_level_wgs_84: Ground level altitude in meters.
+            loop_path: Whether to loop back to the start of the path when reaching the end.
+        """
         logger.info(f"Generating flight grid and path points at altitude {altitude_of_ground_level_wgs_84} meters")
+        flight_points_with_altitude: list[FlightPoint] = []
         all_grid_cell_tracks = []
         if not self.flight_path_points:
             raise RuntimeError("No flight path points available")
@@ -197,6 +266,7 @@ class GeoJSONFlightsSimulator:
         all_grid_cell_tracks.append(GridCellFlight(bounds=bounds_box, track=flight_points_with_altitude))
 
         self.grid_cells_flight_tracks = all_grid_cell_tracks
+        logger.info(f"Generated {len(flight_points_with_altitude)} flight path points")
 
     def generate_flight_details(self, flight_id: str) -> RIDFlightDetails:
         """
@@ -218,6 +288,7 @@ class GeoJSONFlightsSimulator:
         """
         Generate rid_state objects that can be submitted as flight telemetry.
         """
+        logger.info(f"Generating flight states for {duration} seconds")
         all_flight_telemetry: List[List[RIDAircraftState]] = []
         flight_track_details: dict[int, dict[str, int]] = {}
         flight_current_index: dict[int, int] = {}
@@ -283,6 +354,7 @@ class GeoJSONFlightsSimulator:
             )
             flights.append(record)
         self.flights = flights
+        logger.info(f"Generated {len(flights)} flight records")
 
         # Return states for flight 0 for in-memory use
         return all_flight_telemetry[0] if all_flight_telemetry else []
@@ -305,17 +377,32 @@ class GeoJSONFlightsSimulator:
         Returns:
             Dict with 'reference_time' and 'current_states'.
         """
+        logger.info(f"Generating telemetry payload for {duration} seconds")
         states = self.generate_states(duration, loop_path)
         jsonable_states = self.to_jsonable_states(states)
-        return {
+        payload = {
             "reference_time": self.reference_time.isoformat(),
             "current_states": jsonable_states,
         }
+        logger.info(f"Generated telemetry payload with {len(jsonable_states)} states")
+        return payload
 
 
 def generate_aircraft_states(
     config: GeoJSONFlightsSimulatorConfiguration,
 ) -> FlightRecordCollection:
+    """Generate a collection of aircraft flight records from GeoJSON configuration.
+
+    Creates simulated flight data including telemetry states and flight details
+    for unmanned aircraft system verification scenarios.
+
+    Args:
+        config: Configuration object containing GeoJSON flight path data and simulation parameters.
+
+    Returns:
+        FlightRecordCollection containing the generated flight records.
+    """
+    logger.info("Starting aircraft states generation")
     my_path_generator = GeoJSONFlightsSimulator(config)
 
     my_path_generator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=config.altitude_of_ground_level_wgs_84)
@@ -324,6 +411,7 @@ def generate_aircraft_states(
     flights = my_path_generator.flights
 
     result = FlightRecordCollection(flights=flights)
+    logger.info(f"Generated {len(flights)} aircraft flight records")
 
     # Already the correct type; no need to re-parse via ImplicitDict
     return result
@@ -339,6 +427,7 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=str, default="output", help="Output directory for files")
     args = parser.parse_args()
 
+    logger.info("Starting GeoJSON Flight Simulator")
     # Load configuration from config.json
     config_file_path = Path(args.config)
 
@@ -397,3 +486,4 @@ if __name__ == "__main__":
     with flight_data_file.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
     logger.info(f"Telemetry payload saved to: {flight_data_file}")
+    logger.info("GeoJSON Flight Simulator completed successfully")
