@@ -19,20 +19,6 @@ class FlightObservationSchema(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
 
-@dataclass
-class FlightObservationSchema:
-    id: str
-    session_id: str
-    latitude_dd: float
-    longitude_dd: float
-    altitude_mm: float
-    traffic_source: int
-    source_type: int
-    icao_address: str
-    timestamp: str
-    metadata: dict
-
-
 class FullFlightRecord(ImplicitDict):
     reference_time: StringBasedDateTime
     """The reference time of this flight (usually the time of first telemetry)"""
