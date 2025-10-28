@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import List, Optional
 
 from implicitdict import ImplicitDict, StringBasedDateTime
@@ -16,6 +17,20 @@ class FlightObservationSchema(BaseModel):
     icao_address: str
     timestamp: int
     metadata: dict = Field(default_factory=dict)
+
+
+@dataclass
+class FlightObservationSchema:
+    id: str
+    session_id: str
+    latitude_dd: float
+    longitude_dd: float
+    altitude_mm: float
+    traffic_source: int
+    source_type: int
+    icao_address: str
+    timestamp: str
+    metadata: dict
 
 
 class FullFlightRecord(ImplicitDict):
