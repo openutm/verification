@@ -1,22 +1,21 @@
-from dataclasses import dataclass
 from typing import List, Optional
 
 from implicitdict import ImplicitDict, StringBasedDateTime
+from pydantic import BaseModel, Field
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState, RIDFlightDetails
 
+DEFAULT_REFERENCE_TIME = "2022-01-01T00:00:00Z"
 
-@dataclass
-class FlightObservationSchema:
-    id: str
-    session_id: str
-    latitude_dd: float
-    longitude_dd: float
+
+class FlightObservationSchema(BaseModel):
+    lat_dd: float
+    lon_dd: float
     altitude_mm: float
     traffic_source: int
     source_type: int
     icao_address: str
-    timestamp: str
-    metadata: dict
+    timestamp: int
+    metadata: dict = Field(default_factory=dict)
 
 
 class FullFlightRecord(ImplicitDict):
@@ -38,7 +37,7 @@ class FlightRecordCollection(ImplicitDict):
 
 
 class AdjacentCircularFlightsSimulatorConfiguration(ImplicitDict):
-    reference_time: StringBasedDateTime = StringBasedDateTime("2022-01-01T00:00:00Z")
+    reference_time: StringBasedDateTime = StringBasedDateTime(DEFAULT_REFERENCE_TIME)
     """The reference time relative to which flight data should be generated.
 
     The time should be irrelevant in real-world use as times are adjusted to be
@@ -72,7 +71,7 @@ class AdjacentCircularFlightsSimulatorConfiguration(ImplicitDict):
 
 
 class GeoJSONFlightsSimulatorConfiguration(ImplicitDict):
-    reference_time: StringBasedDateTime = StringBasedDateTime("2022-01-01T00:00:00Z")
+    reference_time: StringBasedDateTime = StringBasedDateTime(DEFAULT_REFERENCE_TIME)
     """The reference time relative to which flight data should be generated.
 
     The time should be irrelevant in real-world use as times are adjusted to be
@@ -94,7 +93,7 @@ class GeoJSONFlightsSimulatorConfiguration(ImplicitDict):
 
 
 class AirTrafficGeneratorConfiguration(ImplicitDict):
-    reference_time: StringBasedDateTime = StringBasedDateTime("2022-01-01T00:00:00Z")
+    reference_time: StringBasedDateTime = StringBasedDateTime(DEFAULT_REFERENCE_TIME)
     """The reference time relative to which flight data should be generated.
 
     The time should be irrelevant in real-world use as times are adjusted to be
