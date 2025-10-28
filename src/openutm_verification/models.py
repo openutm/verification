@@ -18,6 +18,7 @@ class OperationState(int, Enum):
     CANCELLED = 7
     REJECTED = 8
 
+
 class SDSPSessionAction(str, Enum):
     START = "start"
     STOP = "stop"

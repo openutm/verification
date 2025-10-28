@@ -1,10 +1,12 @@
 import json
 import random
 import sys
+import uuid
 from pathlib import Path
 from typing import List, Optional
 
 import arrow
+from geojson.utils import generate_random as generate_random_geojson
 from loguru import logger
 from pyproj import Geod, Transformer
 from shapely.geometry import LineString, Point, Polygon, box, mapping, shape
@@ -20,6 +22,8 @@ from uas_standards.astm.f3411.v22a.api import (
 )
 
 from openutm_verification.simulator.models.flight_data_types import (
+    AirTrafficGeneratorConfiguration,
+    FlightObservationSchema,
     FlightRecordCollection,
     FullFlightRecord,
     GeoJSONFlightsSimulatorConfiguration,
@@ -35,6 +39,57 @@ from openutm_verification.simulator.models.utils import (
 from openutm_verification.simulator.operator_flight_data import (
     OperatorFlightDataGenerator,
 )
+
+
+class GeoJSONAirtrafficSimulator:
+    """Generate air traffic flight paths given a GeoJSON LineString with validated inputs."""
+
+    def __init__(self, config: AirTrafficGeneratorConfiguration) -> None:
+        self.config: AirTrafficGeneratorConfiguration = config
+
+        self.geod: Geod = Geod(ellps="WGS84")
+        self.reference_time: arrow.Arrow = arrow.get(config.reference_time.datetime)
+        self.flight_start_shift_time: int = config.flight_start_shift
+
+        self.utm_zone: int = config.utm_zone
+        wgs84 = "EPSG:4326"
+        utm = f"+proj=utm +zone={self.utm_zone} +ellps=WGS84 +datum=WGS84"
+        self._tx_wgs84_to_utm = Transformer.from_crs(wgs84, utm, always_xy=True)
+        self._tx_utm_to_wgs84 = Transformer.from_crs(utm, wgs84, always_xy=True)
+
+        # Validate input GeoJSON and precompute derived values via Pydantic models
+        vfp: ValidatedFlightPath = ValidatedFlightPath.from_feature_collection(self.config.geojson)
+        temp_box = box(*vfp.box_bounds)
+        buffered_utm = temp_box.buffer(10000)  # Buffer by 10 km in UTM coordinates
+        self.box: Polygon = buffered_utm if buffered_utm.is_valid else temp_box
+
+    def generate_air_traffic_data(self, duration: int, session_id: str = str(uuid.uuid4())) -> list[FlightObservationSchema]:
+        airtraffic = []
+
+        # Generate a random trajectory
+        # TODO: Improve to generate a trajectory where the speed of the aircraft can be controlled
+        trajectory_geojson = generate_random_geojson("LineString", boundingBox=self.box.bounds, numberVertices=duration)
+        # A GeoJSON LineString has 'coordinates' as a list of [lon, lat] pairs
+        coordinates = trajectory_geojson["coordinates"]
+
+        for i in range(duration):
+            timestamp = self.reference_time.shift(seconds=i)
+            for point in coordinates:
+                airtraffic.append(
+                    FlightObservationSchema(
+                        id=str(uuid.uuid4()),
+                        timestamp=timestamp.isoformat(),
+                        latitude_dd=point[1],
+                        longitude_dd=point[0],
+                        altitude_mm=self.config.altitude_of_ground_level_wgs_84,
+                        traffic_source=1,
+                        source_type=2,
+                        icao_address="TEST1234",
+                        metadata={},
+                        session_id=session_id,
+                    )
+                )
+        return airtraffic
 
 
 class GeoJSONFlightsSimulator:
@@ -309,7 +364,8 @@ if __name__ == "__main__":
     )
     # Use the configured altitude consistently
     my_flight_generator.generate_flight_grid_and_path_points(
-        altitude_of_ground_level_wgs_84=my_flight_generator.config.altitude_of_ground_level_wgs_84, loop_path=args.loop_path
+        altitude_of_ground_level_wgs_84=my_flight_generator.config.altitude_of_ground_level_wgs_84,
+        loop_path=args.loop_path,
     )
 
     my_flight_generator.generate_states(duration=args.duration, loop_path=args.loop_path)
