@@ -7,6 +7,9 @@ from unittest.mock import DEFAULT
 
 from loguru import logger
 
+from openutm_verification.core.clients.air_traffic.air_traffic_client import (
+    AirTrafficClient,
+)
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
@@ -184,10 +187,71 @@ def run_sdsp_scenario_template(
     )
 
 
+def run_air_traffic_scenario_template(
+    scenario_name: str,
+    *,
+    fb_client: FlightBlenderClient | None = None,
+    air_traffic_client: AirTrafficClient | None = None,
+    steps: list[partial[Any]],
+) -> ScenarioResult:
+    step_results: List[StepResult] = []
+
+    single_or_multiple_sensors = config.air_traffic_simulator_settings.single_or_multiple_sensors
+    logger.info(f"Running scenario '{scenario_name}'")
+
+    def _execute_step(step_func: partial[Any], current_observations: Any | None) -> tuple[StepResult, Any | None]:
+        name = _callable_name(step_func)
+        # Submit step consumes observations
+        if "submit_simulated_air_traffic" in name:
+            if current_observations:
+                return (
+                    step_func(
+                        observations=current_observations,
+                        single_or_multiple_sensors=single_or_multiple_sensors,
+                    ),
+                    current_observations,
+                )
+            return (
+                StepResult(
+                    name="Submit Simulated Air Traffic (skipped)",
+                    status=Status.PASS,
+                    duration=0.0,
+                    details="No observations to submit",
+                ),
+                current_observations,
+            )
+
+        res: StepResult = step_func()
+        if "fetch" in name or "generate" in name:
+            res, observations = _redact_fetch_details(res)
+            return res, observations
+        return res, current_observations
+
+    step_results: List[StepResult] = []
+    if air_traffic_client is not None and fb_client is not None:
+        observations: Any | None = None
+        for step in steps:
+            step_result, observations = _execute_step(step, observations)
+            step_results.append(step_result)
+            if step_result.status == Status.FAIL:
+                break
+
+    final_status = Status.PASS if all(s.status == Status.PASS for s in step_results) else Status.FAIL
+    total_duration = sum(s.duration for s in step_results)
+
+    return ScenarioResult(
+        name=scenario_name,
+        status=final_status,
+        duration_seconds=total_duration,
+        steps=step_results,
+    )
+
+
 def run_scenario_template(
     scenario_name: str,
     *,
     fb_client: FlightBlenderClient | None = None,
+    air_traffic_client: AirTrafficClient | None = None,
     opensky_client: OpenSkyClient | None = None,
     steps: list[partial[Any]],
     duration: int = DEFAULT_TELEMETRY_DURATION,
@@ -254,6 +318,8 @@ def run_scenario_template(
         )
     elif fb_client is not None and opensky_client is not None:
         # OpenSky flow - requires both clients
+        step_results = _run_submit_airtraffic_flow(steps)
+    if air_traffic_client is not None:
         step_results = _run_submit_airtraffic_flow(steps)
     else:
         logger.error(f"Scenario '{scenario_name}' is not supported.")

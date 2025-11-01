@@ -13,12 +13,29 @@ from loguru import logger
 from pydantic import ValidationError
 
 from openutm_verification.auth import get_auth_provider
-from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
-from openutm_verification.core.clients.opensky.base_client import OpenSkyError, create_opensky_settings
+from openutm_verification.core.clients.air_traffic.air_traffic_client import (
+    AirTrafficClient,
+)
+from openutm_verification.core.clients.air_traffic.base_client import (
+    AirTrafficError,
+    create_air_traffic_settings,
+)
+from openutm_verification.core.clients.flight_blender.flight_blender_client import (
+    FlightBlenderClient,
+)
+from openutm_verification.core.clients.opensky.base_client import (
+    OpenSkyError,
+    create_opensky_settings,
+)
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
 from openutm_verification.core.execution.config_models import AppConfig
 from openutm_verification.core.reporting.reporting import generate_reports
-from openutm_verification.core.reporting.reporting_models import ReportData, ReportSummary, ScenarioResult, Status
+from openutm_verification.core.reporting.reporting_models import (
+    ReportData,
+    ReportSummary,
+    ScenarioResult,
+    Status,
+)
 from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 
 
@@ -62,7 +79,8 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
 
     auth_provider = get_auth_provider(config.flight_blender.auth)
     credentials = auth_provider.get_cached_credentials(
-        audience=config.flight_blender.auth.audience or "", scopes=config.flight_blender.auth.scopes or []
+        audience=config.flight_blender.auth.audience or "",
+        scopes=config.flight_blender.auth.scopes or [],
     )
 
     with FlightBlenderClient(base_url=config.flight_blender.url, credentials=credentials) as fb_client:
@@ -83,6 +101,20 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
                             result = scenario_func(fb_client, opensky_client, scenario_id)
                     except (OpenSkyError, ValidationError) as e:
                         logger.error(f"Failed to run OpenSky-enabled scenario '{scenario_id}': {e}")
+                        result = ScenarioResult(
+                            name=scenario_id,
+                            status=Status.FAIL,
+                            duration_seconds=0,
+                            steps=[],
+                            error_message=str(e),
+                        )
+                if "air_traffic_client" in params:
+                    try:
+                        settings = create_air_traffic_settings()
+                        with AirTrafficClient(settings) as air_traffic_client:
+                            result = scenario_func(fb_client, air_traffic_client, scenario_id)
+                    except (AirTrafficError, ValidationError) as e:
+                        logger.error(f"Failed to run AirTraffic-enabled scenario '{scenario_id}': {e}")
                         result = ScenarioResult(
                             name=scenario_id,
                             status=Status.FAIL,
