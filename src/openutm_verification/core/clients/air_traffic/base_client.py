@@ -20,15 +20,17 @@ class AirTrafficSettings(BaseSettings):
     # Simulation settings
     simulation_config_path: str
     simulation_duration_seconds: int = 30
-    number_of_aircraft: int = 5
+    number_of_aircraft: int = 2
+    single_or_multiple_sensors: str = "single"
 
 
 def create_air_traffic_settings() -> AirTrafficSettings:
     """Factory function to create AirTrafficSettings from config after initialization."""
     return AirTrafficSettings(
         simulation_config_path=config.data_files.telemetry or "",
-        simulation_duration_seconds=30,
-        number_of_aircraft=5,
+        simulation_duration_seconds=config.air_traffic_simulator_settings.simulation_duration_seconds or 30,
+        number_of_aircraft=config.air_traffic_simulator_settings.number_of_aircraft or 2,
+        single_or_multiple_sensors=config.air_traffic_simulator_settings.single_or_multiple_sensors or "single",
     )
 
 

@@ -58,7 +58,7 @@ class GeoJSONAirtrafficSimulator:
         self.config: AirTrafficGeneratorConfiguration = config
 
         self.geod: Geod = Geod(ellps="WGS84")
-        self.reference_time: arrow.Arrow = arrow.get(config.reference_time.datetime)
+        self.reference_time: arrow.Arrow = arrow.now()
         self.flight_start_shift_time: int = config.flight_start_shift
 
         self.utm_zone: int = config.utm_zone
@@ -70,11 +70,18 @@ class GeoJSONAirtrafficSimulator:
         # Validate input GeoJSON and precompute derived values via Pydantic models
         vfp: ValidatedFlightPath = ValidatedFlightPath.from_feature_collection(self.config.geojson)
         temp_box = box(*vfp.box_bounds)
-        buffered_utm = temp_box.buffer(10000)  # Buffer by 10 km in UTM coordinates
+
+        buffered_utm = temp_box.buffer(0.1)  # Buffer by 10 km in UTM coordinates
+
         self.box: Polygon = buffered_utm if buffered_utm.is_valid else temp_box
         logger.info(f"Initialized GeoJSONAirtrafficSimulator with UTM zone {self.utm_zone}")
 
-    def generate_air_traffic_data(self, duration: int, session_id: str = str(uuid.uuid4())) -> list[dict]:
+    def generate_air_traffic_data(
+        self,
+        duration: int,
+        session_id: str = str(uuid.uuid4()),
+        number_of_aircraft: int = 1,
+    ) -> list[list[dict]]:
         """Generate simulated air traffic observations for the specified duration.
 
         Creates random flight trajectories within the configured geographic bounds
@@ -89,32 +96,38 @@ class GeoJSONAirtrafficSimulator:
             and metadata for each generated data point.
         """
         logger.info(f"Generating air traffic data for {duration} seconds with session ID {session_id}")
-        airtraffic: list[dict] = []
-
+        all_trajectories = []
         # Generate a random trajectory
         # Improve to generate a trajectory where the speed of the aircraft can be controlled
-        trajectory_geojson = generate_random_geojson("LineString", boundingBox=self.box.bounds, numberVertices=duration)
-        # A GeoJSON LineString has 'coordinates' as a list of [lon, lat] pairs
-        coordinates = trajectory_geojson["coordinates"]
+        for _ in range(number_of_aircraft):
+            trajectory_geojson = generate_random_geojson("LineString", boundingBox=self.box.bounds, numberVertices=duration)
+            all_trajectories.append(trajectory_geojson)
 
-        for i in range(duration):
-            timestamp = self.reference_time.shift(seconds=i)
-            for point in coordinates:
-                metadata = {"session_id": session_id} if session_id else {}
-                airtraffic.append(
-                    FlightObservationSchema(
-                        lat_dd=point[1],
-                        lon_dd=point[0],
-                        altitude_mm=self.config.altitude_of_ground_level_wgs_84,
-                        traffic_source=1,
-                        source_type=2,
-                        icao_address="TEST1234",
-                        timestamp=timestamp.int_timestamp,
-                        metadata=metadata,
-                    ).model_dump()
-                )
-        logger.info(f"Generated {len(airtraffic)} air traffic observations")
-        return airtraffic
+        all_air_traffic: list[list[dict]] = []
+        for trajectory_geojson in all_trajectories:
+            # A GeoJSON LineString has 'coordinates' as a list of [lon, lat] pairs
+            coordinates = trajectory_geojson["coordinates"]
+            airtraffic: list[dict] = []
+            icao_address = "".join(random.choices("0123456789ABCDEF", k=6))
+            for i in range(duration):
+                timestamp = self.reference_time.shift(seconds=i)
+                for point in coordinates:
+                    metadata = {"session_id": session_id} if session_id else {}
+                    airtraffic.append(
+                        FlightObservationSchema(
+                            lat_dd=point[1],
+                            lon_dd=point[0],
+                            altitude_mm=self.config.altitude_of_ground_level_wgs_84,
+                            traffic_source=1,
+                            source_type=2,
+                            icao_address=icao_address,
+                            timestamp=timestamp.int_timestamp,
+                            metadata=metadata,
+                        ).model_dump()
+                    )
+            all_air_traffic.append(airtraffic)
+        logger.info(f"Generated observations for {len(all_air_traffic)} aircraft")
+        return all_air_traffic
 
 
 class GeoJSONFlightsSimulator:

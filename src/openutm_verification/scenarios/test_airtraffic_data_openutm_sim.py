@@ -24,7 +24,7 @@ def test_openutm_sim_air_traffic_data(
 
     steps = [
         partial(air_traffic_client.generate_simulated_air_traffic_data),
-        partial(fb_client.submit_air_traffic),
+        partial(fb_client.submit_simulated_air_traffic),
     ]
 
     return run_air_traffic_scenario_template(

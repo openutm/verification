@@ -30,6 +30,12 @@ class FlightBlenderConfig(StrictBaseModel):
     auth: AuthConfig
 
 
+class AirTrafficSimulatorSettings(StrictBaseModel):
+    number_of_aircraft: int
+    simulation_duration_seconds: int
+    single_or_multiple_sensors: Literal["single", "multiple"] = "single"
+
+
 class OpenSkyConfig(StrictBaseModel):
     """OpenSky Network connection details."""
 
@@ -100,6 +106,7 @@ class AppConfig(StrictBaseModel):
     run_id: str = "daily-conformance-check"
     flight_blender: FlightBlenderConfig
     opensky: OpenSkyConfig
+    air_traffic_simulator_settings: AirTrafficSimulatorSettings
     data_files: DataFiles
     scenarios: Dict[str, DataFiles | None] = Field(default_factory=dict)
     reporting: ReportingConfig

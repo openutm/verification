@@ -193,51 +193,27 @@ def run_air_traffic_scenario_template(
     fb_client: FlightBlenderClient | None = None,
     air_traffic_client: AirTrafficClient | None = None,
     steps: list[partial[Any]],
-    duration: int = DEFAULT_TELEMETRY_DURATION,
 ) -> ScenarioResult:
-    """Unified scenario runner supporting declaration and OpenSky flows.
-
-    For declaration flows: Generates flight declaration and telemetry data in-memory from config.
-    For OpenSky flows: Uses provided opensky_client to fetch live data.
-    """
-    # Get scenario-specific config paths, falling back to global defaults
-    scenario_config = config.scenarios.get(scenario_name)
-    if scenario_config is None:
-        scenario_config = config.data_files
-
-    telemetry_path = scenario_config.telemetry or config.data_files.telemetry
-    flight_declaration_path = scenario_config.flight_declaration or config.data_files.flight_declaration
     step_results: List[StepResult] = []
 
+    single_or_multiple_sensors = config.air_traffic_simulator_settings.single_or_multiple_sensors
     logger.info(f"Running scenario '{scenario_name}'")
-
-    if not telemetry_path or not flight_declaration_path:
-        error_msg = (
-            f"Scenario '{scenario_name}' missing required config paths: telemetry={telemetry_path}, flight_declaration={flight_declaration_path}"
-        )
-        logger.error(error_msg)
-        return ScenarioResult(
-            name=scenario_name,
-            status=Status.FAIL,
-            duration_seconds=0,
-            steps=[],
-            error_message="Missing configuration paths for data generation.",
-        )
-    flight_declaration = None
-    telemetry_states = None
 
     def _execute_step(step_func: partial[Any], current_observations: Any | None) -> tuple[StepResult, Any | None]:
         name = _callable_name(step_func)
         # Submit step consumes observations
-        if "submit_air_traffic" in name:
+        if "submit_simulated_air_traffic" in name:
             if current_observations:
                 return (
-                    step_func(observations=current_observations),
+                    step_func(
+                        observations=current_observations,
+                        single_or_multiple_sensors=single_or_multiple_sensors,
+                    ),
                     current_observations,
                 )
             return (
                 StepResult(
-                    name="Submit Air Traffic (skipped)",
+                    name="Submit Simulated Air Traffic (skipped)",
                     status=Status.PASS,
                     duration=0.0,
                     details="No observations to submit",
@@ -245,7 +221,6 @@ def run_air_traffic_scenario_template(
                 current_observations,
             )
 
-        # Generic execution (fetch steps usually have opensky_client already bound via partial)
         res: StepResult = step_func()
         if "fetch" in name or "generate" in name:
             res, observations = _redact_fetch_details(res)
@@ -269,8 +244,6 @@ def run_air_traffic_scenario_template(
         status=final_status,
         duration_seconds=total_duration,
         steps=step_results,
-        flight_declaration_data=flight_declaration,
-        telemetry_data=telemetry_states,
     )
 
 

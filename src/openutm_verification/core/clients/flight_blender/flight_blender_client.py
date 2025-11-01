@@ -484,6 +484,66 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.warning(f"Non-JSON response on flight declaration deletion, status: {response.status_code}")
             return {"deleted": response.status_code in (200, 204), "id": op_id}
 
+    @scenario_step("Submit Simulated Air Traffic")
+    def submit_simulated_air_traffic(
+        self,
+        observations: List[List[Dict[str, Any]]],
+        single_or_multiple_sensors: str = "single",
+    ) -> bool:
+        now = arrow.now()
+
+        number_of_aircraft = len(observations)
+        logger.debug(f"Submitting simulated air traffic for {number_of_aircraft} aircraft")
+
+        session_id = uuid.uuid4()
+        # TODO: When single_or_multiple_sensors is "single", we need to aggregate all observations under one sensor ID
+        # and when it's "multiple", we need to submit them separately as different session_ids, one for each track
+
+        # get the start and end point of the simulation
+        start_times = []
+        end_times = []
+        for aircraft_obs in observations:
+            if not aircraft_obs:
+                continue
+            start_times.append(arrow.get(aircraft_obs[0]["timestamp"]))
+            end_times.append(arrow.get(aircraft_obs[-1]["timestamp"]))
+        simulation_start = min(start_times)
+        simulation_end = max(end_times)
+
+        now = arrow.now()
+        start_time = now
+
+        current_simulation_time = simulation_start
+        # Loop through the simulation time from start to end, advancing by 1 second each iteration
+        while current_simulation_time < simulation_end:
+            # Calculate the corresponding real-world time for the current simulation time
+            target_real_time = start_time + (current_simulation_time - simulation_start)
+            # Wait until the current real time reaches the target time
+            while arrow.now() < target_real_time:
+                time.sleep(0.1)
+            # For each aircraft, find the observation closest to the current simulation time
+            filtered_observations = []
+            for aircraft_obs in observations:
+                if not aircraft_obs:
+                    continue
+                closest_obs = min(
+                    aircraft_obs,
+                    key=lambda obs: abs(arrow.get(obs["timestamp"]) - current_simulation_time),
+                )
+                filtered_observations.append([closest_obs])
+            # Submit the filtered observations for each aircraft to the API
+            for filtered_observation in filtered_observations:
+                endpoint = f"/flight_stream/set_air_traffic/{session_id}"
+                logger.debug(f"Submitting {len(observations)} air traffic observations")
+                payload = {"observations": [filtered_observation]}
+
+                response = self.post(endpoint, json=payload)
+                logger.debug(f"Air traffic submission response: {response.text}")
+                logger.info(f"Observations submitted for aircraft {filtered_observation[0]['icao_address']} at time {current_simulation_time}")
+            # Advance the simulation time by 1 second
+            current_simulation_time = current_simulation_time.shift(seconds=1)
+        return True
+
     @scenario_step("Submit Air Traffic")
     def submit_air_traffic(self, observations: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Submit air traffic observations to the Flight Blender API.

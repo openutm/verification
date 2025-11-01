@@ -23,6 +23,12 @@ opensky:
     client_id: "your-client-id"
     client_secret: "your-client-secret"
 
+# Air traffic data configuration
+air_traffic_simulator_settings:
+  number_of_aircraft: 3
+  simulation_duration_seconds: 10
+  single_or_multiple_sensors: "multiple" # this setting specifiies if the traffic data is submitted from a single sensor or multiple sensors
+
 data_files:
   telemetry: "config/bern/telemetry_f1.json" # Path to flight declarations JSON file
   flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file

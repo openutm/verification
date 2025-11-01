@@ -1,11 +1,15 @@
 import json
-from typing import Optional
+import uuid
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
 from openutm_verification.core.clients.air_traffic.base_client import (
     AirTrafficSettings,
     BaseAirTrafficAPIClient,
+)
+from openutm_verification.core.clients.flight_blender.base_client import (
+    BaseBlenderAPIClient,
 )
 from openutm_verification.core.execution.scenario_runner import scenario_step
 from openutm_verification.simulator.geo_json_telemetry import (
@@ -16,7 +20,7 @@ from openutm_verification.simulator.models.flight_data_types import (
 )
 
 
-class AirTrafficClient(BaseAirTrafficAPIClient):
+class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
     """Client for fetching live flight data from OpenSky Network and generating simulated air traffic data."""
 
     def __init__(self, settings: AirTrafficSettings):
@@ -27,7 +31,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient):
         self,
         config_path: Optional[str] = None,
         duration: Optional[int] = None,
-    ) -> Optional[list[dict]]:
+    ) -> list[list[dict]]:
         """Generate simulated air traffic data from GeoJSON configuration.
 
         Loads GeoJSON data from the specified config path and uses it to generate
@@ -43,6 +47,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient):
         """
         config_path = config_path or self.settings.simulation_config_path
         duration = duration or self.settings.simulation_duration_seconds
+        number_of_aircraft = self.settings.number_of_aircraft
 
         try:
             logger.debug(f"Generating telemetry states from {config_path} for duration {duration} seconds")
@@ -52,7 +57,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient):
             simulator_config = AirTrafficGeneratorConfiguration(geojson=geojson_data)
             simulator = GeoJSONAirtrafficSimulator(simulator_config)
 
-            return simulator.generate_air_traffic_data(duration=duration)
+            return simulator.generate_air_traffic_data(duration=duration, number_of_aircraft=number_of_aircraft)
 
         except Exception as exc:  # noqa: BLE001
             logger.error(f"Failed to generate telemetry states from {config_path}: {exc}")
