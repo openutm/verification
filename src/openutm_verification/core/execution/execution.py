@@ -92,8 +92,9 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
                 logger.info("=" * 100)
                 logger.info(f"Running scenario: {scenario_id}")
                 scenario_func = SCENARIO_REGISTRY[scenario_id]
-                # Detect if the scenario expects an OpenSky client as an argument
+                # Detect if the scenario expects an OpenSky client or AirTraffic client as an argument
                 params = list(inspect.signature(scenario_func).parameters.keys())
+
                 if "opensky_client" in params:
                     try:
                         settings = create_opensky_settings()
@@ -108,7 +109,7 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
                             steps=[],
                             error_message=str(e),
                         )
-                if "air_traffic_client" in params:
+                elif "air_traffic_client" in params:
                     try:
                         settings = create_air_traffic_settings()
                         with AirTrafficClient(settings) as air_traffic_client:

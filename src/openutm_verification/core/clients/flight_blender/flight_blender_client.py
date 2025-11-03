@@ -532,9 +532,9 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 )
                 filtered_observations.append([closest_obs])
             # Submit the filtered observations for each aircraft to the API
+            logger.debug(f"Submitting {len(observations)} air traffic observations")
             for filtered_observation in filtered_observations:
                 endpoint = f"/flight_stream/set_air_traffic/{session_id}"
-                logger.debug(f"Submitting {len(observations)} air traffic observations")
                 payload = {"observations": filtered_observation}
 
                 response = self.post(endpoint, json=payload)
