@@ -201,7 +201,6 @@ def run_air_traffic_scenario_template(
     step_results: List[StepResult] = []
 
     single_or_multiple_sensors = config.air_traffic_simulator_settings.single_or_multiple_sensors
-    logger.info(f"Running scenario '{scenario_name}'")
 
     def _execute_step(step_func: partial[Any], current_observations: Any | None) -> tuple[StepResult, Any | None]:
         name = _callable_name(step_func)
@@ -260,79 +259,103 @@ def run_scenario_template(
     steps: list[partial[Any]],
     duration: int = DEFAULT_TELEMETRY_DURATION,
 ) -> ScenarioResult:
-    """Unified scenario runner supporting declaration and OpenSky flows.
+    """Unified scenario runner supporting multiple client combinations.
 
-    For declaration flows: Generates flight declaration and telemetry data in-memory from config.
-    For OpenSky flows: Uses provided opensky_client to fetch live data.
+    Supported flows:
+    1. Declaration flow: fb_client only (generates flight declaration + telemetry)
+    2. OpenSky flow: fb_client + opensky_client (fetches live data)
+    3. Air traffic simulation: fb_client + air_traffic_client (generates simulated data)
+    4. Declaration + OpenSky: fb_client + opensky_client (declaration flow)
+    5. Declaration + Air traffic: fb_client + air_traffic_client (declaration flow)
     """
-    # Get scenario-specific config paths, falling back to global defaults
-    scenario_config = config.scenarios.get(scenario_name)
-    if scenario_config is None:
-        scenario_config = config.data_files
 
-    telemetry_path = scenario_config.telemetry or config.data_files.telemetry
-    flight_declaration_path = scenario_config.flight_declaration or config.data_files.flight_declaration
-    step_results: List[StepResult] = []
+    # Log which clients are active
+    active_clients = []
+    if fb_client:
+        active_clients.append(f"FB={fb_client.__class__.__name__}")
+    if opensky_client:
+        active_clients.append(f"OpenSky={opensky_client.__class__.__name__}")
+    if air_traffic_client:
+        active_clients.append(f"AirTraffic={air_traffic_client.__class__.__name__}")
 
-    logger.info(f"Running scenario '{scenario_name}'")
+    logger.debug(f"Active clients for '{scenario_name}': {', '.join(active_clients) if active_clients else 'None'}")
 
-    if not telemetry_path or not flight_declaration_path:
-        error_msg = (
-            f"Scenario '{scenario_name}' missing required config paths: telemetry={telemetry_path}, flight_declaration={flight_declaration_path}"
-        )
-        logger.error(error_msg)
-        return ScenarioResult(
-            name=scenario_name,
-            status=Status.FAIL,
-            duration_seconds=0,
-            steps=[],
-            error_message="Missing configuration paths for data generation.",
-        )
+    # Determine scenario type based on client combination
+    is_declaration_flow = fb_client is not None and air_traffic_client is None and opensky_client is None
+    is_opensky_flow = opensky_client is not None
+    is_air_traffic_flow = air_traffic_client is not None
+
+    # Only generate flight declaration/telemetry data for declaration flows
     flight_declaration = None
     telemetry_states = None
-    # Generate data in-memory
 
-    try:
-        flight_declaration = _generate_flight_declaration(flight_declaration_path)
-        telemetry_states = _generate_telemetry(telemetry_path, duration=duration)
-        logger.info(f"Generated {len(telemetry_states)} telemetry states")
-    except Exception as e:
-        logger.error(f"Failed to generate data for scenario '{scenario_name}': {e}")
-        return ScenarioResult(
-            name=scenario_name,
-            status=Status.FAIL,
-            duration_seconds=0,
-            steps=[],
-            error_message=f"Data generation failed: {e}",
-        )
+    if is_declaration_flow:
+        # Get scenario-specific config paths, falling back to global defaults
+        scenario_config = config.scenarios.get(scenario_name)
+        if scenario_config is None:
+            scenario_config = config.data_files
 
-    if fb_client or opensky_client:
-        logger.debug(
-            f"Running scenario '{scenario_name}' with FB={getattr(fb_client, '__class__', type('x', (), {})).__name__ if fb_client else 'None'}, "
-            f"OS={getattr(opensky_client, '__class__', type('x', (), {})).__name__ if opensky_client else 'None'}"
-        )
+        telemetry_path = scenario_config.telemetry or config.data_files.telemetry
+        flight_declaration_path = scenario_config.flight_declaration or config.data_files.flight_declaration
 
-    if fb_client is not None and opensky_client is None:
-        # Run declaration flow with generated data
+        if not telemetry_path or not flight_declaration_path:
+            error_msg = (
+                f"Declaration flow for '{scenario_name}' missing required config paths: "
+                f"telemetry={telemetry_path}, flight_declaration={flight_declaration_path}"
+            )
+            logger.error(error_msg)
+            return ScenarioResult(
+                name=scenario_name,
+                status=Status.FAIL,
+                duration_seconds=0,
+                steps=[],
+                error_message="Missing configuration paths for data generation.",
+            )
+
+        try:
+            flight_declaration = _generate_flight_declaration(flight_declaration_path)
+            telemetry_states = _generate_telemetry(telemetry_path, duration=duration)
+            logger.info(f"Generated flight declaration and {len(telemetry_states)} telemetry states")
+        except Exception as e:
+            logger.error(f"Failed to generate data for scenario '{scenario_name}': {e}")
+            return ScenarioResult(
+                name=scenario_name,
+                status=Status.FAIL,
+                duration_seconds=0,
+                steps=[],
+                error_message=f"Data generation failed: {e}",
+            )
+
+    # Route to appropriate flow based on client combination
+    step_results: List[StepResult] = []
+
+    if is_declaration_flow:
+        # Standard declaration flow: upload -> steps -> teardown
+        logger.debug(f"Running declaration flow for '{scenario_name}'")
+        # Type narrowing: These are guaranteed non-None by is_declaration_flow logic
+        assert fb_client is not None, "fb_client must be set for declaration flow"
+        assert flight_declaration is not None, "flight_declaration must be generated for declaration flow"
+        assert telemetry_states is not None, "telemetry_states must be generated for declaration flow"
         step_results = _run_declaration_flow(
             fb_client=fb_client,
             flight_declaration=flight_declaration,
             telemetry_states=telemetry_states,
             steps=steps,
         )
-    elif fb_client is not None and opensky_client is not None:
-        # OpenSky flow - requires both clients
-        step_results = _run_submit_airtraffic_flow(steps)
-    if air_traffic_client is not None:
+    elif is_opensky_flow or is_air_traffic_flow:
+        # Data-fetching flows: fetch/generate -> submit
+        flow_type = "OpenSky" if is_opensky_flow else "Air Traffic"
+        logger.debug(f"Running {flow_type} submission flow for '{scenario_name}'")
         step_results = _run_submit_airtraffic_flow(steps)
     else:
-        logger.error(f"Scenario '{scenario_name}' is not supported.")
+        # No valid clients provided
+        logger.error(f"Scenario '{scenario_name}' has no valid client configuration.")
         return ScenarioResult(
             name=scenario_name,
             status=Status.FAIL,
             duration_seconds=0,
             steps=[],
-            error_message="Unsupported scenario configuration.",
+            error_message="No valid client configuration provided (need fb_client, opensky_client, or air_traffic_client).",
         )
 
     final_status = Status.PASS if all(s.status == Status.PASS for s in step_results) else Status.FAIL
