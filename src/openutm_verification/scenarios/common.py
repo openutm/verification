@@ -176,6 +176,10 @@ def run_sdsp_scenario_template(
         step_results.append(step_result)
         logger.debug(f"Step result: {step_result}")
 
+    for result in step_results:
+        if type(result) is not StepResult:
+            logger.error(f"Invalid step result type: {type(result)}")
+            # print(result)
     final_status = Status.PASS if all(s.status == Status.PASS for s in step_results) else Status.FAIL
     total_duration = sum(s.duration for s in step_results)
 

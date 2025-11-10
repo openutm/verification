@@ -11,10 +11,12 @@ from openutm_verification.core.clients.flight_blender.base_client import (
     BaseBlenderAPIClient,
 )
 from openutm_verification.core.execution.scenario_runner import scenario_step
-from openutm_verification.core.reporting.reporting_models import Status
+from openutm_verification.core.reporting.reporting_models import Status, StepResult
 from openutm_verification.models import (
     FlightBlenderError,
+    HeartbeatMessage,
     OperationState,
+    SDSPHeartbeatMessage,
     SDSPSessionAction,
 )
 from openutm_verification.rid import (
@@ -356,11 +358,16 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return self._submit_telemetry_states_impl(operation_id, states, duration_seconds)
 
     @scenario_step("Wait X seconds")
-    def wait_x_seconds(self, wait_time_seconds: int = 5) -> None:
+    def wait_x_seconds(self, wait_time_seconds: int = 5) -> Optional[Dict[str, Any]]:
         """Wait for a specified number of seconds."""
         logger.info(f"Waiting for {wait_time_seconds} seconds...")
         time.sleep(wait_time_seconds)
         logger.info(f"Waited for {wait_time_seconds} seconds.")
+        return {
+            "name": f"Wait {wait_time_seconds} seconds",
+            "status": Status.PASS,
+            "details": f"Waited for Flight Blender to process {wait_time_seconds} seconds.",
+        }
 
     @scenario_step("Submit Telemetry")
     def submit_telemetry(self, operation_id: str, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
@@ -489,9 +496,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self,
         observations: List[List[Dict[str, Any]]],
         single_or_multiple_sensors: str = "single",
-    ) -> bool:
+    ) -> Dict[str, Any]:
         now = arrow.now()
-
         number_of_aircraft = len(observations)
         logger.debug(f"Submitting simulated air traffic for {number_of_aircraft} aircraft")
 
@@ -535,7 +541,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             for filtered_observation in filtered_observations:
                 endpoint = f"/flight_stream/set_air_traffic/{session_id}"
                 logger.debug(f"Submitting {len(observations)} air traffic observations")
-                payload = {"observations": [filtered_observation]}
+                payload = {"observations": filtered_observation}
 
                 response = self.post(endpoint, json=payload)
                 logger.debug(f"Air traffic submission response: {response.text}")
@@ -568,7 +574,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return response.json()
 
     @scenario_step("Start / Stop SDSP Session")
-    def start_stop_sdsp_session(self, session_id: str, action: SDSPSessionAction) -> bool:
+    def start_stop_sdsp_session(self, session_id: str, action: SDSPSessionAction) -> Dict[str, Any]:
         """
         Starts or stops an SDSP (Strategic Deconfliction Service Provider) session based on the specified action.
         This method interacts with the Flight Blender service to manage the lifecycle of an SDSP session.
@@ -590,49 +596,97 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.info(f"SDSP session {session_id} action {action.value} response: {response.status_code}")
         if response.status_code == 200:
             logger.info(f"SDSP session {session_id} action {action.value} completed successfully.")
-            return True
+            return {
+                "name": f"{action.value} Heartbeat Track message received for {session_id}",
+                "status": Status.PASS,
+                "details": f"Heartbeat Track message processed for {session_id}",
+            }
+
         else:
             logger.error(f"Failed to perform action {action.value} on SDSP session {session_id}. Response: {response.text}")
-            return False
 
-    def initialize_websocket_connection(self, session_id: str) -> Any:
+            return {
+                "name": f"{action.value} Heartbeat Track message not received for {session_id}",
+                "status": Status.FAIL,
+                "details": f"Heartbeat Track message not processed for {session_id}",
+            }
+
+    def initialize_heartbeat_websocket_connection(self, session_id: str) -> Any:
         endpoint = f"/ws/surveillance/heartbeat/{session_id}"
         ws = self.create_websocket_connection(endpoint=endpoint)
         return ws
 
-    def initialize_verify_sdsp_heartbeat(
+    def initialize_verify_sdsp_track_heartbeat(
         self,
         expected_heartbeat_interval_seconds: int,
         expected_heartbeat_count: int,
         session_id: str,
-    ):
-        ws_connection = self.initialize_websocket_connection(session_id=session_id)
+    ) -> StepResult:
+        ws_connection = self.initialize_heartbeat_websocket_connection(session_id=session_id)
+        start_time = time.time()
 
-        # Verify that heartbeat messages are received approximately every expected_heartbeat_interval_seconds
+        now = arrow.now()
+
+        six_seconds_from_now = now.shift(seconds=6)
+        all_received_messages = []
+        # Start Receiving messages from now till six seconds from now
+        while arrow.now() < six_seconds_from_now:
+            time.sleep(0.1)
+            message = ws_connection.recv()
+            message = json.loads(message)
+            if "heartbeat_data" not in message:
+                logger.debug("WebSocket connection established message received")
+                continue
+            heartbeat_message = HeartbeatMessage(**message["heartbeat_data"])
+            logger.debug(f"Received WebSocket message: {message}")
+            all_received_messages.append(SDSPHeartbeatMessage(message=heartbeat_message, timestamp=arrow.now().isoformat()))
+        logger.info(f"Received {len(all_received_messages)} messages in the first six seconds")
+        self.close_heartbeat_websocket_connection(ws_connection)
+        end_time = time.time()
+
+        # Sort messages by timestamp
+        sorted_messages = sorted(all_received_messages, key=lambda msg: arrow.get(msg.timestamp))
+        # remove the first two messages since we are just starting
+        sorted_messages = sorted_messages[2:]
+        all_message_intervals = []
+        # Calculate and print intervals between consecutive messages
+        logger.debug("Heartbeat message intervals:")
+        for i in range(1, len(sorted_messages)):
+            prev_timestamp = arrow.get(sorted_messages[i - 1].timestamp)
+            curr_timestamp = arrow.get(sorted_messages[i].timestamp)
+            interval = (curr_timestamp - prev_timestamp).total_seconds()
+            all_message_intervals.append(interval)
+            logger.info(
+                f"Interval {i}: {interval:.2f}s (between {prev_timestamp.format('HH:mm:ss.SSS')} and {curr_timestamp.format('HH:mm:ss.SSS')})"
+            )
 
         verification_passed = True
-        last_time = time.time()
         tolerance = 0.1 * expected_heartbeat_interval_seconds  # Allow 10% tolerance
-        for _ in range(expected_heartbeat_count):
-            message = ws_connection.recv()
-            logger.debug(f"Received WebSocket message: {message}")
-            current_time = time.time()
-            interval = current_time - last_time
+
+        for interval in all_message_intervals:
             if not (expected_heartbeat_interval_seconds - tolerance <= interval <= expected_heartbeat_interval_seconds + tolerance):
                 verification_passed = False
-            logger.warning(f"Heartbeat interval {interval:.2f}s not close to {expected_heartbeat_interval_seconds}s")
-            last_time = current_time
-
-        self.close_websocket_connection(ws_connection)
-
+                logger.debug(f"Interval {interval:.2f}s is outside the expected range.")
+                break
+        duration = end_time - start_time
         if not verification_passed:
             logger.error(f"Heartbeat frequency verification failed: messages not received every {expected_heartbeat_interval_seconds} seconds")
-            return False
+            return StepResult(
+                name=f"Heartbeat message received {expected_heartbeat_interval_seconds} seconds",
+                status=Status.FAIL,
+                details=f"Heartbeat message not processed {expected_heartbeat_interval_seconds} seconds",
+                duration=duration,
+            )
         else:
             logger.info(
                 f"Heartbeat frequency verification passed: messages received approximately every {expected_heartbeat_interval_seconds} seconds"
             )
-            return True
+            return StepResult(
+                name=f"Heartbeat message received {expected_heartbeat_interval_seconds} seconds",
+                status=Status.PASS,
+                details=f"Heartbeat message processed {expected_heartbeat_interval_seconds} seconds",
+                duration=duration,
+            )
 
-    def close_websocket_connection(self, ws_connection: Any) -> None:
+    def close_heartbeat_websocket_connection(self, ws_connection: Any) -> None:
         ws_connection.close()
