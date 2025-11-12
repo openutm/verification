@@ -8,7 +8,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F3_non_conforming_path")
-def test_f3_non_conforming_path(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
+def test_f3_non_conforming_path(fb_client: FlightBlenderClient, scenario_name: ScenarioId) -> ScenarioResult:
     """Runs the F3 non-conforming path scenario.
 
     This scenario simulates a flight that deviates from its declared flight plan,

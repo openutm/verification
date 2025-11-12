@@ -8,7 +8,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("add_flight_declaration")
-def test_add_flight_declaration(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
+def test_add_flight_declaration(fb_client: FlightBlenderClient, scenario_name: ScenarioId) -> ScenarioResult:
     """Runs the add flight declaration scenario.
 
     This scenario replicates the behavior of the add_flight_declaration.py importer:

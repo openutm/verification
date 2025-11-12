@@ -15,7 +15,7 @@ from openutm_verification.scenarios.registry import register_scenario
 def test_openutm_sim_air_traffic_data(
     fb_client: FlightBlenderClient,
     air_traffic_client: AirTrafficClient,
-    scenario_name: str,
+    scenario_name: ScenarioId,
 ) -> ScenarioResult:
     """Generate simulated air traffic data using OpenSky client and submit to Flight Blender using template.
 

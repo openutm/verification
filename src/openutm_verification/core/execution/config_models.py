@@ -2,9 +2,8 @@
 Pydantic models for application configuration.
 """
 
-from enum import StrEnum
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Annotated, Dict, List, Literal, Optional, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -118,6 +117,12 @@ class AppConfig(StrictBaseModel):
         for scenario_data in self.scenarios.values():
             if scenario_data:
                 scenario_data.resolve_paths(base_path)
+
+
+ScenarioId = Annotated[str, "The unique identifier for a scenario"]
+
+class RunContext(TypedDict):
+    scenario_id: str
 
 
 class ConfigMeta(type):

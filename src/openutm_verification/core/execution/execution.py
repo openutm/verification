@@ -2,7 +2,6 @@
 Core execution logic for running verification scenarios.
 """
 
-import inspect
 import json
 from datetime import datetime, timezone
 from importlib.metadata import version
@@ -12,23 +11,14 @@ from typing import Any
 from loguru import logger
 from pydantic import ValidationError
 
-from openutm_verification.auth import get_auth_provider
-from openutm_verification.core.clients.air_traffic.air_traffic_client import (
-    AirTrafficClient,
-)
 from openutm_verification.core.clients.air_traffic.base_client import (
     AirTrafficError,
-    create_air_traffic_settings,
-)
-from openutm_verification.core.clients.flight_blender.flight_blender_client import (
-    FlightBlenderClient,
 )
 from openutm_verification.core.clients.opensky.base_client import (
     OpenSkyError,
-    create_opensky_settings,
 )
-from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
 from openutm_verification.core.execution.config_models import AppConfig
+from openutm_verification.core.execution.dependencies import call_with_dependencies, scenarios
 from openutm_verification.core.reporting.reporting import generate_reports
 from openutm_verification.core.reporting.reporting_models import (
     ReportData,
@@ -36,7 +26,6 @@ from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
     Status,
 )
-from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 
 
 def _sanitize_config(data: Any) -> Any:
@@ -77,59 +66,21 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
     sanitized_config_dict = _sanitize_config(config.model_dump())
     logger.debug(f"Configuration details:\n{json.dumps(sanitized_config_dict, indent=2)}")
 
-    auth_provider = get_auth_provider(config.flight_blender.auth)
-    credentials = auth_provider.get_cached_credentials(
-        audience=config.flight_blender.auth.audience or "",
-        scopes=config.flight_blender.auth.scopes or [],
-    )
-
-    with FlightBlenderClient(base_url=config.flight_blender.url, credentials=credentials) as fb_client:
-        scenarios_to_run = config.scenarios
-        scenario_results = []
-        logger.info(f"Found {len(scenarios_to_run)} scenarios to run.")
-        for scenario_id in scenarios_to_run:
-            if scenario_id in SCENARIO_REGISTRY:
-                logger.info("=" * 100)
-                logger.info(f"Running scenario: {scenario_id}")
-                scenario_func = SCENARIO_REGISTRY[scenario_id]
-                # Detect if the scenario expects an OpenSky client or AirTraffic client as an argument
-                params = list(inspect.signature(scenario_func).parameters.keys())
-
-                if "opensky_client" in params:
-                    try:
-                        settings = create_opensky_settings()
-                        with OpenSkyClient(settings) as opensky_client:
-                            result = scenario_func(fb_client, opensky_client, scenario_id)
-                    except (OpenSkyError, ValidationError) as e:
-                        logger.error(f"Failed to run OpenSky-enabled scenario '{scenario_id}': {e}")
-                        result = ScenarioResult(
-                            name=scenario_id,
-                            status=Status.FAIL,
-                            duration_seconds=0,
-                            steps=[],
-                            error_message=str(e),
-                        )
-                elif "air_traffic_client" in params:
-                    try:
-                        settings = create_air_traffic_settings()
-                        with AirTrafficClient(settings) as air_traffic_client:
-                            result = scenario_func(fb_client, air_traffic_client, scenario_id)
-                    except (AirTrafficError, ValidationError) as e:
-                        logger.error(f"Failed to run AirTraffic-enabled scenario '{scenario_id}': {e}")
-                        result = ScenarioResult(
-                            name=scenario_id,
-                            status=Status.FAIL,
-                            duration_seconds=0,
-                            steps=[],
-                            error_message=str(e),
-                        )
-                else:
-                    result = scenario_func(fb_client, scenario_id)
-                scenario_results.append(result)
-                logger.info(f"Scenario {scenario_id} finished with status: {result.status}")
-            else:
-                logger.warning(f"Scenario '{scenario_id}' not found in registry.")
-        logger.info("=" * 100)
+    scenario_results = []
+    for scenario_id, scenario_func in scenarios():
+        try:
+            result = call_with_dependencies(scenario_func)
+        except (AirTrafficError, OpenSkyError, ValidationError) as e:
+            logger.error(f"Failed to run scenario '{scenario_id}': {e}")
+            result = ScenarioResult(
+                name=scenario_id,
+                status=Status.FAIL,
+                duration_seconds=0,
+                steps=[],
+                error_message=str(e),
+            )
+        scenario_results.append(result)
+        logger.info(f"Scenario {scenario_id} finished with status: {result.status}")
 
     end_time_obj = datetime.now(timezone.utc)
     end_time_utc = end_time_obj.isoformat()

@@ -7,7 +7,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("geo_fence_upload")
-def test_geo_fence_upload(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
+def test_geo_fence_upload(fb_client: FlightBlenderClient, scenario_name: ScenarioId) -> ScenarioResult:
     """Upload a geo-fence (Area of Interest) and then delete it (teardown)."""
     steps = [
         partial(fb_client.upload_geo_fence, filename=get_geo_fence_path("geo_fence.geojson")),
