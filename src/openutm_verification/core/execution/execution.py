@@ -18,7 +18,8 @@ from openutm_verification.core.clients.opensky.base_client import (
     OpenSkyError,
 )
 from openutm_verification.core.execution.config_models import AppConfig
-from openutm_verification.core.execution.dependencies import call_with_dependencies, scenarios
+from openutm_verification.core.execution.dependencies import scenarios
+from openutm_verification.core.execution.dependency_resolution import call_with_dependencies
 from openutm_verification.core.reporting.reporting import generate_reports
 from openutm_verification.core.reporting.reporting_models import (
     ReportData,

@@ -7,6 +7,7 @@ from openutm_verification.core.clients.flight_blender.flight_blender_client impo
     FlightBlenderClient,
 )
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
+from openutm_verification.core.execution.config_models import ScenarioId
 from openutm_verification.core.execution.scenario_runner import scenario_step
 from openutm_verification.core.reporting.reporting_models import ScenarioResult, Status
 from openutm_verification.scenarios.common import run_scenario_template

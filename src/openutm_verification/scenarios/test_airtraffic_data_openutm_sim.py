@@ -6,6 +6,7 @@ from openutm_verification.core.clients.air_traffic.air_traffic_client import (
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
+from openutm_verification.core.execution.config_models import ScenarioId
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.scenarios.common import run_air_traffic_scenario_template
 from openutm_verification.scenarios.registry import register_scenario
