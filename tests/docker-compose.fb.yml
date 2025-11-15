@@ -2,6 +2,8 @@ services:
   redis-blender:
     platform: linux/amd64
     command: ["redis-server", "/redis.conf", "--requirepass", "${REDIS_PASSWORD}"]
+    # Using Valkey as a Redis-compatible alternative. Valkey supports the `requirepass` parameter,
+    # so this configuration is compatible with both Redis and Valkey. See https://valkey.io/ for details.
     image: "valkey/valkey:latest"
     expose:
       - "6379"
