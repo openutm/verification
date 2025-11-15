@@ -358,16 +358,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return self._submit_telemetry_states_impl(operation_id, states, duration_seconds)
 
     @scenario_step("Wait X seconds")
-    def wait_x_seconds(self, wait_time_seconds: int = 5) -> Optional[Dict[str, Any]]:
+    def wait_x_seconds(self, wait_time_seconds: int = 5) -> str:
         """Wait for a specified number of seconds."""
         logger.info(f"Waiting for {wait_time_seconds} seconds...")
         time.sleep(wait_time_seconds)
         logger.info(f"Waited for {wait_time_seconds} seconds.")
-        return {
-            "name": f"Wait {wait_time_seconds} seconds",
-            "status": Status.PASS,
-            "details": f"Waited for Flight Blender to process {wait_time_seconds} seconds.",
-        }
+        return f"Waited for Flight Blender to process {wait_time_seconds} seconds."
 
     @scenario_step("Submit Telemetry")
     def submit_telemetry(self, operation_id: str, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
@@ -395,7 +391,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         operation_id: str,
         expected_state: OperationState,
         duration_seconds: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> str:
         """Check the operation state (simulated).
 
         This is a placeholder method for state checking; it simulates waiting
@@ -413,11 +409,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.info(f"Waiting for {duration_seconds} seconds for Flight Blender to process state...")
         time.sleep(duration_seconds)
         logger.info(f"Flight state check for {operation_id} completed (simulated).")
-        return {
-            "name": "Check Flight State",
-            "status": Status.PASS,
-            "details": f"Waited for Flight Blender to process {expected_state} state.",
-        }
+        return f"Waited for Flight Blender to process {expected_state} state."
 
     @scenario_step("Check Operation State Connected")
     def check_operation_state_connected(
@@ -575,7 +567,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return response.json()
 
     @scenario_step("Start / Stop SDSP Session")
-    def start_stop_sdsp_session(self, session_id: str, action: SDSPSessionAction) -> Dict[str, Any]:
+    def start_stop_sdsp_session(self, session_id: str, action: SDSPSessionAction) -> str:
         """
         Starts or stops an SDSP (Strategic Deconfliction Service Provider) session based on the specified action.
         This method interacts with the Flight Blender service to manage the lifecycle of an SDSP session.
@@ -588,6 +580,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         Raises:
             ValueError: If the session_id is invalid or the action is not supported.
             ConnectionError: If there is an issue communicating with the Flight Blender service.
+            FlightBlenderError: If the action fails due to service errors.
         """
 
         endpoint = f"/surveillance_monitoring_ops/start_stop_surveillance_heartbeat_track/{session_id}"
@@ -597,20 +590,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.info(f"SDSP session {session_id} action {action.value} response: {response.status_code}")
         if response.status_code == 200:
             logger.info(f"SDSP session {session_id} action {action.value} completed successfully.")
-            return {
-                "name": f"{action.value} Heartbeat Track message received for {session_id}",
-                "status": Status.PASS,
-                "details": f"Heartbeat Track message processed for {session_id}",
-            }
+            return f"{action.value} Heartbeat Track message received for {session_id}"
 
         else:
             logger.error(f"Failed to perform action {action.value} on SDSP session {session_id}. Response: {response.text}")
-
-            return {
-                "name": f"{action.value} Heartbeat Track message not received for {session_id}",
-                "status": Status.FAIL,
-                "details": f"Heartbeat Track message not processed for {session_id}",
-            }
+            raise FlightBlenderError(f"{action.value} Heartbeat Track message not received for {session_id}")
 
     def initialize_heartbeat_websocket_connection(self, session_id: str) -> Any:
         endpoint = f"/ws/surveillance/heartbeat/{session_id}"

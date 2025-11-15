@@ -1,4 +1,3 @@
-import time
 import uuid
 from functools import partial
 
