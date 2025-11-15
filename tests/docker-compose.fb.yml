@@ -14,7 +14,6 @@ services:
     platform: linux/amd64
     container_name: "db-blender"
     image: postgres:latest
-    pull_policy: weekly
     expose:
       - "5432"
     restart: unless-stopped
