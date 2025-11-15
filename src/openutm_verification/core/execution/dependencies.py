@@ -41,7 +41,7 @@ def scenario_id() -> Generator[ScenarioId, None, None]:
     """Provides a ScenarioId for dependency injection.
 
     Returns:
-        A string of ScenarioId.
+        The current scenario identifier.
     """
     yield get_context()["scenario_id"]
 
