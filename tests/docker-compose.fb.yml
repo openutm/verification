@@ -1,0 +1,54 @@
+services:
+  redis-blender:
+    platform: linux/amd64
+    command: ["redis-server", "/redis.conf", "--requirepass", "${REDIS_PASSWORD}"]
+    # Using Valkey as a Redis-compatible alternative. Valkey supports the `requirepass` parameter,
+    # so this configuration is compatible with both Redis and Valkey. See https://valkey.io/ for details.
+    image: "valkey/valkey:latest"
+    expose:
+      - "6379"
+    volumes:
+      - ./redis.conf:/redis.conf
+    container_name: "redis-blender"
+    env_file:
+      - ".env.tests"
+  db-blender:
+    platform: linux/amd64
+    container_name: "db-blender"
+    image: postgres:latest
+    expose:
+      - "5432"
+    restart: unless-stopped
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    env_file:
+      - ".env.tests"
+
+  flight-blender:
+    platform: linux/amd64
+    container_name: "flight-blender"
+    env_file:
+      - ".env.tests"
+    image: openutm/flight-blender
+    command: ./entrypoints/with-database/entrypoint.sh
+    ports:
+      - "8000:8000"
+    expose:
+      - "5678"
+    depends_on:
+      - redis-blender
+      - db-blender
+
+
+  flight-blender-celery:
+    platform: linux/amd64
+    container_name: worker
+    image: openutm/flight-blender
+    env_file:
+      - ".env.tests"
+    command: ./entrypoints/with-database/entrypoint-celery.sh
+    depends_on:
+      - redis-blender
+
+volumes:
+  db_data:
