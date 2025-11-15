@@ -9,7 +9,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F1_happy_path")
-def test_f1_happy_path(fb_client: FlightBlenderClient, scenario_name: ScenarioId) -> ScenarioResult:
+def test_f1_happy_path(fb_client: FlightBlenderClient, scenario_id: ScenarioId) -> ScenarioResult:
     """Runs the F1 happy path scenario.
 
     This scenario simulates a complete, successful flight operation:
@@ -32,6 +32,6 @@ def test_f1_happy_path(fb_client: FlightBlenderClient, scenario_name: ScenarioId
 
     return run_scenario_template(
         fb_client=fb_client,
-        scenario_name=scenario_name,
+        scenario_name=scenario_id,
         steps=steps,
     )

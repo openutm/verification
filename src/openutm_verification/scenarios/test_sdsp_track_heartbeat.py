@@ -15,7 +15,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("sdsp_track_heartbeat")
-def sdsp_track_heartbeat(fb_client: FlightBlenderClient, scenario_name: ScenarioId) -> ScenarioResult:
+def sdsp_track_heartbeat(fb_client: FlightBlenderClient, scenario_id: ScenarioId) -> ScenarioResult:
     """Runs the SDSP heartbeat scenario.
     This scenario
     """
@@ -48,6 +48,6 @@ def sdsp_track_heartbeat(fb_client: FlightBlenderClient, scenario_name: Scenario
 
     return run_sdsp_scenario_template(
         fb_client=fb_client,
-        scenario_name=scenario_name,
+        scenario_name=scenario_id,
         steps=steps,
     )

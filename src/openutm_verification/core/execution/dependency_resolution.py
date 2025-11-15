@@ -7,23 +7,13 @@ from openutm_verification.core.execution.config_models import RunContext
 
 T = TypeVar('T')
 
-DEPENDENCIES: ContextVar[dict[Type, Callable[..., object]]] = ContextVar("dependencies", default={})
+DEPENDENCIES: dict[Type, Callable[..., object]] = {}
 CONTEXT: ContextVar[RunContext] = ContextVar("context", default={"scenario_id": ""})
-
-
-def get_context() -> RunContext:
-    """Get the current run context.
-
-    Returns:
-        The current RunContext.
-    """
-    return CONTEXT.get()
 
 
 def dependency(type: Type) -> Callable:
     def wrapper(func: Callable[..., object]) -> Callable[..., object]:
-        deps = DEPENDENCIES.get()
-        deps[type] = contextmanager(func)
+        DEPENDENCIES[type] = contextmanager(func)
         return func
     return wrapper
 
@@ -60,11 +50,10 @@ def provide(*types: Type[T]) -> Generator[tuple[T, ...], None, None]:
         if type_ in _cache:
             return _cache[type_]
 
-        deps = DEPENDENCIES.get()
-        if type_ not in deps:
+        if type_ not in DEPENDENCIES:
             raise ValueError(f"No dependency registered for type {type_}")
 
-        dependency_func = deps[type_]
+        dependency_func = DEPENDENCIES[type_]
         sig = inspect.signature(dependency_func)
 
         # Resolve dependencies of this dependency

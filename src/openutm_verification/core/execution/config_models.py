@@ -121,6 +121,7 @@ class AppConfig(StrictBaseModel):
 
 ScenarioId = Annotated[str, "The unique identifier for a scenario"]
 
+
 class RunContext(TypedDict):
     scenario_id: str
 

@@ -9,7 +9,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F2_contingent_path")
-def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_name: ScenarioId) -> ScenarioResult:
+def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_id: ScenarioId) -> ScenarioResult:
     """Runs the F2 contingent path scenario.
 
     This scenario simulates a flight operation that enters a contingent state:
@@ -34,6 +34,6 @@ def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_name: Scena
 
     return run_scenario_template(
         fb_client=fb_client,
-        scenario_name=scenario_name,
+        scenario_name=scenario_id,
         steps=steps,
     )

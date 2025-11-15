@@ -9,7 +9,7 @@ from openutm_verification.core.clients.flight_blender.flight_blender_client impo
 from openutm_verification.core.clients.opensky.base_client import create_opensky_settings
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
 from openutm_verification.core.execution.config_models import AppConfig, ScenarioId, get_settings
-from openutm_verification.core.execution.dependency_resolution import dependency, get_context
+from openutm_verification.core.execution.dependency_resolution import CONTEXT, dependency
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 
@@ -17,16 +17,15 @@ T = TypeVar('T')
 
 
 def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
-    """Provides a list of ScenarioIds
+    """Provides scenarios to run with their functions.
 
     Returns:
-        An iterable of ScenarioIds.
+        An iterable of tuples containing (scenario_id, scenario_function).
     """
     scenarios_to_run = get_settings().scenarios
     logger.info(f"Found {len(scenarios_to_run)} scenarios to run.")
-    current_context = get_context()
     for scenario_id in scenarios_to_run:
-        current_context["scenario_id"] = scenario_id
+        CONTEXT.set({"scenario_id": scenario_id})
         if scenario_id in SCENARIO_REGISTRY:
             logger.info("=" * 100)
             logger.info(f"Running scenario: {scenario_id}")
@@ -43,7 +42,7 @@ def scenario_id() -> Generator[ScenarioId, None, None]:
     Returns:
         The current scenario identifier.
     """
-    yield get_context()["scenario_id"]
+    yield CONTEXT.get()["scenario_id"]
 
 
 @dependency(AppConfig)

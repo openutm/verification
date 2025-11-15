@@ -15,7 +15,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("opensky_live_data")
-def test_opensky_live_data(fb_client: FlightBlenderClient, opensky_client: OpenSkyClient, scenario_name: ScenarioId) -> ScenarioResult:
+def test_opensky_live_data(fb_client: FlightBlenderClient, opensky_client: OpenSkyClient, scenario_id: ScenarioId) -> ScenarioResult:
     """Fetch live flight data from OpenSky and submit to Flight Blender using template.
 
     The OpenSky client is provided by the caller; this function focuses on orchestration only.
@@ -39,7 +39,7 @@ def test_opensky_live_data(fb_client: FlightBlenderClient, opensky_client: OpenS
         result = run_scenario_template(
             fb_client=fb_client,
             opensky_client=opensky_client,
-            scenario_name=f"{scenario_name} (iter {i + 1})",
+            scenario_name=f"{scenario_id} (iter {i + 1})",
             steps=steps,
         )
 
@@ -53,7 +53,7 @@ def test_opensky_live_data(fb_client: FlightBlenderClient, opensky_client: OpenS
             time.sleep(wait_time)
 
     return ScenarioResult(
-        name=scenario_name,
+        name=scenario_id,
         status=overall_status,
         duration_seconds=total_duration,
         steps=aggregated_steps,
