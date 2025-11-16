@@ -20,6 +20,6 @@ def test_f5_non_conforming_contingent_path(fb_client: FlightBlenderClient, scena
 
     return run_scenario_template(
         fb_client=fb_client,
-        scenario_name=scenario_id,
+        scenario_id=scenario_id,
         steps=steps,
     )

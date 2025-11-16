@@ -47,6 +47,6 @@ def sdsp_track_heartbeat(fb_client: FlightBlenderClient, scenario_id: ScenarioId
 
     return run_sdsp_scenario_template(
         fb_client=fb_client,
-        scenario_name=scenario_id,
+        scenario_id=scenario_id,
         steps=steps,
     )

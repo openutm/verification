@@ -31,6 +31,6 @@ def test_openutm_sim_air_traffic_data(
     return run_air_traffic_scenario_template(
         fb_client=fb_client,
         air_traffic_client=air_traffic_client,
-        scenario_name=scenario_id,
+        scenario_id=scenario_id,
         steps=steps,
     )

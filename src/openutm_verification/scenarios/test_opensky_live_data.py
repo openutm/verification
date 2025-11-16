@@ -38,7 +38,7 @@ def test_opensky_live_data(fb_client: FlightBlenderClient, opensky_client: OpenS
         result = run_scenario_template(
             fb_client=fb_client,
             opensky_client=opensky_client,
-            scenario_name=f"{scenario_id} (iter {i + 1})",
+            scenario_id=f"{scenario_id} (iter {i + 1})",
             steps=steps,
         )
 

@@ -17,6 +17,6 @@ def test_geo_fence_upload(fb_client: FlightBlenderClient, scenario_id: ScenarioI
 
     return run_scenario_template(
         fb_client=fb_client,
-        scenario_name=scenario_id,
+        scenario_id=scenario_id,
         steps=steps,
     )

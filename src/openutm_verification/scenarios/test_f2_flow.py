@@ -20,7 +20,7 @@ def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_id: Scenari
 
     Args:
         fb_client: The FlightBlenderClient instance for API interaction.
-        scenario_name: The unique name of the scenario being run.
+        scenario_id: The unique name of the scenario being run.
 
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
@@ -34,6 +34,6 @@ def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_id: Scenari
 
     return run_scenario_template(
         fb_client=fb_client,
-        scenario_name=scenario_id,
+        scenario_id=scenario_id,
         steps=steps,
     )
