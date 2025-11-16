@@ -1,6 +1,7 @@
 from functools import partial
 
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
+from openutm_verification.core.execution.config_models import ScenarioId
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.models import OperationState
 from openutm_verification.scenarios.common import run_scenario_template
@@ -8,7 +9,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F2_contingent_path")
-def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
+def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_id: ScenarioId) -> ScenarioResult:
     """Runs the F2 contingent path scenario.
 
     This scenario simulates a flight operation that enters a contingent state:
@@ -19,7 +20,7 @@ def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_name: str) 
 
     Args:
         fb_client: The FlightBlenderClient instance for API interaction.
-        scenario_name: The unique name of the scenario being run.
+        scenario_id: The unique name of the scenario being run.
 
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
@@ -33,6 +34,6 @@ def test_f2_contingent_path(fb_client: FlightBlenderClient, scenario_name: str) 
 
     return run_scenario_template(
         fb_client=fb_client,
-        scenario_name=scenario_name,
+        scenario_id=scenario_id,
         steps=steps,
     )

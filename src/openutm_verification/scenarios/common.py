@@ -161,7 +161,7 @@ def _generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURA
 
 
 def run_sdsp_scenario_template(
-    scenario_name: str,
+    scenario_id: str,
     *,
     fb_client: FlightBlenderClient | None = None,
     steps: list[partial[Any]],
@@ -184,7 +184,7 @@ def run_sdsp_scenario_template(
     total_duration = sum(s.duration for s in step_results)
 
     return ScenarioResult(
-        name=scenario_name,
+        name=scenario_id,
         status=final_status,
         duration_seconds=total_duration,
         steps=step_results,
@@ -192,7 +192,7 @@ def run_sdsp_scenario_template(
 
 
 def run_air_traffic_scenario_template(
-    scenario_name: str,
+    scenario_id: str,
     *,
     fb_client: FlightBlenderClient | None = None,
     air_traffic_client: AirTrafficClient | None = None,
@@ -243,7 +243,7 @@ def run_air_traffic_scenario_template(
     total_duration = sum(s.duration for s in step_results)
 
     return ScenarioResult(
-        name=scenario_name,
+        name=scenario_id,
         status=final_status,
         duration_seconds=total_duration,
         steps=step_results,
@@ -251,7 +251,7 @@ def run_air_traffic_scenario_template(
 
 
 def run_scenario_template(
-    scenario_name: str,
+    scenario_id: str,
     *,
     fb_client: FlightBlenderClient | None = None,
     air_traffic_client: AirTrafficClient | None = None,
@@ -278,7 +278,7 @@ def run_scenario_template(
     if air_traffic_client:
         active_clients.append(f"AirTraffic={air_traffic_client.__class__.__name__}")
 
-    logger.debug(f"Active clients for '{scenario_name}': {', '.join(active_clients) if active_clients else 'None'}")
+    logger.debug(f"Active clients for '{scenario_id}': {', '.join(active_clients) if active_clients else 'None'}")
 
     # Determine scenario type based on client combination
     is_declaration_flow = fb_client is not None and air_traffic_client is None and opensky_client is None
@@ -291,7 +291,7 @@ def run_scenario_template(
 
     if is_declaration_flow:
         # Get scenario-specific config paths, falling back to global defaults
-        scenario_config = config.scenarios.get(scenario_name)
+        scenario_config = config.scenarios.get(scenario_id)
         if scenario_config is None:
             scenario_config = config.data_files
 
@@ -300,12 +300,12 @@ def run_scenario_template(
 
         if not telemetry_path or not flight_declaration_path:
             error_msg = (
-                f"Declaration flow for '{scenario_name}' missing required config paths: "
+                f"Declaration flow for '{scenario_id}' missing required config paths: "
                 f"telemetry={telemetry_path}, flight_declaration={flight_declaration_path}"
             )
             logger.error(error_msg)
             return ScenarioResult(
-                name=scenario_name,
+                name=scenario_id,
                 status=Status.FAIL,
                 duration_seconds=0,
                 steps=[],
@@ -317,9 +317,9 @@ def run_scenario_template(
             telemetry_states = _generate_telemetry(telemetry_path, duration=duration)
             logger.info(f"Generated flight declaration and {len(telemetry_states)} telemetry states")
         except Exception as e:
-            logger.error(f"Failed to generate data for scenario '{scenario_name}': {e}")
+            logger.error(f"Failed to generate data for scenario '{scenario_id}': {e}")
             return ScenarioResult(
-                name=scenario_name,
+                name=scenario_id,
                 status=Status.FAIL,
                 duration_seconds=0,
                 steps=[],
@@ -331,7 +331,7 @@ def run_scenario_template(
 
     if is_declaration_flow:
         # Standard declaration flow: upload -> steps -> teardown
-        logger.debug(f"Running declaration flow for '{scenario_name}'")
+        logger.debug(f"Running declaration flow for '{scenario_id}'")
         # Type narrowing: These are guaranteed non-None by is_declaration_flow logic
         assert fb_client is not None, "fb_client must be set for declaration flow"
         assert flight_declaration is not None, "flight_declaration must be generated for declaration flow"
@@ -345,13 +345,13 @@ def run_scenario_template(
     elif is_opensky_flow or is_air_traffic_flow:
         # Data-fetching flows: fetch/generate -> submit
         flow_type = "OpenSky" if is_opensky_flow else "Air Traffic"
-        logger.debug(f"Running {flow_type} submission flow for '{scenario_name}'")
+        logger.debug(f"Running {flow_type} submission flow for '{scenario_id}'")
         step_results = _run_submit_airtraffic_flow(steps)
     else:
         # No valid clients provided
-        logger.error(f"Scenario '{scenario_name}' has no valid client configuration.")
+        logger.error(f"Scenario '{scenario_id}' has no valid client configuration.")
         return ScenarioResult(
-            name=scenario_name,
+            name=scenario_id,
             status=Status.FAIL,
             duration_seconds=0,
             steps=[],
@@ -362,7 +362,7 @@ def run_scenario_template(
     total_duration = sum(s.duration for s in step_results)
 
     return ScenarioResult(
-        name=scenario_name,
+        name=scenario_id,
         status=final_status,
         duration_seconds=total_duration,
         steps=step_results,

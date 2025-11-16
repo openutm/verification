@@ -1,6 +1,7 @@
 from functools import partial
 
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
+from openutm_verification.core.execution.config_models import ScenarioId
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.models import OperationState
 from openutm_verification.scenarios.common import run_scenario_template
@@ -8,7 +9,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("add_flight_declaration")
-def test_add_flight_declaration(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
+def test_add_flight_declaration(fb_client: FlightBlenderClient, scenario_id: ScenarioId) -> ScenarioResult:
     """Runs the add flight declaration scenario.
 
     This scenario replicates the behavior of the add_flight_declaration.py importer:
@@ -20,7 +21,7 @@ def test_add_flight_declaration(fb_client: FlightBlenderClient, scenario_name: s
 
     Args:
         fb_client: The FlightBlenderClient instance for API interaction.
-        scenario_name: The unique name of the scenario being run.
+        scenario_id: The unique name of the scenario being run.
 
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
@@ -33,6 +34,6 @@ def test_add_flight_declaration(fb_client: FlightBlenderClient, scenario_name: s
 
     return run_scenario_template(
         fb_client=fb_client,
-        scenario_name=scenario_name,
+        scenario_id=scenario_id,
         steps=steps,
     )
