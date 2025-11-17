@@ -30,7 +30,7 @@ def sdsp_track_heartbeat(fb_client: FlightBlenderClient, scenario_name: str) -> 
         # Wait for some time to simulate heartbeat period
         partial(fb_client.wait_x_seconds, wait_time_seconds=2),
         partial(
-            fb_client.initialize_verify_sdsp_track_heartbeat,
+            fb_client.initialize_verify_sdsp_track,
             session_id=session_id,
             expected_heartbeat_interval_seconds=1,
             expected_heartbeat_count=3,

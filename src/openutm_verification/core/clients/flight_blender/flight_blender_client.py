@@ -617,7 +617,79 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         ws = self.create_websocket_connection(endpoint=endpoint)
         return ws
 
-    def initialize_verify_sdsp_track_heartbeat(
+    def initialize_verify_sdsp_track(
+        self,
+        expected_heartbeat_interval_seconds: int,
+        expected_heartbeat_count: int,
+        session_id: str,
+    ) -> StepResult:
+        ws_connection = self.initialize_heartbeat_websocket_connection(session_id=session_id)
+        start_time = time.time()
+
+        now = arrow.now()
+
+        six_seconds_from_now = now.shift(seconds=6)
+        all_received_messages = []
+        # Start Receiving messages from now till six seconds from now
+        while arrow.now() < six_seconds_from_now:
+            time.sleep(0.1)
+            message = ws_connection.recv()
+            message = json.loads(message)
+            if "heartbeat_data" not in message:
+                logger.debug("WebSocket connection established message received")
+                continue
+            heartbeat_message = HeartbeatMessage(**message["heartbeat_data"])
+            logger.debug(f"Received WebSocket message: {message}")
+            all_received_messages.append(SDSPHeartbeatMessage(message=heartbeat_message, timestamp=arrow.now().isoformat()))
+        logger.info(f"Received {len(all_received_messages)} messages in the first six seconds")
+        self.close_heartbeat_websocket_connection(ws_connection)
+        end_time = time.time()
+
+        # Sort messages by timestamp
+        sorted_messages = sorted(all_received_messages, key=lambda msg: arrow.get(msg.timestamp))
+        # remove the first two messages since we are just starting
+        sorted_messages = sorted_messages[2:]
+        all_message_intervals = []
+        # Calculate and print intervals between consecutive messages
+        logger.debug("Heartbeat message intervals:")
+        for i in range(1, len(sorted_messages)):
+            prev_timestamp = arrow.get(sorted_messages[i - 1].timestamp)
+            curr_timestamp = arrow.get(sorted_messages[i].timestamp)
+            interval = (curr_timestamp - prev_timestamp).total_seconds()
+            all_message_intervals.append(interval)
+            logger.info(
+                f"Interval {i}: {interval:.2f}s (between {prev_timestamp.format('HH:mm:ss.SSS')} and {curr_timestamp.format('HH:mm:ss.SSS')})"
+            )
+
+        verification_passed = True
+        tolerance = 0.1 * expected_heartbeat_interval_seconds  # Allow 10% tolerance
+
+        for interval in all_message_intervals:
+            if not (expected_heartbeat_interval_seconds - tolerance <= interval <= expected_heartbeat_interval_seconds + tolerance):
+                verification_passed = False
+                logger.debug(f"Interval {interval:.2f}s is outside the expected range.")
+                break
+        duration = end_time - start_time
+        if not verification_passed:
+            logger.error(f"Heartbeat frequency verification failed: messages not received every {expected_heartbeat_interval_seconds} seconds")
+            return StepResult(
+                name=f"Heartbeat message received {expected_heartbeat_interval_seconds} seconds",
+                status=Status.FAIL,
+                details=f"Heartbeat message not processed {expected_heartbeat_interval_seconds} seconds",
+                duration=duration,
+            )
+        else:
+            logger.info(
+                f"Heartbeat frequency verification passed: messages received approximately every {expected_heartbeat_interval_seconds} seconds"
+            )
+            return StepResult(
+                name=f"Heartbeat message received {expected_heartbeat_interval_seconds} seconds",
+                status=Status.PASS,
+                details=f"Heartbeat message processed {expected_heartbeat_interval_seconds} seconds",
+                duration=duration,
+            )
+
+    def initialize_verify_sdsp_heartbeat(
         self,
         expected_heartbeat_interval_seconds: int,
         expected_heartbeat_count: int,
