@@ -14,20 +14,20 @@ from openutm_verification.scenarios.common import run_sdsp_scenario_template
 from openutm_verification.scenarios.registry import register_scenario
 
 
-@register_scenario("sdsp_track_heartbeat")
-def sdsp_track_heartbeat(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
-    """Runs the SDSP heartbeat scenario.
+@register_scenario("sdsp_track")
+def sdsp_track(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
+    """Runs the SDSP track scenario.
     This scenario
     """
     session_id = str(uuid.uuid4())
-    logger.info(f"Starting SDSP heartbeat scenario with session ID: {session_id}")
+    logger.info(f"Starting SDSP track scenario with session ID: {session_id}")
     steps = [
         partial(
             fb_client.start_stop_sdsp_session,
             action=SDSPSessionAction.START,
             session_id=session_id,
         ),
-        # Wait for some time to simulate heartbeat period
+        # Wait for some time to simulate track period
         partial(fb_client.wait_x_seconds, wait_time_seconds=2),
         partial(
             fb_client.initialize_verify_sdsp_track,
