@@ -33,6 +33,7 @@ class AirTrafficSimulatorSettings(StrictBaseModel):
     number_of_aircraft: int
     simulation_duration_seconds: int
     single_or_multiple_sensors: Literal["single", "multiple"] = "single"
+    sensor_ids: List[str] = Field(default_factory=list)
 
 
 class OpenSkyConfig(StrictBaseModel):

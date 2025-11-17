@@ -1,6 +1,7 @@
 import json
 import uuid
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 from loguru import logger
 
@@ -48,6 +49,14 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         config_path = config_path or self.settings.simulation_config_path
         duration = duration or self.settings.simulation_duration_seconds
         number_of_aircraft = self.settings.number_of_aircraft
+        session_ids = self.settings.sensor_ids
+
+        try:
+            # create a list of UUIDs with at least one UUID if session_ids is empty
+            session_ids = [UUID(x) for x in session_ids] if session_ids else [uuid.uuid4()]
+        except ValueError as exc:
+            logger.error(f"Invalid sensor ID in configuration, it should be a valid UUID: {exc}")
+            raise
 
         try:
             logger.debug(f"Generating telemetry states from {config_path} for duration {duration} seconds")
@@ -57,7 +66,11 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
             simulator_config = AirTrafficGeneratorConfiguration(geojson=geojson_data)
             simulator = GeoJSONAirtrafficSimulator(simulator_config)
 
-            return simulator.generate_air_traffic_data(duration=duration, number_of_aircraft=number_of_aircraft)
+            return simulator.generate_air_traffic_data(
+                duration=duration,
+                number_of_aircraft=number_of_aircraft,
+                session_ids=session_ids,
+            )
 
         except Exception as exc:  # noqa: BLE001
             logger.error(f"Failed to generate telemetry states from {config_path}: {exc}")

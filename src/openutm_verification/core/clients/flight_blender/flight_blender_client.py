@@ -488,12 +488,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self,
         observations: List[List[Dict[str, Any]]],
         single_or_multiple_sensors: str = "single",
-    ) -> Dict[str, Any]:
+    ) -> bool:
         now = arrow.now()
         number_of_aircraft = len(observations)
         logger.debug(f"Submitting simulated air traffic for {number_of_aircraft} aircraft")
 
-        session_id = uuid.uuid4()
         # TODO: When single_or_multiple_sensors is "single", we need to aggregate all observations under one sensor ID
         # and when it's "multiple", we need to submit them separately as different session_ids, one for each track
 
@@ -532,6 +531,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             # Submit the filtered observations for each aircraft to the API
             logger.debug(f"Submitting {len(observations)} air traffic observations")
             for filtered_observation in filtered_observations:
+                session_id = filtered_observation[0]["metadata"]["session_id"]
                 endpoint = f"/flight_stream/set_air_traffic/{session_id}"
                 logger.debug(f"Submitting {len(observations)} air traffic observations")
                 payload = {"observations": filtered_observation}

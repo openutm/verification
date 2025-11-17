@@ -4,6 +4,7 @@ import sys
 import uuid
 from pathlib import Path
 from typing import List, Optional
+from uuid import UUID
 
 import arrow
 from geojson.utils import generate_random as generate_random_geojson
@@ -79,7 +80,7 @@ class GeoJSONAirtrafficSimulator:
     def generate_air_traffic_data(
         self,
         duration: int,
-        session_id: str = str(uuid.uuid4()),
+        session_ids: list[UUID],
         number_of_aircraft: int = 1,
     ) -> list[list[dict]]:
         """Generate simulated air traffic observations for the specified duration.
@@ -95,6 +96,8 @@ class GeoJSONAirtrafficSimulator:
             List of flight observation dictionaries containing position, altitude,
             and metadata for each generated data point.
         """
+
+        session_id = str(session_ids[0])
         logger.info(f"Generating air traffic data for {duration} seconds with session ID {session_id}")
         all_trajectories = []
         # Generate a random trajectory
