@@ -1,6 +1,7 @@
 from functools import partial
 
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
+from openutm_verification.core.execution.config_models import ScenarioId
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.models import OperationState
 from openutm_verification.scenarios.common import run_scenario_template
@@ -8,7 +9,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F1_happy_path")
-def test_f1_happy_path(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
+def test_f1_happy_path(fb_client: FlightBlenderClient, scenario_id: ScenarioId) -> ScenarioResult:
     """Runs the F1 happy path scenario.
 
     This scenario simulates a complete, successful flight operation:
@@ -18,7 +19,7 @@ def test_f1_happy_path(fb_client: FlightBlenderClient, scenario_name: str) -> Sc
 
     Args:
         fb_client: The FlightBlenderClient instance for API interaction.
-        scenario_name: The unique name of the scenario being run.
+        scenario_id: The unique name of the scenario being run.
 
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
@@ -31,6 +32,6 @@ def test_f1_happy_path(fb_client: FlightBlenderClient, scenario_name: str) -> Sc
 
     return run_scenario_template(
         fb_client=fb_client,
-        scenario_name=scenario_name,
+        scenario_id=scenario_id,
         steps=steps,
     )
