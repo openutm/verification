@@ -5,7 +5,7 @@ from typing import Callable, Generator, Type, TypeVar
 
 from openutm_verification.core.execution.config_models import RunContext
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 DEPENDENCIES: dict[Type, Callable[..., object]] = {}
 CONTEXT: ContextVar[RunContext] = ContextVar("context", default={"scenario_id": ""})
@@ -15,6 +15,7 @@ def dependency(type: Type) -> Callable:
     def wrapper(func: Callable[..., object]) -> Callable[..., object]:
         DEPENDENCIES[type] = contextmanager(func)
         return func
+
     return wrapper
 
 

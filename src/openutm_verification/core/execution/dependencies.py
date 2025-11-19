@@ -13,7 +13,7 @@ from openutm_verification.core.execution.dependency_resolution import CONTEXT, d
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
@@ -34,6 +34,7 @@ def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
         else:
             logger.warning(f"Scenario {scenario_id} not found in registry.")
     logger.info("=" * 100)
+
 
 @dependency(ScenarioId)
 def scenario_id() -> Generator[ScenarioId, None, None]:
