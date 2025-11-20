@@ -35,7 +35,7 @@ ENV PYTHONPATH=/app/src
 COPY --chown=${UID}:${GID} LICENSE README.md pyproject.toml uv.lock ./
 
 # Install all dependencies including dev dependencies
-RUN --mount=type=cache,target=/root/.cache/uv \
+RUN --mount=type=cache,target=/home/${APP_USER}/.cache/uv,uid=${UID},gid=${GID} \
     uv sync --frozen \
     && chown -R ${UID}:${GID} .venv
 
