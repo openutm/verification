@@ -11,8 +11,8 @@ readonly BLUE='\033[0;34m'
 readonly NC='\033[0m' # No Color
 
 # Current user
-HOST_UID=$(id -u)
-HOST_GID=$(id -g)
+readonly HOST_UID=$(id -u)
+readonly HOST_GID=$(id -g)
 
 # Logging functions
 log_info() {
