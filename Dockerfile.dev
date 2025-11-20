@@ -1,6 +1,11 @@
 # Development Dockerfile for hot reload and debugging
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS development
 
+ARG APP_USER=appuser
+ARG APP_GROUP=appgrp
+ARG UID=1000
+ARG GID=1000
+
 # Install development dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -34,6 +39,9 @@ COPY . .
 
 # Create directories
 RUN mkdir -p /app/reports /app/config
+
+# Switch to non-root user
+USER ${APP_USER}:${APP_GROUP}
 
 # Set executable path
 ENV PATH="/app/.venv/bin:$PATH"

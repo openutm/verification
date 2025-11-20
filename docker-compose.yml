@@ -57,6 +57,11 @@ services:
       context: .
       dockerfile: Dockerfile.dev
       target: development
+      args:
+        APP_USER: appuser
+        APP_GROUP: appgrp
+        UID: 1000
+        GID: 1000
     environment:
       - PYTHONUNBUFFERED=1
       - TZ=UTC
