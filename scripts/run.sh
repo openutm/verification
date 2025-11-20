@@ -13,8 +13,6 @@ source "$SCRIPT_DIR/common.sh"
 readonly COMPOSE_FILE="docker-compose.yml"
 readonly SERVICE_NAME="verification-tool"
 readonly DEV_SERVICE_NAME="verification-dev"
-readonly HOST_UID="$(id -u)"
-readonly HOST_GID="$(id -g)"
 
 # Check if Docker and Docker Compose are available
 # Note: check_dependencies is now sourced from common.sh
