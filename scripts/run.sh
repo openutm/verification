@@ -172,6 +172,11 @@ main() {
         esac
     done
 
+    # Consume the separator if present
+    if [[ "${1:-}" == "--" ]]; then
+        shift
+    fi
+
     log_info "Starting OpenUTM Verification Tool..."
     check_dependencies
     check_files
