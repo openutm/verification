@@ -18,6 +18,10 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user and group
+RUN groupadd -g "${GID}" "${APP_GROUP}" \
+    && useradd -u "${UID}" -g "${APP_GROUP}" -s /bin/sh -m "${APP_USER}"
+
 # Set working directory
 WORKDIR /app
 
@@ -28,17 +32,19 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 
 # Copy dependency files
-COPY LICENSE README.md pyproject.toml uv.lock ./
+COPY --chown=${APP_USER}:${APP_GROUP} LICENSE README.md pyproject.toml uv.lock ./
 
 # Install all dependencies including dev dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen
+    uv sync --frozen \
+    && chown -R ${APP_USER}:${APP_GROUP} .venv
 
 # Copy source code
-COPY . .
+COPY --chown=${APP_USER}:${APP_GROUP} . .
 
 # Create directories
-RUN mkdir -p /app/reports /app/config
+RUN mkdir -p /app/reports /app/config \
+    && chown -R ${APP_USER}:${APP_GROUP} /app/reports /app/config
 
 # Switch to non-root user
 USER ${APP_USER}:${APP_GROUP}

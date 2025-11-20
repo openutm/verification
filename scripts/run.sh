@@ -13,6 +13,8 @@ source "$SCRIPT_DIR/common.sh"
 readonly COMPOSE_FILE="docker-compose.yml"
 readonly SERVICE_NAME="verification-tool"
 readonly DEV_SERVICE_NAME="verification-dev"
+readonly HOST_UID="$(id -u)"
+readonly HOST_GID="$(id -g)"
 
 # Check if Docker and Docker Compose are available
 # Note: check_dependencies is now sourced from common.sh
@@ -89,7 +91,10 @@ run_production() {
         compose_opts+=("--verbose")
     fi
 
-    docker compose "${compose_opts[@]}" --file "${COMPOSE_FILE}" run --rm "${SERVICE_NAME}" "$@"
+    docker compose "${compose_opts[@]}" --file "${COMPOSE_FILE}" run --rm \
+        --user "${HOST_UID}:${HOST_GID}" \
+        -e HOST_UID="${HOST_UID}" -e HOST_GID="${HOST_GID}" \
+        "${SERVICE_NAME}" "$@"
 }
 
 # Run in development mode
@@ -112,7 +117,10 @@ run_development() {
         compose_opts+=("--verbose")
     fi
 
-    docker compose "${compose_opts[@]}" --profile dev run --rm "${DEV_SERVICE_NAME}" "$@"
+    docker compose "${compose_opts[@]}" --profile dev run --rm \
+        --user "${HOST_UID}:${HOST_GID}" \
+        -e HOST_UID="${HOST_UID}" -e HOST_GID="${HOST_GID}" \
+        "${DEV_SERVICE_NAME}" "$@"
 }
 
 # Cleanup function for run script
