@@ -19,8 +19,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and group
-RUN groupadd -g "${GID}" "${APP_GROUP}" \
-    && useradd -u "${UID}" -g "${APP_GROUP}" -s /bin/sh -m "${APP_USER}"
+RUN (getent group "${GID}" || groupadd -g "${GID}" "${APP_GROUP}") \
+    && useradd -u "${UID}" -g "${GID}" -s /bin/sh -m "${APP_USER}"
 
 # Set working directory
 WORKDIR /app
@@ -32,22 +32,22 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 
 # Copy dependency files
-COPY --chown=${APP_USER}:${APP_GROUP} LICENSE README.md pyproject.toml uv.lock ./
+COPY --chown=${UID}:${GID} LICENSE README.md pyproject.toml uv.lock ./
 
 # Install all dependencies including dev dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen \
-    && chown -R ${APP_USER}:${APP_GROUP} .venv
+    && chown -R ${UID}:${GID} .venv
 
 # Copy source code
-COPY --chown=${APP_USER}:${APP_GROUP} . .
+COPY --chown=${UID}:${GID} . .
 
 # Create directories
 RUN mkdir -p /app/reports /app/config \
-    && chown -R ${APP_USER}:${APP_GROUP} /app/reports /app/config
+    && chown -R ${UID}:${GID} /app/reports /app/config
 
 # Switch to non-root user
-USER ${APP_USER}:${APP_GROUP}
+USER ${UID}:${GID}
 
 # Set executable path
 ENV PATH="/app/.venv/bin:$PATH"

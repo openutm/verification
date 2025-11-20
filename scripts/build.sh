@@ -60,7 +60,7 @@ build_production() {
         --build-arg UV_LINK_MODE=copy \
         --build-arg UID="${HOST_UID}" \
         --build-arg GID="${HOST_GID}" \
-        "${build_args[@]}" \
+        ${build_args[@]+"${build_args[@]}"} \
         -t "${NAMESPACE}/${IMAGE}" \
         -t "${NAMESPACE}/${IMAGE_LATEST}" \
         .
@@ -91,7 +91,7 @@ build_development() {
         --build-arg UV_COMPILE_BYTECODE=0 \
         --build-arg UID="${HOST_UID}" \
         --build-arg GID="${HOST_GID}" \
-        "${build_args[@]}" \
+        ${build_args[@]+"${build_args[@]}"} \
         -t "${NAMESPACE}/${IMAGE_DEV}" \
         .
 

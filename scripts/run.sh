@@ -82,7 +82,7 @@ run_production() {
 
     if [[ "${BUILD_FIRST}" == "true" ]]; then
         log_info "Building production image first..."
-        ./scripts/build.sh "${build_opts[@]}" production
+        ./scripts/build.sh ${build_opts[@]+"${build_opts[@]}"} production
     fi
 
     local compose_opts=()
@@ -91,7 +91,7 @@ run_production() {
         compose_opts+=("--verbose")
     fi
 
-    docker compose "${compose_opts[@]}" --file "${COMPOSE_FILE}" run --rm \
+    docker compose ${compose_opts[@]+"${compose_opts[@]}"} --file "${COMPOSE_FILE}" run --rm \
         --user "${HOST_UID}:${HOST_GID}" \
         -e HOST_UID="${HOST_UID}" -e HOST_GID="${HOST_GID}" \
         "${SERVICE_NAME}" "$@"
@@ -109,7 +109,7 @@ run_development() {
 
     if [[ "${BUILD_FIRST}" == "true" ]]; then
         log_info "Building development image first..."
-        ./scripts/build.sh "${build_opts[@]}" development
+        ./scripts/build.sh ${build_opts[@]+"${build_opts[@]}"} development
     fi
 
     local compose_opts=()
@@ -117,7 +117,7 @@ run_development() {
         compose_opts+=("--verbose")
     fi
 
-    docker compose "${compose_opts[@]}" --profile dev run --rm \
+    docker compose ${compose_opts[@]+"${compose_opts[@]}"} --profile dev run --rm \
         --user "${HOST_UID}:${HOST_GID}" \
         -e HOST_UID="${HOST_UID}" -e HOST_GID="${HOST_GID}" \
         "${DEV_SERVICE_NAME}" "$@"
