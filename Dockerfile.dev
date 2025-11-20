@@ -1,6 +1,11 @@
 # Development Dockerfile for hot reload and debugging
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS development
 
+ARG APP_USER=appuser
+ARG APP_GROUP=appgrp
+ARG UID=1000
+ARG GID=1000
+
 # Install development dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -13,6 +18,10 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user and group
+RUN (getent group "${GID}" || groupadd -g "${GID}" "${APP_GROUP}") \
+    && useradd -u "${UID}" -g "${GID}" -s /bin/sh -m "${APP_USER}"
+
 # Set working directory
 WORKDIR /app
 
@@ -23,17 +32,22 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 
 # Copy dependency files
-COPY LICENSE README.md pyproject.toml uv.lock ./
+COPY --chown=${UID}:${GID} LICENSE README.md pyproject.toml uv.lock ./
 
 # Install all dependencies including dev dependencies
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen
+RUN --mount=type=cache,target=/home/${APP_USER}/.cache/uv,uid=${UID},gid=${GID} \
+    uv sync --frozen \
+    && chown -R ${UID}:${GID} .venv
 
 # Copy source code
-COPY . .
+COPY --chown=${UID}:${GID} . .
 
 # Create directories
-RUN mkdir -p /app/reports /app/config
+RUN mkdir -p /app/reports /app/config \
+    && chown -R ${UID}:${GID} /app/reports /app/config
+
+# Switch to non-root user
+USER ${UID}:${GID}
 
 # Set executable path
 ENV PATH="/app/.venv/bin:$PATH"

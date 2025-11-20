@@ -65,21 +65,21 @@ ENV TZ=UTC
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Create non-root user and group for enhanced security
-RUN groupadd -g "${GID}" "${APP_GROUP}" \
-    && useradd -u "${UID}" -g "${APP_GROUP}" -s /bin/sh -m "${APP_USER}"
+RUN (getent group "${GID}" || groupadd -g "${GID}" "${APP_GROUP}") \
+    && useradd -u "${UID}" -g "${GID}" -s /bin/sh -m "${APP_USER}"
 
 # Copy application artifacts from builder stage
-COPY --chown=${APP_USER}:${APP_GROUP} --from=builder /app /app
+COPY --chown=${UID}:${GID} --from=builder /app /app
 
 # Set working directory
 WORKDIR /app
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/config /app/reports \
-    && chown -R ${APP_USER}:${APP_GROUP} /app/config /app/reports
+    && chown -R ${UID}:${GID} /app/config /app/reports
 
 # Switch to non-root user
-USER ${APP_USER}:${APP_GROUP}
+USER ${UID}:${GID}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
