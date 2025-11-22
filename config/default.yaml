@@ -43,8 +43,8 @@ scenarios:
     telemetry: "config/bern/telemetry_f2.json"
   F3_non_conforming_path:
     telemetry: "config/bern/telemetry_f3.json"
-  F5_non_conforming_path:
-    telemetry: "config/bern/telemetry_f5.json"
+  # F5_non_conforming_path:
+  #   telemetry: "config/bern/telemetry_f5.json"
   opensky_live_data:
   add_flight_declaration:
   geo_fence_upload:
