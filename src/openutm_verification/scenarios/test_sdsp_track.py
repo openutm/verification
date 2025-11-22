@@ -11,7 +11,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("sdsp_track")
-def sdsp_track(fb_client: FlightBlenderClient, scenario_name: str) -> ScenarioResult:
+def sdsp_track(fb_client: FlightBlenderClient) -> ScenarioResult:
     """Runs the SDSP track scenario.
     This scenario
     """

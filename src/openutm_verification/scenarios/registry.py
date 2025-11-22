@@ -140,7 +140,7 @@ def _run_scenario_with_setup(
         steps.extend(ctx.steps)
 
     teardown_result = cast(
-        StepResult, fb_client.delete_flight_declaration(setup_data.operation_id)
+        StepResult, fb_client.delete_flight_declaration()
     )
     steps.append(teardown_result)
 
