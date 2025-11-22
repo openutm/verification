@@ -21,7 +21,7 @@ jobs:
         version: latest
 
     - name: Start Flight Blender and dependencies
-      run: docker compose --env-file .env.tests -f docker-compose.fb.yml up -d
+      run: docker compose --env-file .env.tests -f docker-compose.fb.yml up -d --wait
       working-directory: ./tests
 
     - name: Install uv

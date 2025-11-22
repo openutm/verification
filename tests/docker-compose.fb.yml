@@ -38,6 +38,12 @@ services:
     depends_on:
       - redis-blender
       - db-blender
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request, json, sys; sys.exit(0 if json.load(urllib.request.urlopen('http://127.0.0.1:8000/ping'))['message'] == 'pong' else 1)\""]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
 
   flight-blender-celery:
