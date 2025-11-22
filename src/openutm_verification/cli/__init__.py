@@ -2,6 +2,7 @@
 Command Line Interface for OpenUTM Verification Tool.
 """
 
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -41,12 +42,13 @@ def main():
     log_file = setup_logging(output_dir, base_filename, config.reporting.formats, args.debug)
 
     # Run verification scenarios
-    run_verification_scenarios(config, args.config)
+    failed = run_verification_scenarios(config, args.config)
 
     if log_file:
         from loguru import logger
 
         logger.info(f"Log file saved to: {log_file}")
+    sys.exit(failed)
 
 
 if __name__ == "__main__":
