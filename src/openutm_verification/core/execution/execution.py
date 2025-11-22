@@ -113,3 +113,4 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
 
     base_filename = f"report_{run_timestamp.strftime('%Y-%m-%dT%H-%M-%SZ')}"
     generate_reports(report_data, config.reporting, base_filename)
+    return failed_scenarios

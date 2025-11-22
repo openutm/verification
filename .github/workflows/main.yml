@@ -2,7 +2,7 @@ name: Integration Test
 
 on:
   pull_request:
-    types: [ready_for_review]
+    types: [opened, synchronize, reopened]
     branches:
     - main
 
@@ -21,7 +21,7 @@ jobs:
         version: latest
 
     - name: Start Flight Blender and dependencies
-      run: docker compose --env-file .env.tests -f docker-compose.fb.yml up -d
+      run: docker compose --env-file .env.tests -f docker-compose.fb.yml up -d --wait
       working-directory: ./tests
 
     - name: Install uv
@@ -34,6 +34,7 @@ jobs:
       run: uv run openutm-verify --debug --config config/default.yaml
     
     - uses: actions/upload-artifact@v4
+      if: always()
       with:
         name: test-reports
         path: reports/
