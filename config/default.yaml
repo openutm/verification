@@ -49,7 +49,7 @@ scenarios:
   add_flight_declaration:
   geo_fence_upload:
   # sdsp_track:
-  sdsp_heartbeat:
+  # sdsp_heartbeat:
   openutm_sim_air_traffic_data:
 
 # Reporting configuration

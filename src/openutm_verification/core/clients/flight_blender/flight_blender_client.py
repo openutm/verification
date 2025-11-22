@@ -14,7 +14,6 @@ from openutm_verification.core.clients.flight_blender.base_client import (
 from openutm_verification.core.execution.config_models import DataFiles
 from openutm_verification.core.execution.scenario_runner import scenario_step
 from openutm_verification.core.reporting.reporting_models import (
-    SetupData,
     Status,
     StepResult,
 )
@@ -750,7 +749,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         ws_connection.close()
 
     @scenario_step("Setup Flight Declaration")
-    def setup_flight_declaration(self, flight_declaration_path: str, telemetry_path: str) -> SetupData:
+    def setup_flight_declaration(self, flight_declaration_path: str, telemetry_path: str) -> None:
         """Generates data and uploads flight declaration."""
         from openutm_verification.scenarios.common import (
             generate_flight_declaration,
@@ -765,21 +764,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         upload_result = self.upload_flight_declaration(flight_declaration)
 
         if upload_result.status == Status.FAIL:
-            # We still return data, but operation_id might be missing/invalid if failed
-            # The caller should check upload_result.status
-            return SetupData(
-                operation_id="",
-                flight_declaration=flight_declaration,
-                telemetry_states=telemetry_states,
-                upload_result=upload_result,
-            )
-
-        return SetupData(
-            operation_id=upload_result.details["id"],
-            flight_declaration=flight_declaration,
-            telemetry_states=telemetry_states,
-            upload_result=upload_result,
-        )
+            raise FlightBlenderError("Failed to upload flight declaration during setup_operation")
 
     @contextmanager
     def flight_declaration(self, data_files: DataFiles):
