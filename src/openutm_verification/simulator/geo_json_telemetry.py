@@ -1,7 +1,6 @@
 import json
 import random
 import sys
-import uuid
 from pathlib import Path
 from typing import List, Optional
 from uuid import UUID

@@ -1,5 +1,4 @@
 import shapely
-from pyproj import Geod, Proj, Transformer
 
 if __name__ == "__main__":
     geojson = {

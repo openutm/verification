@@ -28,8 +28,6 @@ Note: This module requires the 'drip_messages' module to be imported.
 For more information about the DRIP protocol and the System message format, refer to the ASTM F3411 specification.
 """
 
-import ctypes
-
 from openutm_verification.drip import drip_messages as common
 
 

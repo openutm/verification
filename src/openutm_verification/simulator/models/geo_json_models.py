@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Literal, Tuple
 
 import shapely.geometry
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from pyproj import Geod
 
 LngLat = Tuple[float, float]

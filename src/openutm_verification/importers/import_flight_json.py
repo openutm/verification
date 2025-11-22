@@ -8,7 +8,7 @@ from os.path import abspath, dirname
 
 import requests
 
-from openutm_verification.auth.passport_client import NoAuthCredentialsGetter, PassportCredentialsGetter
+from openutm_verification.auth.noauth import NoAuthCredentialsGetter
 
 
 class FlightBlenderUploader:
@@ -86,7 +86,6 @@ class FlightBlenderUploader:
 
 
 if __name__ == "__main__":
-    # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
     credentials = my_credentials.get_cached_credentials(audience="testflight.flightblender.com", scopes=["flight_blender.write"])
 

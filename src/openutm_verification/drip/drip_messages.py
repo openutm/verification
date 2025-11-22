@@ -32,8 +32,7 @@ uas_data.SelfID.Desc = "My UAS"
 """
 
 import ctypes
-import struct
-from ctypes import POINTER, Structure, c_char, c_double, c_float, c_uint8, c_uint16, c_uint32, c_void_p, sizeof
+from ctypes import Structure, c_char, c_double, c_float, c_uint8, c_uint16, c_uint32, c_void_p
 
 # Size constants for DRIP messages
 DRIP_ID_SIZE = 20

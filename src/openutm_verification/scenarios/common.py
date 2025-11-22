@@ -1,9 +1,7 @@
 import json
-from dataclasses import asdict
 from functools import partial
 from pathlib import Path
 from typing import Any, List, cast
-from unittest.mock import DEFAULT
 
 from loguru import logger
 
@@ -23,8 +21,6 @@ from openutm_verification.core.reporting.reporting_models import (
 from openutm_verification.simulator.flight_declaration import FlightDeclarationGenerator
 from openutm_verification.simulator.geo_json_telemetry import GeoJSONFlightsSimulator
 from openutm_verification.simulator.models.flight_data_types import (
-    AirTrafficGeneratorConfiguration,
-    FlightObservationSchema,
     GeoJSONFlightsSimulatorConfiguration,
 )
 

@@ -1,14 +1,8 @@
 import argparse
-import inspect
-import os
 import sys
 from typing import List
 
 from openutm_verification.auth.dev_auth import NoAuth
-
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir)
 
 
 def parse_args(argv: List[str]):

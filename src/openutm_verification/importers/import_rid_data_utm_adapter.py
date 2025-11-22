@@ -1,14 +1,12 @@
 import json
 import os
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from os.path import abspath, dirname
-from typing import Optional
 
 import requests
-from dacite import from_dict
 
-from openutm_verification.auth.passport_client import NoAuthCredentialsGetter, PassportCredentialsGetter
+from openutm_verification.auth.noauth import NoAuthCredentialsGetter
 from openutm_verification.rid import UASID, LatLngPoint, OperatorLocation, RIDOperatorDetails, UAClassificationEU
 
 
@@ -70,7 +68,6 @@ class FlightBlenderUploader:
 
 
 if __name__ == "__main__":
-    # my_credentials = PassportCredentialsGetter()
     my_credentials = NoAuthCredentialsGetter()
     credentials = my_credentials.get_cached_credentials(audience="testflight.flightblender.com", scopes=["flight_blender.write"])
     parent_dir = dirname(abspath(__file__))  # <-- absolute dir the raw input file  is in
