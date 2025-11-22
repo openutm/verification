@@ -782,7 +782,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         )
 
     @contextmanager
-    def flight_declarationn(self, data_files: DataFiles):
+    def flight_declaration(self, data_files: DataFiles):
         """Context manager to setup and teardown a flight operation based on scenario config."""
         self.setup_flight_declaration(data_files.flight_declaration, data_files.telemetry)
         try:
