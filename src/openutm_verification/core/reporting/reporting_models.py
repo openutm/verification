@@ -3,9 +3,9 @@ Pydantic models for reporting configuration.
 """
 
 from enum import StrEnum
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from openutm_verification.core.execution.config_models import DeploymentDetails
 

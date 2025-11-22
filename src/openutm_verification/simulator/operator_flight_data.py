@@ -1,6 +1,5 @@
 import random
 import string
-import uuid
 
 from faker import Faker
 from uas_standards.ansi_cta_2063_a import SerialNumber

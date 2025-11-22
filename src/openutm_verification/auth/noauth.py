@@ -10,9 +10,6 @@ from openutm_verification.auth.dev_auth import NoAuth
 class NoAuthCredentialsGetter:
     """Credentials getter that uses dummy authentication for development."""
 
-    def __init__(self):
-        pass
-
     def get_cached_credentials(self, audience: str, scopes: List[str]):
         """Get cached credentials using dummy authentication."""
         if not audience:

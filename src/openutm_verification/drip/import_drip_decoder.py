@@ -29,7 +29,6 @@ For more information about the DRIP protocol and the message decoding process, r
 import argparse
 import ctypes
 import os
-import struct
 
 import openutm_verification.drip.drip_messages as common
 from openutm_verification.drip.auth_decoder import AuthDecoder
@@ -48,7 +47,6 @@ def decode_drone_id(uas_data, raw_data):
 
     if common.DRIP_MESSAGE_SIZE <= message_size:
         msg_type = raw_data[0] >> 4
-        message_type_bytes = struct.pack("B", raw_data[0])
 
         if msg_type == common.DRIP_MESSAGE_BASIC_ID:
             print("DRIP_MESSAGE_BASIC_ID")
@@ -112,7 +110,7 @@ def decodeMessagePack(data):
     uasData = common.DRIP_UAS_Data()
     pack = common.DRIP_MessagePack_encoded()
     ctypes.memmove(ctypes.addressof(pack), data, ctypes.sizeof(pack))
-    ret = decode_message_pack(uasData, pack, data)
+    decode_message_pack(uasData, pack, data)
 
     return uasData
 

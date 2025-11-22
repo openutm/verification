@@ -1,14 +1,10 @@
 import datetime
-import urllib.parse
 import uuid
-from typing import Dict, List, Optional
+from abc import ABC, abstractmethod
+from typing import List
 
-import jwcrypto.common
 import jwcrypto.jwk
-import jwcrypto.jws
 import jwcrypto.jwt
-import jwt
-import requests
 
 ALL_SCOPES = [
     "dss.write.identification_service_areas",
@@ -23,47 +19,13 @@ TOKEN_REFRESH_MARGIN = datetime.timedelta(seconds=15)
 CLIENT_TIMEOUT = 60  # seconds
 
 
-class AuthAdapter(object):
-    """Base class for an adapter that add JWTs to requests."""
+class AuthAdapter(ABC):
+    """Abstract base class for an adapter that adds JWTs to requests."""
 
-    def __init__(self):
-        self._tokens = {}
-
+    @abstractmethod
     def issue_token(self, intended_audience: str, scopes: List[str]) -> str:
         """Subclasses must return a bearer token for the given audience."""
-
-        raise NotImplementedError()
-
-    def get_headers(self, url: str, scopes: List[str] = None) -> Dict[str, str]:
-        if scopes is None:
-            scopes = ALL_SCOPES
-        intended_audience = urllib.parse.urlparse(url).hostname
-        scope_string = " ".join(scopes)
-        if intended_audience not in self._tokens:
-            self._tokens[intended_audience] = {}
-        if scope_string not in self._tokens[intended_audience]:
-            token = self.issue_token(intended_audience, scopes)
-        else:
-            token = self._tokens[intended_audience][scope_string]
-        payload = jwt.decode(token, options={"verify_signature": False})
-        expires = EPOCH + datetime.timedelta(seconds=payload["exp"])
-        if datetime.datetime.utcnow() > expires - TOKEN_REFRESH_MARGIN:
-            token = self.issue_token(intended_audience, scopes)
-        self._tokens[intended_audience][scope_string] = token
-        return {"Authorization": "Bearer " + token}
-
-    def add_headers(self, request: requests.PreparedRequest, scopes: List[str]):
-        for k, v in self.get_headers(request.url, scopes).items():
-            request.headers[k] = v
-
-    def get_sub(self) -> Optional[str]:
-        """Retrieve `sub` claim from one of the existing tokens"""
-        for _, tokens_by_scope in self._tokens.items():
-            for token in tokens_by_scope.values():
-                payload = jwt.decode(token, options={"verify_signature": False})
-                if "sub" in payload:
-                    return payload["sub"]
-        return None
+        pass
 
 
 class NoAuth(AuthAdapter):

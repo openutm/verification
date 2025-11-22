@@ -1,4 +1,3 @@
-import json
 from typing import Optional
 
 import pandas as pd
@@ -9,11 +8,7 @@ from openutm_verification.core.clients.opensky.base_client import (
     OpenSkySettings,
 )
 from openutm_verification.core.execution.scenario_runner import scenario_step
-from openutm_verification.simulator.geo_json_telemetry import (
-    GeoJSONAirtrafficSimulator,
-)
 from openutm_verification.simulator.models.flight_data_types import (
-    AirTrafficGeneratorConfiguration,
     FlightObservationSchema,
 )
 

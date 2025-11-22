@@ -1,4 +1,3 @@
-import time
 import uuid
 from functools import partial
 
@@ -7,7 +6,6 @@ from loguru import logger
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
-from openutm_verification.core.execution.scenario_runner import scenario_step
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.models import SDSPSessionAction
 from openutm_verification.scenarios.common import run_sdsp_scenario_template

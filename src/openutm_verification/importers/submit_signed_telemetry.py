@@ -1,4 +1,3 @@
-import base64
 import hashlib
 import json
 import os
@@ -10,16 +9,13 @@ import arrow
 import http_sfv
 import jwt
 import requests
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.serialization import (
     load_pem_private_key,
-    load_pem_public_key,
 )
-from http_message_signatures import HTTPMessageSigner, HTTPMessageVerifier, HTTPSignatureKeyResolver, algorithms
+from http_message_signatures import HTTPMessageSigner, HTTPSignatureKeyResolver, algorithms
 from jwt.exceptions import DecodeError, ExpiredSignatureError, InvalidKeyError, InvalidSignatureError, InvalidTokenError
 
 import openutm_verification.rid
-from openutm_verification.auth.passport_client import NoAuthCredentialsGetter
 
 # This file send signed requests to ArgonServer and verifies responses from Blendre
 # Source: https://github.com/pyauth/http-message-signatures/blob/main/test/test.py
