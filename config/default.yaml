@@ -37,18 +37,18 @@ data_files:
 
 # List of test scenario IDs to execute
 scenarios:
-  # "F1_happy_path":
-  #   telemetry: "config/bern/telemetry_f1.json"
-  # "F2_contingent_path":
-  #   telemetry: "config/bern/telemetry_f2.json"
-  # "F3_non_conforming_path":
-  #   telemetry: "config/bern/telemetry_f3.json"
-  # "F5_non_conforming_path":
-  #   telemetry: "config/bern/telemetry_f5.json"
-  # "opensky_live_data":
-  # "add_flight_declaration":
-  # "geo_fence_upload":
-  # "sdsp_track_heartbeat":
+  "F1_happy_path":
+    telemetry: "config/bern/telemetry_f1.json"
+  "F2_contingent_path":
+    telemetry: "config/bern/telemetry_f2.json"
+  "F3_non_conforming_path":
+    telemetry: "config/bern/telemetry_f3.json"
+  "F5_non_conforming_path":
+    telemetry: "config/bern/telemetry_f5.json"
+  "opensky_live_data":
+  "add_flight_declaration":
+  "geo_fence_upload":
+  "sdsp_track_heartbeat":
   openutm_sim_air_traffic_data:
 
 # Reporting configuration

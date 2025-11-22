@@ -75,6 +75,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self.latest_geo_fence_id: Optional[str] = None
         # Context: store the most recently created flight declaration id for teardown/steps
         self.latest_flight_declaration_id: Optional[str] = None
+        # Context: store the generated telemetry states for the current scenario
+        self.telemetry_states: Optional[List[Dict[str, Any]]] = None
         logger.debug(f"Initialized FlightBlenderClient with base_url={base_url}, request_timeout={request_timeout}")
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -237,13 +239,13 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return response_json
 
     @scenario_step("Update Operation State")
-    def update_operation_state(self, operation_id: str, new_state: OperationState, duration_seconds: int = 0) -> Dict[str, Any]:
+    def update_operation_state(self, operation_id: Optional[str] = None, new_state: OperationState = None, duration_seconds: int = 0) -> Dict[str, Any]:
         """Update the state of a flight operation.
 
         Posts the new state and optionally waits for the specified duration.
 
         Args:
-            operation_id: The ID of the operation to update.
+            operation_id: The ID of the operation to update. If None, uses the latest flight declaration ID.
             new_state: The new OperationState to set.
             duration_seconds: Optional seconds to sleep after update (default 0).
 
@@ -252,13 +254,20 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         Raises:
             FlightBlenderError: If the update request fails.
+            ValueError: If operation_id is missing and cannot be resolved, or new_state is missing.
         """
-        endpoint = f"/flight_declaration_ops/flight_declaration_state/{operation_id}"
-        logger.debug(f"Updating operation {operation_id} to state {new_state.name}")
+        op_id = operation_id or self.latest_flight_declaration_id
+        if not op_id:
+            raise ValueError("Operation ID is required and could not be resolved from context.")
+        if new_state is None:
+            raise ValueError("new_state is required.")
+
+        endpoint = f"/flight_declaration_ops/flight_declaration_state/{op_id}"
+        logger.debug(f"Updating operation {op_id} to state {new_state.name}")
         payload = {"state": new_state.value, "submitted_by": "hh@auth.com"}
 
         response = self.put(endpoint, json=payload)
-        logger.info(f"Operation state updated for {operation_id} to {new_state.name}")
+        logger.info(f"Operation state updated for {op_id} to {new_state.name}")
         if duration_seconds > 0:
             logger.debug(f"Sleeping for {duration_seconds} seconds after state update")
             time.sleep(duration_seconds)
@@ -366,15 +375,15 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return f"Waited for Flight Blender to process {wait_time_seconds} seconds."
 
     @scenario_step("Submit Telemetry")
-    def submit_telemetry(self, operation_id: str, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+    def submit_telemetry(self, operation_id: Optional[str] = None, states: Optional[List[Dict[str, Any]]] = None, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
         """Submit telemetry data for a flight operation from in-memory states.
 
         Submits telemetry states sequentially from the provided list, with optional
         duration limiting and error handling for rate limits.
 
         Args:
-            operation_id: The ID of the operation for telemetry submission.
-            states: List of telemetry state dictionaries.
+            operation_id: The ID of the operation for telemetry submission. If None, uses the latest flight declaration ID.
+            states: List of telemetry state dictionaries. If None, uses the generated telemetry states from context.
             duration_seconds: Optional maximum duration in seconds to submit telemetry (default 0 for unlimited).
 
         Returns:
@@ -382,14 +391,23 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         Raises:
             FlightBlenderError: If maximum waiting time is exceeded due to rate limits.
+            ValueError: If operation_id or states are missing and cannot be resolved.
         """
-        return self._submit_telemetry_states_impl(operation_id, states, duration_seconds)
+        op_id = operation_id or self.latest_flight_declaration_id
+        if not op_id:
+            raise ValueError("Operation ID is required and could not be resolved from context.")
+
+        telemetry_states = states or self.telemetry_states
+        if telemetry_states is None:
+            raise ValueError("Telemetry states are required and could not be resolved from context.")
+
+        return self._submit_telemetry_states_impl(op_id, telemetry_states, duration_seconds)
 
     @scenario_step("Check Operation State")
     def check_operation_state(
         self,
-        operation_id: str,
-        expected_state: OperationState,
+        operation_id: Optional[str] = None,
+        expected_state: OperationState = None,
         duration_seconds: int = 0,
     ) -> str:
         """Check the operation state (simulated).
@@ -398,17 +416,26 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         and returns a success status.
 
         Args:
-            operation_id: The ID of the operation to check.
+            operation_id: The ID of the operation to check. If None, uses the latest flight declaration ID.
             expected_state: The expected OperationState.
             duration_seconds: Seconds to wait for processing.
 
         Returns:
             A dictionary with the check result.
+        
+        Raises:
+            ValueError: If operation_id is missing and cannot be resolved, or expected_state is missing.
         """
-        logger.info(f"Checking operation state for {operation_id} (simulated)...")
+        op_id = operation_id or self.latest_flight_declaration_id
+        if not op_id:
+            raise ValueError("Operation ID is required and could not be resolved from context.")
+        if expected_state is None:
+            raise ValueError("expected_state is required.")
+
+        logger.info(f"Checking operation state for {op_id} (simulated)...")
         logger.info(f"Waiting for {duration_seconds} seconds for Flight Blender to process state...")
         time.sleep(duration_seconds)
-        logger.info(f"Flight state check for {operation_id} completed (simulated).")
+        logger.info(f"Flight state check for {op_id} completed (simulated).")
         return f"Waited for Flight Blender to process {expected_state} state."
 
     @scenario_step("Check Operation State Connected")
@@ -600,6 +627,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         ws = self.create_websocket_connection(endpoint=endpoint)
         return ws
 
+    @scenario_step("Verify SDSP Track")
     def initialize_verify_sdsp_track(
         self,
         expected_heartbeat_interval_seconds: int,
@@ -672,6 +700,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 duration=duration,
             )
 
+    @scenario_step("Verify SDSP Heartbeat")
     def initialize_verify_sdsp_heartbeat(
         self,
         expected_heartbeat_interval_seconds: int,

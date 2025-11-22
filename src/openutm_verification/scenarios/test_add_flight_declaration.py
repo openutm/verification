@@ -1,14 +1,11 @@
-from functools import partial
-
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.execution.config_models import ScenarioId
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.models import OperationState
-from openutm_verification.scenarios.common import run_scenario_template
 from openutm_verification.scenarios.registry import register_scenario
 
 
-@register_scenario("add_flight_declaration")
+@register_scenario("add_flight_declaration", setup_flight_declaration=True)
 def test_add_flight_declaration(fb_client: FlightBlenderClient, scenario_id: ScenarioId) -> ScenarioResult:
     """Runs the add flight declaration scenario.
 
@@ -26,14 +23,6 @@ def test_add_flight_declaration(fb_client: FlightBlenderClient, scenario_id: Sce
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
     """
-    steps = [
-        partial(fb_client.update_operation_state, new_state=OperationState.ACTIVATED, duration_seconds=20),
-        partial(fb_client.submit_telemetry, duration_seconds=30),
-        partial(fb_client.update_operation_state, new_state=OperationState.ENDED),
-    ]
-
-    return run_scenario_template(
-        fb_client=fb_client,
-        scenario_id=scenario_id,
-        steps=steps,
-    )
+    fb_client.update_operation_state(new_state=OperationState.ACTIVATED, duration_seconds=20)
+    fb_client.submit_telemetry(duration_seconds=30)
+    fb_client.update_operation_state(new_state=OperationState.ENDED)
