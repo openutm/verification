@@ -48,6 +48,13 @@ class ReportSummary(BaseModel):
 
     total_scenarios: int
     passed: int
+
+
+class SetupData(BaseModel):
+    operation_id: str
+    flight_declaration: Any
+    telemetry_states: List[Any]
+    upload_result: StepResult
     failed: int
 
 

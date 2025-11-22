@@ -48,7 +48,7 @@ scenarios:
   opensky_live_data:
   add_flight_declaration:
   geo_fence_upload:
-  sdsp_track:
+  # sdsp_track:
   sdsp_heartbeat:
   openutm_sim_air_traffic_data:
 
