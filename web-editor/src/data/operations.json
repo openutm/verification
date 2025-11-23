@@ -1,0 +1,445 @@
+[
+  {
+    "id": "FlightBlenderClient.upload_geo_fence",
+    "name": "Upload Geo Fence",
+    "functionName": "upload_geo_fence",
+    "className": "FlightBlenderClient",
+    "description": "Upload an Area-of-Interest (Geo Fence) to Flight Blender.\n\nArgs:\n    filename: Path to the GeoJSON file containing the geo-fence definition.\n\nReturns:\n    The JSON response from the API, including the geo-fence ID if successful.\n\nRaises:\n    FlightBlenderError: If the upload request fails.\n    json.JSONDecodeError: If the file content is invalid JSON.",
+    "parameters": [
+      {
+        "name": "filename",
+        "type": "Optional[str]",
+        "default": null
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.get_geo_fence",
+    "name": "Get Geo Fence",
+    "functionName": "get_geo_fence",
+    "className": "FlightBlenderClient",
+    "description": "Retrieve the details of the most recently uploaded geo-fence.\n\nReturns:\n    The JSON response from the API containing geo-fence details, or a dict\n    indicating skip if no geo-fence ID is available.",
+    "parameters": [],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.delete_geo_fence",
+    "name": "Delete Geo Fence",
+    "functionName": "delete_geo_fence",
+    "className": "FlightBlenderClient",
+    "description": "Delete a geo-fence by ID.\n\nArgs:\n    geo_fence_id: Optional ID of the geo-fence to delete. If not provided,\n        uses the latest uploaded geo-fence ID.\n\nReturns:\n    A dictionary with deletion status, including whether it was successful.\n\nNote:\n    According to the schema, DELETE returns 204 on success. This method\n    normalizes the response to a JSON dict for reporting.",
+    "parameters": [
+      {
+        "name": "geo_fence_id",
+        "type": "Optional[str]",
+        "default": null
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.upload_flight_declaration",
+    "name": "Upload Flight Declaration",
+    "functionName": "upload_flight_declaration",
+    "className": "FlightBlenderClient",
+    "description": "Upload a flight declaration to the Flight Blender API.\n\nAccepts either a filename (str) containing JSON declaration data, or a\nFlightDeclaration model instance. Adjusts datetimes to current time + offsets,\nand posts it. Raises an error if the declaration is not approved.\n\nArgs:\n    declaration: Either a path to the JSON flight declaration file (str),\n        or a FlightDeclaration model instance.\n\nReturns:\n    The JSON response from the API.\n\nRaises:\n    FlightBlenderError: If the declaration is not approved or the request fails.\n    json.JSONDecodeError: If the file content is invalid JSON (when using filename).",
+    "parameters": [
+      {
+        "name": "declaration",
+        "type": "str | Any"
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.update_operation_state",
+    "name": "Update Operation State",
+    "functionName": "update_operation_state",
+    "className": "FlightBlenderClient",
+    "description": "Update the state of a flight operation.\n\nPosts the new state and optionally waits for the specified duration.\n\nArgs:\n    new_state: The new OperationState to set.\n    duration_seconds: Optional seconds to sleep after update (default 0).\n\nReturns:\n    The JSON response from the API.\n\nRaises:\n    FlightBlenderError: If the update request fails.",
+    "parameters": [
+      {
+        "name": "new_state",
+        "type": "OperationState",
+        "options": [
+          {
+            "name": "PROCESSING",
+            "value": 0
+          },
+          {
+            "name": "ACCEPTED",
+            "value": 1
+          },
+          {
+            "name": "ACTIVATED",
+            "value": 2
+          },
+          {
+            "name": "NONCONFORMING",
+            "value": 3
+          },
+          {
+            "name": "CONTINGENT",
+            "value": 4
+          },
+          {
+            "name": "ENDED",
+            "value": 5
+          },
+          {
+            "name": "WITHDRAWN",
+            "value": 6
+          },
+          {
+            "name": "CANCELLED",
+            "value": 7
+          },
+          {
+            "name": "REJECTED",
+            "value": 8
+          }
+        ],
+        "isEnum": true
+      },
+      {
+        "name": "duration_seconds",
+        "type": "int",
+        "default": 0
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.submit_telemetry_from_file",
+    "name": "Submit Telemetry (from file)",
+    "functionName": "submit_telemetry_from_file",
+    "className": "FlightBlenderClient",
+    "description": "Submit telemetry data for a flight operation.\n\nLoads telemetry states from file and submits them sequentially, with optional\nduration limiting and error handling for rate limits.\n\nArgs:\n    filename: Path to the JSON file containing telemetry data.\n    duration_seconds: Optional maximum duration in seconds to submit telemetry (default 0 for unlimited).\n\nReturns:\n    The JSON response from the last telemetry submission, or None if no submissions occurred.\n\nRaises:\n    FlightBlenderError: If maximum waiting time is exceeded due to rate limits.",
+    "parameters": [
+      {
+        "name": "filename",
+        "type": "str"
+      },
+      {
+        "name": "duration_seconds",
+        "type": "int",
+        "default": 0
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.wait_x_seconds",
+    "name": "Wait X seconds",
+    "functionName": "wait_x_seconds",
+    "className": "FlightBlenderClient",
+    "description": "Wait for a specified number of seconds.",
+    "parameters": [
+      {
+        "name": "wait_time_seconds",
+        "type": "int",
+        "default": 5
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.submit_telemetry",
+    "name": "Submit Telemetry",
+    "functionName": "submit_telemetry",
+    "className": "FlightBlenderClient",
+    "description": "Submit telemetry data for a flight operation from in-memory states.\n\nSubmits telemetry states sequentially from the provided list, with optional\nduration limiting and error handling for rate limits.\n\nArgs:\n    states: List of telemetry state dictionaries. If None, uses the generated telemetry states from context.\n    duration_seconds: Optional maximum duration in seconds to submit telemetry (default 0 for unlimited).\n\nReturns:\n    The JSON response from the last telemetry submission, or None if no submissions occurred.\n\nRaises:\n    FlightBlenderError: If maximum waiting time is exceeded due to rate limits.",
+    "parameters": [
+      {
+        "name": "states",
+        "type": "Optional[List[Dict[Any]]]",
+        "default": null
+      },
+      {
+        "name": "duration_seconds",
+        "type": "int",
+        "default": 0
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.check_operation_state",
+    "name": "Check Operation State",
+    "functionName": "check_operation_state",
+    "className": "FlightBlenderClient",
+    "description": "Check the operation state (simulated).\n\nThis is a placeholder method for state checking; it simulates waiting\nand returns a success status.\n\nArgs:\n    expected_state: The expected OperationState.\n    duration_seconds: Seconds to wait for processing.\n\nReturns:\n    A dictionary with the check result.",
+    "parameters": [
+      {
+        "name": "expected_state",
+        "type": "OperationState",
+        "options": [
+          {
+            "name": "PROCESSING",
+            "value": 0
+          },
+          {
+            "name": "ACCEPTED",
+            "value": 1
+          },
+          {
+            "name": "ACTIVATED",
+            "value": 2
+          },
+          {
+            "name": "NONCONFORMING",
+            "value": 3
+          },
+          {
+            "name": "CONTINGENT",
+            "value": 4
+          },
+          {
+            "name": "ENDED",
+            "value": 5
+          },
+          {
+            "name": "WITHDRAWN",
+            "value": 6
+          },
+          {
+            "name": "CANCELLED",
+            "value": 7
+          },
+          {
+            "name": "REJECTED",
+            "value": 8
+          }
+        ],
+        "isEnum": true
+      },
+      {
+        "name": "duration_seconds",
+        "type": "int",
+        "default": 0
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.check_operation_state_connected",
+    "name": "Check Operation State Connected",
+    "functionName": "check_operation_state_connected",
+    "className": "FlightBlenderClient",
+    "description": "Check the operation state by polling the API until the expected state is reached.\n\nArgs:\n    expected_state: The expected OperationState.\n    duration_seconds: Maximum seconds to poll for the state.\n\nReturns:\n    The JSON response from the API when the state is reached.\n\nRaises:\n    FlightBlenderError: If the expected state is not reached within the timeout.",
+    "parameters": [
+      {
+        "name": "expected_state",
+        "type": "OperationState",
+        "options": [
+          {
+            "name": "PROCESSING",
+            "value": 0
+          },
+          {
+            "name": "ACCEPTED",
+            "value": 1
+          },
+          {
+            "name": "ACTIVATED",
+            "value": 2
+          },
+          {
+            "name": "NONCONFORMING",
+            "value": 3
+          },
+          {
+            "name": "CONTINGENT",
+            "value": 4
+          },
+          {
+            "name": "ENDED",
+            "value": 5
+          },
+          {
+            "name": "WITHDRAWN",
+            "value": 6
+          },
+          {
+            "name": "CANCELLED",
+            "value": 7
+          },
+          {
+            "name": "REJECTED",
+            "value": 8
+          }
+        ],
+        "isEnum": true
+      },
+      {
+        "name": "duration_seconds",
+        "type": "int",
+        "default": 0
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.delete_flight_declaration",
+    "name": "Delete Flight Declaration",
+    "functionName": "delete_flight_declaration",
+    "className": "FlightBlenderClient",
+    "description": "Delete a flight declaration by ID.\n\nReturns:\n    A dictionary with deletion status, including whether it was successful.",
+    "parameters": [],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.submit_simulated_air_traffic",
+    "name": "Submit Simulated Air Traffic",
+    "functionName": "submit_simulated_air_traffic",
+    "className": "FlightBlenderClient",
+    "description": null,
+    "parameters": [
+      {
+        "name": "observations",
+        "type": "List[List[Dict[Any]]]"
+      },
+      {
+        "name": "single_or_multiple_sensors",
+        "type": "str",
+        "default": "single"
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.submit_air_traffic",
+    "name": "Submit Air Traffic",
+    "functionName": "submit_air_traffic",
+    "className": "FlightBlenderClient",
+    "description": "Submit air traffic observations to the Flight Blender API.\n\nArgs:\n    observations: List of observation dictionaries containing flight data.\n\nReturns:\n    The JSON response from the API.\n\nRaises:\n    FlightBlenderError: If the submission request fails.",
+    "parameters": [
+      {
+        "name": "observations",
+        "type": "List[Dict[Any]]"
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.start_stop_sdsp_session",
+    "name": "Start / Stop SDSP Session",
+    "functionName": "start_stop_sdsp_session",
+    "className": "FlightBlenderClient",
+    "description": "Starts or stops an SDSP (Strategic Deconfliction Service Provider) session based on the specified action.\nThis method interacts with the Flight Blender service to manage the lifecycle of an SDSP session.\nIt can be used to initiate a new session or terminate an existing one.\nArgs:\n    session_id (str): The unique identifier of the SDSP session to start or stop.\n    action (SDSPSessionAction): The action to perform on the session, such as START or STOP.\nReturns:\n    bool: True if the action was successfully performed, False otherwise.\nRaises:\n    ValueError: If the session_id is invalid or the action is not supported.\n    ConnectionError: If there is an issue communicating with the Flight Blender service.\n    FlightBlenderError: If the action fails due to service errors.",
+    "parameters": [
+      {
+        "name": "session_id",
+        "type": "str"
+      },
+      {
+        "name": "action",
+        "type": "SDSPSessionAction",
+        "options": [
+          {
+            "name": "START",
+            "value": "start"
+          },
+          {
+            "name": "STOP",
+            "value": "stop"
+          }
+        ],
+        "isEnum": true
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.initialize_verify_sdsp_track",
+    "name": "Verify SDSP Track",
+    "functionName": "initialize_verify_sdsp_track",
+    "className": "FlightBlenderClient",
+    "description": null,
+    "parameters": [
+      {
+        "name": "expected_heartbeat_interval_seconds",
+        "type": "int"
+      },
+      {
+        "name": "expected_heartbeat_count",
+        "type": "int"
+      },
+      {
+        "name": "session_id",
+        "type": "str"
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.initialize_verify_sdsp_heartbeat",
+    "name": "Verify SDSP Heartbeat",
+    "functionName": "initialize_verify_sdsp_heartbeat",
+    "className": "FlightBlenderClient",
+    "description": null,
+    "parameters": [
+      {
+        "name": "expected_heartbeat_interval_seconds",
+        "type": "int"
+      },
+      {
+        "name": "expected_heartbeat_count",
+        "type": "int"
+      },
+      {
+        "name": "session_id",
+        "type": "str"
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.setup_flight_declaration",
+    "name": "Setup Flight Declaration",
+    "functionName": "setup_flight_declaration",
+    "className": "FlightBlenderClient",
+    "description": "Generates data and uploads flight declaration.",
+    "parameters": [
+      {
+        "name": "flight_declaration_path",
+        "type": "str"
+      },
+      {
+        "name": "telemetry_path",
+        "type": "str"
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "AirTrafficClient.generate_simulated_air_traffic_data",
+    "name": "Generate Simulated Air Traffic Data",
+    "functionName": "generate_simulated_air_traffic_data",
+    "className": "AirTrafficClient",
+    "description": "Generate simulated air traffic data from GeoJSON configuration.\n\nLoads GeoJSON data from the specified config path and uses it to generate\nsimulated flight observations for the given duration. If no config path\nor duration is provided, uses the default settings from the client configuration.\n\nArgs:\n    config_path: Path to the GeoJSON configuration file. Defaults to settings value.\n    duration: Duration in seconds for which to generate data. Defaults to settings value.\n\nReturns:\n    List of simulated flight observation dictionaries, or None if generation fails.",
+    "parameters": [
+      {
+        "name": "config_path",
+        "type": "Optional[str]",
+        "default": null
+      },
+      {
+        "name": "duration",
+        "type": "Optional[int]",
+        "default": null
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/air_traffic/air_traffic_client.py"
+  },
+  {
+    "id": "OpenSkyClient.fetch_data",
+    "name": "Fetch OpenSky Data",
+    "functionName": "fetch_data",
+    "className": "OpenSkyClient",
+    "description": "Fetch and process live flight data from OpenSky Network.\n\nRetrieves current flight states from the OpenSky API within the configured\nviewport bounds and processes them into standardized observation format.\n\nReturns:\n    List of flight observation dictionaries, or None if no data is available.",
+    "parameters": [],
+    "filePath": "src/openutm_verification/core/clients/opensky/opensky_client.py"
+  }
+]

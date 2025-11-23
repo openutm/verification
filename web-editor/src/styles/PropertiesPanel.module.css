@@ -1,0 +1,148 @@
+.propertiesPanel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--bg-primary);
+}
+
+.propertiesContent {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.propertiesContent h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.propertiesContent p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.propertiesContent h4 {
+  font-size: 12px;
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.paramItem {
+  margin-bottom: 20px;
+}
+
+.paramItem label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.paramType {
+  color: var(--accent-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  margin-left: 6px;
+  opacity: 0.8;
+}
+
+.paramInput {
+  width: 100%;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.paramInput:focus {
+  border-color: var(--accent-primary);
+  background-color: var(--bg-primary);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-light);
+}
+
+.closeButton {
+  float: right;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-tertiary);
+}
+
+.docstring {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  padding: 16px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.docSummary {
+  margin-bottom: 16px;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.docSection {
+  margin-top: 16px;
+}
+
+.docSection strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.docContent {
+  white-space: pre-wrap;
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg-primary);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  font-size: 13px;
+}
+
+.iconButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 6px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.iconButton:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}

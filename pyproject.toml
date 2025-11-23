@@ -45,6 +45,8 @@ dependencies = [
     "websocket-client==1.9.0",
     "markdown>=3.10",
     "uas-standards==4.2.0",
+    "fastapi>=0.121.3",
+    "uvicorn>=0.38.0",
 ]
 
 [project.scripts]
@@ -141,7 +143,7 @@ docstring-code-line-length = "dynamic"
 [tool.codespell]
 ignore-words = ".codespellignore"
 quiet-level = 2
-skip = "uv.lock"
+skip = ["uv.lock", "*/package-lock.json"]
 
 [tool.pylint]
 load-plugins = "pylint_pytest"

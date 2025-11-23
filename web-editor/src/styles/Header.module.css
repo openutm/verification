@@ -1,0 +1,47 @@
+ .header {
+   height: 60px;
+   background-color: var(--bg-primary);
+   border-bottom: 1px solid var(--border-color);
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   padding: 0 24px;
+   z-index: 20;
+   box-shadow: var(--shadow-sm);
+ }
+
+ .title {
+   font-size: 18px;
+   font-weight: 600;
+   color: var(--text-primary);
+   display: flex;
+   align-items: center;
+   gap: 12px;
+ }
+
+ .titleIcon {
+   color: var(--accent-primary);
+ }
+
+ .actions {
+   display: flex;
+   align-items: center;
+   gap: 12px;
+ }
+
+ .divider {
+   width: 1px;
+   height: 24px;
+   background-color: var(--border-color);
+   margin: 0 8px;
+ }
+
+ @keyframes spin {
+   from {
+     transform: rotate(0deg);
+   }
+
+   to {
+     transform: rotate(360deg);
+   }
+ }
