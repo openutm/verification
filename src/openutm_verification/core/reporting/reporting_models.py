@@ -17,7 +17,7 @@ class Status(StrEnum):
     FAIL = "FAIL"
 
 
-T = TypeVar("T")
+T = TypeVar("T", default=Any)
 
 
 class StepResult(BaseModel, Generic[T]):
@@ -26,7 +26,7 @@ class StepResult(BaseModel, Generic[T]):
     name: str
     status: Status
     duration: float
-    details: Optional[T] = None
+    details: T = None # type: ignore
     error_message: Optional[str] = None
 
 
