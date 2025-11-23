@@ -7,8 +7,6 @@ from typing import List
 import pika
 from dotenv import find_dotenv, load_dotenv
 
-load_dotenv(find_dotenv())
-
 
 def parse_args(argv: List[str]):
     parser = argparse.ArgumentParser(description="Retrieve an access token")
@@ -24,6 +22,7 @@ def parse_args(argv: List[str]):
 
 
 def main(queue_id):
+    load_dotenv(find_dotenv())
     amqp_connection_url = env.get("AMQP_URL", "localhost")
     params = pika.URLParameters(amqp_connection_url)
     connection = pika.BlockingConnection(params)

@@ -8,14 +8,12 @@ import arrow
 import requests
 from dotenv import find_dotenv, load_dotenv
 
-from openutm_verification.auth.passport_client import NoAuthCredentialsGetter, PassportCredentialsGetter
-
-ENV_FILE = find_dotenv()
-if ENV_FILE:
-    load_dotenv(ENV_FILE)
+from openutm_verification.auth.noauth import NoAuthCredentialsGetter
 
 if __name__ == "__main__":
-    # my_credentials = PassportCredentialsGetter()
+    ENV_FILE = find_dotenv()
+    if ENV_FILE:
+        load_dotenv(ENV_FILE)
     my_credentials = NoAuthCredentialsGetter()
     credentials = my_credentials.get_cached_credentials(audience="testflight.flightblender.com", scopes=["flight_blender.write"])
 
