@@ -13,31 +13,23 @@ Example:
         # ...
 """
 
-from dataclasses import dataclass
 from functools import wraps
-from typing import Any, List, Type, TypeVar, cast
+from typing import Any, Callable, ParamSpec, TypeVar
 
 from loguru import logger
 
-from openutm_verification.core.execution.config_models import config
 from openutm_verification.core.execution.scenario_runner import ScenarioContext
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
     Status,
-    StepResult,
 )
 
 SCENARIO_REGISTRY = {}
 T = TypeVar("T")
+P = ParamSpec("P")
 
 
-
-
-
-
-
-
-def _run_scenario_simple(scenario_id: str, func, args, kwargs) -> ScenarioResult:
+def _run_scenario_simple(scenario_id: str, func: Callable, args, kwargs) -> ScenarioResult:
     """Runs a scenario without auto-setup."""
     try:
         with ScenarioContext() as ctx:
@@ -64,7 +56,9 @@ def _run_scenario_simple(scenario_id: str, func, args, kwargs) -> ScenarioResult
         raise e
 
 
-def register_scenario(scenario_id: str):
+def register_scenario(
+    scenario_id: str,
+) -> Callable[[Callable[P, Any]], Callable[P, ScenarioResult]]:
     """
     A decorator to register a test scenario function.
 
@@ -73,12 +67,12 @@ def register_scenario(scenario_id: str):
                            This ID is used in the configuration file.
     """
 
-    def decorator(func):
+    def decorator(func: Callable[P, Any]) -> Callable[P, ScenarioResult]:
         if scenario_id in SCENARIO_REGISTRY:
             raise ValueError(f"Scenario with ID '{scenario_id}' is already registered.")
 
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> ScenarioResult:
             return _run_scenario_simple(scenario_id, func, args, kwargs)
 
         SCENARIO_REGISTRY[scenario_id] = wrapper
