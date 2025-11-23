@@ -1,10 +1,5 @@
-from typing import Optional, Tuple
-
-import httpx
-from loguru import logger
 from pydantic_settings import BaseSettings
 
-from openutm_verification.auth.oauth2 import OAuth2Client
 from openutm_verification.core.execution.config_models import get_settings
 
 config = get_settings()

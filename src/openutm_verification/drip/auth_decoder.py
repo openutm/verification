@@ -32,10 +32,7 @@ Note: This module requires the 'drip_messages' module to be imported.
 
 For more information about the DRIP protocol and the Authentication message format, refer to the ASTM F3411 specification.
 """
-
 import ctypes
-import struct
-from ctypes import POINTER, Structure, c_char, c_double, c_float, c_uint8, c_uint16, c_uint32, c_void_p, sizeof
 
 import openutm_verification.drip.drip_messages as common
 
