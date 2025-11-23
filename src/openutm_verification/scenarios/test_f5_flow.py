@@ -5,7 +5,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F5_non_conforming_path")
-def test_f5_non_conforming_contingent_path(fb_client: FlightBlenderClient, data_files: DataFiles):
+def test_f5_non_conforming_contingent_path(fb_client: FlightBlenderClient, data_files: DataFiles) -> None:
     with fb_client.flight_declaration(data_files):
         fb_client.update_operation_state(new_state=OperationState.ACTIVATED)
         fb_client.submit_telemetry(duration_seconds=20)
