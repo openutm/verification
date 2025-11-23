@@ -17,7 +17,7 @@ class Status(StrEnum):
     FAIL = "FAIL"
 
 
-T = TypeVar("T", default=Any)
+T = TypeVar("T")
 
 
 class StepResult(BaseModel, Generic[T]):
