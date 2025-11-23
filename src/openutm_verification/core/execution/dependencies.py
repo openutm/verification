@@ -8,7 +8,7 @@ from openutm_verification.core.clients.air_traffic.base_client import create_air
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.clients.opensky.base_client import create_opensky_settings
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
-from openutm_verification.core.execution.config_models import AppConfig, ScenarioId, get_settings
+from openutm_verification.core.execution.config_models import AppConfig, DataFiles, ScenarioId, get_settings
 from openutm_verification.core.execution.dependency_resolution import CONTEXT, dependency
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
@@ -44,6 +44,23 @@ def scenario_id() -> Generator[ScenarioId, None, None]:
         The current scenario identifier.
     """
     yield CONTEXT.get()["scenario_id"]
+
+
+@dependency(DataFiles)
+def data_files(scenario_id: ScenarioId) -> Generator[DataFiles, None, None]:
+    """Provides data files configuration for dependency injection.
+
+    Returns:
+        An instance of DataFiles.
+    """
+    config = get_settings()
+    scenario_config = config.scenarios.get(scenario_id) or config.data_files
+    data = DataFiles(
+        telemetry=scenario_config.telemetry or config.data_files.telemetry,
+        flight_declaration=scenario_config.flight_declaration or config.data_files.flight_declaration,
+        geo_fence=scenario_config.geo_fence or config.data_files.geo_fence,
+    )
+    yield data
 
 
 @dependency(AppConfig)
