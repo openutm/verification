@@ -1,12 +1,11 @@
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.execution.config_models import DataFiles
-from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.models import OperationState
 from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("add_flight_declaration")
-def test_add_flight_declaration(fb_client: FlightBlenderClient, data_files: DataFiles) -> ScenarioResult:
+def test_add_flight_declaration(fb_client: FlightBlenderClient, data_files: DataFiles):
     """Runs the add flight declaration scenario.
 
     This scenario replicates the behavior of the add_flight_declaration.py importer:

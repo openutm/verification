@@ -6,12 +6,11 @@ from openutm_verification.core.clients.flight_blender.flight_blender_client impo
     FlightBlenderClient,
 )
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
-from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("opensky_live_data")
-def test_opensky_live_data(fb_client: FlightBlenderClient, opensky_client: OpenSkyClient) -> ScenarioResult:
+def test_opensky_live_data(fb_client: FlightBlenderClient, opensky_client: OpenSkyClient):
     """Fetch live flight data from OpenSky and submit to Flight Blender using template.
 
     The OpenSky client is provided by the caller; this function focuses on orchestration only.

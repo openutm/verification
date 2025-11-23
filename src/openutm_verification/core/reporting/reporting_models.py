@@ -3,7 +3,7 @@ Pydantic models for reporting configuration.
 """
 
 from enum import StrEnum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel
 
@@ -17,13 +17,16 @@ class Status(StrEnum):
     FAIL = "FAIL"
 
 
-class StepResult(BaseModel):
+T = TypeVar("T")
+
+
+class StepResult(BaseModel, Generic[T]):
     """Data model for a single step within a scenario."""
 
     name: str
     status: Status
     duration: float
-    details: Optional[Any] = None
+    details: Optional[T] = None
     error_message: Optional[str] = None
 
 
@@ -33,7 +36,7 @@ class ScenarioResult(BaseModel):
     name: str
     status: Status
     duration_seconds: float
-    steps: List[StepResult]
+    steps: List[StepResult[Any]]
     error_message: Optional[str] = None
     flight_declaration_filename: Optional[str] = None
     telemetry_filename: Optional[str] = None

@@ -1,12 +1,11 @@
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.execution.config_models import DataFiles
-from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.models import OperationState
 from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F2_contingent_path")
-def test_f2_contingent_path(fb_client: FlightBlenderClient, data_files: DataFiles) -> ScenarioResult:
+def test_f2_contingent_path(fb_client: FlightBlenderClient, data_files: DataFiles):
     """Runs the F2 contingent path scenario.
 
     This scenario simulates a flight operation that enters a contingent state:

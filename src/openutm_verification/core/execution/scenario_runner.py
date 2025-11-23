@@ -2,7 +2,7 @@ import contextvars
 import time
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, ParamSpec, Protocol, TypeVar, cast, overload
 
 from loguru import logger
 
@@ -10,16 +10,18 @@ from openutm_verification.core.clients.opensky.base_client import OpenSkyError
 from openutm_verification.core.reporting.reporting_models import Status, StepResult
 from openutm_verification.models import FlightBlenderError
 
+T = TypeVar("T")
+P = ParamSpec("P")
+R = TypeVar("R", bound=StepResult[Any])
+
 
 @dataclass
 class ScenarioState:
-    steps: List[StepResult] = field(default_factory=list)
+    steps: List[StepResult[Any]] = field(default_factory=list)
     active: bool = False
 
 
-_scenario_state: contextvars.ContextVar[Optional[ScenarioState]] = contextvars.ContextVar(
-    "scenario_state", default=None
-)
+_scenario_state: contextvars.ContextVar[Optional[ScenarioState]] = contextvars.ContextVar("scenario_state", default=None)
 
 
 class ScenarioContext:
@@ -39,23 +41,33 @@ class ScenarioContext:
             _scenario_state.reset(self._token)
 
     @classmethod
-    def add_result(cls, result: StepResult):
+    def add_result(cls, result: StepResult[Any]) -> None:
         state = _scenario_state.get()
         if state and state.active:
             state.steps.append(result)
 
     @property
-    def steps(self) -> List[StepResult]:
+    def steps(self) -> List[StepResult[Any]]:
         if self._state:
             return self._state.steps
         state = _scenario_state.get()
         return state.steps if state else []
 
 
-def scenario_step(step_name: str) -> Callable:
-    def decorator(func: Callable) -> Callable:
+class StepDecorator(Protocol):
+    @overload
+    def __call__(self, func: Callable[P, R]) -> Callable[P, R]: ...
+
+    @overload
+    def __call__(self, func: Callable[P, T]) -> Callable[P, StepResult[T]]: ...
+
+    def __call__(self, func: Callable[P, Any]) -> Callable[P, Any]: ...
+
+
+def scenario_step(step_name: str) -> StepDecorator:
+    def decorator(func: Callable[P, Any]) -> Callable[P, StepResult[Any]]:
         @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> StepResult:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> StepResult[Any]:
             logger.info("-" * 50)
             logger.info(f"Executing step: '{step_name}'...")
             start_time = time.time()
@@ -96,4 +108,4 @@ def scenario_step(step_name: str) -> Callable:
 
         return wrapper
 
-    return decorator
+    return cast(StepDecorator, decorator)

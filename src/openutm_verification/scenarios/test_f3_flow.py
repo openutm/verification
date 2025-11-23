@@ -1,12 +1,11 @@
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.execution.config_models import DataFiles
-from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.models import OperationState
 from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F3_non_conforming_path")
-def test_f3_non_conforming_path(fb_client: FlightBlenderClient, data_files: DataFiles) -> ScenarioResult:
+def test_f3_non_conforming_path(fb_client: FlightBlenderClient, data_files: DataFiles):
     """Runs the F3 non-conforming path scenario.
 
     This scenario simulates a flight that deviates from its declared flight plan,
