@@ -1,0 +1,138 @@
+from unittest.mock import MagicMock, patch
+
+import httpx
+import pytest
+
+from openutm_verification.core.clients.flight_blender.base_client import BaseBlenderAPIClient
+from openutm_verification.models import FlightBlenderError
+
+BASE_URL = "https://example.com"
+
+
+def make_client(with_token: bool = True) -> BaseBlenderAPIClient:
+    creds = {"access_token": "token123"} if with_token else {}
+    return BaseBlenderAPIClient(base_url=BASE_URL, credentials=creds)
+
+
+def test_init_with_credentials_sets_auth_header():
+    client = make_client(with_token=True)
+    assert client.client.headers["Content-Type"] == "application/json"
+    assert client.client.headers["Authorization"] == "Bearer token123"
+
+
+def test_init_without_credentials_has_no_auth_header():
+    client = make_client(with_token=False)
+    assert client.client.headers["Content-Type"] == "application/json"
+    assert "Authorization" not in client.client.headers
+
+
+@patch("openutm_verification.core.clients.flight_blender.base_client.httpx.Client")
+def test_request_success(mock_client_cls: MagicMock):
+    mock_client = MagicMock()
+    mock_resp = MagicMock(spec=httpx.Response)
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status.return_value = None
+    mock_client.request.return_value = mock_resp
+    mock_client_cls.return_value = mock_client
+
+    client = make_client()
+    resp = client.get("/path")
+
+    mock_client.request.assert_called_once_with("GET", f"{BASE_URL}/path", json=None)
+    mock_resp.raise_for_status.assert_called_once()
+    assert resp is mock_resp
+
+
+@patch("openutm_verification.core.clients.flight_blender.base_client.httpx.Client")
+def test_request_http_status_error_raises_flight_blender_error(mock_client_cls: MagicMock):
+    mock_client = MagicMock()
+    mock_client_cls.return_value = mock_client
+
+    req = httpx.Request("GET", f"{BASE_URL}/path")
+    resp = httpx.Response(400, request=req, text="bad request")
+    error = httpx.HTTPStatusError("boom", request=req, response=resp)
+
+    mock_resp = MagicMock(spec=httpx.Response)
+    # Simulate raise_for_status raising HTTPStatusError with attached response
+    mock_resp.raise_for_status.side_effect = error
+    mock_resp.status_code = 400
+    mock_resp.text = "bad request"
+    mock_client.request.return_value = mock_resp
+
+    client = make_client()
+
+    with pytest.raises(FlightBlenderError) as ei:
+        client.get("/path")
+
+    assert "Request failed: 400" in str(ei.value)
+
+
+@patch("openutm_verification.core.clients.flight_blender.base_client.httpx.Client")
+def test_request_request_error_raises_flight_blender_error(mock_client_cls: MagicMock):
+    mock_client = MagicMock()
+    mock_client_cls.return_value = mock_client
+
+    req = httpx.Request("GET", f"{BASE_URL}/path")
+    mock_client.request.side_effect = httpx.RequestError("network issue", request=req)
+
+    client = make_client()
+
+    with pytest.raises(FlightBlenderError) as ei:
+        client.get("/path")
+
+    assert "Request failed" in str(ei.value)
+
+
+@patch.object(BaseBlenderAPIClient, "_request")
+def test_http_verbs_delegate_to_request(mock_request: MagicMock):
+    client = make_client()
+
+    client.get("/g", silent_status=[204])
+    client.post("/p", json={"a":1}, silent_status=[201])
+    client.put("/u", json={"b":2})
+    client.delete("/d")
+
+    assert mock_request.call_count == 4
+    mock_request.assert_any_call("GET", "/g", silent_status=[204])
+    mock_request.assert_any_call("POST", "/p", json={"a":1}, silent_status=[201])
+    mock_request.assert_any_call("PUT", "/u", json={"b":2}, silent_status=None)
+    mock_request.assert_any_call("DELETE", "/d", silent_status=None)
+
+
+@patch("openutm_verification.core.clients.flight_blender.base_client.create_connection")
+def test_create_websocket_connection_sends_auth(create_conn: MagicMock):
+    ws = MagicMock()
+    create_conn.return_value = ws
+
+    client = make_client(with_token=True)
+    conn = client.create_websocket_connection("/ws")
+
+    create_conn.assert_called_once_with("wss://example.com/ws")
+    ws.send.assert_called_once_with("Bearer token123")
+    assert conn is ws
+
+
+@patch("openutm_verification.core.clients.flight_blender.base_client.create_connection")
+def test_create_websocket_connection_no_auth_does_not_send(create_conn: MagicMock):
+    ws = MagicMock()
+    create_conn.return_value = ws
+
+    client = make_client(with_token=False)
+    client.create_websocket_connection("/ws")
+
+    create_conn.assert_called_once_with("wss://example.com/ws")
+    ws.send.assert_not_called()
+
+
+@patch("openutm_verification.core.clients.flight_blender.base_client.create_connection", side_effect=ConnectionRefusedError)
+def test_create_websocket_connection_refused_raises(_: MagicMock):
+    client = make_client()
+    with pytest.raises(FlightBlenderError):
+        client.create_websocket_connection("/ws")
+
+
+def test_close_websocket_connection_calls_close():
+    client = make_client()
+    ws = MagicMock()
+    client.close_websocket_connection(ws)
+    ws.close.assert_called_once()
