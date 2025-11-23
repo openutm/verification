@@ -1,0 +1,66 @@
+.customNode {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  min-width: 180px;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s ease;
+}
+
+.customNode:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent-primary);
+}
+
+.customNodeHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.customNodeBody {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.icon {
+  color: var(--text-secondary);
+}
+
+.statusButton {
+  margin-left: auto;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.statusButton:hover {
+  transform: scale(1.1);
+}
+
+/* Status indicators */
+.statusSuccess {
+  border-color: var(--success);
+  box-shadow: 0 0 0 1px var(--success);
+}
+
+.statusError {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger);
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.selected {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-primary);
+}
