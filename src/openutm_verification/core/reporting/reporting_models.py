@@ -50,14 +50,6 @@ class ReportSummary(BaseModel):
     passed: int
 
 
-class SetupData(BaseModel):
-    operation_id: str
-    flight_declaration: Any
-    telemetry_states: List[Any]
-    upload_result: StepResult
-    failed: int
-
-
 class ReportData(BaseModel):
     """Root model for the final report data."""
 
