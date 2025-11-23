@@ -51,6 +51,7 @@ class ReportSummary(BaseModel):
 
     total_scenarios: int
     passed: int
+    failed: int
 
 
 class ReportData(BaseModel):
