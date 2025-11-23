@@ -11,8 +11,8 @@ services:
         UV_LINK_MODE: copy
         APP_USER: appuser
         APP_GROUP: appgrp
-        UID: 1000
-        GID: 1000
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
     # Environment variables
     environment:
       - PYTHONUNBUFFERED=1
@@ -57,6 +57,11 @@ services:
       context: .
       dockerfile: Dockerfile.dev
       target: development
+      args:
+        APP_USER: appuser
+        APP_GROUP: appgrp
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
     environment:
       - PYTHONUNBUFFERED=1
       - TZ=UTC

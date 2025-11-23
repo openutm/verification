@@ -58,7 +58,9 @@ build_production() {
         --target production \
         --build-arg UV_COMPILE_BYTECODE=1 \
         --build-arg UV_LINK_MODE=copy \
-        "${build_args[@]}" \
+        --build-arg UID="${HOST_UID}" \
+        --build-arg GID="${HOST_GID}" \
+        ${build_args[@]+"${build_args[@]}"} \
         -t "${NAMESPACE}/${IMAGE}" \
         -t "${NAMESPACE}/${IMAGE_LATEST}" \
         .
@@ -87,7 +89,9 @@ build_development() {
         -f Dockerfile.dev \
         --target development \
         --build-arg UV_COMPILE_BYTECODE=0 \
-        "${build_args[@]}" \
+        --build-arg UID="${HOST_UID}" \
+        --build-arg GID="${HOST_GID}" \
+        ${build_args[@]+"${build_args[@]}"} \
         -t "${NAMESPACE}/${IMAGE_DEV}" \
         .
 
