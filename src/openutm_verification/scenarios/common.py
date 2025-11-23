@@ -39,6 +39,7 @@ def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURAT
         logger.error(f"Failed to generate telemetry states from {config_path}: {e}")
         raise
 
+
 def get_geo_fence_path(geo_fence_filename: str) -> str:
     """Helper to get the full path to a geo-fence file."""
     parent_dir = Path(__file__).parent.resolve()

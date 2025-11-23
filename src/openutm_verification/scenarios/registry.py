@@ -40,9 +40,7 @@ def _run_scenario_simple(scenario_id: str, func: Callable, args, kwargs) -> Scen
 
             steps = ctx.steps
 
-        final_status = (
-            Status.PASS if all(s.status == Status.PASS for s in steps) else Status.FAIL
-        )
+        final_status = Status.PASS if all(s.status == Status.PASS for s in steps) else Status.FAIL
         total_duration = sum(s.duration for s in steps)
         return ScenarioResult(
             name=scenario_id,

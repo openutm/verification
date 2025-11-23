@@ -26,7 +26,7 @@ class StepResult(BaseModel, Generic[T]):
     name: str
     status: Status
     duration: float
-    details: T = None # type: ignore
+    details: T = None  # type: ignore
     error_message: Optional[str] = None
 
 
