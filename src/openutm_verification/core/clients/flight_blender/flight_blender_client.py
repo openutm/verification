@@ -765,7 +765,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         if upload_result.status == Status.FAIL:
             logger.error(f"Flight declaration upload failed: {upload_result}")
-            raise FlightBlenderError("Failed to upload flight declaration during setup_operation")
+            raise FlightBlenderError("Failed to upload flight declaration during setup_flight_declaration")
 
     @contextmanager
     def flight_declaration(self, data_files: DataFiles):
