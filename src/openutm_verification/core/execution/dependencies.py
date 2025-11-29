@@ -56,7 +56,7 @@ def data_files(scenario_id: ScenarioId) -> Generator[DataFiles, None, None]:
     config = get_settings()
     scenario_config = config.scenarios.get(scenario_id) or config.data_files
     data = DataFiles(
-        telemetry=scenario_config.telemetry or config.data_files.telemetry,
+        trajectory=scenario_config.trajectory or config.data_files.trajectory,
         flight_declaration=scenario_config.flight_declaration or config.data_files.flight_declaration,
         geo_fence=scenario_config.geo_fence or config.data_files.geo_fence,
     )

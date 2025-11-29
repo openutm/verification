@@ -749,7 +749,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         ws_connection.close()
 
     @scenario_step("Setup Flight Declaration")
-    def setup_flight_declaration(self, flight_declaration_path: str, telemetry_path: str) -> None:
+    def setup_flight_declaration(self, flight_declaration_path: str, trajectory_path: str) -> None:
         """Generates data and uploads flight declaration."""
         from openutm_verification.scenarios.common import (
             generate_flight_declaration,
@@ -757,7 +757,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         )
 
         flight_declaration = generate_flight_declaration(flight_declaration_path)
-        telemetry_states = generate_telemetry(telemetry_path)
+        telemetry_states = generate_telemetry(trajectory_path)
 
         self.telemetry_states = telemetry_states
 
@@ -770,7 +770,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
     @contextmanager
     def flight_declaration(self, data_files: DataFiles):
         """Context manager to setup and teardown a flight operation based on scenario config."""
-        self.setup_flight_declaration(data_files.flight_declaration, data_files.telemetry)
+        self.setup_flight_declaration(data_files.flight_declaration, data_files.trajectory)
         try:
             yield
         finally:
