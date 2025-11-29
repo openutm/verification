@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import markdown
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 
@@ -61,6 +62,7 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
         loader=FileSystemLoader(template_dir),
         autoescape=select_autoescape(enabled_extensions=("html", "xml"), default_for_string=True, default=True),
     )
+    env.filters["markdown"] = lambda text: markdown.markdown(text) if text else ""
     template = env.get_template("report_template.html")
 
     html_content = template.render(report_data=report_data)

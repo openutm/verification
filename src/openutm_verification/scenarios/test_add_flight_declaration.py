@@ -4,7 +4,7 @@ from openutm_verification.models import OperationState
 from openutm_verification.scenarios.registry import register_scenario
 
 
-@register_scenario("add_flight_declaration")
+@register_scenario("add_flight_declaration", docs="add_flight_declaration.md")
 def test_add_flight_declaration(fb_client: FlightBlenderClient, data_files: DataFiles) -> None:
     """Runs the add flight declaration scenario.
 

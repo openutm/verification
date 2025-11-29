@@ -18,13 +18,13 @@ from typing import Any, Callable, ParamSpec, TypeVar
 
 from loguru import logger
 
-from openutm_verification.core.execution.scenario_runner import ScenarioContext
+from openutm_verification.core.execution.scenario_runner import ScenarioContext, ScenarioRegistry
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
     Status,
 )
 
-SCENARIO_REGISTRY = {}
+SCENARIO_REGISTRY: dict[str, ScenarioRegistry] = {}
 T = TypeVar("T")
 P = ParamSpec("P")
 
@@ -56,6 +56,7 @@ def _run_scenario_simple(scenario_id: str, func: Callable, args, kwargs) -> Scen
 
 def register_scenario(
     scenario_id: str,
+    docs: str | None = None,
 ) -> Callable[[Callable[P, Any]], Callable[P, ScenarioResult]]:
     """
     A decorator to register a test scenario function.
@@ -73,7 +74,7 @@ def register_scenario(
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> ScenarioResult:
             return _run_scenario_simple(scenario_id, func, args, kwargs)
 
-        SCENARIO_REGISTRY[scenario_id] = wrapper
+        SCENARIO_REGISTRY[scenario_id] = {"func": wrapper, "docs": docs}
         return wrapper
 
     return decorator
