@@ -43,8 +43,8 @@ scenarios:
     trajectory: "config/bern/trajectory_f2.json"
   F3_non_conforming_path:
     trajectory: "config/bern/trajectory_f3.json"
-  F5_non_conforming_path:
-    trajectory: "config/bern/trajectory_f5.json"
+#  F5_non_conforming_path:
+#    trajectory: "config/bern/trajectory_f5.json"
   opensky_live_data:
   add_flight_declaration:
   geo_fence_upload:
