@@ -31,6 +31,13 @@ def main():
     project_root = config_path.parent.parent  # config/ -> project root
     config.resolve_paths(project_root)
 
+    if args.suite:
+        for suite_name in args.suite:
+            if suite_name not in config.suites:
+                print(f"Error: Suite '{suite_name}' not found in configuration.")
+                sys.exit(1)
+        config.target_suites = args.suite
+
     ConfigProxy.initialize(config)
 
     # Setup logging

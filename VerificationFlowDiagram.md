@@ -21,7 +21,7 @@ graph TD
     end
 
     subgraph "Core Execution"
-        H --> I{"For each scenario_id in config.scenarios"};
+        H --> I{"For each suite/scenario in config.suites"};
         I -- Yes --> J["Registry Lookup: SCENARIO_REGISTRY[scenario_id]"];
         J --> K{"OpenSky Required?"};
         K -- Yes --> L["OpenSky Settings: create_opensky_settings()"];

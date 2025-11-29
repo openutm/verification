@@ -20,4 +20,11 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Enable debug logging on the console.",
     )
+    parser.add_argument(
+        "-s",
+        "--suite",
+        type=str,
+        action="append",
+        help="Name of the test suite to run (overrides individual scenarios). Can be specified multiple times.",
+    )
     return parser
