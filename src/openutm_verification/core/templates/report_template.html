@@ -64,7 +64,12 @@
     <div class="scenario" id="scenario-{{ loop.index }}">
         <details>
             <summary class="scenario-summary">
-                <span>{{ result.name }}</span>
+                <span>
+                    {% if result.suite_name %}
+                        <strong>[{{ result.suite_name }}]</strong>
+                    {% endif %}
+                    {{ result.name }}
+                </span>
                 <span class="status status-{{ result.status }}">{{ result.status }}</span>
             </summary>
             <div class="scenario-details">

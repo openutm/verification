@@ -1,4 +1,5 @@
-from typing import Callable, Generator, Iterable, TypeVar
+from pathlib import Path
+from typing import Callable, Generator, Iterable, TypeVar, cast
 
 from loguru import logger
 
@@ -22,14 +23,41 @@ def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
     Returns:
         An iterable of tuples containing (scenario_id, scenario_function).
     """
-    scenarios_to_run = get_settings().scenarios
-    logger.info(f"Found {len(scenarios_to_run)} scenarios to run.")
-    for scenario_id in scenarios_to_run:
-        CONTEXT.set({"scenario_id": scenario_id})
+    config = get_settings()
+
+    scenarios_to_iterate = []
+
+    # Determine which suites to run
+    target_suite_names = config.target_suites if config.target_suites else config.suites.keys()
+
+    if not target_suite_names:
+        logger.warning("No suites defined in configuration.")
+
+    for suite_name in target_suite_names:
+        if suite_name not in config.suites:
+            logger.error(f"Target suite '{suite_name}' not found in configuration.")
+            continue
+
+        suite = config.suites[suite_name]
+        logger.info(f"Adding suite: {suite_name} with {len(suite.scenarios)} scenarios.")
+        for s in suite.scenarios:
+            scenarios_to_iterate.append((suite_name, s))
+
+    for suite_name, item in scenarios_to_iterate:
+        scenario_id = item.name
+        suite_scenario = item
+
         if scenario_id in SCENARIO_REGISTRY:
             logger.info("=" * 100)
             logger.info(f"Running scenario: {scenario_id}")
+
             scenario_func = SCENARIO_REGISTRY[scenario_id]
+
+            CONTEXT.set({
+                "scenario_id": scenario_id,
+                "suite_scenario": suite_scenario,
+                "suite_name": suite_name
+            })
             yield scenario_id, scenario_func
         else:
             logger.warning(f"Scenario {scenario_id} not found in registry.")
@@ -54,11 +82,25 @@ def data_files(scenario_id: ScenarioId) -> Generator[DataFiles, None, None]:
         An instance of DataFiles.
     """
     config = get_settings()
-    scenario_config = config.scenarios.get(scenario_id) or config.data_files
+
+    # Check for suite override
+    suite_scenario = CONTEXT.get().get("suite_scenario")
+
+    if suite_scenario:
+        # Merge suite overrides with base config
+        telemetry = suite_scenario.telemetry or config.data_files.telemetry
+        flight_declaration = suite_scenario.flight_declaration or config.data_files.flight_declaration
+        geo_fence = suite_scenario.geo_fence or config.data_files.geo_fence
+    else:
+        # Use base config
+        telemetry = config.data_files.telemetry
+        flight_declaration = config.data_files.flight_declaration
+        geo_fence = config.data_files.geo_fence
+
     data = DataFiles(
-        telemetry=scenario_config.telemetry or config.data_files.telemetry,
-        flight_declaration=scenario_config.flight_declaration or config.data_files.flight_declaration,
-        geo_fence=scenario_config.geo_fence or config.data_files.geo_fence,
+        telemetry=telemetry,
+        flight_declaration=flight_declaration,
+        geo_fence=geo_fence,
     )
     yield data
 
@@ -70,7 +112,7 @@ def app_config() -> Generator[AppConfig, None, None]:
     Returns:
         An instance of AppConfig.
     """
-    yield get_settings()
+    yield cast(AppConfig, get_settings())
 
 
 @dependency(FlightBlenderClient)
