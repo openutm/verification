@@ -44,6 +44,7 @@ class ScenarioResult(BaseModel):
     telemetry_data: Optional[Any] = None
     visualization_2d_path: Optional[str] = None
     visualization_3d_path: Optional[str] = None
+    docs: Optional[str] = None
 
 
 class ReportSummary(BaseModel):

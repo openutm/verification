@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Callable, Generator, Iterable, TypeVar
 
 from loguru import logger
@@ -24,12 +25,29 @@ def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
     """
     scenarios_to_run = get_settings().scenarios
     logger.info(f"Found {len(scenarios_to_run)} scenarios to run.")
+
     for scenario_id in scenarios_to_run:
-        CONTEXT.set({"scenario_id": scenario_id})
         if scenario_id in SCENARIO_REGISTRY:
             logger.info("=" * 100)
             logger.info(f"Running scenario: {scenario_id}")
-            scenario_func = SCENARIO_REGISTRY[scenario_id]
+            scenario_func = SCENARIO_REGISTRY[scenario_id]["func"]
+
+            docs_filename = SCENARIO_REGISTRY[scenario_id].get("docs")
+            docs_content = None
+            if docs_filename:
+                # Resolve path relative to the function's definition file
+                func_file = Path(scenario_func.__code__.co_filename)
+                docs_path = func_file.parent / docs_filename
+
+                if docs_path.exists():
+                    try:
+                        docs_content = docs_path.read_text(encoding="utf-8")
+                    except Exception as e:
+                        logger.warning(f"Failed to read docs file {docs_path}: {e}")
+                else:
+                    logger.warning(f"Docs file not found: {docs_path}")
+
+            CONTEXT.set({"scenario_id": scenario_id, "docs": docs_content})
             yield scenario_id, scenario_func
         else:
             logger.warning(f"Scenario {scenario_id} not found in registry.")

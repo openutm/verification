@@ -2,7 +2,7 @@ import contextvars
 import time
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Any, Callable, List, Optional, ParamSpec, Protocol, TypeVar, cast, overload
+from typing import Any, Callable, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
 
 from loguru import logger
 
@@ -19,6 +19,11 @@ R = TypeVar("R", bound=StepResult[Any])
 class ScenarioState:
     steps: List[StepResult[Any]] = field(default_factory=list)
     active: bool = False
+
+
+class ScenarioRegistry(TypedDict):
+    func: Callable[..., Any]
+    docs: Optional[str]
 
 
 _scenario_state: contextvars.ContextVar[Optional[ScenarioState]] = contextvars.ContextVar("scenario_state", default=None)

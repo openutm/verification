@@ -84,6 +84,12 @@
                     <h4>Error Message:</h4>
                     <pre>{{ result.error_message }}</pre>
                 {% endif %}
+                {% if result.docs %}
+                <div class="scenario-docs">
+                    <h4>Documentation:</h4>
+                    {{ result.docs | markdown | safe }}
+                </div>
+                {% endif %}
                 <h4>Steps:</h4>
                 <table class="steps-table">
                     <thead>

@@ -19,7 +19,7 @@ from openutm_verification.core.clients.opensky.base_client import (
 )
 from openutm_verification.core.execution.config_models import AppConfig
 from openutm_verification.core.execution.dependencies import scenarios
-from openutm_verification.core.execution.dependency_resolution import call_with_dependencies
+from openutm_verification.core.execution.dependency_resolution import CONTEXT, call_with_dependencies
 from openutm_verification.core.reporting.reporting import generate_reports
 from openutm_verification.core.reporting.reporting_models import (
     ReportData,
@@ -79,7 +79,9 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
                 duration_seconds=0,
                 steps=[],
                 error_message=str(e),
+                docs=None,
             )
+        result.docs = CONTEXT.get().get("docs")
         scenario_results.append(result)
         logger.info(f"Scenario {scenario_id} finished with status: {result.status}")
 
