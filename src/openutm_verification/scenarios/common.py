@@ -33,7 +33,7 @@ def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURAT
         simulator_config = GeoJSONFlightsSimulatorConfiguration(geojson=geojson_data)
         simulator = GeoJSONFlightsSimulator(simulator_config)
 
-        simulator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=570)
+        simulator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=120)
         return simulator.generate_states(duration=duration)
     except Exception as e:
         logger.error(f"Failed to generate telemetry states from {config_path}: {e}")

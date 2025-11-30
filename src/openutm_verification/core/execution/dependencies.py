@@ -88,17 +88,17 @@ def data_files(scenario_id: ScenarioId) -> Generator[DataFiles, None, None]:
 
     if suite_scenario:
         # Merge suite overrides with base config
-        telemetry = suite_scenario.telemetry or config.data_files.telemetry
+        trajectory = suite_scenario.trajectory or config.data_files.trajectory
         flight_declaration = suite_scenario.flight_declaration or config.data_files.flight_declaration
         geo_fence = suite_scenario.geo_fence or config.data_files.geo_fence
     else:
         # Use base config
-        telemetry = config.data_files.telemetry
+        trajectory = config.data_files.trajectory
         flight_declaration = config.data_files.flight_declaration
         geo_fence = config.data_files.geo_fence
 
     data = DataFiles(
-        telemetry=telemetry,
+        trajectory=trajectory,
         flight_declaration=flight_declaration,
         geo_fence=geo_fence,
     )

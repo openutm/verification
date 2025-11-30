@@ -158,12 +158,12 @@ The paths point to configuration files, not generated data. For example:
 
 ```yaml
 data_files:
-  telemetry: "config/bern/telemetry_f1.json"
+  telemetry: "config/bern/trajectory_f1.json"
   flight_declaration: "config/bern/flight_declaration.json"
 
 scenarios:
   "F1_happy_path":
-    telemetry: "config/bern/telemetry_f1.json" # Optional override
+    telemetry: "config/bern/trajectory_f1.json" # Optional override
     flight_declaration: "config/bern/flight_declaration.json" # Optional override
 ```
 

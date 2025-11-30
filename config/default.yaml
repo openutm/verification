@@ -31,7 +31,7 @@ air_traffic_simulator_settings:
   sensor_ids: ["a0b7d47e5eac45dc8cbaf47e6fe0e558"] # List of sensor IDs to use when 'multiple' is selected
 
 data_files:
-  telemetry: "config/bern/telemetry_f1.json" # Path to flight declarations JSON file
+  trajectory: "config/bern/trajectory_f1.json" # Path to flight declarations JSON file
   flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file
   # geo_fence: "config/geo_fences.json" # Path to geo-fences
 
@@ -39,17 +39,21 @@ suites:
   basic_conformance:
     scenarios:
     - name: F1_happy_path
-      telemetry: "config/bern/telemetry_f1.json"
+      trajectory: "config/bern/trajectory_f1.json"
     - name: F2_contingent_path
-      telemetry: "config/bern/telemetry_f2.json"
+      trajectory: "config/bern/trajectory_f2.json"
   extra:
     scenarios:
     - name: F3_non_conforming_path
-      telemetry: "config/bern/telemetry_f3.json"
+      trajectory: "config/bern/trajectory_f3.json"  
+#     - name: F5_non_conforming_path:
+#       trajectory: "config/bern/trajectory_f5.json"
     - name: opensky_live_data
     - name: add_flight_declaration
     - name: geo_fence_upload
     - name: openutm_sim_air_traffic_data
+#     - name: sdsp_track:
+#     - name: sdsp_heartbeat:
 
 # Reporting configuration
 reporting:
