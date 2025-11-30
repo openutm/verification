@@ -17,6 +17,23 @@ from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 T = TypeVar("T")
 
 
+def get_scenario_docs(scenario_id: str) -> None | str:
+    scenario_func = SCENARIO_REGISTRY[scenario_id]["func"]
+    docs_filename = SCENARIO_REGISTRY[scenario_id].get("docs")
+    if docs_filename:
+        # Resolve path relative to the function's definition file
+        func_file = Path(scenario_func.__code__.co_filename)
+        docs_path = func_file.parent / docs_filename
+
+        if docs_path.exists():
+            try:
+                return docs_path.read_text(encoding="utf-8")
+            except Exception as e:
+                logger.warning(f"Failed to read docs file {docs_path}: {e}")
+        else:
+            logger.warning(f"Docs file not found: {docs_path}")
+
+
 def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
     """Provides scenarios to run with their functions.
 
@@ -30,25 +47,10 @@ def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
         if scenario_id in SCENARIO_REGISTRY:
             logger.info("=" * 100)
             logger.info(f"Running scenario: {scenario_id}")
-            scenario_func = SCENARIO_REGISTRY[scenario_id]["func"]
-
-            docs_filename = SCENARIO_REGISTRY[scenario_id].get("docs")
-            docs_content = None
-            if docs_filename:
-                # Resolve path relative to the function's definition file
-                func_file = Path(scenario_func.__code__.co_filename)
-                docs_path = func_file.parent / docs_filename
-
-                if docs_path.exists():
-                    try:
-                        docs_content = docs_path.read_text(encoding="utf-8")
-                    except Exception as e:
-                        logger.warning(f"Failed to read docs file {docs_path}: {e}")
-                else:
-                    logger.warning(f"Docs file not found: {docs_path}")
+            docs_content = get_scenario_docs(scenario_id)
 
             CONTEXT.set({"scenario_id": scenario_id, "docs": docs_content})
-            yield scenario_id, scenario_func
+            yield scenario_id, SCENARIO_REGISTRY[scenario_id]["func"]
         else:
             logger.warning(f"Scenario {scenario_id} not found in registry.")
     logger.info("=" * 100)
