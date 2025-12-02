@@ -56,3 +56,9 @@ repos:
         files: ^web-editor/
         pass_filenames: false
         types: [file]
+      - id: pytest
+        name: pytest
+        entry: uv run pytest tests
+        language: system
+        types: [python]
+        pass_filenames: false

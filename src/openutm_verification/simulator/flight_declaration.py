@@ -74,7 +74,7 @@ class FlightDeclarationGenerator:
         geometry = PolygonGeometry(coordinates=coordinates)
         # TODO: verify if this should be somewhere else
         # Add required properties for Flight Blender API
-        properties = {"min_altitude": {"meters": 600.4, "datum": "w84"}, "max_altitude": {"meters": 700.4, "datum": "w84"}}
+        properties = {"min_altitude": {"meters": 50, "datum": "w84"}, "max_altitude": {"meters": 120, "datum": "w84"}}
         feature = Feature(geometry=geometry, properties=properties)
         return FeatureCollection(features=[feature])
 

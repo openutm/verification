@@ -61,11 +61,11 @@ class ReportingConfig(StrictBaseModel):
 class DataFiles(StrictBaseModel):
     """Paths to data files used in the application."""
 
-    telemetry: Optional[str] = None
+    trajectory: Optional[str] = None
     flight_declaration: Optional[str] = None
     geo_fence: Optional[str] = None
 
-    @field_validator("telemetry", "flight_declaration", "geo_fence")
+    @field_validator("trajectory", "flight_declaration", "geo_fence")
     @classmethod
     def validate_path(cls, v: Optional[str]) -> Optional[str]:
         """Validate that path is a non-empty string if provided."""
@@ -91,8 +91,8 @@ class DataFiles(StrictBaseModel):
                 raise ValueError(f"{field_name} path is not a file: {resolved}")
             return str(resolved)
 
-        if self.telemetry:
-            self.telemetry = resolve_and_validate_path(self.telemetry, "Telemetry")
+        if self.trajectory:
+            self.trajectory = resolve_and_validate_path(self.trajectory, "Trajectory")
         if self.flight_declaration:
             self.flight_declaration = resolve_and_validate_path(self.flight_declaration, "Flight declaration")
         if self.geo_fence:

@@ -39,7 +39,7 @@ def create_opensky_settings() -> OpenSkySettings:
     return OpenSkySettings(
         opensky_client_id=config.opensky.auth.client_id or "",
         opensky_client_secret=config.opensky.auth.client_secret or "",
-        simulation_config_path=config.data_files.telemetry or "",
+        simulation_config_path=config.data_files.trajectory or "",
         simulation_duration_seconds=30,
     )
 
