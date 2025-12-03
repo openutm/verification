@@ -2,6 +2,7 @@ import contextvars
 import time
 from dataclasses import dataclass, field
 from functools import wraps
+from pathlib import Path
 from typing import Any, Callable, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
 
 from loguru import logger
@@ -23,7 +24,7 @@ class ScenarioState:
 
 class ScenarioRegistry(TypedDict):
     func: Callable[..., Any]
-    docs: Optional[str]
+    docs: Optional[Path]
 
 
 _scenario_state: contextvars.ContextVar[Optional[ScenarioState]] = contextvars.ContextVar("scenario_state", default=None)

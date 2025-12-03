@@ -14,6 +14,7 @@ Example:
 """
 
 from functools import wraps
+from pathlib import Path
 from typing import Any, Callable, ParamSpec, TypeVar
 
 from loguru import logger
@@ -56,7 +57,6 @@ def _run_scenario_simple(scenario_id: str, func: Callable, args, kwargs) -> Scen
 
 def register_scenario(
     scenario_id: str,
-    docs: str | None = None,
 ) -> Callable[[Callable[P, Any]], Callable[P, ScenarioResult]]:
     """
     A decorator to register a test scenario function.
@@ -74,7 +74,9 @@ def register_scenario(
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> ScenarioResult:
             return _run_scenario_simple(scenario_id, func, args, kwargs)
 
-        SCENARIO_REGISTRY[scenario_id] = {"func": wrapper, "docs": docs}
+        func_file = Path(func.__code__.co_filename)
+        docs_path = func_file.with_suffix(".md")
+        SCENARIO_REGISTRY[scenario_id] = {"func": wrapper, "docs": docs_path}
         return wrapper
 
     return decorator

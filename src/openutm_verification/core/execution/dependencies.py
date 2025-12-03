@@ -18,20 +18,14 @@ T = TypeVar("T")
 
 
 def get_scenario_docs(scenario_id: str) -> None | str:
-    scenario_func = SCENARIO_REGISTRY[scenario_id]["func"]
-    docs_filename = SCENARIO_REGISTRY[scenario_id].get("docs")
-    if docs_filename:
-        # Resolve path relative to the function's definition file
-        func_file = Path(scenario_func.__code__.co_filename)
-        docs_path = func_file.parent / docs_filename
-
-        if docs_path.exists():
-            try:
-                return docs_path.read_text(encoding="utf-8")
-            except Exception as e:
-                logger.warning(f"Failed to read docs file {docs_path}: {e}")
-        else:
-            logger.warning(f"Docs file not found: {docs_path}")
+    docs_path = SCENARIO_REGISTRY[scenario_id].get("docs")
+    if docs_path and docs_path.exists():
+        try:
+            return docs_path.read_text(encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"Failed to read docs file {docs_path}: {e}")
+    else:
+        logger.warning(f"Docs file not found: {docs_path}")
 
 
 def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
