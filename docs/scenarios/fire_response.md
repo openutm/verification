@@ -22,7 +22,7 @@
         </ul>
       </td>
       <td style="vertical-align: top; padding: 0; text-align: center; background-color: white;">
-        <img src="test_fire_response.png" alt="Fire Response Map" style="width: 100%; height: auto; display: block;">
+        <img src="fire_response.png" alt="Fire Response Map" style="width: 100%; height: auto; display: block;">
       </td>
     </tr>
   </tbody>

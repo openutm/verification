@@ -74,8 +74,25 @@ def register_scenario(
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> ScenarioResult:
             return _run_scenario_simple(scenario_id, func, args, kwargs)
 
-        func_file = Path(func.__code__.co_filename)
-        docs_path = func_file.with_suffix(".md")
+        # Determine docs path
+        # 1. Try installed package location: openutm_verification/docs/scenarios/{scenario_id}.md
+        package_root = Path(__file__).parent.parent
+        docs_dir = package_root / "docs" / "scenarios"
+
+        if not docs_dir.exists():
+            # 2. Try development location: project_root/docs/scenarios/{scenario_id}.md
+            # registry.py is in src/openutm_verification/scenarios/
+            docs_dir = Path(__file__).parents[3] / "docs" / "scenarios"
+
+        docs_path = docs_dir / f"{scenario_id}.md"
+
+        # Fallback to side-by-side if docs dir file doesn't exist
+        if not docs_path.exists():
+            func_file = Path(func.__code__.co_filename)
+            side_by_side_path = func_file.with_suffix(".md")
+            if side_by_side_path.exists():
+                docs_path = side_by_side_path
+
         SCENARIO_REGISTRY[scenario_id] = {"func": wrapper, "docs": docs_path}
         return wrapper
 

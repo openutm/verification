@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import markdown
@@ -45,6 +46,25 @@ def _generate_json_report(report_data: ReportData, output_dir: Path, base_filena
     return report_path
 
 
+def _copy_docs_images(report_data: ReportData, output_dir: Path):
+    """
+    Copies images from the docs source directory to the report output directory.
+    """
+    if not report_data.docs_dir:
+        return
+
+    source_dir = Path(report_data.docs_dir)
+    extensions = {".png", ".jpg", ".jpeg", ".gif", ".svg"}
+
+    for file_path in source_dir.iterdir():
+        if file_path.is_file() and file_path.suffix.lower() in extensions:
+            try:
+                shutil.copy2(file_path, output_dir)
+                logger.debug(f"Copied image {file_path.name} to report directory")
+            except Exception as e:
+                logger.warning(f"Failed to copy image {file_path}: {e}")
+
+
 def _generate_html_report(report_data: ReportData, output_dir: Path, base_filename: str):
     """
     Generates an HTML report from the collected scenario results using a Jinja2 template.
@@ -56,6 +76,9 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
     """
     # Generate visualizations for scenarios with flight data
     _generate_visualizations(report_data, output_dir, base_filename)
+    
+    # Copy images referenced in docs
+    _copy_docs_images(report_data, output_dir)
 
     template_dir = Path(__file__).parent.parent / "templates"
     env = Environment(

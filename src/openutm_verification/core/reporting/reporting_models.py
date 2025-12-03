@@ -70,3 +70,4 @@ class ReportData(BaseModel):
     config: Dict[str, Any]
     results: List[ScenarioResult]
     summary: ReportSummary
+    docs_dir: Optional[str] = None
