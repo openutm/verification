@@ -12,7 +12,7 @@ from openutm_verification.core.clients.flight_blender.base_client import (
     BaseBlenderAPIClient,
 )
 from openutm_verification.core.execution.config_models import DataFiles
-from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.core.execution.scenario_runner import ScenarioContext, scenario_step
 from openutm_verification.core.reporting.reporting_models import (
     Status,
     StepResult,
@@ -760,6 +760,10 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         telemetry_states = generate_telemetry(trajectory_path)
 
         self.telemetry_states = telemetry_states
+
+        # Store data in ScenarioContext for reporting
+        ScenarioContext.set_flight_declaration_data(flight_declaration)
+        ScenarioContext.set_telemetry_data(telemetry_states)
 
         upload_result = self.upload_flight_declaration(flight_declaration)
 
