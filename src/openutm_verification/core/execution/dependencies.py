@@ -1,3 +1,6 @@
+import base64
+import mimetypes
+import re
 from pathlib import Path
 from typing import Callable, Generator, Iterable, TypeVar
 
@@ -17,11 +20,83 @@ from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 T = TypeVar("T")
 
 
+def embed_images(content: str, base_path: Path) -> str:
+    """
+    Embeds images referenced in markdown content as base64 data URIs.
+    Handles both markdown image syntax ![alt](path) and HTML <img src="path">.
+    """
+
+    def replace_image(match):
+        alt_text = match.group(1)
+        image_path_str = match.group(2)
+
+        # Ignore if already a data URI or absolute URL
+        if image_path_str.startswith(("data:", "http:", "https:")):
+            return match.group(0)
+
+        image_path = base_path / image_path_str
+        if image_path.exists():
+            try:
+                mime_type, _ = mimetypes.guess_type(image_path)
+                if not mime_type:
+                    mime_type = "image/png"
+
+                with open(image_path, "rb") as img_file:
+                    encoded_string = base64.b64encode(img_file.read()).decode("utf-8")
+
+                return f"![{alt_text}](data:{mime_type};base64,{encoded_string})"
+            except Exception as e:
+                logger.warning(f"Failed to embed image {image_path}: {e}")
+                return match.group(0)
+        else:
+            logger.warning(f"Image not found: {image_path}")
+            return match.group(0)
+
+    def replace_html_image(match):
+        full_tag = match.group(0)
+        src_match = re.search(r'src=["\'](.*?)["\']', full_tag)
+        if not src_match:
+            return full_tag
+
+        image_path_str = src_match.group(1)
+
+        if image_path_str.startswith(("data:", "http:", "https:")):
+            return full_tag
+
+        image_path = base_path / image_path_str
+        if image_path.exists():
+            try:
+                mime_type, _ = mimetypes.guess_type(image_path)
+                if not mime_type:
+                    mime_type = "image/png"
+
+                with open(image_path, "rb") as img_file:
+                    encoded_string = base64.b64encode(img_file.read()).decode("utf-8")
+
+                new_src = f"data:{mime_type};base64,{encoded_string}"
+                return full_tag.replace(image_path_str, new_src)
+            except Exception as e:
+                logger.warning(f"Failed to embed HTML image {image_path}: {e}")
+                return full_tag
+        else:
+            logger.warning(f"HTML Image not found: {image_path}")
+            return full_tag
+
+    # Replace Markdown images
+    content = re.sub(r'!\[(.*?)\]\((.*?)\)', replace_image, content)
+
+    # Replace HTML images
+    content = re.sub(r'<img\s+[^>]*src=["\'][^"\']*["\'][^>]*>', replace_html_image, content)
+
+    return content
+
+
 def get_scenario_docs(scenario_id: str) -> None | str:
     docs_path = SCENARIO_REGISTRY[scenario_id].get("docs")
     if docs_path and docs_path.exists():
         try:
-            return docs_path.read_text(encoding="utf-8")
+            content = docs_path.read_text(encoding="utf-8")
+            return embed_images(content, docs_path.parent)
         except Exception as e:
             logger.warning(f"Failed to read docs file {docs_path}: {e}")
     else:
