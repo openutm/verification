@@ -1,2 +1,10 @@
 # Set default text file line endings to LF
 * text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+

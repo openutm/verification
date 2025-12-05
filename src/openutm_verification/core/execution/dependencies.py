@@ -1,4 +1,4 @@
-from typing import Callable, Generator, Iterable, TypeVar
+from typing import Callable, Generator, Iterable, Optional, TypeVar
 
 from loguru import logger
 
@@ -16,6 +16,16 @@ from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 T = TypeVar("T")
 
 
+def get_scenario_docs(scenario_id: str) -> Optional[str]:
+    docs_path = SCENARIO_REGISTRY[scenario_id].get("docs")
+    if docs_path and docs_path.exists():
+        try:
+            return docs_path.read_text(encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"Failed to read docs file {docs_path}: {e}")
+    else:
+        logger.warning(f"Docs file not found: {docs_path}")
+        return None
 def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
     """Provides scenarios to run with their functions.
 
@@ -24,13 +34,15 @@ def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
     """
     scenarios_to_run = get_settings().scenarios
     logger.info(f"Found {len(scenarios_to_run)} scenarios to run.")
+
     for scenario_id in scenarios_to_run:
-        CONTEXT.set({"scenario_id": scenario_id})
         if scenario_id in SCENARIO_REGISTRY:
             logger.info("=" * 100)
             logger.info(f"Running scenario: {scenario_id}")
-            scenario_func = SCENARIO_REGISTRY[scenario_id]
-            yield scenario_id, scenario_func
+            docs_content = get_scenario_docs(scenario_id)
+
+            CONTEXT.set({"scenario_id": scenario_id, "docs": docs_content})
+            yield scenario_id, SCENARIO_REGISTRY[scenario_id]["func"]
         else:
             logger.warning(f"Scenario {scenario_id} not found in registry.")
     logger.info("=" * 100)

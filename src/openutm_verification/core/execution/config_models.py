@@ -125,6 +125,7 @@ ScenarioId = Annotated[str, "The unique identifier for a scenario"]
 
 class RunContext(TypedDict):
     scenario_id: str
+    docs: Optional[str]
 
 
 class ConfigMeta(type):

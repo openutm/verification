@@ -16,6 +16,10 @@ This toolkit provides a configuration-driven framework for running automated con
 * **Live Data Integration**: Support for OpenSky Network live flight data in test scenarios
 * **Configuration-Driven**: YAML-based configuration for easy customization and environment management
 
+## Documentation
+
+For detailed information about the verification scenarios, please refer to the [Scenario Documentation](docs/index.md).
+
 ## Quick Start
 
 ### Prerequisites
