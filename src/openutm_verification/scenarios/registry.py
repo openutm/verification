@@ -39,6 +39,8 @@ def _run_scenario_simple(scenario_id: str, func: Callable, args, kwargs) -> Scen
                 return result
 
             steps = ctx.steps
+            flight_declaration_data = ctx.flight_declaration_data
+            telemetry_data = ctx.telemetry_data
 
         final_status = Status.PASS if all(s.status == Status.PASS for s in steps) else Status.FAIL
         total_duration = sum(s.duration for s in steps)
@@ -47,6 +49,8 @@ def _run_scenario_simple(scenario_id: str, func: Callable, args, kwargs) -> Scen
             status=final_status,
             duration_seconds=total_duration,
             steps=steps,
+            flight_declaration_data=flight_declaration_data,
+            telemetry_data=telemetry_data,
         )
 
     except Exception as e:
