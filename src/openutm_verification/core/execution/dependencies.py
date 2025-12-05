@@ -1,4 +1,4 @@
-from typing import Callable, Generator, Iterable, TypeVar
+from typing import Callable, Generator, Iterable, Optional, TypeVar
 
 from loguru import logger
 
