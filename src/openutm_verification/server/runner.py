@@ -152,6 +152,18 @@ class DynamicRunner:
             if "declaration" not in params and "filename" not in params:
                 params["declaration"] = context["flight_declaration"]
 
+        # Handle parameter renaming for initialize_verify_sdsp_track
+        if step.functionName == "initialize_verify_sdsp_track":
+            if "expected_heartbeat_interval_seconds" in params:
+                params["expected_track_interval_seconds"] = params.pop("expected_heartbeat_interval_seconds")
+            if "expected_heartbeat_count" in params:
+                params["expected_track_count"] = params.pop("expected_heartbeat_count")
+
+        # Handle parameter renaming for setup_flight_declaration
+        if step.functionName == "setup_flight_declaration":
+            if "telemetry_path" in params:
+                params["trajectory_path"] = params.pop("telemetry_path")
+
         # Special handling for submit_telemetry
         if step.functionName == "submit_telemetry" and "states" not in params:
             params["states"] = context["telemetry_states"]
@@ -271,7 +283,8 @@ class DynamicRunner:
     def _run_implicit_teardown(self, resolver: DependencyResolver, context: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"Implicit Teardown: Deleting Operation {context['operation_id']}")
         fb_client = cast(FlightBlenderClient, resolver.resolve(FlightBlenderClient))
-        teardown_result = fb_client.delete_flight_declaration(context["operation_id"])
+        # delete_flight_declaration uses the stored latest_flight_declaration_id in the client instance
+        teardown_result = fb_client.delete_flight_declaration()
 
         result_data = getattr(teardown_result, "model_dump")() if hasattr(teardown_result, "model_dump") else str(teardown_result)
         return {"step": "Teardown: Delete Flight Declaration", "status": "success", "result": result_data}

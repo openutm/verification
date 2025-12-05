@@ -359,11 +359,11 @@
     "description": null,
     "parameters": [
       {
-        "name": "expected_heartbeat_interval_seconds",
+        "name": "expected_track_interval_seconds",
         "type": "int"
       },
       {
-        "name": "expected_heartbeat_count",
+        "name": "expected_track_count",
         "type": "int"
       },
       {
@@ -407,7 +407,7 @@
         "type": "str"
       },
       {
-        "name": "telemetry_path",
+        "name": "trajectory_path",
         "type": "str"
       }
     ],
