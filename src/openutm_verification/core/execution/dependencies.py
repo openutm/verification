@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Callable, Generator, Iterable, TypeVar, cast
 
 from loguru import logger
@@ -40,8 +39,8 @@ def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
 
         suite = config.suites[suite_name]
         logger.info(f"Adding suite: {suite_name} with {len(suite.scenarios)} scenarios.")
-        for s in suite.scenarios:
-            scenarios_to_iterate.append((suite_name, s))
+        for suite_scenario in suite.scenarios:
+            scenarios_to_iterate.append((suite_name, suite_scenario))
 
     for suite_name, item in scenarios_to_iterate:
         scenario_id = item.name
@@ -56,7 +55,8 @@ def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
             CONTEXT.set({
                 "scenario_id": scenario_id,
                 "suite_scenario": suite_scenario,
-                "suite_name": suite_name
+                "suite_name": suite_name,
+                "docs": None
             })
             yield scenario_id, scenario_func
         else:

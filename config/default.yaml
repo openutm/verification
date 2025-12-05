@@ -45,15 +45,15 @@ suites:
   extra:
     scenarios:
     - name: F3_non_conforming_path
-      trajectory: "config/bern/trajectory_f3.json"  
-#     - name: F5_non_conforming_path:
+      trajectory: "config/bern/trajectory_f3.json"
+#     - name: F5_non_conforming_path
 #       trajectory: "config/bern/trajectory_f5.json"
     - name: opensky_live_data
     - name: add_flight_declaration
     - name: geo_fence_upload
     - name: openutm_sim_air_traffic_data
-#     - name: sdsp_track:
-#     - name: sdsp_heartbeat:
+#     - name: sdsp_track
+#     - name: sdsp_heartbeat
 
 # Reporting configuration
 reporting:

@@ -14,7 +14,6 @@ CONTEXT: ContextVar[RunContext] = ContextVar(
         RunContext,
         {
             "scenario_id": "",
-            "docs": None,
             "suite_scenario": None,
             "suite_name": None,
         },
