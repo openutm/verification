@@ -25,12 +25,57 @@ class SDSPSessionAction(str, Enum):
     STOP = "stop"
 
 
+class SpeedAccuracy(str, Enum):
+    SAUnknown = "SAUnknown"
+    SA10mpsPlus = "SA10mpsPlus"
+    SA10mps = "SA10mps"
+    SA3mps = "SA3mps"
+    SA1mps = "SA1mps"
+    SA03mps = "SA03mps"
+
+
+@dataclass
+class AircraftPosition:
+    lat: float
+    lng: float
+    alt: float
+    accuracy_h: str
+    accuracy_v: str
+    extrapolated: bool | None
+    pressure_altitude: float | None
+
+
+@dataclass
+class AircraftState:
+    position: AircraftPosition
+    speed_accuracy: SpeedAccuracy
+    speed: float | None = 255
+    track: float | None = 361
+    vertical_speed: float | None = 63
+
+
+@dataclass
+class TrackMessage:
+    sdsdp_identifier: str
+    unique_aircraft_identifier: str
+    state: AircraftState
+    timestamp: str
+    source: str
+    track_state: str
+
+
+@dataclass
+class SDSPTrackMessage:
+    message: TrackMessage
+    timestamp: str
+
+
 @dataclass
 class HeartbeatMessage:
     surveillance_sdsp_name: str
     meets_sla_surveillance_requirements: bool
     meets_sla_rr_lr_requirements: bool
-    average_latenccy_or_95_percentile_latency_ms: int
+    average_latency_or_95_percentile_latency_ms: int
     horizontal_or_vertical_95_percentile_accuracy_m: int
     timestamp: str
 

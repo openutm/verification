@@ -26,8 +26,8 @@ def sdsp_track(fb_client: FlightBlenderClient):
 
     fb_client.initialize_verify_sdsp_track(
         session_id=session_id,
-        expected_heartbeat_interval_seconds=1,
-        expected_heartbeat_count=3,
+        expected_track_interval_seconds=1,
+        expected_track_count=3,
     )
 
     fb_client.wait_x_seconds(wait_time_seconds=5)
