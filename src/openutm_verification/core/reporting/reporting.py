@@ -56,11 +56,15 @@ def _copy_docs_images(report_data: ReportData, output_dir: Path):
     source_dir = Path(report_data.docs_dir)
     extensions = {".png", ".jpg", ".jpeg", ".gif", ".svg"}
 
-    for file_path in source_dir.iterdir():
+    for file_path in source_dir.rglob('*'):
         if file_path.is_file() and file_path.suffix.lower() in extensions:
+            # Preserve directory structure
+            relative_path = file_path.relative_to(source_dir)
+            dest_path = output_dir / relative_path
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
             try:
-                shutil.copy2(file_path, output_dir)
-                logger.debug(f"Copied image {file_path.name} to report directory")
+                shutil.copy2(file_path, dest_path)
+                logger.debug(f"Copied image {relative_path} to report directory")
             except Exception as e:
                 logger.warning(f"Failed to copy image {file_path}: {e}")
 
@@ -76,7 +80,6 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
     """
     # Generate visualizations for scenarios with flight data
     _generate_visualizations(report_data, output_dir, base_filename)
-    
     # Copy images referenced in docs
     _copy_docs_images(report_data, output_dir)
 

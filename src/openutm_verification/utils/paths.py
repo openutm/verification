@@ -18,7 +18,7 @@ def get_docs_directory() -> Path | None:
         return docs_dir
 
     # 2. Try development location: project_root/docs/scenarios/
-    # src/openutm_verification/utils/ -> src/openutm_verification/ -> src/ -> root/
+    # src/openutm_verification/utils/ -> src/openutm_verification/ -> src/ -> root/ (4 levels)
     docs_dir = Path(__file__).parents[3] / "docs" / "scenarios"
     if docs_dir.exists():
         return docs_dir

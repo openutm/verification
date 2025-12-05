@@ -40,7 +40,7 @@ COPY tests ./tests
 
 # Install the project itself in the builder stage
 # --no-deps: Dependencies are already installed, skip resolution
-RUN uv pip install --no-deps -e . && rm -f LICENSE
+RUN uv pip install --no-deps . && rm -f LICENSE
 
 # --- Production Stage ---
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS production

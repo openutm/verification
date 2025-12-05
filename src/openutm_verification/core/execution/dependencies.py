@@ -1,7 +1,3 @@
-import base64
-import mimetypes
-import re
-from pathlib import Path
 from typing import Callable, Generator, Iterable, TypeVar
 
 from loguru import logger
@@ -20,7 +16,7 @@ from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 T = TypeVar("T")
 
 
-def get_scenario_docs(scenario_id: str) -> None | str:
+def get_scenario_docs(scenario_id: str) -> Optional[str]:
     docs_path = SCENARIO_REGISTRY[scenario_id].get("docs")
     if docs_path and docs_path.exists():
         try:

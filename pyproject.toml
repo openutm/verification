@@ -74,10 +74,7 @@ build-backend = "hatchling.build"
 packages = [
     "src/openutm_verification",
 ]
-artifacts = [
-    "src/openutm_verification/**/*.png",
-    "src/openutm_verification/**/*.md",
-]
+# (artifacts configuration removed; docs are included via force-include)
 
 [tool.hatch.build.targets.wheel.force-include]
 "docs/scenarios" = "openutm_verification/docs/scenarios"
