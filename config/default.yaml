@@ -35,22 +35,25 @@ data_files:
   flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file
   # geo_fence: "config/geo_fences.json" # Path to geo-fences
 
-# List of test scenario IDs to execute
-scenarios:
-  F1_happy_path:
-    trajectory: "config/bern/trajectory_f1.json"
-  F2_contingent_path:
-    trajectory: "config/bern/trajectory_f2.json"
-  F3_non_conforming_path:
-    trajectory: "config/bern/trajectory_f3.json"
-#  F5_non_conforming_path:
-#    trajectory: "config/bern/trajectory_f5.json"
-  opensky_live_data:
-  add_flight_declaration:
-  geo_fence_upload:
-  # sdsp_track:
-  # sdsp_heartbeat:
-  openutm_sim_air_traffic_data:
+suites:
+  basic_conformance:
+    scenarios:
+    - name: F1_happy_path
+      trajectory: "config/bern/trajectory_f1.json"
+    - name: F2_contingent_path
+      trajectory: "config/bern/trajectory_f2.json"
+  extra:
+    scenarios:
+    - name: F3_non_conforming_path
+      trajectory: "config/bern/trajectory_f3.json"
+#     - name: F5_non_conforming_path
+#       trajectory: "config/bern/trajectory_f5.json"
+    - name: opensky_live_data
+    - name: add_flight_declaration
+    - name: geo_fence_upload
+    - name: openutm_sim_air_traffic_data
+#     - name: sdsp_track
+#     - name: sdsp_heartbeat
 
 # Reporting configuration
 reporting:

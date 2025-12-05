@@ -7,12 +7,22 @@ from openutm_verification.core.execution.config_models import RunContext
 
 T = TypeVar("T")
 
-DEPENDENCIES: dict[Type, Callable[..., ContextManager[object]]] = {}
-CONTEXT: ContextVar[RunContext] = ContextVar("context", default={"scenario_id": ""})
+DEPENDENCIES: dict[object, Callable[..., ContextManager[object]]] = {}
+CONTEXT: ContextVar[RunContext] = ContextVar(
+    "context",
+    default=cast(
+        RunContext,
+        {
+            "scenario_id": "",
+            "suite_scenario": None,
+            "suite_name": None,
+        },
+    ),
+)
 
 
-def dependency(type: Type) -> Callable:
-    def wrapper(func: Callable[..., object]) -> Callable[..., object]:
+def dependency(type: object) -> Callable:
+    def wrapper(func: Callable[..., Generator]) -> Callable[..., Generator]:
         DEPENDENCIES[type] = contextmanager(func)
         return func
 
@@ -37,9 +47,9 @@ class DependencyResolver:
 
     def __init__(self, stack: ExitStack):
         self.stack = stack
-        self._cache: dict[Type, object] = {}
+        self._cache: dict[object, object] = {}
 
-    def resolve(self, type_: Type) -> object:
+    def resolve(self, type_: object) -> object:
         """Resolve a dependency of a specific type."""
         if type_ in self._cache:
             return self._cache[type_]
@@ -63,7 +73,7 @@ class DependencyResolver:
 
 
 @contextmanager
-def provide(*types: Type[T]) -> Generator[tuple[T, ...], None, None]:
+def provide(*types: object) -> Generator[tuple[object, ...], None, None]:
     """Context manager to provide dependencies for the given types.
 
     This function recursively resolves dependencies, meaning if a dependency
@@ -77,5 +87,5 @@ def provide(*types: Type[T]) -> Generator[tuple[T, ...], None, None]:
     """
     with ExitStack() as stack:
         resolver = DependencyResolver(stack)
-        instances = [cast(T, resolver.resolve(t)) for t in types]
+        instances = [resolver.resolve(t) for t in types]
         yield tuple(instances)

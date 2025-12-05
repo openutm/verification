@@ -99,6 +99,22 @@ class DataFiles(StrictBaseModel):
             self.geo_fence = resolve_and_validate_path(self.geo_fence, "Geo-fence")
 
 
+class SuiteScenario(DataFiles):
+    """A scenario within a suite, allowing overrides."""
+
+    name: str
+
+
+class SuiteConfig(StrictBaseModel):
+    """Configuration for a test suite."""
+
+    scenarios: List[SuiteScenario]
+
+    def resolve_paths(self, base_path: Path) -> None:
+        for scenario in self.scenarios:
+            scenario.resolve_paths(base_path)
+
+
 class AppConfig(StrictBaseModel):
     """Root model for the application configuration."""
 
@@ -108,16 +124,18 @@ class AppConfig(StrictBaseModel):
     opensky: OpenSkyConfig
     air_traffic_simulator_settings: AirTrafficSimulatorSettings
     data_files: DataFiles
-    scenarios: Dict[str, DataFiles | None] = Field(default_factory=dict)
+    suites: Dict[str, SuiteConfig] = Field(default_factory=dict)
     reporting: ReportingConfig
+
+    # Runtime only
+    target_suites: List[str] = Field(default_factory=list)
 
     def resolve_paths(self, config_file_path: Path) -> None:
         """Resolve all relative paths in the configuration to absolute paths."""
         base_path = config_file_path.parent
         self.data_files.resolve_paths(base_path)
-        for scenario_data in self.scenarios.values():
-            if scenario_data:
-                scenario_data.resolve_paths(base_path)
+        for suite in self.suites.values():
+            suite.resolve_paths(base_path)
 
 
 ScenarioId = Annotated[str, "The unique identifier for a scenario"]
@@ -125,6 +143,8 @@ ScenarioId = Annotated[str, "The unique identifier for a scenario"]
 
 class RunContext(TypedDict):
     scenario_id: str
+    suite_scenario: Optional[SuiteScenario]
+    suite_name: Optional[str]
 
 
 class ConfigMeta(type):
