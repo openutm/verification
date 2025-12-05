@@ -34,6 +34,7 @@ class ScenarioResult(BaseModel):
     """Data model for the result of a single scenario."""
 
     name: str
+    suite_name: Optional[str] = None
     status: Status
     duration_seconds: float
     steps: List[StepResult[Any]]
