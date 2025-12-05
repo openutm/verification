@@ -29,8 +29,7 @@ def get_scenario_docs(scenario_id: str) -> None | str:
             logger.warning(f"Failed to read docs file {docs_path}: {e}")
     else:
         logger.warning(f"Docs file not found: {docs_path}")
-
-
+        return None
 def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
     """Provides scenarios to run with their functions.
 
