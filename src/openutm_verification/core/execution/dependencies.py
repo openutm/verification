@@ -60,7 +60,7 @@ def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
             logger.info("=" * 100)
             logger.info(f"Running scenario: {scenario_id}")
 
-            scenario_func = SCENARIO_REGISTRY[scenario_id]
+            scenario_func = SCENARIO_REGISTRY[scenario_id].get("func")
             docs_content = get_scenario_docs(scenario_id)
 
             CONTEXT.set({
