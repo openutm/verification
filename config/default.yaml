@@ -35,9 +35,12 @@ data_files:
   flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file
   # geo_fence: "config/geo_fences.json" # Path to geo-fences
 
+# List of test scenario IDs to execute
 suites:
   basic_conformance:
     scenarios:
+    # fire_response is a placeholder scenario and not yet implemented.
+    - name: fire_response
     - name: F1_happy_path
       trajectory: "config/bern/trajectory_f1.json"
     - name: F2_contingent_path

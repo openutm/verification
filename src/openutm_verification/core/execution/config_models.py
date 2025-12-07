@@ -143,6 +143,7 @@ ScenarioId = Annotated[str, "The unique identifier for a scenario"]
 
 class RunContext(TypedDict):
     scenario_id: str
+    docs: Optional[str]
     suite_scenario: Optional[SuiteScenario]
     suite_name: Optional[str]
 

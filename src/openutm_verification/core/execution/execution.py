@@ -27,6 +27,7 @@ from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
     Status,
 )
+from openutm_verification.utils.paths import get_docs_directory
 
 
 def _sanitize_config(data: Any) -> Any:
@@ -79,11 +80,13 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
                 duration_seconds=0,
                 steps=[],
                 error_message=str(e),
+                docs=None,
             )
 
         # Enrich result with context data
         context_data = CONTEXT.get()
         result.suite_name = context_data.get("suite_name")
+        result.docs = context_data.get("docs")
 
         scenario_results.append(result)
         logger.info(f"Scenario {scenario_id} finished with status: {result.status}")
@@ -94,6 +97,8 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
 
     failed_scenarios = sum(1 for r in scenario_results if r.status == Status.FAIL)
     overall_status = Status.FAIL if failed_scenarios > 0 else Status.PASS
+
+    docs_dir = get_docs_directory()
 
     report_data = ReportData(
         run_id=config.run_id,
@@ -112,6 +117,7 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
             passed=sum(1 for r in scenario_results if r.status == Status.PASS),
             failed=failed_scenarios,
         ),
+        docs_dir=str(docs_dir) if docs_dir else None,
     )
 
     logger.info(f"Verification run complete with overall status: {overall_status}")

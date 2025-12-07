@@ -7,6 +7,7 @@ from openutm_verification.core.execution.config_models import RunContext
 
 T = TypeVar("T")
 
+
 DEPENDENCIES: dict[object, Callable[..., ContextManager[object]]] = {}
 CONTEXT: ContextVar[RunContext] = ContextVar(
     "context",
@@ -16,6 +17,7 @@ CONTEXT: ContextVar[RunContext] = ContextVar(
             "scenario_id": "",
             "suite_scenario": None,
             "suite_name": None,
+            "docs": None
         },
     ),
 )
