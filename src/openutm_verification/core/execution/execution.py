@@ -82,7 +82,12 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
                 error_message=str(e),
                 docs=None,
             )
-        result.docs = CONTEXT.get().get("docs")
+
+        # Enrich result with context data
+        context_data = CONTEXT.get()
+        result.suite_name = context_data.get("suite_name")
+        result.docs = context_data.get("docs")
+
         scenario_results.append(result)
         logger.info(f"Scenario {scenario_id} finished with status: {result.status}")
 

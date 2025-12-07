@@ -61,11 +61,11 @@ class ReportingConfig(StrictBaseModel):
 class DataFiles(StrictBaseModel):
     """Paths to data files used in the application."""
 
-    telemetry: Optional[str] = None
+    trajectory: Optional[str] = None
     flight_declaration: Optional[str] = None
     geo_fence: Optional[str] = None
 
-    @field_validator("telemetry", "flight_declaration", "geo_fence")
+    @field_validator("trajectory", "flight_declaration", "geo_fence")
     @classmethod
     def validate_path(cls, v: Optional[str]) -> Optional[str]:
         """Validate that path is a non-empty string if provided."""
@@ -91,12 +91,28 @@ class DataFiles(StrictBaseModel):
                 raise ValueError(f"{field_name} path is not a file: {resolved}")
             return str(resolved)
 
-        if self.telemetry:
-            self.telemetry = resolve_and_validate_path(self.telemetry, "Telemetry")
+        if self.trajectory:
+            self.trajectory = resolve_and_validate_path(self.trajectory, "Trajectory")
         if self.flight_declaration:
             self.flight_declaration = resolve_and_validate_path(self.flight_declaration, "Flight declaration")
         if self.geo_fence:
             self.geo_fence = resolve_and_validate_path(self.geo_fence, "Geo-fence")
+
+
+class SuiteScenario(DataFiles):
+    """A scenario within a suite, allowing overrides."""
+
+    name: str
+
+
+class SuiteConfig(StrictBaseModel):
+    """Configuration for a test suite."""
+
+    scenarios: List[SuiteScenario]
+
+    def resolve_paths(self, base_path: Path) -> None:
+        for scenario in self.scenarios:
+            scenario.resolve_paths(base_path)
 
 
 class AppConfig(StrictBaseModel):
@@ -108,16 +124,18 @@ class AppConfig(StrictBaseModel):
     opensky: OpenSkyConfig
     air_traffic_simulator_settings: AirTrafficSimulatorSettings
     data_files: DataFiles
-    scenarios: Dict[str, DataFiles | None] = Field(default_factory=dict)
+    suites: Dict[str, SuiteConfig] = Field(default_factory=dict)
     reporting: ReportingConfig
+
+    # Runtime only
+    target_suites: List[str] = Field(default_factory=list)
 
     def resolve_paths(self, config_file_path: Path) -> None:
         """Resolve all relative paths in the configuration to absolute paths."""
         base_path = config_file_path.parent
         self.data_files.resolve_paths(base_path)
-        for scenario_data in self.scenarios.values():
-            if scenario_data:
-                scenario_data.resolve_paths(base_path)
+        for suite in self.suites.values():
+            suite.resolve_paths(base_path)
 
 
 ScenarioId = Annotated[str, "The unique identifier for a scenario"]
@@ -126,6 +144,8 @@ ScenarioId = Annotated[str, "The unique identifier for a scenario"]
 class RunContext(TypedDict):
     scenario_id: str
     docs: Optional[str]
+    suite_scenario: Optional[SuiteScenario]
+    suite_name: Optional[str]
 
 
 class ConfigMeta(type):

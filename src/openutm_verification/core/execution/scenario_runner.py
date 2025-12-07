@@ -20,6 +20,8 @@ R = TypeVar("R", bound=StepResult[Any])
 class ScenarioState:
     steps: List[StepResult[Any]] = field(default_factory=list)
     active: bool = False
+    flight_declaration_data: Optional[Any] = None
+    telemetry_data: Optional[Any] = None
 
 
 class ScenarioRegistry(TypedDict):
@@ -52,12 +54,38 @@ class ScenarioContext:
         if state and state.active:
             state.steps.append(result)
 
+    @classmethod
+    def set_flight_declaration_data(cls, data: Any) -> None:
+        state = _scenario_state.get()
+        if state and state.active:
+            state.flight_declaration_data = data
+
+    @classmethod
+    def set_telemetry_data(cls, data: Any) -> None:
+        state = _scenario_state.get()
+        if state and state.active:
+            state.telemetry_data = data
+
     @property
     def steps(self) -> List[StepResult[Any]]:
         if self._state:
             return self._state.steps
         state = _scenario_state.get()
         return state.steps if state else []
+
+    @property
+    def flight_declaration_data(self) -> Optional[Any]:
+        if self._state:
+            return self._state.flight_declaration_data
+        state = _scenario_state.get()
+        return state.flight_declaration_data if state else None
+
+    @property
+    def telemetry_data(self) -> Optional[Any]:
+        if self._state:
+            return self._state.telemetry_data
+        state = _scenario_state.get()
+        return state.telemetry_data if state else None
 
 
 class StepDecorator(Protocol):
