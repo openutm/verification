@@ -12,7 +12,10 @@ from openutm_verification.core.clients.flight_blender.base_client import (
     BaseBlenderAPIClient,
 )
 from openutm_verification.core.execution.config_models import DataFiles
-from openutm_verification.core.execution.scenario_runner import ScenarioContext, scenario_step
+from openutm_verification.core.execution.scenario_runner import (
+    ScenarioContext,
+    scenario_step,
+)
 from openutm_verification.core.reporting.reporting_models import (
     Status,
     StepResult,
@@ -625,10 +628,10 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             time.sleep(0.1)
             message = ws_connection.recv()
             message = json.loads(message)
-            print(message)
-            if "track_data" not in message:
-                logger.debug("WebSocket connection established message received")
+            if "track_data" not in message or not message["track_data"]:
+                logger.debug("WebSocket connection established message received or empty track data")
                 continue
+
             track = TrackMessage(**message["track_data"])
             logger.debug(f"Received WebSocket message: {message}")
             all_received_messages.append(SDSPTrackMessage(message=track, timestamp=arrow.now().isoformat()))
