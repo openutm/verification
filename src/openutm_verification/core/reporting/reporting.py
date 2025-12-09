@@ -56,7 +56,7 @@ def _copy_docs_images(report_data: ReportData, output_dir: Path):
     source_dir = Path(report_data.docs_dir)
     extensions = {".png", ".jpg", ".jpeg", ".gif", ".svg"}
 
-    for file_path in source_dir.rglob('*'):
+    for file_path in source_dir.rglob("*"):
         if file_path.is_file() and file_path.suffix.lower() in extensions:
             # Preserve directory structure
             relative_path = file_path.relative_to(source_dir)

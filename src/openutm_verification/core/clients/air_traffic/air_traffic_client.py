@@ -28,7 +28,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         super().__init__(settings)
 
     @scenario_step("Generate Simulated Air Traffic Data")
-    def generate_simulated_air_traffic_data(
+    async def generate_simulated_air_traffic_data(
         self,
         config_path: Optional[str] = None,
         duration: Optional[int] = None,

@@ -13,9 +13,10 @@ Example:
         # ...
 """
 
+import inspect
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, ParamSpec, TypeVar
+from typing import Any, Awaitable, Callable, ParamSpec, TypeVar
 
 from loguru import logger
 
@@ -31,11 +32,11 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-def _run_scenario_simple(scenario_id: str, func: Callable, args, kwargs) -> ScenarioResult:
-    """Runs a scenario without auto-setup."""
+async def _run_scenario_simple_async(scenario_id: str, func: Callable, args, kwargs) -> ScenarioResult:
+    """Runs a scenario without auto-setup (async)."""
     try:
         with ScenarioContext() as ctx:
-            result = func(*args, **kwargs)
+            result = await func(*args, **kwargs)
 
             if isinstance(result, ScenarioResult):
                 return result
@@ -62,7 +63,7 @@ def _run_scenario_simple(scenario_id: str, func: Callable, args, kwargs) -> Scen
 
 def register_scenario(
     scenario_id: str,
-) -> Callable[[Callable[P, Any]], Callable[P, ScenarioResult]]:
+) -> Callable[[Callable[P, Any]], Callable[P, Awaitable[ScenarioResult]]]:
     """
     A decorator to register a test scenario function.
 
@@ -71,17 +72,23 @@ def register_scenario(
                            This ID is used in the configuration file.
     """
 
-    def decorator(func: Callable[P, Any]) -> Callable[P, ScenarioResult]:
+    def decorator(func: Callable[P, Any]) -> Callable[P, Awaitable[ScenarioResult]]:
         if scenario_id in SCENARIO_REGISTRY:
             raise ValueError(f"Scenario with ID '{scenario_id}' is already registered.")
 
-        @wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> ScenarioResult:
-            return _run_scenario_simple(scenario_id, func, args, kwargs)
+        if inspect.iscoroutinefunction(func):
+
+            @wraps(func)
+            async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> ScenarioResult:
+                return await _run_scenario_simple_async(scenario_id, func, args, kwargs)
+
+            wrapper = async_wrapper
+        else:
+            raise ValueError(f"Scenario function {func.__name__} must be async")
 
         docs_dir = get_docs_directory()
         docs_path = docs_dir / f"{scenario_id}.md" if docs_dir else None
         SCENARIO_REGISTRY[scenario_id] = {"func": wrapper, "docs": docs_path}
-        return wrapper
+        return wrapper  # type: ignore
 
     return decorator

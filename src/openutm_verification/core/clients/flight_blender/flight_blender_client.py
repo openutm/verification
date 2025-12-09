@@ -1,7 +1,8 @@
+import asyncio
 import json
 import time
 import uuid
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional
 
@@ -89,19 +90,19 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self.telemetry_states: Optional[List[Dict[str, Any]]] = None
         logger.debug(f"Initialized FlightBlenderClient with base_url={base_url}, request_timeout={request_timeout}")
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         # Best-effort cleanup of resources created during the session
         logger.info("Exiting FlightBlenderClient, performing cleanup")
         if self.latest_geo_fence_id:
             logger.debug(f"Cleaning up geo-fence ID: {self.latest_geo_fence_id}")
-            self.delete_geo_fence()
+            await self.delete_geo_fence()
         if self.latest_flight_declaration_id:
             logger.debug(f"Cleaning up flight declaration ID: {self.latest_flight_declaration_id}")
-            self.delete_flight_declaration()
-        return super().__exit__(exc_type, exc_val, exc_tb)
+            await self.delete_flight_declaration()
+        return await super().__aexit__(exc_type, exc_val, exc_tb)
 
     @scenario_step("Upload Geo Fence")
-    def upload_geo_fence(self, filename: Optional[str] = None) -> Dict[str, Any]:
+    async def upload_geo_fence(self, filename: Optional[str] = None) -> Dict[str, Any]:
         """Upload an Area-of-Interest (Geo Fence) to Flight Blender.
 
         Args:
@@ -121,7 +122,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         with open(filename, "r", encoding="utf-8") as geo_fence_json_file:
             geo_fence_data = json.loads(geo_fence_json_file.read())
 
-        response = self.put(endpoint, json=geo_fence_data)
+        response = await self.put(endpoint, json=geo_fence_data)
         body = response.json()
         try:
             self.latest_geo_fence_id = body.get("id")
@@ -132,7 +133,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return body
 
     @scenario_step("Get Geo Fence")
-    def get_geo_fence(self) -> Dict[str, Any]:
+    async def get_geo_fence(self) -> Dict[str, Any]:
         """Retrieve the details of the most recently uploaded geo-fence.
 
         Returns:
@@ -145,12 +146,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return {"id": None, "skipped": True, "reason": "No geo_fence_id available"}
         endpoint = f"/geo_fence_ops/geo_fence/{geo_fence_id}"
         logger.debug(f"Getting geo fence {geo_fence_id}, {endpoint=}")
-        response = self.get(endpoint)
+        response = await self.get(endpoint)
         logger.info(f"Retrieved geo-fence details for ID: {geo_fence_id}")
         return response.json()
 
     @scenario_step("Delete Geo Fence")
-    def delete_geo_fence(self, geo_fence_id: Optional[str] = None) -> Dict[str, Any]:
+    async def delete_geo_fence(self, geo_fence_id: Optional[str] = None) -> Dict[str, Any]:
         """Delete a geo-fence by ID.
 
         Args:
@@ -175,7 +176,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         endpoint = f"/geo_fence_ops/geo_fence/{op_id}/delete"
         logger.debug(f"Deleting geo fence {op_id}, {endpoint=}")
-        response = self.delete(endpoint)
+        response = await self.delete(endpoint)
         logger.debug(f"Geo fence deletion response: {response}")
         if response.status_code == 204:
             self.latest_geo_fence_id = None
@@ -188,7 +189,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return {"deleted": response.status_code in (200, 204), "id": op_id}
 
     @scenario_step("Upload Flight Declaration")
-    def upload_flight_declaration(self, declaration: str | Any) -> Dict[str, Any]:
+    async def upload_flight_declaration(self, declaration: str | Any) -> Dict[str, Any]:
         """Upload a flight declaration to the Flight Blender API.
 
         Accepts either a filename (str) containing JSON declaration data, or a
@@ -228,7 +229,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         flight_declaration["start_datetime"] = few_seconds_from_now.isoformat()
         flight_declaration["end_datetime"] = four_minutes_from_now.isoformat()
 
-        response = self.post(endpoint, json=flight_declaration)
+        response = await self.post(endpoint, json=flight_declaration)
         response_json = response.json()
 
         if not response_json.get("is_approved"):
@@ -245,7 +246,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return response_json
 
     @scenario_step("Update Operation State")
-    def update_operation_state(self, new_state: OperationState, duration_seconds: int = 0) -> Dict[str, Any]:
+    async def update_operation_state(self, new_state: OperationState, duration_seconds: int = 0) -> Dict[str, Any]:
         """Update the state of a flight operation.
 
         Posts the new state and optionally waits for the specified duration.
@@ -264,11 +265,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.debug(f"Updating operation {self.latest_flight_declaration_id} to state {new_state.name}")
         payload = {"state": new_state.value, "submitted_by": "hh@auth.com"}
 
-        response = self.put(endpoint, json=payload)
+        response = await self.put(endpoint, json=payload)
         logger.info(f"Operation state updated for {self.latest_flight_declaration_id} to {new_state.name}")
         if duration_seconds > 0:
             logger.debug(f"Sleeping for {duration_seconds} seconds after state update")
-            time.sleep(duration_seconds)
+            await asyncio.sleep(duration_seconds)
         return response.json()
 
     def _load_telemetry_file(self, filename: str) -> List[Dict[str, Any]]:
@@ -288,7 +289,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             rid_json = json.loads(rid_json_file.read())
         return rid_json["current_states"]
 
-    def _submit_telemetry_states_impl(self, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+    async def _submit_telemetry_states_impl(self, states: List[Dict[str, Any]], duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
         """Internal implementation for submitting telemetry states.
 
         Args:
@@ -326,7 +327,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                     }
                 ]
             }
-            response = self.put(endpoint, json=payload, silent_status=[400])
+            response = await self.put(endpoint, json=payload, silent_status=[400])
             request_duration = time.time() - request_start_time
             if response.status_code == 201:
                 logger.info(f"Telemetry point {i + 1} submitted, sleeping {sleep_interval} seconds... {billable_time_elapsed:.2f}s elapsed")
@@ -338,12 +339,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                     logger.error(f"Maximum waiting time of {maximum_waiting_time} seconds exceeded.")
                     raise FlightBlenderError(f"Maximum waiting time of {maximum_waiting_time} seconds exceeded.")
             last_response = response.json()
-            time.sleep(sleep_interval)
+            await asyncio.sleep(sleep_interval)
         logger.info("Telemetry submission completed")
         return last_response
 
     @scenario_step("Submit Telemetry (from file)")
-    def submit_telemetry_from_file(self, filename: str, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+    async def submit_telemetry_from_file(self, filename: str, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
         """Submit telemetry data for a flight operation.
 
         Loads telemetry states from file and submits them sequentially, with optional
@@ -360,18 +361,18 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             FlightBlenderError: If maximum waiting time is exceeded due to rate limits.
         """
         states = self._load_telemetry_file(filename)
-        return self._submit_telemetry_states_impl(states, duration_seconds)
+        return await self._submit_telemetry_states_impl(states, duration_seconds)
 
     @scenario_step("Wait X seconds")
-    def wait_x_seconds(self, wait_time_seconds: int = 5) -> str:
+    async def wait_x_seconds(self, wait_time_seconds: int = 5) -> str:
         """Wait for a specified number of seconds."""
         logger.info(f"Waiting for {wait_time_seconds} seconds...")
-        time.sleep(wait_time_seconds)
+        await asyncio.sleep(wait_time_seconds)
         logger.info(f"Waited for {wait_time_seconds} seconds.")
         return f"Waited for Flight Blender to process {wait_time_seconds} seconds."
 
     @scenario_step("Submit Telemetry")
-    def submit_telemetry(self, states: Optional[List[Dict[str, Any]]] = None, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
+    async def submit_telemetry(self, states: Optional[List[Dict[str, Any]]] = None, duration_seconds: int = 0) -> Optional[Dict[str, Any]]:
         """Submit telemetry data for a flight operation from in-memory states.
 
         Submits telemetry states sequentially from the provided list, with optional
@@ -391,10 +392,10 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         if telemetry_states is None:
             raise ValueError("Telemetry states are required and could not be resolved from context.")
 
-        return self._submit_telemetry_states_impl(telemetry_states, duration_seconds)
+        return await self._submit_telemetry_states_impl(telemetry_states, duration_seconds)
 
     @scenario_step("Check Operation State")
-    def check_operation_state(
+    async def check_operation_state(
         self,
         expected_state: OperationState,
         duration_seconds: int = 0,
@@ -413,12 +414,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         """
         logger.info(f"Checking operation state for {self.latest_flight_declaration_id} (simulated)...")
         logger.info(f"Waiting for {duration_seconds} seconds for Flight Blender to process state...")
-        time.sleep(duration_seconds)
+        await asyncio.sleep(duration_seconds)
         logger.info(f"Flight state check for {self.latest_flight_declaration_id} completed (simulated).")
         return f"Waited for Flight Blender to process {expected_state} state."
 
     @scenario_step("Check Operation State Connected")
-    def check_operation_state_connected(
+    async def check_operation_state_connected(
         self,
         expected_state: OperationState,
         duration_seconds: int = 0,
@@ -440,7 +441,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         start_time = time.time()
 
         while time.time() - start_time < duration_seconds:
-            response = self.get(endpoint)
+            response = await self.get(endpoint)
             data = response.json()
             current_state_value = data.get("state")
             logger.debug(f"Current state for {self.latest_flight_declaration_id}: {current_state_value}")
@@ -448,7 +449,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 logger.info(f"Operation {self.latest_flight_declaration_id} reached expected state {expected_state.name}")
                 return data
 
-            time.sleep(1)
+            await asyncio.sleep(1)
 
         logger.error(
             f"Operation {self.latest_flight_declaration_id} did not reach expected state {expected_state.name} within {duration_seconds} seconds"
@@ -458,7 +459,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         )
 
     @scenario_step("Delete Flight Declaration")
-    def delete_flight_declaration(self) -> Dict[str, Any]:
+    async def delete_flight_declaration(self) -> Dict[str, Any]:
         """Delete a flight declaration by ID.
 
         Returns:
@@ -475,7 +476,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         endpoint = f"/flight_declaration_ops/flight_declaration/{op_id}/delete"
         logger.debug(f"Deleting flight declaration {op_id}, {endpoint=}")
-        response = self.delete(endpoint)
+        response = await self.delete(endpoint)
         logger.debug(f"Flight declaration deletion response: {response}")
         if response.status_code == 204:
             self.latest_flight_declaration_id = None
@@ -488,7 +489,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return {"deleted": response.status_code in (200, 204), "id": op_id}
 
     @scenario_step("Submit Simulated Air Traffic")
-    def submit_simulated_air_traffic(
+    async def submit_simulated_air_traffic(
         self,
         observations: List[List[Dict[str, Any]]],
         single_or_multiple_sensors: str = "single",
@@ -521,7 +522,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             target_real_time = start_time + (current_simulation_time - simulation_start)
             # Wait until the current real time reaches the target time
             while arrow.now() < target_real_time:
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
             # For each aircraft, find the observation closest to the current simulation time
             filtered_observations = []
             for aircraft_obs in observations:
@@ -539,7 +540,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 endpoint = f"/flight_stream/set_air_traffic/{session_id}"
                 payload = {"observations": filtered_observation}
 
-                response = self.post(endpoint, json=payload)
+                response = await self.post(endpoint, json=payload)
                 logger.debug(f"Air traffic submission response: {response.text}")
                 logger.info(f"Observations submitted for aircraft {filtered_observation[0]['icao_address']} at time {current_simulation_time}")
             # Advance the simulation time by 1 second
@@ -547,7 +548,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return True
 
     @scenario_step("Submit Air Traffic")
-    def submit_air_traffic(self, observations: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def submit_air_traffic(self, observations: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Submit air traffic observations to the Flight Blender API.
 
         Args:
@@ -564,13 +565,13 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.debug(f"Submitting {len(observations)} air traffic observations")
         payload = {"observations": observations}
 
-        response = self.post(endpoint, json=payload)
+        response = await self.post(endpoint, json=payload)
         logger.debug(f"Air traffic submission response: {response.text}")
         logger.info(f"Air traffic observations submitted successfully for session {session_id}")
         return response.json()
 
     @scenario_step("Start / Stop SDSP Session")
-    def start_stop_sdsp_session(self, session_id: str, action: SDSPSessionAction) -> str:
+    async def start_stop_sdsp_session(self, session_id: str, action: SDSPSessionAction) -> str:
         """
         Starts or stops an SDSP (Strategic Deconfliction Service Provider) session based on the specified action.
         This method interacts with the Flight Blender service to manage the lifecycle of an SDSP session.
@@ -589,7 +590,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         endpoint = f"/surveillance_monitoring_ops/start_stop_surveillance_heartbeat_track/{session_id}"
 
         payload = {"action": action.value}
-        response = self.put(endpoint, json=payload)
+        response = await self.put(endpoint, json=payload)
         logger.info(f"SDSP session {session_id} action {action.value} response: {response.status_code}")
         if response.status_code == 200:
             logger.info(f"SDSP session {session_id} action {action.value} completed successfully.")
@@ -610,7 +611,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return ws
 
     @scenario_step("Verify SDSP Track")
-    def initialize_verify_sdsp_track(
+    async def initialize_verify_sdsp_track(
         self,
         expected_track_interval_seconds: int,
         expected_track_count: int,
@@ -625,7 +626,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         all_received_messages = []
         # Start Receiving messages from now till six seconds from now
         while arrow.now() < six_seconds_from_now:
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
             message = ws_connection.recv()
             message = json.loads(message)
             if "track_data" not in message or not message["track_data"]:
@@ -675,7 +676,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             )
 
     @scenario_step("Verify SDSP Heartbeat")
-    def initialize_verify_sdsp_heartbeat(
+    async def initialize_verify_sdsp_heartbeat(
         self,
         expected_heartbeat_interval_seconds: int,
         expected_heartbeat_count: int,
@@ -690,7 +691,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         all_received_messages = []
         # Start Receiving messages from now till six seconds from now
         while arrow.now() < six_seconds_from_now:
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
             message = ws_connection.recv()
             message = json.loads(message)
             if "heartbeat_data" not in message:
@@ -751,7 +752,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         ws_connection.close()
 
     @scenario_step("Setup Flight Declaration")
-    def setup_flight_declaration(self, flight_declaration_path: str, trajectory_path: str) -> None:
+    async def setup_flight_declaration(self, flight_declaration_path: str, trajectory_path: str) -> None:
         """Generates data and uploads flight declaration."""
         from openutm_verification.scenarios.common import (
             generate_flight_declaration,
@@ -767,17 +768,17 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         ScenarioContext.set_flight_declaration_data(flight_declaration)
         ScenarioContext.set_telemetry_data(telemetry_states)
 
-        upload_result = self.upload_flight_declaration(flight_declaration)
+        upload_result = await self.upload_flight_declaration(flight_declaration)
 
         if upload_result.status == Status.FAIL:
             logger.error(f"Flight declaration upload failed: {upload_result}")
             raise FlightBlenderError("Failed to upload flight declaration during setup_flight_declaration")
 
-    @contextmanager
-    def flight_declaration(self, data_files: DataFiles):
+    @asynccontextmanager
+    async def flight_declaration(self, data_files: DataFiles):
         """Context manager to setup and teardown a flight operation based on scenario config."""
-        self.setup_flight_declaration(data_files.flight_declaration, data_files.trajectory)
+        await self.setup_flight_declaration(data_files.flight_declaration, data_files.trajectory)
         try:
             yield
         finally:
-            self.delete_flight_declaration()
+            await self.delete_flight_declaration()

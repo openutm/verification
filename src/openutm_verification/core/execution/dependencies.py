@@ -26,6 +26,8 @@ def get_scenario_docs(scenario_id: str) -> Optional[str]:
     else:
         logger.warning(f"Docs file not found: {docs_path}")
         return None
+
+
 def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
     """Provides scenarios to run with their functions.
 
@@ -63,12 +65,7 @@ def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
             scenario_func = SCENARIO_REGISTRY[scenario_id].get("func")
             docs_content = get_scenario_docs(scenario_id)
 
-            CONTEXT.set({
-                "scenario_id": scenario_id,
-                "suite_scenario": suite_scenario,
-                "suite_name": suite_name,
-                "docs": docs_content
-            })
+            CONTEXT.set({"scenario_id": scenario_id, "suite_scenario": suite_scenario, "suite_name": suite_name, "docs": docs_content})
             yield scenario_id, scenario_func
         else:
             logger.warning(f"Scenario {scenario_id} not found in registry.")

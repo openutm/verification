@@ -13,12 +13,7 @@ CONTEXT: ContextVar[RunContext] = ContextVar(
     "context",
     default=cast(
         RunContext,
-        {
-            "scenario_id": "",
-            "suite_scenario": None,
-            "suite_name": None,
-            "docs": None
-        },
+        {"scenario_id": "", "suite_scenario": None, "suite_name": None, "docs": None},
     ),
 )
 
@@ -31,7 +26,7 @@ def dependency(type: object) -> Callable:
     return wrapper
 
 
-def call_with_dependencies(func: Callable[..., T]) -> T:
+async def call_with_dependencies(func: Callable[..., T]) -> T:
     """Call a function with its dependencies automatically provided.
 
     Args:
@@ -41,7 +36,9 @@ def call_with_dependencies(func: Callable[..., T]) -> T:
     """
     sig = inspect.signature(func)
     with provide(*(p.annotation for p in sig.parameters.values())) as dependencies:
-        return func(*dependencies)
+        if inspect.iscoroutinefunction(func):
+            return await func(*dependencies)
+        raise ValueError(f"Function {func.__name__} must be async")
 
 
 class DependencyResolver:

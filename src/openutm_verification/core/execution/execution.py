@@ -53,7 +53,7 @@ def _sanitize_config(data: Any) -> Any:
         return data
 
 
-def run_verification_scenarios(config: AppConfig, config_path: Path):
+async def run_verification_scenarios(config: AppConfig, config_path: Path):
     """
     Executes the verification scenarios based on the provided configuration.
     """
@@ -71,7 +71,7 @@ def run_verification_scenarios(config: AppConfig, config_path: Path):
     scenario_results = []
     for scenario_id, scenario_func in scenarios():
         try:
-            result = call_with_dependencies(scenario_func)
+            result = await call_with_dependencies(scenario_func)
         except (AirTrafficError, OpenSkyError, ValidationError) as e:
             logger.error(f"Failed to run scenario '{scenario_id}': {e}")
             result = ScenarioResult(

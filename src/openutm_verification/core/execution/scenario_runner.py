@@ -1,9 +1,10 @@
 import contextvars
+import inspect
 import time
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
+from typing import Any, Awaitable, Callable, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
 
 from loguru import logger
 
@@ -90,35 +91,31 @@ class ScenarioContext:
 
 class StepDecorator(Protocol):
     @overload
-    def __call__(self, func: Callable[P, R]) -> Callable[P, R]: ...
+    def __call__(self, func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]: ...
 
     @overload
-    def __call__(self, func: Callable[P, T]) -> Callable[P, StepResult[T]]: ...
+    def __call__(self, func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[StepResult[T]]]: ...
 
     def __call__(self, func: Callable[P, Any]) -> Callable[P, Any]: ...
 
 
 def scenario_step(step_name: str) -> StepDecorator:
-    def decorator(func: Callable[P, Any]) -> Callable[P, StepResult[Any]]:
-        @wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> StepResult[Any]:
-            logger.info("-" * 50)
-            logger.info(f"Executing step: '{step_name}'...")
-            start_time = time.time()
-            try:
-                result = func(*args, **kwargs)
-                duration = time.time() - start_time
-                logger.info(f"Step '{step_name}' successful in {duration:.2f} seconds.")
+    def decorator(func: Callable[P, Any]) -> Callable[P, Any]:
+        def handle_result(result: Any, start_time: float) -> StepResult[Any]:
+            duration = time.time() - start_time
+            logger.info(f"Step '{step_name}' successful in {duration:.2f} seconds.")
 
-                if isinstance(result, StepResult):
-                    step_result = result
-                else:
-                    step_result = StepResult(name=step_name, status=Status.PASS, duration=duration, details=result)
+            if isinstance(result, StepResult):
+                step_result = result
+            else:
+                step_result = StepResult(name=step_name, status=Status.PASS, duration=duration, details=result)
 
-                ScenarioContext.add_result(step_result)
-                return step_result
-            except (FlightBlenderError, OpenSkyError) as e:
-                duration = time.time() - start_time
+            ScenarioContext.add_result(step_result)
+            return step_result
+
+        def handle_exception(e: Exception, start_time: float) -> StepResult[Any]:
+            duration = time.time() - start_time
+            if isinstance(e, (FlightBlenderError, OpenSkyError)):
                 logger.error(f"Step '{step_name}' failed after {duration:.2f} seconds: {e}")
                 step_result = StepResult(
                     name=step_name,
@@ -126,10 +123,7 @@ def scenario_step(step_name: str) -> StepDecorator:
                     duration=duration,
                     error_message=str(e),
                 )
-                ScenarioContext.add_result(step_result)
-                return step_result
-            except Exception as e:
-                duration = time.time() - start_time
+            else:
                 logger.error(f"Step '{step_name}' encountered an unexpected error after {duration:.2f} seconds: {e}")
                 step_result = StepResult(
                     name=step_name,
@@ -137,9 +131,24 @@ def scenario_step(step_name: str) -> StepDecorator:
                     duration=duration,
                     error_message=f"Unexpected error: {e}",
                 )
-                ScenarioContext.add_result(step_result)
-                return step_result
+            ScenarioContext.add_result(step_result)
+            return step_result
 
-        return wrapper
+        if inspect.iscoroutinefunction(func):
+
+            @wraps(func)
+            async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> StepResult[Any]:
+                logger.info("-" * 50)
+                logger.info(f"Executing step: '{step_name}'...")
+                start_time = time.time()
+                try:
+                    result = await func(*args, **kwargs)
+                    return handle_result(result, start_time)
+                except Exception as e:
+                    return handle_exception(e, start_time)
+
+            return async_wrapper
+        else:
+            raise ValueError(f"Step function {func.__name__} must be async")
 
     return cast(StepDecorator, decorator)

@@ -5,7 +5,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F3_non_conforming_path")
-def test_f3_non_conforming_path(fb_client: FlightBlenderClient, data_files: DataFiles):
+async def test_f3_non_conforming_path(fb_client: FlightBlenderClient, data_files: DataFiles):
     """Runs the F3 non-conforming path scenario.
 
     This scenario simulates a flight that deviates from its declared flight plan,
@@ -22,9 +22,9 @@ def test_f3_non_conforming_path(fb_client: FlightBlenderClient, data_files: Data
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
     """
-    with fb_client.flight_declaration(data_files):
-        fb_client.update_operation_state(new_state=OperationState.ACTIVATED)
-        fb_client.wait_x_seconds(5)
-        fb_client.submit_telemetry(duration_seconds=20)
-        fb_client.check_operation_state(expected_state=OperationState.NONCONFORMING, duration_seconds=5)
-        fb_client.update_operation_state(new_state=OperationState.ENDED)
+    async with fb_client.flight_declaration(data_files):
+        await fb_client.update_operation_state(new_state=OperationState.ACTIVATED)
+        await fb_client.wait_x_seconds(5)
+        await fb_client.submit_telemetry(duration_seconds=20)
+        await fb_client.check_operation_state(expected_state=OperationState.NONCONFORMING, duration_seconds=5)
+        await fb_client.update_operation_state(new_state=OperationState.ENDED)
