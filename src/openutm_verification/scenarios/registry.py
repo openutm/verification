@@ -15,8 +15,7 @@ Example:
 
 import inspect
 from functools import wraps
-from pathlib import Path
-from typing import Any, Awaitable, Callable, ParamSpec, TypeVar
+from typing import Any, Callable, Coroutine, ParamSpec, TypeVar
 
 from loguru import logger
 
@@ -63,7 +62,7 @@ async def _run_scenario_simple_async(scenario_id: str, func: Callable, args, kwa
 
 def register_scenario(
     scenario_id: str,
-) -> Callable[[Callable[P, Any]], Callable[P, Awaitable[ScenarioResult]]]:
+) -> Callable[[Callable[P, Coroutine[Any, Any, Any]]], Callable[P, Coroutine[Any, Any, ScenarioResult]]]:
     """
     A decorator to register a test scenario function.
 
@@ -72,7 +71,7 @@ def register_scenario(
                            This ID is used in the configuration file.
     """
 
-    def decorator(func: Callable[P, Any]) -> Callable[P, Awaitable[ScenarioResult]]:
+    def decorator(func: Callable[P, Coroutine[Any, Any, Any]]) -> Callable[P, Coroutine[Any, Any, ScenarioResult]]:
         if scenario_id in SCENARIO_REGISTRY:
             raise ValueError(f"Scenario with ID '{scenario_id}' is already registered.")
 

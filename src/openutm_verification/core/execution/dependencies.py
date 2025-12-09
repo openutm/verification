@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, Callable, Generator, Iterable, Optional, TypeVar, cast
+from typing import Any, AsyncGenerator, Callable, Coroutine, Generator, Iterable, Optional, TypeVar, cast
 
 from loguru import logger
 
@@ -28,7 +28,7 @@ def get_scenario_docs(scenario_id: str) -> Optional[str]:
         return None
 
 
-def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
+def scenarios() -> Iterable[tuple[str, Callable[..., Coroutine[Any, Any, ScenarioResult]]]]:
     """Provides scenarios to run with their functions.
 
     Returns:

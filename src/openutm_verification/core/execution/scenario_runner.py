@@ -4,12 +4,13 @@ import time
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
+from types import CoroutineType
 from typing import Any, Awaitable, Callable, Coroutine, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
 
 from loguru import logger
 
 from openutm_verification.core.clients.opensky.base_client import OpenSkyError
-from openutm_verification.core.reporting.reporting_models import Status, StepResult
+from openutm_verification.core.reporting.reporting_models import ScenarioResult, Status, StepResult
 from openutm_verification.models import FlightBlenderError
 
 T = TypeVar("T")
@@ -26,7 +27,7 @@ class ScenarioState:
 
 
 class ScenarioRegistry(TypedDict):
-    func: Callable[..., Any]
+    func: Callable[..., Coroutine[Any, Any, ScenarioResult]]
     docs: Optional[Path]
 
 
