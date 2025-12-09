@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
-from typing import Any, Awaitable, Callable, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
+from typing import Any, Awaitable, Callable, Coroutine, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
 
 from loguru import logger
 
@@ -91,16 +91,16 @@ class ScenarioContext:
 
 class StepDecorator(Protocol):
     @overload
-    def __call__(self, func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]: ...
+    def __call__(self, func: Callable[P, Awaitable[R]]) -> Callable[P, Coroutine[Any, Any, R]]: ...
 
     @overload
-    def __call__(self, func: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[StepResult[T]]]: ...
+    def __call__(self, func: Callable[P, Awaitable[T]]) -> Callable[P, Coroutine[Any, Any, StepResult[T]]]: ...
 
-    def __call__(self, func: Callable[P, Any]) -> Callable[P, Any]: ...
+    def __call__(self, func: Callable[P, Awaitable[Any]]) -> Callable[P, Coroutine[Any, Any, Any]]: ...
 
 
 def scenario_step(step_name: str) -> StepDecorator:
-    def decorator(func: Callable[P, Any]) -> Callable[P, Any]:
+    def decorator(func: Callable[P, Awaitable[Any]]) -> Callable[P, Coroutine[Any, Any, Any]]:
         def handle_result(result: Any, start_time: float) -> StepResult[Any]:
             duration = time.time() - start_time
             logger.info(f"Step '{step_name}' successful in {duration:.2f} seconds.")
@@ -134,21 +134,20 @@ def scenario_step(step_name: str) -> StepDecorator:
             ScenarioContext.add_result(step_result)
             return step_result
 
-        if inspect.iscoroutinefunction(func):
-
-            @wraps(func)
-            async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> StepResult[Any]:
-                logger.info("-" * 50)
-                logger.info(f"Executing step: '{step_name}'...")
-                start_time = time.time()
-                try:
-                    result = await func(*args, **kwargs)
-                    return handle_result(result, start_time)
-                except Exception as e:
-                    return handle_exception(e, start_time)
-
-            return async_wrapper
-        else:
+        if not inspect.iscoroutinefunction(func):
             raise ValueError(f"Step function {func.__name__} must be async")
+
+        @wraps(func)
+        async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> StepResult[Any]:
+            logger.info("-" * 50)
+            logger.info(f"Executing step: '{step_name}'...")
+            start_time = time.time()
+            try:
+                result = await func(*args, **kwargs)
+                return handle_result(result, start_time)
+            except Exception as e:
+                return handle_exception(e, start_time)
+
+        return async_wrapper
 
     return cast(StepDecorator, decorator)
