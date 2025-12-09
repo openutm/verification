@@ -23,7 +23,7 @@ def dependency(type: object) -> Callable:
         if inspect.isasyncgenfunction(func):
             DEPENDENCIES[type] = asynccontextmanager(func)
         else:
-            DEPENDENCIES[type] = contextmanager(func)
+            DEPENDENCIES[type] = contextmanager(func)  # type: ignore
         return func
 
     return wrapper

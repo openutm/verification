@@ -318,7 +318,6 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 logger.info(f"Telemetry submission duration of {duration_seconds} seconds has passed.")
                 break
 
-            request_start_time = time.time()
             payload = {
                 "observations": [
                     {
@@ -328,7 +327,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 ]
             }
             response = await self.put(endpoint, json=payload, silent_status=[400])
-            request_duration = time.time() - request_start_time
+            request_duration = response.elapsed.total_seconds()
             if response.status_code == 201:
                 logger.info(f"Telemetry point {i + 1} submitted, sleeping {sleep_interval} seconds... {billable_time_elapsed:.2f}s elapsed")
                 billable_time_elapsed += request_duration + sleep_interval
