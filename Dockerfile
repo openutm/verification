@@ -24,6 +24,7 @@ ENV PYTHONUNBUFFERED=1
 # --- Dependency Installation Layer ---
 # Copy dependency files first for better layer caching
 COPY pyproject.toml uv.lock ./
+COPY docs ./docs
 
 # Install project dependencies using uv sync with cache mount for faster builds
 # --frozen: ensures reproducible builds from uv.lock
