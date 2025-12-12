@@ -1,7 +1,9 @@
+import asyncio
 import uuid
 
 from loguru import logger
 
+from openutm_verification.core.clients.air_traffic.air_traffic_client import AirTrafficClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
@@ -10,7 +12,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("sdsp_track")
-async def sdsp_track(fb_client: FlightBlenderClient):
+async def sdsp_track(fb_client: FlightBlenderClient, air_traffic_client: AirTrafficClient) -> None:
     """Runs the SDSP track scenario.
     This scenario
     """
@@ -21,6 +23,11 @@ async def sdsp_track(fb_client: FlightBlenderClient):
         action=SDSPSessionAction.START,
         session_id=session_id,
     )
+
+    observations = (await air_traffic_client.generate_simulated_air_traffic_data()).details
+    # to start a background parallel task, instead of await, use create_task:
+    task = asyncio.create_task(fb_client.submit_simulated_air_traffic(observations=observations))
+    # Task is now running, concurrently while any other `async await` calls are done.
     # Wait for some time to simulate track period
     await fb_client.wait_x_seconds(wait_time_seconds=2)
 
@@ -36,3 +43,6 @@ async def sdsp_track(fb_client: FlightBlenderClient):
         action=SDSPSessionAction.STOP,
         session_id=session_id,
     )
+
+    # task.cancel()  # Cancel the background task if still running
+    await task  # Wait for the task to complete

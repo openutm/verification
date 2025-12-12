@@ -119,7 +119,11 @@ async def test_sdsp_heartbeat_scenario(fb_client):
 
 
 async def test_sdsp_track_scenario(fb_client):
-    await scenario_sdsp_track(fb_client)
+    air_traffic_client = AsyncMock()
+    step_result = MagicMock()
+    step_result.details = ["obs1"]
+    air_traffic_client.generate_simulated_air_traffic_data.return_value = step_result
+    await scenario_sdsp_track(fb_client, air_traffic_client)
 
     fb_client.start_stop_sdsp_session.assert_any_call(action=SDSPSessionAction.START, session_id=ANY)
     fb_client.wait_x_seconds.assert_any_call(wait_time_seconds=2)
