@@ -51,6 +51,7 @@ coverage.xml
 .pytest_cache/
 cover/
 
+
 # Translations
 *.mo
 *.pot
@@ -70,11 +71,13 @@ instance/
 
 # Sphinx documentation
 docs/_build/
-
+config/local/*.yaml
+config/local/*.yml
 # PyBuilder
 .pybuilder/
 target/
 
+docs/.DS_Store
 # Jupyter Notebook
 .ipynb_checkpoints
 
