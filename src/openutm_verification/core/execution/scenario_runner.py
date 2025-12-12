@@ -4,7 +4,6 @@ import time
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
-from types import CoroutineType
 from typing import Any, Awaitable, Callable, Coroutine, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
 
 from loguru import logger
