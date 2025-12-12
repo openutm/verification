@@ -20,6 +20,8 @@ class AuthConfig(StrictBaseModel):
     client_secret: Optional[str] = None
     audience: Optional[str] = None
     scopes: List[str] | None = None
+    token_endpoint: Optional[str] = None
+    passport_base_url: Optional[str] = None
 
 
 class FlightBlenderConfig(StrictBaseModel):

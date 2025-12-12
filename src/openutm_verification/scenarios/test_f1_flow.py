@@ -20,7 +20,9 @@ def test_f1_happy_path(fb_client: FlightBlenderClient, data_files: DataFiles):
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
     """
-    with fb_client.flight_declaration(data_files):
+    with fb_client.create_flight_declaration(data_files):
         fb_client.update_operation_state(new_state=OperationState.ACTIVATED)
         fb_client.submit_telemetry(duration_seconds=30)
         fb_client.update_operation_state(new_state=OperationState.ENDED)
+
+    fb_client.teardown_flight_declaration()

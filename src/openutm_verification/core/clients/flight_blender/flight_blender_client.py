@@ -93,11 +93,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         # Best-effort cleanup of resources created during the session
         logger.info("Exiting FlightBlenderClient, performing cleanup")
         if self.latest_geo_fence_id:
-            logger.debug(f"Cleaning up geo-fence ID: {self.latest_geo_fence_id}")
-            self.delete_geo_fence()
+            logger.debug(f"All operations related to geo-fence ID complete: {self.latest_geo_fence_id}")
+
         if self.latest_flight_declaration_id:
-            logger.debug(f"Cleaning up flight declaration ID: {self.latest_flight_declaration_id}")
-            self.delete_flight_declaration()
+            logger.debug(f"All operations related to flight declaration ID complete: {self.latest_flight_declaration_id}")
+
         return super().__exit__(exc_type, exc_val, exc_tb)
 
     @scenario_step("Upload Geo Fence")
@@ -229,6 +229,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         flight_declaration["end_datetime"] = four_minutes_from_now.isoformat()
 
         response = self.post(endpoint, json=flight_declaration)
+        logger.info(f"Flight declaration upload response: {response.status_code}")
         response_json = response.json()
 
         if not response_json.get("is_approved"):
@@ -761,6 +762,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
     def close_heartbeat_websocket_connection(self, ws_connection: Any) -> None:
         ws_connection.close()
 
+    @scenario_step("Teardown Flight Declaration")
+    def teardown_flight_declaration(self):
+        logger.info("Tearing down flight declaration...")
+        self.delete_flight_declaration()
+
     @scenario_step("Setup Flight Declaration")
     def setup_flight_declaration(self, flight_declaration_path: str, trajectory_path: str) -> None:
         """Generates data and uploads flight declaration."""
@@ -785,10 +791,13 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             raise FlightBlenderError("Failed to upload flight declaration during setup_flight_declaration")
 
     @contextmanager
-    def flight_declaration(self, data_files: DataFiles):
+    def create_flight_declaration(self, data_files: DataFiles):
         """Context manager to setup and teardown a flight operation based on scenario config."""
-        self.setup_flight_declaration(data_files.flight_declaration, data_files.trajectory)
+        self.setup_flight_declaration(
+            flight_declaration_path=data_files.flight_declaration,
+            trajectory_path=data_files.trajectory,
+        )
         try:
             yield
         finally:
-            self.delete_flight_declaration()
+            logger.info("All test steps complete..")
