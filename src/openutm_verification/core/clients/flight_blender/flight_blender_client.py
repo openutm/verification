@@ -704,7 +704,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         # Start Receiving messages from now till six seconds from now
         while arrow.now() < six_seconds_from_now:
             await asyncio.sleep(0.1)
-            message = ws_connection.recv()
+            message = await asyncio.to_thread(ws_connection.recv)
             message = json.loads(message)
             if "heartbeat_data" not in message:
                 logger.debug("WebSocket connection established message received")
