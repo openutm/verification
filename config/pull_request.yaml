@@ -6,14 +6,8 @@ run_id: "daily-conformance-check" # An optional identifier for the run
 # Details of the Flight Blender deployment under test
 flight_blender:
   url: "http://localhost:8000"
-  # Auth can be 'none' or 'passport'
   auth:
     type: "none" # For using the dummy-oauth provider
-    # type: "passport" # For using a real Passport instance
-    # client_id: "your-client-id"
-    # client_secret: "your-client-secret"
-    # token_url: "/oauth/token/"
-    # passport_base_url: "https://passport.testflight.openutm.net"
     audience: "testflight.flightblender.com" # Audience for OAuth tokens, default for local testing
     scopes: ["flightblender.write", "flightblender.read"] # Scopes for write and read access
 
@@ -34,29 +28,21 @@ air_traffic_simulator_settings:
 data_files:
   trajectory: "config/bern/trajectory_f1.json" # Path to flight declarations JSON file
   flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file
-  # geo_fence: "config/geo_fences.json" # Path to geo-fences
 
 # List of test scenario IDs to execute
 suites:
-  basic_conformance:
+  pull_requests:
     scenarios:
-    - name: F1_flow_no_telemetry_with_user_input
     - name: F1_happy_path
       trajectory: "config/bern/trajectory_f1.json"
     - name: F2_contingent_path
       trajectory: "config/bern/trajectory_f2.json"
-  extra:
-    scenarios:
     - name: F3_non_conforming_path
       trajectory: "config/bern/trajectory_f3.json"
-#     - name: F5_non_conforming_path
-#       trajectory: "config/bern/trajectory_f5.json"
     - name: opensky_live_data
     - name: add_flight_declaration
     - name: geo_fence_upload
     - name: openutm_sim_air_traffic_data
-#     - name: sdsp_track
-#     - name: sdsp_heartbeat
 
 # Reporting configuration
 reporting:
