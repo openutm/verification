@@ -22,7 +22,7 @@ def test_add_flight_declaration(fb_client: FlightBlenderClient, data_files: Data
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
     """
-    with fb_client.flight_declaration(data_files):
+    with fb_client.create_flight_declaration(data_files):
         fb_client.update_operation_state(new_state=OperationState.ACTIVATED, duration_seconds=20)
         fb_client.submit_telemetry(duration_seconds=30)
         fb_client.update_operation_state(new_state=OperationState.ENDED)
