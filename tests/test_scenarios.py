@@ -10,7 +10,6 @@ from openutm_verification.scenarios.test_f1_flow import test_f1_happy_path as sc
 from openutm_verification.scenarios.test_f2_flow import test_f2_contingent_path as scenario_f2_contingent_path
 from openutm_verification.scenarios.test_f3_flow import test_f3_non_conforming_path as scenario_f3_non_conforming_path
 from openutm_verification.scenarios.test_f5_flow import test_f5_non_conforming_contingent_path as scenario_f5_non_conforming_contingent_path
-from openutm_verification.scenarios.test_fire_response import test_fire_response as scenario_fire_response
 from openutm_verification.scenarios.test_geo_fence_upload import test_geo_fence_upload as scenario_geo_fence_upload
 from openutm_verification.scenarios.test_opensky_live_data import test_opensky_live_data as scenario_opensky_live_data
 from openutm_verification.scenarios.test_sdsp_heartbeat import sdsp_heartbeat as scenario_sdsp_heartbeat
@@ -83,11 +82,6 @@ async def test_f5_non_conforming_contingent_path_scenario(fb_client, data_files)
     fb_client.check_operation_state_connected.assert_called_once_with(expected_state=OperationState.NONCONFORMING, duration_seconds=5)
     fb_client.update_operation_state.assert_any_call(new_state=OperationState.CONTINGENT)
     fb_client.update_operation_state.assert_any_call(new_state=OperationState.ENDED)
-
-
-async def test_fire_response_scenario(fb_client, data_files):
-    await scenario_fire_response(fb_client, data_files)
-    # Currently empty, so just ensure it runs without error
 
 
 @patch("openutm_verification.scenarios.test_geo_fence_upload.get_geo_fence_path")
