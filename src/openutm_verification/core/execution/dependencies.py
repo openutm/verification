@@ -50,8 +50,9 @@ def scenarios() -> Iterable[tuple[str, Callable[..., Coroutine[Any, Any, Scenari
             continue
 
         suite = config.suites[suite_name]
-        logger.info(f"Adding suite: {suite_name} with {len(suite.scenarios)} scenarios.")
-        for suite_scenario in suite.scenarios:
+        scenarios_list = suite.scenarios or []
+        logger.info(f"Adding suite: {suite_name} with {len(scenarios_list)} scenarios.")
+        for suite_scenario in scenarios_list:
             scenarios_to_iterate.append((suite_name, suite_scenario))
 
     for suite_name, item in scenarios_to_iterate:

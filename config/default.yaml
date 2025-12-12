@@ -12,7 +12,8 @@ flight_blender:
     # type: "passport" # For using a real Passport instance
     # client_id: "your-client-id"
     # client_secret: "your-client-secret"
-    # token_url: "/oauth/token"
+    # token_url: "/oauth/token/"
+    # passport_base_url: "https://passport.testflight.openutm.net"
     audience: "testflight.flightblender.com" # Audience for OAuth tokens, default for local testing
     scopes: ["flightblender.write", "flightblender.read"] # Scopes for write and read access
 
@@ -40,7 +41,7 @@ suites:
   basic_conformance:
     scenarios:
     # fire_response is a placeholder scenario and not yet implemented.
-    - name: fire_response
+    - name: F1_flow_no_telemetry_with_user_input
     - name: F1_happy_path
       trajectory: "config/bern/trajectory_f1.json"
     - name: F2_contingent_path

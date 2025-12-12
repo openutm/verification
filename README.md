@@ -137,6 +137,10 @@ The toolkit uses environment variables for configuration. Key variables include:
 * `LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
 * `ENVIRONMENT`: Environment name for labeling
 
+#### Creating a Local Configuration
+
+To set up a local configuration, make a copy of `default.yaml` and place it in the `config/local` folder.
+
 #### Authentication Configuration
 
 For authentication, the following fields can be configured in `config/default.yaml` under `flight_blender.auth`:

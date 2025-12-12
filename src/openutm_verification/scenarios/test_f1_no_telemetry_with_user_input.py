@@ -4,9 +4,9 @@ from openutm_verification.models import OperationState
 from openutm_verification.scenarios.registry import register_scenario
 
 
-@register_scenario("F1_happy_path")
-async def test_f1_happy_path(fb_client: FlightBlenderClient, data_files: DataFiles):
-    """Runs the F1 happy path scenario.
+@register_scenario("F1_flow_no_telemetry_with_user_input")
+def test_f1_no_telemetry_with_user_input(fb_client: FlightBlenderClient, data_files: DataFiles):
+    """Runs the F1 no telemetry with user input scenario.
 
     This scenario simulates a complete, successful flight operation:
     1. The flight operation state is set to ACTIVATED.
@@ -20,9 +20,8 @@ async def test_f1_happy_path(fb_client: FlightBlenderClient, data_files: DataFil
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
     """
-    async with fb_client.create_flight_declaration(data_files):
-        await fb_client.update_operation_state(new_state=OperationState.ACTIVATED)
-        await fb_client.submit_telemetry(duration_seconds=30)
-        await fb_client.update_operation_state(new_state=OperationState.ENDED)
-
+    with fb_client.create_flight_declaration(data_files):
+        fb_client.update_operation_state(new_state=OperationState.ACTIVATED)
+        fb_client.wait_for_user_input(prompt="Press Enter to end the operation...")
+        fb_client.update_operation_state(new_state=OperationState.ENDED)
     fb_client.teardown_flight_declaration()

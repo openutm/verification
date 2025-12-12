@@ -94,11 +94,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         # Best-effort cleanup of resources created during the session
         logger.info("Exiting FlightBlenderClient, performing cleanup")
         if self.latest_geo_fence_id:
-            logger.debug(f"Cleaning up geo-fence ID: {self.latest_geo_fence_id}")
-            await self.delete_geo_fence()
+            logger.debug(f"All operations related to geo-fence ID complete: {self.latest_geo_fence_id}")
+
         if self.latest_flight_declaration_id:
-            logger.debug(f"Cleaning up flight declaration ID: {self.latest_flight_declaration_id}")
-            await self.delete_flight_declaration()
+            logger.debug(f"All operations related to flight declaration ID complete: {self.latest_flight_declaration_id}")
+
         return await super().__aexit__(exc_type, exc_val, exc_tb)
 
     @scenario_step("Upload Geo Fence")
@@ -230,6 +230,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         flight_declaration["end_datetime"] = four_minutes_from_now.isoformat()
 
         response = await self.post(endpoint, json=flight_declaration)
+        logger.info(f"Flight declaration upload response: {response.status_code}")
+
         response_json = response.json()
 
         if not response_json.get("is_approved"):
@@ -244,6 +246,17 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.warning("Failed to extract flight declaration ID from response")
 
         return response_json
+
+    @scenario_step("Wait for User Input")
+    def wait_for_user_input(self, prompt: str = "Press Enter to continue...") -> str:
+        """Wait for user input to proceed.
+
+        This method prompts the user for input and waits until the user responds.
+
+        Args:
+            prompt: The message to display to the user.
+        """
+        input(prompt)
 
     @scenario_step("Update Operation State")
     async def update_operation_state(self, new_state: OperationState, duration_seconds: int = 0) -> Dict[str, Any]:
@@ -750,6 +763,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
     def close_heartbeat_websocket_connection(self, ws_connection: Any) -> None:
         ws_connection.close()
 
+    @scenario_step("Teardown Flight Declaration")
+    def teardown_flight_declaration(self):
+        logger.info("Tearing down flight declaration...")
+        self.delete_flight_declaration()
+
     @scenario_step("Setup Flight Declaration")
     async def setup_flight_declaration(self, flight_declaration_path: str, trajectory_path: str) -> None:
         """Generates data and uploads flight declaration."""
@@ -774,10 +792,10 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             raise FlightBlenderError("Failed to upload flight declaration during setup_flight_declaration")
 
     @asynccontextmanager
-    async def flight_declaration(self, data_files: DataFiles):
+    async def create_flight_declaration(self, data_files: DataFiles):
         """Context manager to setup and teardown a flight operation based on scenario config."""
         await self.setup_flight_declaration(data_files.flight_declaration, data_files.trajectory)
         try:
             yield
         finally:
-            await self.delete_flight_declaration()
+            logger.info("All test steps complete..")

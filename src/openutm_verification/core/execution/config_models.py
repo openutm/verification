@@ -20,6 +20,8 @@ class AuthConfig(StrictBaseModel):
     client_secret: Optional[str] = None
     audience: Optional[str] = None
     scopes: List[str] | None = None
+    token_endpoint: Optional[str] = None
+    passport_base_url: Optional[str] = None
 
 
 class FlightBlenderConfig(StrictBaseModel):
@@ -108,11 +110,12 @@ class SuiteScenario(DataFiles):
 class SuiteConfig(StrictBaseModel):
     """Configuration for a test suite."""
 
-    scenarios: List[SuiteScenario]
+    scenarios: Optional[List[SuiteScenario]] = Field(default_factory=list)
 
     def resolve_paths(self, base_path: Path) -> None:
-        for scenario in self.scenarios:
-            scenario.resolve_paths(base_path)
+        if self.scenarios:
+            for scenario in self.scenarios:
+                scenario.resolve_paths(base_path)
 
 
 class AppConfig(StrictBaseModel):
