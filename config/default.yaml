@@ -38,6 +38,18 @@ data_files:
 
 # List of test scenario IDs to execute
 suites:
+  pull_requests:
+    scenarios:
+    - name: F1_happy_path
+      trajectory: "config/bern/trajectory_f1.json"
+    - name: F2_contingent_path
+      trajectory: "config/bern/trajectory_f2.json"
+    - name: F3_non_conforming_path
+      trajectory: "config/bern/trajectory_f3.json"
+    - name: opensky_live_data
+    - name: add_flight_declaration
+    - name: geo_fence_upload
+    - name: openutm_sim_air_traffic_data
   basic_conformance:
     scenarios:
     - name: F1_flow_no_telemetry_with_user_input
