@@ -56,9 +56,9 @@ class BaseOpenSkyAPIClient:
             timeout=settings.request_timeout,
         )
         # Create our own HTTP client for API requests
-        self.client = httpx.Client(timeout=settings.request_timeout)
+        self.client = httpx.AsyncClient(timeout=settings.request_timeout)
 
-    def _request(
+    async def _request(
         self,
         method: str,
         endpoint: str,
@@ -69,32 +69,32 @@ class BaseOpenSkyAPIClient:
         url = f"{self.settings.base_url}{endpoint}"
         headers = {}
         if config.opensky.auth.type == "oauth2":
-            headers["Authorization"] = f"Bearer {self.oauth_client.get_access_token()}"
+            headers["Authorization"] = f"Bearer {await self.oauth_client.get_access_token()}"
 
         logger.debug(f"Making {method} request to {url}")
-        response = self.client.request(method, url, params=params, headers=headers)
+        response = await self.client.request(method, url, params=params, headers=headers)
 
         if response.status_code == 401 and config.opensky.auth.type == "oauth2":
             logger.warning("Token expired, retrying with new token...")
-            headers["Authorization"] = f"Bearer {self.oauth_client.get_access_token()}"
-            response = self.client.request(method, url, params=params, headers=headers)
+            headers["Authorization"] = f"Bearer {await self.oauth_client.get_access_token()}"
+            response = await self.client.request(method, url, params=params, headers=headers)
 
         if not (silent_status and response.status_code in silent_status):
             response.raise_for_status()
         return response
 
-    def get(
+    async def get(
         self,
         endpoint: str,
         params: Optional[dict] = None,
         silent_status: Optional[list[int]] = None,
     ) -> httpx.Response:
         """Make GET request to OpenSky API."""
-        return self._request("GET", endpoint, params=params, silent_status=silent_status)
+        return await self._request("GET", endpoint, params=params, silent_status=silent_status)
 
-    def __enter__(self):
+    async def __aenter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.client.close()
-        self.oauth_client.client.close()
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.client.aclose()
+        await self.oauth_client.__aexit__(exc_type, exc_val, exc_tb)

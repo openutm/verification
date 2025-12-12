@@ -5,7 +5,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("add_flight_declaration")
-def test_add_flight_declaration(fb_client: FlightBlenderClient, data_files: DataFiles) -> None:
+async def test_add_flight_declaration(fb_client: FlightBlenderClient, data_files: DataFiles) -> None:
     """Runs the add flight declaration scenario.
 
     This scenario replicates the behavior of the add_flight_declaration.py importer:
@@ -22,7 +22,7 @@ def test_add_flight_declaration(fb_client: FlightBlenderClient, data_files: Data
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
     """
-    with fb_client.create_flight_declaration(data_files):
-        fb_client.update_operation_state(new_state=OperationState.ACTIVATED, duration_seconds=20)
-        fb_client.submit_telemetry(duration_seconds=30)
-        fb_client.update_operation_state(new_state=OperationState.ENDED)
+    async with fb_client.create_flight_declaration(data_files):
+        await fb_client.update_operation_state(new_state=OperationState.ACTIVATED, duration_seconds=20)
+        await fb_client.submit_telemetry(duration_seconds=30)
+        await fb_client.update_operation_state(new_state=OperationState.ENDED)

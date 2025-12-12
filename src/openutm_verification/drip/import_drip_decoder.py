@@ -2,13 +2,14 @@
 This script imports the DRIP decoder module and perform decoding operations on DRIP messages.
 
 The script provides the following functionalities:
-- Importing the necessary DRIP decoder modules: basic_id_decoder, location_decoder, auth_decoder, operator_id_decoder, self_id_decoder, system_decoder.
+- Importing the necessary DRIP decoder modules: basic_id_decoder, location_decoder, auth_decoder, operator_id_decoder, self_id_decoder, system_decoder
 - Decoding DRIP messages using the imported decoder modules.
 - Printing the decoded information from DRIP messages.
 
 Usage:
 ------
-1. Ensure that the DRIP decoder modules (basic_id_decoder, location_decoder, auth_decoder, operator_id_decoder, self_id_decoder, system_decoder) are present in the same directory as this script.
+1. Ensure that the DRIP decoder modules (basic_id_decoder, location_decoder, auth_decoder, operator_id_decoder, self_id_decoder, system_decoder)
+are present in the same directory as this script.
 
 2. Prepare a raw file containing DRIP messages, with each message in a separate line.
 

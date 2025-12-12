@@ -12,7 +12,7 @@ class BaseBlenderAPIClient:
 
     def __init__(self, base_url: str, credentials: dict, request_timeout: int = 10):
         self.base_url = base_url
-        self.client = httpx.Client(timeout=request_timeout)
+        self.client = httpx.AsyncClient(timeout=request_timeout)
         if credentials and "access_token" in credentials:
             self.client.headers.update(
                 {
@@ -27,7 +27,7 @@ class BaseBlenderAPIClient:
                 }
             )
 
-    def _request(
+    async def _request(
         self,
         method: str,
         endpoint: str,
@@ -36,7 +36,7 @@ class BaseBlenderAPIClient:
     ) -> httpx.Response:
         url = f"{self.base_url}{endpoint}"
         try:
-            response = self.client.request(method, url, json=json)
+            response = await self.client.request(method, url, json=json)
             if not (silent_status and response.status_code in silent_status):
                 response.raise_for_status()
             return response
@@ -47,23 +47,23 @@ class BaseBlenderAPIClient:
             logger.error(f"Request error occurred: {e}")
             raise FlightBlenderError("Request failed") from e
 
-    def get(self, endpoint: str, silent_status: list[int] | None = None) -> httpx.Response:
-        return self._request("GET", endpoint, silent_status=silent_status)
+    async def get(self, endpoint: str, silent_status: list[int] | None = None) -> httpx.Response:
+        return await self._request("GET", endpoint, silent_status=silent_status)
 
-    def post(self, endpoint: str, json: dict, silent_status: list[int] | None = None) -> httpx.Response:
-        return self._request("POST", endpoint, json=json, silent_status=silent_status)
+    async def post(self, endpoint: str, json: dict, silent_status: list[int] | None = None) -> httpx.Response:
+        return await self._request("POST", endpoint, json=json, silent_status=silent_status)
 
-    def put(self, endpoint: str, json: dict, silent_status: list[int] | None = None) -> httpx.Response:
-        return self._request("PUT", endpoint, json=json, silent_status=silent_status)
+    async def put(self, endpoint: str, json: dict, silent_status: list[int] | None = None) -> httpx.Response:
+        return await self._request("PUT", endpoint, json=json, silent_status=silent_status)
 
-    def delete(self, endpoint: str, silent_status: list[int] | None = None) -> httpx.Response:
-        return self._request("DELETE", endpoint, silent_status=silent_status)
+    async def delete(self, endpoint: str, silent_status: list[int] | None = None) -> httpx.Response:
+        return await self._request("DELETE", endpoint, silent_status=silent_status)
 
-    def __enter__(self):
+    async def __aenter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.client.close()
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.client.aclose()
 
     def create_websocket_connection(self, endpoint) -> Any:
         """Create and return a WebSocket connection to the Flight Blender service.

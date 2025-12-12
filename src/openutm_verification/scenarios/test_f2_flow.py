@@ -5,7 +5,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F2_contingent_path")
-def test_f2_contingent_path(fb_client: FlightBlenderClient, data_files: DataFiles):
+async def test_f2_contingent_path(fb_client: FlightBlenderClient, data_files: DataFiles):
     """Runs the F2 contingent path scenario.
 
     This scenario simulates a flight operation that enters a contingent state:
@@ -21,10 +21,10 @@ def test_f2_contingent_path(fb_client: FlightBlenderClient, data_files: DataFile
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
     """
-    with fb_client.create_flight_declaration(data_files):
-        fb_client.update_operation_state(new_state=OperationState.ACTIVATED)
-        fb_client.submit_telemetry(duration_seconds=10)
-        fb_client.update_operation_state(new_state=OperationState.CONTINGENT, duration_seconds=7)
-        fb_client.update_operation_state(new_state=OperationState.ENDED)
+    async with fb_client.create_flight_declaration(data_files):
+        await fb_client.update_operation_state(new_state=OperationState.ACTIVATED)
+        await fb_client.submit_telemetry(duration_seconds=10)
+        await fb_client.update_operation_state(new_state=OperationState.CONTINGENT, duration_seconds=7)
+        await fb_client.update_operation_state(new_state=OperationState.ENDED)
 
-    fb_client.teardown_flight_declaration()
+    await fb_client.teardown_flight_declaration()

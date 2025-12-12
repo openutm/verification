@@ -1,4 +1,4 @@
-from typing import Callable, Generator, Iterable, Optional, TypeVar, cast
+from typing import Any, AsyncGenerator, Callable, Coroutine, Generator, Iterable, Optional, TypeVar, cast
 
 from loguru import logger
 
@@ -28,7 +28,7 @@ def get_scenario_docs(scenario_id: str) -> Optional[str]:
         return None
 
 
-def scenarios() -> Iterable[tuple[str, Callable[..., ScenarioResult]]]:
+def scenarios() -> Iterable[tuple[str, Callable[..., Coroutine[Any, Any, ScenarioResult]]]]:
     """Provides scenarios to run with their functions.
 
     Returns:
@@ -125,7 +125,7 @@ def app_config() -> Generator[AppConfig, None, None]:
 
 
 @dependency(FlightBlenderClient)
-def flight_blender_client(config: AppConfig) -> Generator[FlightBlenderClient, None, None]:
+async def flight_blender_client(config: AppConfig) -> AsyncGenerator[FlightBlenderClient, None]:
     """Provides a FlightBlenderClient instance for dependency injection.
 
     Args:
@@ -138,21 +138,21 @@ def flight_blender_client(config: AppConfig) -> Generator[FlightBlenderClient, N
         audience=config.flight_blender.auth.audience or "",
         scopes=config.flight_blender.auth.scopes or [],
     )
-    with FlightBlenderClient(base_url=config.flight_blender.url, credentials=credentials) as fb_client:
+    async with FlightBlenderClient(base_url=config.flight_blender.url, credentials=credentials) as fb_client:
         yield fb_client
 
 
 @dependency(OpenSkyClient)
-def opensky_client(config: AppConfig) -> Generator[OpenSkyClient, None, None]:
+async def opensky_client(config: AppConfig) -> AsyncGenerator[OpenSkyClient, None]:
     """Provides an OpenSkyClient instance for dependency injection."""
     settings = create_opensky_settings()
-    with OpenSkyClient(settings) as opensky_client:
+    async with OpenSkyClient(settings) as opensky_client:
         yield opensky_client
 
 
 @dependency(AirTrafficClient)
-def air_traffic_client(config: AppConfig) -> Generator[AirTrafficClient, None, None]:
+async def air_traffic_client(config: AppConfig) -> AsyncGenerator[AirTrafficClient, None]:
     """Provides an AirTrafficClient instance for dependency injection."""
     settings = create_air_traffic_settings()
-    with AirTrafficClient(settings) as air_traffic_client:
+    async with AirTrafficClient(settings) as air_traffic_client:
         yield air_traffic_client

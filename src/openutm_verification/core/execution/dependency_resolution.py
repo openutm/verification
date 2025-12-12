@@ -1,37 +1,35 @@
 import inspect
-from contextlib import ExitStack, contextmanager
+from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from contextvars import ContextVar
-from typing import Callable, ContextManager, Generator, Type, TypeVar, cast
+from typing import AsyncContextManager, AsyncGenerator, Callable, ContextManager, Generator, TypeVar, cast
 
 from openutm_verification.core.execution.config_models import RunContext
 
 T = TypeVar("T")
 
 
-DEPENDENCIES: dict[object, Callable[..., ContextManager[object]]] = {}
+DEPENDENCIES: dict[object, Callable[..., ContextManager[object] | AsyncContextManager[object]]] = {}
 CONTEXT: ContextVar[RunContext] = ContextVar(
     "context",
     default=cast(
         RunContext,
-        {
-            "scenario_id": "",
-            "suite_scenario": None,
-            "suite_name": None,
-            "docs": None
-        },
+        {"scenario_id": "", "suite_scenario": None, "suite_name": None, "docs": None},
     ),
 )
 
 
 def dependency(type: object) -> Callable:
-    def wrapper(func: Callable[..., Generator]) -> Callable[..., Generator]:
-        DEPENDENCIES[type] = contextmanager(func)
+    def wrapper(func: Callable[..., Generator | AsyncGenerator]) -> Callable[..., Generator | AsyncGenerator]:
+        if inspect.isasyncgenfunction(func):
+            DEPENDENCIES[type] = asynccontextmanager(func)
+        else:
+            DEPENDENCIES[type] = contextmanager(func)  # type: ignore
         return func
 
     return wrapper
 
 
-def call_with_dependencies(func: Callable[..., T]) -> T:
+async def call_with_dependencies(func: Callable[..., T]) -> T:
     """Call a function with its dependencies automatically provided.
 
     Args:
@@ -40,18 +38,20 @@ def call_with_dependencies(func: Callable[..., T]) -> T:
         The result of the function call.
     """
     sig = inspect.signature(func)
-    with provide(*(p.annotation for p in sig.parameters.values())) as dependencies:
-        return func(*dependencies)
+    async with provide(*(p.annotation for p in sig.parameters.values())) as dependencies:
+        if inspect.iscoroutinefunction(func):
+            return await func(*dependencies)
+        raise ValueError(f"Function {func.__name__} must be async")
 
 
 class DependencyResolver:
     """Resolves dependencies using a provided ExitStack."""
 
-    def __init__(self, stack: ExitStack):
+    def __init__(self, stack: AsyncExitStack):
         self.stack = stack
         self._cache: dict[object, object] = {}
 
-    def resolve(self, type_: object) -> object:
+    async def resolve(self, type_: object) -> object:
         """Resolve a dependency of a specific type."""
         if type_ in self._cache:
             return self._cache[type_]
@@ -66,16 +66,23 @@ class DependencyResolver:
         dep_args = []
         for param in sig.parameters.values():
             if param.annotation is not inspect.Parameter.empty and param.annotation is not type(None):
-                dep_instance = self.resolve(param.annotation)
+                dep_instance = await self.resolve(param.annotation)
                 dep_args.append(dep_instance)
 
-        instance = self.stack.enter_context(dependency_func(*dep_args))
+        cm = dependency_func(*dep_args)
+        if hasattr(cm, "__aenter__"):
+            # cast to AsyncContextManager to satisfy type checker
+            instance = await self.stack.enter_async_context(cast(AsyncContextManager, cm))
+        else:
+            # cast to ContextManager to satisfy type checker
+            instance = self.stack.enter_context(cast(ContextManager, cm))
+
         self._cache[type_] = instance
         return instance
 
 
-@contextmanager
-def provide(*types: object) -> Generator[tuple[object, ...], None, None]:
+@asynccontextmanager
+async def provide(*types: object) -> AsyncGenerator[tuple[object, ...], None]:
     """Context manager to provide dependencies for the given types.
 
     This function recursively resolves dependencies, meaning if a dependency
@@ -87,7 +94,9 @@ def provide(*types: object) -> Generator[tuple[object, ...], None, None]:
     Yields:
         All the requested dependencies as a tuple.
     """
-    with ExitStack() as stack:
+    async with AsyncExitStack() as stack:
         resolver = DependencyResolver(stack)
-        instances = [resolver.resolve(t) for t in types]
+        instances = []
+        for t in types:
+            instances.append(await resolver.resolve(t))
         yield tuple(instances)
