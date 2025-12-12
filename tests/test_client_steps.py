@@ -237,7 +237,6 @@ async def test_initialize_verify_sdsp_track(fb_client):
             # This test is complex to mock perfectly due to time/arrow dependencies.
             # For now, we'll just ensure it runs and calls the websocket.
             # A full logic test would require more extensive mocking of arrow.
-            pass
 
     # Simplified test for now: just check if it calls the websocket setup
     fb_client.initialize_track_websocket_connection = MagicMock()
@@ -273,6 +272,9 @@ async def test_submit_simulated_air_traffic(fb_client):
 
         def __lt__(self, other):
             return self.time_val < other.time_val
+
+        def __le__(self, other):
+            return self.time_val <= other.time_val
 
         def __sub__(self, other):
             return MockArrow(self.time_val - other.time_val)
@@ -368,7 +370,7 @@ async def test_initialize_verify_sdsp_heartbeat(fb_client):
             # The verification logic might fail or pass, but we want to ensure the method executes
             try:
                 await fb_client.initialize_verify_sdsp_heartbeat(1, 3, "sess_123")
-            except Exception:
+            except Exception:  # noqa: E722
                 pass
 
     fb_client.initialize_heartbeat_websocket_connection.assert_called_with(session_id="sess_123")
