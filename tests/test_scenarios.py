@@ -26,7 +26,7 @@ def fb_client():
     flight_declaration_cm.__aexit__ = AsyncMock(return_value=None)
 
     # flight_declaration should return the context manager object directly, not a coroutine
-    client.flight_declaration = MagicMock(return_value=flight_declaration_cm)
+    client.create_flight_declaration = MagicMock(return_value=flight_declaration_cm)
     return client
 
 
@@ -38,7 +38,7 @@ def data_files():
 async def test_add_flight_declaration_scenario(fb_client, data_files):
     await scenario_add_flight_declaration(fb_client, data_files)
 
-    fb_client.flight_declaration.assert_called_once_with(data_files)
+    fb_client.create_flight_declaration.assert_called_once_with(data_files)
     fb_client.update_operation_state.assert_any_call(new_state=OperationState.ACTIVATED, duration_seconds=20)
     fb_client.submit_telemetry.assert_called_once_with(duration_seconds=30)
     fb_client.update_operation_state.assert_any_call(new_state=OperationState.ENDED)
@@ -47,7 +47,7 @@ async def test_add_flight_declaration_scenario(fb_client, data_files):
 async def test_f1_happy_path_scenario(fb_client, data_files):
     await scenario_f1_happy_path(fb_client, data_files)
 
-    fb_client.flight_declaration.assert_called_once_with(data_files)
+    fb_client.create_flight_declaration.assert_called_once_with(data_files)
     fb_client.update_operation_state.assert_any_call(new_state=OperationState.ACTIVATED)
     fb_client.submit_telemetry.assert_called_once_with(duration_seconds=30)
     fb_client.update_operation_state.assert_any_call(new_state=OperationState.ENDED)
@@ -56,7 +56,7 @@ async def test_f1_happy_path_scenario(fb_client, data_files):
 async def test_f2_contingent_path_scenario(fb_client, data_files):
     await scenario_f2_contingent_path(fb_client, data_files)
 
-    fb_client.flight_declaration.assert_called_once_with(data_files)
+    fb_client.create_flight_declaration.assert_called_once_with(data_files)
     fb_client.update_operation_state.assert_any_call(new_state=OperationState.ACTIVATED)
     fb_client.submit_telemetry.assert_called_once_with(duration_seconds=10)
     fb_client.update_operation_state.assert_any_call(new_state=OperationState.CONTINGENT, duration_seconds=7)
@@ -66,7 +66,7 @@ async def test_f2_contingent_path_scenario(fb_client, data_files):
 async def test_f3_non_conforming_path_scenario(fb_client, data_files):
     await scenario_f3_non_conforming_path(fb_client, data_files)
 
-    fb_client.flight_declaration.assert_called_once_with(data_files)
+    fb_client.create_flight_declaration.assert_called_once_with(data_files)
     fb_client.update_operation_state.assert_any_call(new_state=OperationState.ACTIVATED)
     fb_client.wait_x_seconds.assert_called_once_with(5)
     fb_client.submit_telemetry.assert_called_once_with(duration_seconds=20)
@@ -77,7 +77,7 @@ async def test_f3_non_conforming_path_scenario(fb_client, data_files):
 async def test_f5_non_conforming_contingent_path_scenario(fb_client, data_files):
     await scenario_f5_non_conforming_contingent_path(fb_client, data_files)
 
-    fb_client.flight_declaration.assert_called_once_with(data_files)
+    fb_client.create_flight_declaration.assert_called_once_with(data_files)
     fb_client.update_operation_state.assert_any_call(new_state=OperationState.ACTIVATED)
     fb_client.submit_telemetry.assert_called_once_with(duration_seconds=20)
     fb_client.check_operation_state_connected.assert_called_once_with(expected_state=OperationState.NONCONFORMING, duration_seconds=5)

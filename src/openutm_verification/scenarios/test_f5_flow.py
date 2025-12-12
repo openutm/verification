@@ -12,5 +12,5 @@ async def test_f5_non_conforming_contingent_path(fb_client: FlightBlenderClient,
         await fb_client.check_operation_state_connected(expected_state=OperationState.NONCONFORMING, duration_seconds=5)
         await fb_client.update_operation_state(new_state=OperationState.CONTINGENT)
         await fb_client.update_operation_state(new_state=OperationState.ENDED)
-    
-    fb_client.teardown_flight_declaration()
+
+    await fb_client.teardown_flight_declaration()

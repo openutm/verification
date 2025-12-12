@@ -27,4 +27,4 @@ async def test_f2_contingent_path(fb_client: FlightBlenderClient, data_files: Da
         await fb_client.update_operation_state(new_state=OperationState.CONTINGENT, duration_seconds=7)
         await fb_client.update_operation_state(new_state=OperationState.ENDED)
 
-    fb_client.teardown_flight_declaration()
+    await fb_client.teardown_flight_declaration()

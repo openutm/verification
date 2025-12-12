@@ -25,4 +25,4 @@ async def test_f1_happy_path(fb_client: FlightBlenderClient, data_files: DataFil
         await fb_client.submit_telemetry(duration_seconds=30)
         await fb_client.update_operation_state(new_state=OperationState.ENDED)
 
-    fb_client.teardown_flight_declaration()
+    await fb_client.teardown_flight_declaration()

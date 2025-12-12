@@ -248,7 +248,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return response_json
 
     @scenario_step("Wait for User Input")
-    def wait_for_user_input(self, prompt: str = "Press Enter to continue...") -> str:
+    async def wait_for_user_input(self, prompt: str = "Press Enter to continue...") -> str:
         """Wait for user input to proceed.
 
         This method prompts the user for input and waits until the user responds.
@@ -256,7 +256,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         Args:
             prompt: The message to display to the user.
         """
-        input(prompt)
+        return input(prompt)
 
     @scenario_step("Update Operation State")
     async def update_operation_state(self, new_state: OperationState, duration_seconds: int = 0) -> Dict[str, Any]:
@@ -764,9 +764,9 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         ws_connection.close()
 
     @scenario_step("Teardown Flight Declaration")
-    def teardown_flight_declaration(self):
+    async def teardown_flight_declaration(self):
         logger.info("Tearing down flight declaration...")
-        self.delete_flight_declaration()
+        await self.delete_flight_declaration()
 
     @scenario_step("Setup Flight Declaration")
     async def setup_flight_declaration(self, flight_declaration_path: str, trajectory_path: str) -> None:
