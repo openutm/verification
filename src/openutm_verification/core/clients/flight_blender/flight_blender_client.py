@@ -578,7 +578,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         session_id = uuid.uuid4()
         endpoint = f"/flight_stream/set_air_traffic/{session_id}"
         logger.debug(f"Submitting {len(observations)} air traffic observations")
-        payload = {"observations": observations}
+        payload = {"observations": [obs.model_dump(mode="json") for obs in observations]}
 
         response = await self.post(endpoint, json=payload)
         logger.debug(f"Air traffic submission response: {response.text}")

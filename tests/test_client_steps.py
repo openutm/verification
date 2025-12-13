@@ -187,7 +187,18 @@ async def test_submit_air_traffic(fb_client):
     mock_response.json.return_value = {"status": "ok"}
     fb_client.post.return_value = mock_response
 
-    observations = [{"icao": "abc"}]
+    observations = [
+        FlightObservationSchema(
+            lat_dd=0.0,
+            lon_dd=0.0,
+            altitude_mm=0.0,
+            traffic_source=0,
+            source_type=0,
+            timestamp=0,
+            metadata={"session_id": "sess1"},
+            icao_address="A1",
+        )
+    ]
     result = await fb_client.submit_air_traffic(observations=observations)
 
     assert result.status == Status.PASS
