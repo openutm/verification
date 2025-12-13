@@ -551,7 +551,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             for filtered_observation in filtered_observations:
                 session_id = filtered_observation[0].metadata["session_id"]
                 endpoint = f"/flight_stream/set_air_traffic/{session_id}"
-                payload = {"observations": filtered_observation}
+                payload = {"observations": [obs.model_dump(mode="json") for obs in filtered_observation]}
 
                 ScenarioContext.add_air_traffic_data(filtered_observation)
                 response = await self.post(endpoint, json=payload)
