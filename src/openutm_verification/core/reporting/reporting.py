@@ -1,3 +1,4 @@
+import json
 import shutil
 from pathlib import Path
 
@@ -20,6 +21,8 @@ def generate_reports(
     """
     output_dir = Path(reporting_config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    _save_scenario_data(report_data, output_dir)
 
     formats = reporting_config.formats
     if "json" in formats:
@@ -117,15 +120,19 @@ def _generate_scenario_visualizations(result, telemetry_data, declaration_data, 
     # Sanitize scenario name for filename
     sanitized_name = result.name.replace(" ", "_").replace("-", "_")
 
+    # Create scenario directory
+    scenario_dir = output_dir / result.name
+    scenario_dir.mkdir(parents=True, exist_ok=True)
+
     # Generate 2D visualization
     vis_2d_filename = f"{base_filename}_{sanitized_name}_2d.html"
-    vis_2d_path = output_dir / vis_2d_filename
+    vis_2d_path = scenario_dir / vis_2d_filename
     visualize_flight_path_2d(telemetry_data, declaration_data, str(vis_2d_path))
     result.visualization_2d_path = str(vis_2d_path.relative_to(output_dir))
 
     # Generate 3D visualization
     vis_3d_filename = f"{base_filename}_{sanitized_name}_3d.html"
-    vis_3d_path = output_dir / vis_3d_filename
+    vis_3d_path = scenario_dir / vis_3d_filename
     visualize_flight_path_3d(telemetry_data, declaration_data, str(vis_3d_path))
     result.visualization_3d_path = str(vis_3d_path.relative_to(output_dir))
 
@@ -152,3 +159,24 @@ def _generate_visualizations(report_data: ReportData, output_dir: Path, base_fil
                 _generate_scenario_visualizations(result, telemetry_data, declaration_data, output_dir, base_filename)
             except Exception as e:
                 logger.warning(f"Failed to generate visualizations for scenario '{result.name}': {e}")
+
+
+def _save_scenario_data(report_data: ReportData, output_dir: Path):
+    """
+    Saves generated data for each scenario in a subdirectory.
+    """
+    for result in report_data.results:
+        scenario_dir = output_dir / result.name
+        scenario_dir.mkdir(parents=True, exist_ok=True)
+
+        if result.flight_declaration_data:
+            file_path = scenario_dir / "flight_declaration.json"
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(result.flight_declaration_data, f, indent=2)
+            logger.debug(f"Saved flight declaration data to {file_path}")
+
+        if result.telemetry_data:
+            file_path = scenario_dir / "telemetry.json"
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(result.telemetry_data, f, indent=2)
+            logger.debug(f"Saved telemetry data to {file_path}")
