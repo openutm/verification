@@ -81,7 +81,7 @@ class GeoJSONAirtrafficSimulator:
         duration: int,
         session_ids: list[UUID],
         number_of_aircraft: int = 1,
-    ) -> list[list[dict]]:
+    ) -> list[list[FlightObservationSchema]]:
         """Generate simulated air traffic observations for the specified duration.
 
         Creates random flight trajectories within the configured geographic bounds
@@ -105,11 +105,11 @@ class GeoJSONAirtrafficSimulator:
             trajectory_geojson = generate_random_geojson("LineString", boundingBox=self.box.bounds, numberVertices=duration)
             all_trajectories.append(trajectory_geojson)
 
-        all_air_traffic: list[list[dict]] = []
+        all_air_traffic: list[list[FlightObservationSchema]] = []
         for trajectory_geojson in all_trajectories:
             # A GeoJSON LineString has 'coordinates' as a list of [lon, lat] pairs
             coordinates = trajectory_geojson["coordinates"]
-            airtraffic: list[dict] = []
+            airtraffic: list[FlightObservationSchema] = []
             icao_address = "".join(random.choices("0123456789ABCDEF", k=6))
             for i in range(duration):
                 timestamp = self.reference_time.shift(seconds=i)
@@ -125,7 +125,7 @@ class GeoJSONAirtrafficSimulator:
                             icao_address=icao_address,
                             timestamp=timestamp.int_timestamp,
                             metadata=metadata,
-                        ).model_dump()
+                        )
                     )
             all_air_traffic.append(airtraffic)
         logger.info(f"Generated observations for {len(all_air_traffic)} aircraft")

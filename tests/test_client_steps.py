@@ -8,6 +8,7 @@ from openutm_verification.core.clients.flight_blender.flight_blender_client impo
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
 from openutm_verification.core.reporting.reporting_models import Status
 from openutm_verification.models import OperationState, SDSPSessionAction
+from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
 
 
 @pytest.fixture
@@ -186,7 +187,18 @@ async def test_submit_air_traffic(fb_client):
     mock_response.json.return_value = {"status": "ok"}
     fb_client.post.return_value = mock_response
 
-    observations = [{"icao": "abc"}]
+    observations = [
+        FlightObservationSchema(
+            lat_dd=0.0,
+            lon_dd=0.0,
+            altitude_mm=0.0,
+            traffic_source=0,
+            source_type=0,
+            timestamp=0,
+            metadata={"session_id": "sess1"},
+            icao_address="A1",
+        )
+    ]
     result = await fb_client.submit_air_traffic(observations=observations)
 
     assert result.status == Status.PASS
@@ -256,12 +268,48 @@ async def test_submit_simulated_air_traffic(fb_client):
     # Create dummy observations
     obs = [
         [
-            {"timestamp": "2023-01-01T00:00:00Z", "metadata": {"session_id": "sess1"}, "icao_address": "A1"},
-            {"timestamp": "2023-01-01T00:00:01Z", "metadata": {"session_id": "sess1"}, "icao_address": "A1"},
+            FlightObservationSchema(
+                lat_dd=0.0,
+                lon_dd=0.0,
+                altitude_mm=0.0,
+                traffic_source=0,
+                source_type=0,
+                timestamp=0,
+                metadata={"session_id": "sess1"},
+                icao_address="A1",
+            ),
+            FlightObservationSchema(
+                lat_dd=0.0,
+                lon_dd=0.0,
+                altitude_mm=0.0,
+                traffic_source=0,
+                source_type=0,
+                timestamp=1,
+                metadata={"session_id": "sess1"},
+                icao_address="A1",
+            ),
         ],
         [
-            {"timestamp": "2023-01-01T00:00:00Z", "metadata": {"session_id": "sess2"}, "icao_address": "A2"},
-            {"timestamp": "2023-01-01T00:00:01Z", "metadata": {"session_id": "sess2"}, "icao_address": "A2"},
+            FlightObservationSchema(
+                lat_dd=0.0,
+                lon_dd=0.0,
+                altitude_mm=0.0,
+                traffic_source=0,
+                source_type=0,
+                timestamp=0,
+                metadata={"session_id": "sess2"},
+                icao_address="A2",
+            ),
+            FlightObservationSchema(
+                lat_dd=0.0,
+                lon_dd=0.0,
+                altitude_mm=0.0,
+                traffic_source=0,
+                source_type=0,
+                timestamp=1,
+                metadata={"session_id": "sess2"},
+                icao_address="A2",
+            ),
         ],
     ]
 
@@ -431,5 +479,5 @@ async def test_fetch_data(os_client):
     result = await os_client.fetch_data()
 
     assert len(result.details) == 1
-    assert result.details[0]["icao_address"] == "icao1"
+    assert result.details[0].icao_address == "icao1"
     os_client.get.assert_called_once()

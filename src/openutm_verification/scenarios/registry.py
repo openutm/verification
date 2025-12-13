@@ -43,6 +43,7 @@ async def _run_scenario_simple_async(scenario_id: str, func: Callable, args, kwa
             steps = ctx.steps
             flight_declaration_data = ctx.flight_declaration_data
             telemetry_data = ctx.telemetry_data
+            air_traffic_data = ctx.air_traffic_data
 
         final_status = Status.PASS if all(s.status == Status.PASS for s in steps) else Status.FAIL
         total_duration = sum(s.duration for s in steps)
@@ -53,6 +54,7 @@ async def _run_scenario_simple_async(scenario_id: str, func: Callable, args, kwa
             steps=steps,
             flight_declaration_data=flight_declaration_data,
             telemetry_data=telemetry_data,
+            air_traffic_data=air_traffic_data,
         )
 
     except Exception as e:

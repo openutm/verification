@@ -18,6 +18,7 @@ from openutm_verification.simulator.geo_json_telemetry import (
 )
 from openutm_verification.simulator.models.flight_data_types import (
     AirTrafficGeneratorConfiguration,
+    FlightObservationSchema,
 )
 
 
@@ -35,7 +36,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         self,
         config_path: Optional[str] = None,
         duration: Optional[int] = None,
-    ) -> list[list[dict]]:
+    ) -> list[list[FlightObservationSchema]]:
         """Generate simulated air traffic data from GeoJSON configuration.
 
         Loads GeoJSON data from the specified config path and uses it to generate
