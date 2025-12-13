@@ -37,6 +37,7 @@ from openutm_verification.rid import (
     RIDOperatorDetails,
     UAClassificationEU,
 )
+from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
 
 
 def _create_rid_operator_details(operation_id: str) -> RIDOperatorDetails:
@@ -503,7 +504,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
     @scenario_step("Submit Simulated Air Traffic")
     async def submit_simulated_air_traffic(
         self,
-        observations: List[List[Dict[str, Any]]],
+        observations: list[list[FlightObservationSchema]],
         single_or_multiple_sensors: str = "single",
     ) -> bool:
         now = arrow.now()
@@ -519,8 +520,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         for aircraft_obs in observations:
             if not aircraft_obs:
                 continue
-            start_times.append(arrow.get(aircraft_obs[0]["timestamp"]))
-            end_times.append(arrow.get(aircraft_obs[-1]["timestamp"]))
+            start_times.append(arrow.get(aircraft_obs[0].timestamp))
+            end_times.append(arrow.get(aircraft_obs[-1].timestamp))
         simulation_start = min(start_times)
         simulation_end = max(end_times)
 
@@ -536,31 +537,32 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             while arrow.now() < target_real_time:
                 await asyncio.sleep(0.1)
             # For each aircraft, find the observation closest to the current simulation time
-            filtered_observations = []
+            filtered_observations: list[list[FlightObservationSchema]] = []
             for aircraft_obs in observations:
                 if not aircraft_obs:
                     continue
                 closest_obs = min(
                     aircraft_obs,
-                    key=lambda obs: abs(arrow.get(obs["timestamp"]) - current_simulation_time),
+                    key=lambda obs: abs(arrow.get(obs.timestamp) - current_simulation_time),
                 )
                 filtered_observations.append([closest_obs])
             # Submit the filtered observations for each aircraft to the API
-            logger.debug(f"Submitting {len(observations)} air traffic observations")
+            logger.debug(f"Submitting {len(filtered_observations)} air traffic observations")
             for filtered_observation in filtered_observations:
-                session_id = filtered_observation[0]["metadata"]["session_id"]
+                session_id = filtered_observation[0].metadata["session_id"]
                 endpoint = f"/flight_stream/set_air_traffic/{session_id}"
                 payload = {"observations": filtered_observation}
 
+                ScenarioContext.add_air_traffic_data(filtered_observation)
                 response = await self.post(endpoint, json=payload)
                 logger.debug(f"Air traffic submission response: {response.text}")
-                logger.info(f"Observations submitted for aircraft {filtered_observation[0]['icao_address']} at time {current_simulation_time}")
+                logger.info(f"Observations submitted for aircraft {filtered_observation[0].icao_address} at time {current_simulation_time}")
             # Advance the simulation time by 1 second
             current_simulation_time = current_simulation_time.shift(seconds=1)
         return True
 
     @scenario_step("Submit Air Traffic")
-    async def submit_air_traffic(self, observations: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def submit_air_traffic(self, observations: list[FlightObservationSchema]) -> Dict[str, Any]:
         """Submit air traffic observations to the Flight Blender API.
 
         Args:
@@ -572,6 +574,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         Raises:
             FlightBlenderError: If the submission request fails.
         """
+        ScenarioContext.add_air_traffic_data(observations)
         session_id = uuid.uuid4()
         endpoint = f"/flight_stream/set_air_traffic/{session_id}"
         logger.debug(f"Submitting {len(observations)} air traffic observations")

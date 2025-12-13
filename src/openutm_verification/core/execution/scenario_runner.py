@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Coroutine, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
+from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
 
 from loguru import logger
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState
@@ -13,6 +13,7 @@ from openutm_verification.core.clients.opensky.base_client import OpenSkyError
 from openutm_verification.core.reporting.reporting_models import ScenarioResult, Status, StepResult
 from openutm_verification.models import FlightBlenderError
 from openutm_verification.simulator.models.declaration_models import FlightDeclaration
+from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -25,6 +26,7 @@ class ScenarioState:
     active: bool = False
     flight_declaration_data: Optional[Any] = None
     telemetry_data: Optional[Any] = None
+    air_traffic_data: list[list[FlightObservationSchema]] = field(default_factory=list)
 
 
 class ScenarioRegistry(TypedDict):
@@ -69,6 +71,12 @@ class ScenarioContext:
         if state and state.active:
             state.telemetry_data = data
 
+    @classmethod
+    def add_air_traffic_data(cls, data: list[FlightObservationSchema]) -> None:
+        state = _scenario_state.get()
+        if state and state.active:
+            state.air_traffic_data.append(data)
+
     @property
     def steps(self) -> List[StepResult[Any]]:
         if self._state:
@@ -89,6 +97,13 @@ class ScenarioContext:
             return self._state.telemetry_data
         state = _scenario_state.get()
         return state.telemetry_data if state else None
+
+    @property
+    def air_traffic_data(self) -> list[list[FlightObservationSchema]]:
+        if self._state:
+            return self._state.air_traffic_data
+        state = _scenario_state.get()
+        return state.air_traffic_data if state else []
 
 
 class StepDecorator(Protocol):

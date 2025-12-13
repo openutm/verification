@@ -10,6 +10,7 @@ from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 from openutm_verification.core.execution.config_models import DeploymentDetails
 from openutm_verification.simulator.models.declaration_models import FlightDeclaration
+from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
 
 
 class Status(StrEnum):
@@ -29,25 +30,26 @@ class StepResult(BaseModel, Generic[T]):
     status: Status
     duration: float
     details: T = None  # type: ignore
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class ScenarioResult(BaseModel, arbitrary_types_allowed=True):
     """Data model for the result of a single scenario."""
 
     name: str
-    suite_name: Optional[str] = None
+    suite_name: str | None = None
     status: Status
     duration_seconds: float
-    steps: List[StepResult[Any]]
-    error_message: Optional[str] = None
-    flight_declaration_filename: Optional[str] = None
-    telemetry_filename: Optional[str] = None
-    flight_declaration_data: Optional[FlightDeclaration] = None
-    telemetry_data: Optional[list[RIDAircraftState]] = None
-    visualization_2d_path: Optional[str] = None
-    visualization_3d_path: Optional[str] = None
-    docs: Optional[str] = None
+    steps: list[StepResult[Any]]
+    error_message: str | None = None
+    flight_declaration_filename: str | None = None
+    telemetry_filename: str | None = None
+    flight_declaration_data: FlightDeclaration | None = None
+    telemetry_data: list[RIDAircraftState] | None = None
+    air_traffic_data: list[list[FlightObservationSchema]] | None = None
+    visualization_2d_path: str | None = None
+    visualization_3d_path: str | None = None
+    docs: str | None = None
 
 
 class ReportSummary(BaseModel):

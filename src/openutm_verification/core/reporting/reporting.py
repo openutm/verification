@@ -169,12 +169,19 @@ def _save_scenario_data(report_data: ReportData, output_dir: Path):
         scenario_dir = output_dir / result.name
         scenario_dir.mkdir(parents=True, exist_ok=True)
 
-        if result.flight_declaration_data:
+        json_result = result.model_dump(mode="json")
+
+        if "flight_declaration_data" in json_result:
             file_path = scenario_dir / "flight_declaration.json"
-            file_path.write_text(result.flight_declaration_data.model_dump_json(), encoding="utf-8")
+            file_path.write_text(json.dumps(json_result["flight_declaration_data"], indent=2), encoding="utf-8")
             logger.debug(f"Saved flight declaration data to {file_path}")
 
-        if result.telemetry_data:
+        if "telemetry_data" in json_result:
             file_path = scenario_dir / "telemetry.json"
-            file_path.write_text(json.dumps(result.telemetry_data, indent=2), encoding="utf-8")
+            file_path.write_text(json.dumps(json_result["telemetry_data"], indent=2), encoding="utf-8")
             logger.debug(f"Saved telemetry data to {file_path}")
+
+        if "air_traffic_data" in json_result:
+            file_path = scenario_dir / "air_traffic.json"
+            file_path.write_text(json.dumps(json_result["air_traffic_data"], indent=2), encoding="utf-8")
+            logger.debug(f"Saved air traffic data to {file_path}")
