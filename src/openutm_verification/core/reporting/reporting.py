@@ -94,7 +94,7 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
     env.filters["markdown"] = lambda text: markdown.markdown(text) if text else ""
     template = env.get_template("report_template.html")
 
-    html_content = template.render(report_data=report_data)
+    html_content = template.render(report_data=report_data.model_dump(mode="json"))
 
     report_path = output_dir / f"{base_filename}.html"
     with open(report_path, "w", encoding="utf-8") as f:
