@@ -171,12 +171,10 @@ def _save_scenario_data(report_data: ReportData, output_dir: Path):
 
         if result.flight_declaration_data:
             file_path = scenario_dir / "flight_declaration.json"
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(result.flight_declaration_data, f, indent=2)
+            file_path.write_text(result.flight_declaration_data.model_dump_json(), encoding="utf-8")
             logger.debug(f"Saved flight declaration data to {file_path}")
 
         if result.telemetry_data:
             file_path = scenario_dir / "telemetry.json"
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(result.telemetry_data, f, indent=2)
+            file_path.write_text(json.dumps(result.telemetry_data, indent=2), encoding="utf-8")
             logger.debug(f"Saved telemetry data to {file_path}")

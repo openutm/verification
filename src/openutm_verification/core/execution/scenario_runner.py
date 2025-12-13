@@ -7,10 +7,12 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Coroutine, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
 
 from loguru import logger
+from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 from openutm_verification.core.clients.opensky.base_client import OpenSkyError
 from openutm_verification.core.reporting.reporting_models import ScenarioResult, Status, StepResult
 from openutm_verification.models import FlightBlenderError
+from openutm_verification.simulator.models.declaration_models import FlightDeclaration
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -56,13 +58,13 @@ class ScenarioContext:
             state.steps.append(result)
 
     @classmethod
-    def set_flight_declaration_data(cls, data: Any) -> None:
+    def set_flight_declaration_data(cls, data: FlightDeclaration) -> None:
         state = _scenario_state.get()
         if state and state.active:
             state.flight_declaration_data = data
 
     @classmethod
-    def set_telemetry_data(cls, data: Any) -> None:
+    def set_telemetry_data(cls, data: list[RIDAircraftState]) -> None:
         state = _scenario_state.get()
         if state and state.active:
             state.telemetry_data = data
@@ -75,14 +77,14 @@ class ScenarioContext:
         return state.steps if state else []
 
     @property
-    def flight_declaration_data(self) -> Optional[Any]:
+    def flight_declaration_data(self) -> Optional[FlightDeclaration]:
         if self._state:
             return self._state.flight_declaration_data
         state = _scenario_state.get()
         return state.flight_declaration_data if state else None
 
     @property
-    def telemetry_data(self) -> Optional[Any]:
+    def telemetry_data(self) -> Optional[list[RIDAircraftState]]:
         if self._state:
             return self._state.telemetry_data
         state = _scenario_state.get()

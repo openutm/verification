@@ -6,8 +6,10 @@ from enum import StrEnum
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel
+from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 from openutm_verification.core.execution.config_models import DeploymentDetails
+from openutm_verification.simulator.models.declaration_models import FlightDeclaration
 
 
 class Status(StrEnum):
@@ -30,7 +32,7 @@ class StepResult(BaseModel, Generic[T]):
     error_message: Optional[str] = None
 
 
-class ScenarioResult(BaseModel):
+class ScenarioResult(BaseModel, arbitrary_types_allowed=True):
     """Data model for the result of a single scenario."""
 
     name: str
@@ -41,8 +43,8 @@ class ScenarioResult(BaseModel):
     error_message: Optional[str] = None
     flight_declaration_filename: Optional[str] = None
     telemetry_filename: Optional[str] = None
-    flight_declaration_data: Optional[Any] = None
-    telemetry_data: Optional[Any] = None
+    flight_declaration_data: Optional[FlightDeclaration] = None
+    telemetry_data: Optional[list[RIDAircraftState]] = None
     visualization_2d_path: Optional[str] = None
     visualization_3d_path: Optional[str] = None
     docs: Optional[str] = None
