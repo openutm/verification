@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
+from typing import Any, Awaitable, Callable, Coroutine, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
 
 from loguru import logger
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState
@@ -22,25 +22,25 @@ R = TypeVar("R", bound=StepResult[Any])
 
 @dataclass
 class ScenarioState:
-    steps: List[StepResult[Any]] = field(default_factory=list)
+    steps: list[StepResult[Any]] = field(default_factory=list)
     active: bool = False
-    flight_declaration_data: Optional[Any] = None
-    telemetry_data: Optional[Any] = None
+    flight_declaration_data: FlightDeclaration | None = None
+    telemetry_data: list[RIDAircraftState] | None = None
     air_traffic_data: list[list[FlightObservationSchema]] = field(default_factory=list)
 
 
 class ScenarioRegistry(TypedDict):
     func: Callable[..., Coroutine[Any, Any, ScenarioResult]]
-    docs: Optional[Path]
+    docs: Path | None
 
 
-_scenario_state: contextvars.ContextVar[Optional[ScenarioState]] = contextvars.ContextVar("scenario_state", default=None)
+_scenario_state: contextvars.ContextVar[ScenarioState | None] = contextvars.ContextVar("scenario_state", default=None)
 
 
 class ScenarioContext:
     def __init__(self):
         self._token = None
-        self._state: Optional[ScenarioState] = None
+        self._state: ScenarioState | None = None
 
     def __enter__(self):
         self._state = ScenarioState(active=True)
@@ -78,21 +78,21 @@ class ScenarioContext:
             state.air_traffic_data.append(data)
 
     @property
-    def steps(self) -> List[StepResult[Any]]:
+    def steps(self) -> list[StepResult[Any]]:
         if self._state:
             return self._state.steps
         state = _scenario_state.get()
         return state.steps if state else []
 
     @property
-    def flight_declaration_data(self) -> Optional[FlightDeclaration]:
+    def flight_declaration_data(self) -> FlightDeclaration | None:
         if self._state:
             return self._state.flight_declaration_data
         state = _scenario_state.get()
         return state.flight_declaration_data if state else None
 
     @property
-    def telemetry_data(self) -> Optional[list[RIDAircraftState]]:
+    def telemetry_data(self) -> list[RIDAircraftState] | None:
         if self._state:
             return self._state.telemetry_data
         state = _scenario_state.get()

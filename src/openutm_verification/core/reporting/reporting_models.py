@@ -3,9 +3,9 @@ Pydantic models for reporting configuration.
 """
 
 from enum import StrEnum
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 from openutm_verification.core.execution.config_models import DeploymentDetails
@@ -33,8 +33,10 @@ class StepResult(BaseModel, Generic[T]):
     error_message: str | None = None
 
 
-class ScenarioResult(BaseModel, arbitrary_types_allowed=True):
+class ScenarioResult(BaseModel):
     """Data model for the result of a single scenario."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str
     suite_name: str | None = None
@@ -72,7 +74,7 @@ class ReportData(BaseModel):
     flight_blender_url: str
     deployment_details: DeploymentDetails
     config_file: str
-    config: Dict[str, Any]
-    results: List[ScenarioResult]
+    config: dict[str, Any]
+    results: list[ScenarioResult]
     summary: ReportSummary
-    docs_dir: Optional[str] = None
+    docs_dir: str | None = None

@@ -1,5 +1,3 @@
-from typing import Optional
-
 import pandas as pd
 from loguru import logger
 
@@ -55,7 +53,7 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
             "lomax": lng_max,
         }
 
-    async def fetch_states_data(self) -> Optional[pd.DataFrame]:
+    async def fetch_states_data(self) -> pd.DataFrame | None:
         """Fetch current flight states from OpenSky Network."""
         try:
             response = await self.get("/states/all", params=self._viewport_bounds)

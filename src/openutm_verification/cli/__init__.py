@@ -42,11 +42,17 @@ def main():
     ConfigProxy.initialize(config)
 
     # Setup logging
-    output_dir = Path(config.reporting.output_dir)
+    run_timestamp = datetime.now(timezone.utc)
+    timestamp_str = run_timestamp.strftime("%Y-%m-%dT%H-%M-%SZ")
+
+    base_output_dir = Path(config.reporting.output_dir)
+    output_dir = base_output_dir / f"run_{timestamp_str}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    run_timestamp = datetime.now(timezone.utc)
-    base_filename = f"report_{run_timestamp.strftime('%Y-%m-%dT%H-%M-%SZ')}"
+    # Update config so downstream components use the new directory
+    config.reporting.output_dir = str(output_dir)
+
+    base_filename = "report"
     log_file = setup_logging(output_dir, base_filename, config.reporting.formats, args.debug)
 
     # Run verification scenarios

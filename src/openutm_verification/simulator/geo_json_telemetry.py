@@ -2,7 +2,6 @@ import json
 import random
 import sys
 from pathlib import Path
-from typing import List, Optional
 from uuid import UUID
 
 import arrow
@@ -155,7 +154,7 @@ class GeoJSONFlightsSimulator:
         self.utm_zone: int = config.utm_zone
         self.altitude_agl: float = 50.0
 
-        self.flight: Optional[FullFlightRecord] = None
+        self.flight: FullFlightRecord | None = None
 
         self.geod: Geod = Geod(ellps="WGS84")
 
@@ -299,12 +298,12 @@ class GeoJSONFlightsSimulator:
             registration_number=my_flight_details_generator.generate_registration_number(),
         )
 
-    def generate_states(self, duration: int, loop_path: bool = False) -> List[RIDAircraftState]:
+    def generate_states(self, duration: int, loop_path: bool = False) -> list[RIDAircraftState]:
         """
         Generate rid_state objects that can be submitted as flight telemetry.
         """
         logger.info(f"Generating flight states for {duration} seconds")
-        all_flight_telemetry: List[List[RIDAircraftState]] = []
+        all_flight_telemetry: list[list[RIDAircraftState]] = []
         flight_track_details: dict[int, dict[str, int]] = {}
         flight_current_index: dict[int, int] = {}
         num_flights = len(self.grid_cells_flight_tracks)
@@ -359,7 +358,7 @@ class GeoJSONFlightsSimulator:
                 all_flight_telemetry[k].append(rid_aircraft_state)
                 flight_current_index[k] = flight_current_index[k] + 1
 
-        flights: List[FullFlightRecord] = []
+        flights: list[FullFlightRecord] = []
         for m in range(num_flights):
             record = FullFlightRecord(
                 reference_time=now_isoformat,
@@ -378,7 +377,7 @@ class GeoJSONFlightsSimulator:
         """Convert a RIDAircraftState to a JSON-serializable dict."""
         return json.loads(json.dumps(state))
 
-    def to_jsonable_states(self, states: List[RIDAircraftState]) -> List[dict]:
+    def to_jsonable_states(self, states: list[RIDAircraftState]) -> list[dict]:
         """Convert a list of RIDAircraftState to a list of JSON-serializable dicts."""
         return [self.to_jsonable_state(state) for state in states]
 

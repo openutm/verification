@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Callable, Coroutine, Generator, Iterable, Optional, TypeVar, cast
+from typing import Any, AsyncGenerator, Callable, Coroutine, Generator, Iterable, TypeVar, cast
 
 from loguru import logger
 
@@ -16,7 +16,7 @@ from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 T = TypeVar("T")
 
 
-def get_scenario_docs(scenario_id: str) -> Optional[str]:
+def get_scenario_docs(scenario_id: str) -> str | None:
     docs_path = SCENARIO_REGISTRY[scenario_id].get("docs")
     if docs_path and docs_path.exists():
         try:

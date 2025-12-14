@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from typing import Any, List
 
 from loguru import logger
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState
@@ -25,7 +24,7 @@ def generate_flight_declaration(config_path: str) -> FlightDeclaration:
         raise
 
 
-def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION) -> List[RIDAircraftState]:
+def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION) -> list[RIDAircraftState]:
     """Generate telemetry states from the GeoJSON config file at the given path."""
     try:
         logger.debug(f"Generating telemetry states from {config_path} for duration {duration} seconds")

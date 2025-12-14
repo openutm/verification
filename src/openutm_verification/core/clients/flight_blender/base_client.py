@@ -1,8 +1,6 @@
-from typing import Any
-
 import httpx
 from loguru import logger
-from websocket import create_connection
+from websocket import WebSocket, create_connection
 
 from openutm_verification.models import FlightBlenderError
 
@@ -65,7 +63,7 @@ class BaseBlenderAPIClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.client.aclose()
 
-    def create_websocket_connection(self, endpoint) -> Any:
+    def create_websocket_connection(self, endpoint) -> WebSocket:
         """Create and return a WebSocket connection to the Flight Blender service.
 
         This method establishes a WebSocket connection using the configured
@@ -86,7 +84,7 @@ class BaseBlenderAPIClient:
             websocket_connection.send(self.client.headers["Authorization"])
         return websocket_connection
 
-    def close_websocket_connection(self, ws_connection: Any) -> None:
+    def close_websocket_connection(self, ws_connection: WebSocket) -> None:
         """Close the given WebSocket connection.
 
         Args:

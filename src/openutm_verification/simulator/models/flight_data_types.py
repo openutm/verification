@@ -1,5 +1,3 @@
-from typing import List, Optional
-
 from implicitdict import ImplicitDict, StringBasedDateTime
 from pydantic import BaseModel, Field
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState, RIDFlightDetails
@@ -22,7 +20,7 @@ class FullFlightRecord(ImplicitDict):
     reference_time: StringBasedDateTime
     """The reference time of this flight (usually the time of first telemetry)"""
 
-    states: List[RIDAircraftState]
+    states: list[RIDAircraftState]
     """All telemetry that will be/was received for this flight"""
 
     flight_details: RIDFlightDetails
@@ -33,7 +31,7 @@ class FullFlightRecord(ImplicitDict):
 
 
 class FlightRecordCollection(ImplicitDict):
-    flights: List[FullFlightRecord]
+    flights: list[FullFlightRecord]
 
 
 class AdjacentCircularFlightsSimulatorConfiguration(ImplicitDict):
@@ -44,7 +42,7 @@ class AdjacentCircularFlightsSimulatorConfiguration(ImplicitDict):
     relative to a time close to the time of test.
     """
 
-    random_seed: Optional[int] = 12345
+    random_seed: int | None = 12345
     """Pseudorandom seed that should be used, or specify None to use default Random."""
 
     minx: float = 7.4735784530639648
@@ -78,7 +76,7 @@ class GeoJSONFlightsSimulatorConfiguration(ImplicitDict):
     relative to a time close to the time of test.
     """
 
-    random_seed: Optional[int] = 12345
+    random_seed: int | None = 12345
     """Pseudorandom seed that should be used, or specify None to use default Random."""
     geojson: dict
     utm_zone: int = 32
@@ -100,7 +98,7 @@ class AirTrafficGeneratorConfiguration(ImplicitDict):
     relative to a time close to the time of test.
     """
 
-    random_seed: Optional[int] = 12345
+    random_seed: int | None = 12345
     """Pseudorandom seed that should be used, or specify None to use default Random."""
     geojson: dict
     utm_zone: int = 32

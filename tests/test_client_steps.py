@@ -118,7 +118,29 @@ async def test_submit_telemetry_from_file(fb_client):
     mock_response.json.return_value = {"status": "ok"}
     fb_client.put.return_value = mock_response
 
-    with patch("builtins.open", mock_open(read_data='{"current_states": [{"position": "data"}]}')), patch("asyncio.sleep", AsyncMock()):
+    telemetry_data = {
+        "current_states": [
+            {
+                "timestamp": {"value": "2023-01-01T00:00:00Z", "format": "RFC3339"},
+                "operational_status": "Airborne",
+                "position": {
+                    "lat": 46.9,
+                    "lng": 7.4,
+                    "alt": 500.0,
+                    "accuracy_h": "HAUnknown",
+                    "accuracy_v": "VAUnknown",
+                    "extrapolated": False,
+                },
+                "height": {"distance": 50.0, "reference": "TakeoffLocation"},
+                "track": 90.0,
+                "speed": 10.0,
+                "timestamp_accuracy": 0.0,
+                "speed_accuracy": "SA3mps",
+                "vertical_speed": 0.0,
+            }
+        ]
+    }
+    with patch("builtins.open", mock_open(read_data=json.dumps(telemetry_data))), patch("asyncio.sleep", AsyncMock()):
         result = await fb_client.submit_telemetry_from_file(filename="telemetry.json")
 
     assert result.status == Status.PASS
@@ -140,7 +162,36 @@ async def test_submit_telemetry(fb_client):
     mock_response.json.return_value = {"status": "ok"}
     fb_client.put.return_value = mock_response
 
-    states = [{"position": "data"}]
+    states = [
+        {
+            "timestamp": "2023-10-26T12:00:00Z",
+            "timestamp_accuracy": 0.0,
+            "operational_status": "Undeclared",
+            "position": {
+                "lat": 37.7749,
+                "lng": -122.4194,
+                "alt": 100.0,
+                "accuracy_h": "HAHa",
+                "accuracy_v": "VAVa",
+                "extrapolated": False,
+                "pressure_altitude": 100.0,
+            },
+            "speed": 10.0,
+            "track": 90.0,
+            "speed_accuracy": "SA3mps",
+            "vertical_speed": 0.0,
+            "height": {
+                "distance": 50.0,
+                "reference": "TakeoffLocation",
+            },
+            "group_radius": 0,
+            "group_ceiling": 0,
+            "group_floor": 0,
+            "group_count": 1,
+            "group_time_start": "2023-10-26T12:00:00Z",
+            "group_time_end": "2023-10-26T12:00:00Z",
+        }
+    ]
     with patch("asyncio.sleep", AsyncMock()):
         result = await fb_client.submit_telemetry(states=states)
 
