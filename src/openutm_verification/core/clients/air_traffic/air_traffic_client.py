@@ -1,6 +1,5 @@
 import json
 import uuid
-from typing import Optional
 from uuid import UUID
 
 from loguru import logger
@@ -18,6 +17,7 @@ from openutm_verification.simulator.geo_json_telemetry import (
 )
 from openutm_verification.simulator.models.flight_data_types import (
     AirTrafficGeneratorConfiguration,
+    FlightObservationSchema,
 )
 
 
@@ -33,9 +33,9 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
     @scenario_step("Generate Simulated Air Traffic Data")
     async def generate_simulated_air_traffic_data(
         self,
-        config_path: Optional[str] = None,
-        duration: Optional[int] = None,
-    ) -> list[list[dict]]:
+        config_path: str | None = None,
+        duration: int | None = None,
+    ) -> list[list[FlightObservationSchema]]:
         """Generate simulated air traffic data from GeoJSON configuration.
 
         Loads GeoJSON data from the specified config path and uses it to generate

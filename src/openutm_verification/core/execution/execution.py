@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timezone
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any
+from typing import TypeVar
 
 from loguru import logger
 from pydantic import ValidationError
@@ -29,8 +29,10 @@ from openutm_verification.core.reporting.reporting_models import (
 )
 from openutm_verification.utils.paths import get_docs_directory
 
+T = TypeVar("T")
 
-def _sanitize_config(data: Any) -> Any:
+
+def _sanitize_config(data: T) -> T:
     """
     Recursively sanitize sensitive fields in the configuration data for logging and reporting.
 
@@ -46,9 +48,9 @@ def _sanitize_config(data: Any) -> Any:
                 sanitized[key] = sensitive_mask
             else:
                 sanitized[key] = _sanitize_config(value)
-        return sanitized
+        return sanitized  # type: ignore
     elif isinstance(data, list):
-        return [_sanitize_config(item) for item in data]
+        return [_sanitize_config(item) for item in data]  # type: ignore
     else:
         return data
 
@@ -122,6 +124,6 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path):
 
     logger.info(f"Verification run complete with overall status: {overall_status}")
 
-    base_filename = f"report_{run_timestamp.strftime('%Y-%m-%dT%H-%M-%SZ')}"
+    base_filename = "report"
     generate_reports(report_data, config.reporting, base_filename)
     return failed_scenarios

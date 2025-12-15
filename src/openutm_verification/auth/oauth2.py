@@ -1,5 +1,4 @@
 import time
-from typing import Optional
 
 import httpx
 from loguru import logger
@@ -16,7 +15,7 @@ class OAuth2Token(BaseModel):
     access_token: str
     token_type: str = "Bearer"
     expires_in: int
-    expires_at: Optional[float] = None
+    expires_at: float | None = None
 
     def is_expired(self, buffer_seconds: int = 60) -> bool:
         """Check if token is expired with buffer time."""
@@ -39,7 +38,7 @@ class OAuth2Client:
         self.client_id = client_id
         self.client_secret = client_secret
         self.client = httpx.AsyncClient(timeout=timeout)
-        self._token: Optional[OAuth2Token] = None
+        self._token: OAuth2Token | None = None
 
     async def get_access_token(self) -> str:
         """Get valid access token, acquiring or refreshing as needed."""

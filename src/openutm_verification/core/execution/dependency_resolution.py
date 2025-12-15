@@ -1,7 +1,7 @@
 import inspect
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from contextvars import ContextVar
-from typing import AsyncContextManager, AsyncGenerator, Callable, ContextManager, Generator, TypeVar, cast
+from typing import Any, AsyncContextManager, AsyncGenerator, Callable, ContextManager, Coroutine, Generator, TypeVar, cast
 
 from openutm_verification.core.execution.config_models import RunContext
 
@@ -29,7 +29,7 @@ def dependency(type: object) -> Callable:
     return wrapper
 
 
-async def call_with_dependencies(func: Callable[..., T]) -> T:
+async def call_with_dependencies(func: Callable[..., Coroutine[Any, Any, T]]) -> T:
     """Call a function with its dependencies automatically provided.
 
     Args:

@@ -1,5 +1,3 @@
-from typing import Optional
-
 import pandas as pd
 from loguru import logger
 
@@ -55,7 +53,7 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
             "lomax": lng_max,
         }
 
-    async def fetch_states_data(self) -> Optional[pd.DataFrame]:
+    async def fetch_states_data(self) -> pd.DataFrame | None:
         """Fetch current flight states from OpenSky Network."""
         try:
             response = await self.get("/states/all", params=self._viewport_bounds)
@@ -74,7 +72,7 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
             logger.error(f"Failed to fetch states data: {e}")
             return None
 
-    def process_flight_data(self, flight_df: pd.DataFrame) -> list[dict]:
+    def process_flight_data(self, flight_df: pd.DataFrame) -> list[FlightObservationSchema]:
         """Process flight DataFrame into observation format."""
         observations = []
         for _, row in flight_df.iterrows():
@@ -91,11 +89,11 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
                 altitude_mm=float(altitude),
                 metadata={"velocity": row["velocity"]},
             )
-            observations.append(observation.model_dump())
+            observations.append(observation)
         logger.info(f"Processed {len(observations)} observations")
         return observations
 
-    async def fetch_and_process_data(self) -> Optional[list[dict]]:
+    async def fetch_and_process_data(self) -> list[FlightObservationSchema] | None:
         """Fetch flight data and process into observations."""
         flight_df = await self.fetch_states_data()
         if flight_df is None or flight_df.empty:
@@ -104,7 +102,7 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
         return self.process_flight_data(flight_df)
 
     @scenario_step("Fetch OpenSky Data")
-    async def fetch_data(self):
+    async def fetch_data(self) -> list[FlightObservationSchema] | None:
         """Fetch and process live flight data from OpenSky Network.
 
         Retrieves current flight states from the OpenSky API within the configured

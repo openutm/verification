@@ -1,7 +1,6 @@
 import datetime
 import uuid
 from abc import ABC, abstractmethod
-from typing import List
 
 import jwcrypto.jwk
 import jwcrypto.jwt
@@ -23,7 +22,7 @@ class AuthAdapter(ABC):
     """Abstract base class for an adapter that adds JWTs to requests."""
 
     @abstractmethod
-    def issue_token(self, intended_audience: str, scopes: List[str]) -> str:
+    def issue_token(self, intended_audience: str, scopes: list[str]) -> str:
         """Subclasses must return a bearer token for the given audience."""
         pass
 
@@ -60,7 +59,7 @@ class NoAuth(AuthAdapter):
         self.sub = sub
 
     # Overrides method in AuthAdapter
-    def issue_token(self, intended_audience: str, scopes: List[str]) -> str:
+    def issue_token(self, intended_audience: str, scopes: list[str]) -> str:
         timestamp = int((datetime.datetime.now(datetime.timezone.utc) - EPOCH).total_seconds())
         jwt = jwcrypto.jwt.JWT(
             header={"typ": "JWT", "alg": "RS256"},

@@ -3,7 +3,6 @@ Passport-based authentication credentials provider.
 """
 
 from os import environ as env
-from typing import List, Optional
 
 import requests
 from loguru import logger
@@ -14,11 +13,11 @@ class PassportCredentialsGetter:
 
     def __init__(
         self,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        audience: Optional[str] = None,
-        token_endpoint: Optional[str] = None,
-        passport_base_url: Optional[str] = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        audience: str | None = None,
+        token_endpoint: str | None = None,
+        passport_base_url: str | None = None,
     ):
         self.client_id = client_id or env.get("BLENDER_WRITE_CLIENT_ID")
         self.client_secret = client_secret or env.get("BLENDER_WRITE_CLIENT_SECRET")
@@ -26,7 +25,7 @@ class PassportCredentialsGetter:
         self.token_endpoint = token_endpoint or env.get("PASSPORT_TOKEN_URL")
         self.base_url = passport_base_url or env.get("PASSPORT_URL")
 
-    def get_cached_credentials(self, audience: Optional[str] = None, scopes: Optional[List[str]] = None):
+    def get_cached_credentials(self, audience: str | None = None, scopes: list[str] | None = None):
         """Get cached credentials with token refresh logic."""
 
         if not audience:

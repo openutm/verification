@@ -1,5 +1,3 @@
-from typing import Optional, Tuple
-
 import httpx
 from loguru import logger
 from pydantic_settings import BaseSettings
@@ -27,7 +25,7 @@ class OpenSkySettings(BaseSettings):
     # Optional configuration with defaults
     base_url: str = "https://opensky-network.org/api"
     request_timeout: int = 10
-    viewport: Tuple[float, float, float, float] = (45.8389, 47.8229, 5.9962, 10.5226)
+    viewport: tuple[float, float, float, float] = (45.8389, 47.8229, 5.9962, 10.5226)
 
     # Simulation settings
     simulation_config_path: str
@@ -62,8 +60,8 @@ class BaseOpenSkyAPIClient:
         self,
         method: str,
         endpoint: str,
-        params: Optional[dict] = None,
-        silent_status: Optional[list[int]] = None,
+        params: dict | None = None,
+        silent_status: list[int] | None = None,
     ) -> httpx.Response:
         """Make authenticated request to OpenSky API."""
         url = f"{self.settings.base_url}{endpoint}"
@@ -86,8 +84,8 @@ class BaseOpenSkyAPIClient:
     async def get(
         self,
         endpoint: str,
-        params: Optional[dict] = None,
-        silent_status: Optional[list[int]] = None,
+        params: dict | None = None,
+        silent_status: list[int] | None = None,
     ) -> httpx.Response:
         """Make GET request to OpenSky API."""
         return await self._request("GET", endpoint, params=params, silent_status=silent_status)
