@@ -73,6 +73,7 @@ instance/
 docs/_build/
 config/local/*.yaml
 config/local/*.yml
+config/local/*.json
 # PyBuilder
 .pybuilder/
 target/
