@@ -33,6 +33,7 @@ ENV PYTHONPATH=/app/src
 
 # Copy dependency files
 COPY --chown=${UID}:${GID} LICENSE README.md pyproject.toml uv.lock ./
+COPY --chown=${UID}:${GID} docs ./docs
 
 # Install all dependencies including dev dependencies
 RUN --mount=type=cache,target=/home/${APP_USER}/.cache/uv,uid=${UID},gid=${GID} \

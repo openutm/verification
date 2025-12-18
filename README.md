@@ -16,6 +16,10 @@ This toolkit provides a configuration-driven framework for running automated con
 * **Live Data Integration**: Support for OpenSky Network live flight data in test scenarios
 * **Configuration-Driven**: YAML-based configuration for easy customization and environment management
 
+## Documentation
+
+For detailed information about the verification scenarios, please refer to the [Scenario Documentation](docs/index.md).
+
 ## Quick Start
 
 ### Prerequisites
@@ -132,6 +136,10 @@ The toolkit uses environment variables for configuration. Key variables include:
 * `FLIGHT_BLENDER_URL`: URL of the Flight Blender instance to test
 * `LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
 * `ENVIRONMENT`: Environment name for labeling
+
+#### Creating a Local Configuration
+
+To set up a local configuration, make a copy of `default.yaml` and place it in the `config/local` folder.
 
 #### Authentication Configuration
 

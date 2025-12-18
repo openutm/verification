@@ -14,6 +14,7 @@ def get_auth_provider(auth_config: AuthConfig):
             client_id=auth_config.client_id,
             client_secret=auth_config.client_secret,
             audience=auth_config.audience,
-            token_url=auth_config.token_url,
+            token_endpoint=auth_config.token_endpoint,
+            passport_base_url=auth_config.passport_base_url,
         )
     return NoAuthCredentialsGetter()

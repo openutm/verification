@@ -37,8 +37,8 @@ class BaseAirTrafficAPIClient:
     def __init__(self, settings: AirTrafficSettings):
         self.settings = settings
 
-    def __enter__(self):
+    async def __aenter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         pass

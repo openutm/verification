@@ -2,13 +2,12 @@ import argparse
 import os
 import sys
 from os import environ as env
-from typing import List
 
 import pika
 from dotenv import find_dotenv, load_dotenv
 
 
-def parse_args(argv: List[str]):
+def parse_args(argv: list[str]):
     parser = argparse.ArgumentParser(description="Retrieve an access token")
     parser.add_argument(
         "--queue",

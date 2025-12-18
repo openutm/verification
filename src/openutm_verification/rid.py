@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 SpecificSessionID = str
 
@@ -52,37 +51,37 @@ class AltitudeType(Enum):
 
 @dataclass
 class RIDAuthData:
-    data: Optional[str] = ""
-    format: Optional[int] = 0
+    data: str | None = ""
+    format: int | None = 0
 
 
 @dataclass
 class OperatorLocation:
     position: LatLngPoint
-    altitude: Optional[Altitude] = None
-    altitude_type: Optional[AltitudeType] = None
+    altitude: Altitude | None = None
+    altitude_type: AltitudeType | None = None
 
 
 @dataclass
 class UASID:
-    specific_session_id: Optional[SpecificSessionID] = None
-    serial_number: Optional[str] = ""
-    registration_id: Optional[str] = ""
-    utm_id: Optional[str] = ""
+    specific_session_id: SpecificSessionID | None = None
+    serial_number: str | None = ""
+    registration_id: str | None = ""
+    utm_id: str | None = ""
 
 
 @dataclass
 class UAClassificationEU:
-    category: Optional[Category] = "EUCategoryUndefined"
-    class_: Optional[Class] = "EUClassUndefined"
+    category: Category | None = Category.EUCategoryUndefined
+    class_: Class | None = Class.EUClassUndefined
 
 
 @dataclass
 class RIDOperatorDetails:
     id: str
-    eu_classification: Optional[UAClassificationEU] = None
-    uas_id: Optional[UASID] = None
-    operator_location: Optional[OperatorLocation] = None
-    auth_data: Optional[RIDAuthData] = None
-    operator_id: Optional[str] = ""
-    operation_description: Optional[str] = ""
+    eu_classification: UAClassificationEU | None = None
+    uas_id: UASID | None = None
+    operator_location: OperatorLocation | None = None
+    auth_data: RIDAuthData | None = None
+    operator_id: str | None = ""
+    operation_description: str | None = ""

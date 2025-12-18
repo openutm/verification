@@ -53,7 +53,7 @@ jobs:
       run: uv sync --locked --all-extras --dev
 
     - name: Run tests
-      run: uv run openutm-verify --debug --config config/default.yaml
+      run: uv run openutm-verify --debug --config config/pull_request.yaml
 
     - uses: actions/upload-artifact@v4
       if: always()

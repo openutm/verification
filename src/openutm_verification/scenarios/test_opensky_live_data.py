@@ -1,4 +1,4 @@
-import time
+import asyncio
 
 from loguru import logger
 
@@ -10,7 +10,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("opensky_live_data")
-def test_opensky_live_data(fb_client: FlightBlenderClient, opensky_client: OpenSkyClient) -> None:
+async def test_opensky_live_data(fb_client: FlightBlenderClient, opensky_client: OpenSkyClient) -> None:
     """Fetch live flight data from OpenSky and submit to Flight Blender using template.
 
     The OpenSky client is provided by the caller; this function focuses on orchestration only.
@@ -23,12 +23,12 @@ def test_opensky_live_data(fb_client: FlightBlenderClient, opensky_client: OpenS
     for i in range(iteration_count):
         logger.info(f"OpenSky iteration {i + 1}/{iteration_count}")
 
-        step_result = opensky_client.fetch_data()
+        step_result = await opensky_client.fetch_data()
         observations = step_result.details
 
         if observations:
-            fb_client.submit_air_traffic(observations=observations)
+            await fb_client.submit_air_traffic(observations=observations)
 
         if i < iteration_count - 1:
             logger.info(f"Waiting {wait_time} seconds before next iteration...")
-            time.sleep(wait_time)
+            await asyncio.sleep(wait_time)

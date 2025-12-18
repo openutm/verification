@@ -20,16 +20,17 @@ import numpy as np
 import pythreejs as three
 from ipywidgets import embed
 from loguru import logger
+from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 
-def visualize_flight_path_2d(telemetry_data, declaration_data, output_html_path):
+def visualize_flight_path_2d(telemetry_data: list[RIDAircraftState], declaration_data: dict, output_html_path: Path):
     """
     Creates an interactive 2D map from flight telemetry and declaration data.
 
     Args:
         telemetry_data (dict): The flight telemetry data as a dictionary.
         declaration_data (dict): The flight declaration data as a dictionary.
-        output_html_path (str): The full path where the output HTML map will be saved.
+        output_html_path (Path): The full path where the output HTML map will be saved.
     """
     logger.info("Starting 2D flight path visualization")
 
@@ -200,7 +201,7 @@ def _create_geofence_box_group(projected_geofence_corners_2d, min_alt, max_alt):
     return geofence_group
 
 
-def visualize_flight_path_3d(telemetry_data, declaration_data, output_html_path):
+def visualize_flight_path_3d(telemetry_data: list[RIDAircraftState], declaration_data: dict, output_html_path: Path):
     """Creates an interactive 3D visualization of the flight path and geofence."""
     logger.info("Starting 3D flight path visualization")
 

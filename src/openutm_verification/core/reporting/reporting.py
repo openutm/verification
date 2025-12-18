@@ -1,10 +1,13 @@
+import json
+import shutil
 from pathlib import Path
 
+import markdown
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 
 from openutm_verification.core.execution.config_models import ReportingConfig
-from openutm_verification.core.reporting.reporting_models import ReportData
+from openutm_verification.core.reporting.reporting_models import ReportData, ScenarioResult
 from openutm_verification.core.reporting.visualize_flight import visualize_flight_path_2d, visualize_flight_path_3d
 
 
@@ -18,6 +21,8 @@ def generate_reports(
     """
     output_dir = Path(reporting_config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    _save_scenario_data(report_data, output_dir)
 
     formats = reporting_config.formats
     if "json" in formats:
@@ -44,6 +49,29 @@ def _generate_json_report(report_data: ReportData, output_dir: Path, base_filena
     return report_path
 
 
+def _copy_docs_images(report_data: ReportData, output_dir: Path):
+    """
+    Copies images from the docs source directory to the report output directory.
+    """
+    if not report_data.docs_dir:
+        return
+
+    source_dir = Path(report_data.docs_dir)
+    extensions = {".png", ".jpg", ".jpeg", ".gif", ".svg"}
+
+    for file_path in source_dir.rglob("*"):
+        if file_path.is_file() and file_path.suffix.lower() in extensions:
+            # Preserve directory structure
+            relative_path = file_path.relative_to(source_dir)
+            dest_path = output_dir / relative_path
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                shutil.copy2(file_path, dest_path)
+                logger.debug(f"Copied image {relative_path} to report directory")
+            except Exception as e:
+                logger.warning(f"Failed to copy image {file_path}: {e}")
+
+
 def _generate_html_report(report_data: ReportData, output_dir: Path, base_filename: str):
     """
     Generates an HTML report from the collected scenario results using a Jinja2 template.
@@ -54,16 +82,19 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
         base_filename: The base name for the report file (without extension).
     """
     # Generate visualizations for scenarios with flight data
-    _generate_visualizations(report_data, output_dir, base_filename)
+    _generate_visualizations(report_data, output_dir)
+    # Copy images referenced in docs
+    _copy_docs_images(report_data, output_dir)
 
     template_dir = Path(__file__).parent.parent / "templates"
     env = Environment(
         loader=FileSystemLoader(template_dir),
         autoescape=select_autoescape(enabled_extensions=("html", "xml"), default_for_string=True, default=True),
     )
+    env.filters["markdown"] = lambda text: markdown.markdown(text) if text else ""
     template = env.get_template("report_template.html")
 
-    html_content = template.render(report_data=report_data)
+    html_content = template.render(report_data=report_data.model_dump(mode="json"))
 
     report_path = output_dir / f"{base_filename}.html"
     with open(report_path, "w", encoding="utf-8") as f:
@@ -71,7 +102,7 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
     return report_path
 
 
-def _generate_scenario_visualizations(result, telemetry_data, declaration_data, output_dir: Path, base_filename: str):
+def _generate_scenario_visualizations(result: ScenarioResult, output_dir: Path):
     """
     Generates 2D and 3D visualizations for a single scenario.
 
@@ -80,36 +111,36 @@ def _generate_scenario_visualizations(result, telemetry_data, declaration_data, 
         telemetry_data: Loaded telemetry data.
         declaration_data: Loaded declaration data.
         output_dir: Directory to save visualizations.
-        base_filename: Base filename for consistent naming.
     """
-    # Convert models to dicts if necessary
-    telemetry_data = telemetry_data.model_dump() if hasattr(telemetry_data, "model_dump") else telemetry_data
-    declaration_data = declaration_data.model_dump() if hasattr(declaration_data, "model_dump") else declaration_data
+    if result.flight_declaration_data is None or result.telemetry_data is None:
+        return
 
-    # Sanitize scenario name for filename
-    sanitized_name = result.name.replace(" ", "_").replace("-", "_")
+    flight_declaration_dict = result.flight_declaration_data.model_dump()
+
+    # Create scenario directory
+    scenario_dir = output_dir / result.name
+    scenario_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate 2D visualization
-    vis_2d_filename = f"{base_filename}_{sanitized_name}_2d.html"
-    vis_2d_path = output_dir / vis_2d_filename
-    visualize_flight_path_2d(telemetry_data, declaration_data, str(vis_2d_path))
+    vis_2d_filename = "visualization_2d.html"
+    vis_2d_path = scenario_dir / vis_2d_filename
+    visualize_flight_path_2d(result.telemetry_data, flight_declaration_dict, vis_2d_path)
     result.visualization_2d_path = str(vis_2d_path.relative_to(output_dir))
 
     # Generate 3D visualization
-    vis_3d_filename = f"{base_filename}_{sanitized_name}_3d.html"
-    vis_3d_path = output_dir / vis_3d_filename
-    visualize_flight_path_3d(telemetry_data, declaration_data, str(vis_3d_path))
+    vis_3d_filename = "visualization_3d.html"
+    vis_3d_path = scenario_dir / vis_3d_filename
+    visualize_flight_path_3d(result.telemetry_data, flight_declaration_dict, vis_3d_path)
     result.visualization_3d_path = str(vis_3d_path.relative_to(output_dir))
 
 
-def _generate_visualizations(report_data: ReportData, output_dir: Path, base_filename: str):
+def _generate_visualizations(report_data: ReportData, output_dir: Path):
     """
     Generates flight visualizations for scenarios that have flight data.
 
     Args:
         report_data: The report data containing scenario results.
         output_dir: The directory where visualizations will be saved.
-        base_filename: The base filename used for consistent naming.
     """
     for result in report_data.results:
         # Try to get data from in-memory fields first, fall back to loading from files
@@ -121,6 +152,32 @@ def _generate_visualizations(report_data: ReportData, output_dir: Path, base_fil
 
         if telemetry_data and declaration_data:
             try:
-                _generate_scenario_visualizations(result, telemetry_data, declaration_data, output_dir, base_filename)
+                _generate_scenario_visualizations(result, output_dir)
             except Exception as e:
                 logger.warning(f"Failed to generate visualizations for scenario '{result.name}': {e}")
+
+
+def _save_scenario_data(report_data: ReportData, output_dir: Path):
+    """
+    Saves generated data for each scenario in a subdirectory.
+    """
+    for result in report_data.results:
+        scenario_dir = output_dir / result.name
+        scenario_dir.mkdir(parents=True, exist_ok=True)
+
+        json_result = result.model_dump(mode="json")
+
+        if json_result.get("flight_declaration_data"):
+            file_path = scenario_dir / "flight_declaration.json"
+            file_path.write_text(json.dumps(json_result["flight_declaration_data"], indent=2), encoding="utf-8")
+            logger.debug(f"Saved flight declaration data to {file_path}")
+
+        if json_result.get("telemetry_data"):
+            file_path = scenario_dir / "telemetry.json"
+            file_path.write_text(json.dumps(json_result["telemetry_data"], indent=2), encoding="utf-8")
+            logger.debug(f"Saved telemetry data to {file_path}")
+
+        if json_result.get("air_traffic_data"):
+            file_path = scenario_dir / "air_traffic.json"
+            file_path.write_text(json.dumps(json_result["air_traffic_data"], indent=2), encoding="utf-8")
+            logger.debug(f"Saved air traffic data to {file_path}")

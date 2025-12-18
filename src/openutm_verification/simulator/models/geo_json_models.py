@@ -9,24 +9,24 @@ interpolated flight path points).
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Tuple
+from typing import Any, Literal
 
 import shapely.geometry
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from pyproj import Geod
 
-LngLat = Tuple[float, float]
+LngLat = tuple[float, float]
 
 MINIMUM_LINESTRING_LENGTH_M = 300.0  # meters
 
 
 class GeoJSONLineString(BaseModel):
     type: Literal["LineString"]
-    coordinates: List[LngLat]
+    coordinates: list[LngLat]
 
     @field_validator("coordinates")
     @classmethod
-    def _validate_coords(cls, v: List[LngLat]) -> List[LngLat]:
+    def _validate_coords(cls, v: list[LngLat]) -> list[LngLat]:
         if len(v) < 2:
             raise ValueError("LineString must have at least two coordinates")
         for lon, lat in v:
@@ -37,17 +37,17 @@ class GeoJSONLineString(BaseModel):
 
 class GeoJSONFeature(BaseModel):
     type: Literal["Feature"] = "Feature"
-    properties: Dict[str, Any] = Field(default_factory=dict)
+    properties: dict[str, Any] = Field(default_factory=dict)
     geometry: GeoJSONLineString
 
 
 class GeoJSONFeatureCollection(BaseModel):
     type: Literal["FeatureCollection"] = "FeatureCollection"
-    features: List[GeoJSONFeature]
+    features: list[GeoJSONFeature]
 
     @field_validator("features")
     @classmethod
-    def _validate_features(cls, v: List[GeoJSONFeature]) -> List[GeoJSONFeature]:
+    def _validate_features(cls, v: list[GeoJSONFeature]) -> list[GeoJSONFeature]:
         if not v:
             raise ValueError("FeatureCollection must contain at least one feature")
         return v
@@ -69,15 +69,15 @@ class ValidatedFlightPath(BaseModel):
 
     start: LngLat
     end: LngLat
-    bounds: Tuple[float, float, float, float]
-    box_bounds: Tuple[float, float, float, float]
-    half_box_bounds: Tuple[float, float, float, float]
+    bounds: tuple[float, float, float, float]
+    box_bounds: tuple[float, float, float, float]
+    half_box_bounds: tuple[float, float, float, float]
     center: LngLat
     line_length_m: float
-    path_points: List[LngLat]
+    path_points: list[LngLat]
 
     @classmethod
-    def from_feature_collection(cls, fc: Dict[str, Any] | GeoJSONFeatureCollection) -> "ValidatedFlightPath":
+    def from_feature_collection(cls, fc: dict[str, Any] | GeoJSONFeatureCollection) -> "ValidatedFlightPath":
         """Validate the provided FeatureCollection and compute derived fields.
 
         Accepts either a raw dict (GeoJSON) or a typed GeoJSONFeatureCollection.
@@ -118,7 +118,7 @@ class ValidatedFlightPath(BaseModel):
         num_points = max(int(length_m / 2), 2)
         # Legacy used normalized steps of 0.004; keep same cadence and clamp to [0,1]
         fractions = (min(0.004 * i, 1.0) for i in range(num_points))
-        path_points: List[LngLat] = []
+        path_points: list[LngLat] = []
         for f in fractions:
             p = shapely_line.interpolate(f, normalized=True)
             path_points.append((float(p.x), float(p.y)))

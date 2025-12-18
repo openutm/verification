@@ -1,0 +1,55 @@
+# config/default.yaml
+version: "1.0" # Configuration schema version
+
+run_id: "daily-conformance-check" # An optional identifier for the run
+
+# Details of the Flight Blender deployment under test
+flight_blender:
+  url: "http://localhost:8000"
+  auth:
+    type: "none" # For using the dummy-oauth provider
+    audience: "testflight.flightblender.com" # Audience for OAuth tokens, default for local testing
+    scopes: ["flightblender.write", "flightblender.read"] # Scopes for write and read access
+
+# Details for connecting to the OpenSky Network API
+opensky:
+  auth:
+    type: "none" # 'none' for no auth, 'oauth2' for OAuth2 client credentials
+    client_id: "your-client-id"
+    client_secret: "your-client-secret"
+
+# Air traffic data configuration
+air_traffic_simulator_settings:
+  number_of_aircraft: 3
+  simulation_duration_seconds: 10
+  single_or_multiple_sensors: "multiple" # this setting specifiies if the traffic data is submitted from a single sensor or multiple sensors
+  sensor_ids: ["a0b7d47e5eac45dc8cbaf47e6fe0e558"] # List of sensor IDs to use when 'multiple' is selected
+
+data_files:
+  trajectory: "config/bern/trajectory_f1.json" # Path to flight declarations JSON file
+  flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file
+
+# List of test scenario IDs to execute
+suites:
+  pull_requests:
+    scenarios:
+    - name: add_flight_declaration
+    - name: F1_happy_path
+      trajectory: "config/bern/trajectory_f1.json"
+    - name: F2_contingent_path
+      trajectory: "config/bern/trajectory_f2.json"
+    - name: F3_non_conforming_path
+      trajectory: "config/bern/trajectory_f3.json"
+    - name: opensky_live_data
+    - name: geo_fence_upload
+    - name: openutm_sim_air_traffic_data
+
+# Reporting configuration
+reporting:
+  output_dir: "reports"
+  formats: ["json", "html", "log"] # 'json' is raw, 'html' is summarized
+  # A place to add metadata about the system under test
+  deployment_details:
+    name: "Local Flight Blender Dev Instance"
+    version: "v0.12.0"
+    notes: "Running against local Docker Compose setup."

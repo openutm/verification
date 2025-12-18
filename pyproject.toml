@@ -46,6 +46,7 @@ dependencies = [
     "websocket-client==1.9.0",
     "fastapi>=0.121.3",
     "uvicorn>=0.38.0",
+    "markdown>=3.10",
 ]
 
 [project.scripts]
@@ -75,6 +76,10 @@ build-backend = "hatchling.build"
 packages = [
     "src/openutm_verification",
 ]
+# (artifacts configuration removed; docs are included via force-include)
+
+[tool.hatch.build.targets.wheel.force-include]
+"docs/scenarios" = "openutm_verification/docs/scenarios"
 
 [tool.pytest.ini_options]
 pythonpath = [

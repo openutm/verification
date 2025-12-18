@@ -2,8 +2,10 @@
 Pydantic models for application configuration.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Annotated, Dict, List, Literal, Optional, TypedDict
+from typing import Annotated, Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -16,10 +18,12 @@ class AuthConfig(StrictBaseModel):
     """Authentication configuration for Flight Blender."""
 
     type: Literal["none", "passport", "oauth2"] = "none"
-    client_id: Optional[str] = None
-    client_secret: Optional[str] = None
-    audience: Optional[str] = None
-    scopes: List[str] | None = None
+    client_id: str | None = None
+    client_secret: str | None = None
+    audience: str | None = None
+    scopes: list[str] | None = None
+    token_endpoint: str | None = None
+    passport_base_url: str | None = None
 
 
 class FlightBlenderConfig(StrictBaseModel):
@@ -33,7 +37,7 @@ class AirTrafficSimulatorSettings(StrictBaseModel):
     number_of_aircraft: int
     simulation_duration_seconds: int
     single_or_multiple_sensors: Literal["single", "multiple"] = "single"
-    sensor_ids: List[str] = Field(default_factory=list)
+    sensor_ids: list[str] = Field(default_factory=list)
 
 
 class OpenSkyConfig(StrictBaseModel):
@@ -54,20 +58,20 @@ class ReportingConfig(StrictBaseModel):
     """Configuration for generating reports."""
 
     output_dir: str = "reports"
-    formats: List[str] = Field(default_factory=lambda: ["json", "html", "log"])
+    formats: list[str] = Field(default_factory=lambda: ["json", "html", "log"])
     deployment_details: DeploymentDetails = Field(default_factory=DeploymentDetails)
 
 
 class DataFiles(StrictBaseModel):
     """Paths to data files used in the application."""
 
-    trajectory: Optional[str] = None
-    flight_declaration: Optional[str] = None
-    geo_fence: Optional[str] = None
+    trajectory: str | None = None
+    flight_declaration: str | None = None
+    geo_fence: str | None = None
 
     @field_validator("trajectory", "flight_declaration", "geo_fence")
     @classmethod
-    def validate_path(cls, v: Optional[str]) -> Optional[str]:
+    def validate_path(cls, v: str | None) -> str | None:
         """Validate that path is a non-empty string if provided."""
         if v is not None:
             if not isinstance(v, str):
@@ -108,11 +112,12 @@ class SuiteScenario(DataFiles):
 class SuiteConfig(StrictBaseModel):
     """Configuration for a test suite."""
 
-    scenarios: List[SuiteScenario]
+    scenarios: list[SuiteScenario] | None = Field(default_factory=list)
 
     def resolve_paths(self, base_path: Path) -> None:
-        for scenario in self.scenarios:
-            scenario.resolve_paths(base_path)
+        if self.scenarios:
+            for scenario in self.scenarios:
+                scenario.resolve_paths(base_path)
 
 
 class AppConfig(StrictBaseModel):
@@ -124,11 +129,11 @@ class AppConfig(StrictBaseModel):
     opensky: OpenSkyConfig
     air_traffic_simulator_settings: AirTrafficSimulatorSettings
     data_files: DataFiles
-    suites: Dict[str, SuiteConfig] = Field(default_factory=dict)
+    suites: dict[str, SuiteConfig] = Field(default_factory=dict)
     reporting: ReportingConfig
 
     # Runtime only
-    target_suites: List[str] = Field(default_factory=list)
+    target_suites: list[str] = Field(default_factory=list)
 
     def resolve_paths(self, config_file_path: Path) -> None:
         """Resolve all relative paths in the configuration to absolute paths."""
@@ -143,8 +148,9 @@ ScenarioId = Annotated[str, "The unique identifier for a scenario"]
 
 class RunContext(TypedDict):
     scenario_id: str
-    suite_scenario: Optional[SuiteScenario]
-    suite_name: Optional[str]
+    docs: str | None
+    suite_scenario: SuiteScenario | None
+    suite_name: str | None
 
 
 class ConfigMeta(type):

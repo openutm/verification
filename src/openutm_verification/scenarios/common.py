@@ -1,11 +1,12 @@
 import json
 from pathlib import Path
-from typing import Any, List
 
 from loguru import logger
+from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 from openutm_verification.simulator.flight_declaration import FlightDeclarationGenerator
 from openutm_verification.simulator.geo_json_telemetry import GeoJSONFlightsSimulator
+from openutm_verification.simulator.models.declaration_models import FlightDeclaration
 from openutm_verification.simulator.models.flight_data_types import (
     GeoJSONFlightsSimulatorConfiguration,
 )
@@ -13,7 +14,7 @@ from openutm_verification.simulator.models.flight_data_types import (
 DEFAULT_TELEMETRY_DURATION = 30  # seconds
 
 
-def generate_flight_declaration(config_path: str) -> Any:
+def generate_flight_declaration(config_path: str) -> FlightDeclaration:
     """Generate a flight declaration from the config file at the given path."""
     try:
         generator = FlightDeclarationGenerator(bounds_path=Path(config_path))
@@ -23,7 +24,7 @@ def generate_flight_declaration(config_path: str) -> Any:
         raise
 
 
-def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION) -> List[Any]:
+def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION) -> list[RIDAircraftState]:
     """Generate telemetry states from the GeoJSON config file at the given path."""
     try:
         logger.debug(f"Generating telemetry states from {config_path} for duration {duration} seconds")

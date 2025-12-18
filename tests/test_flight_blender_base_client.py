@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -26,9 +26,12 @@ def test_init_without_credentials_has_no_auth_header():
     assert "Authorization" not in client.client.headers
 
 
-@patch("openutm_verification.core.clients.flight_blender.base_client.httpx.Client")
-def test_request_success(mock_client_cls: MagicMock):
-    mock_client = MagicMock()
+@patch("openutm_verification.core.clients.flight_blender.base_client.httpx.AsyncClient")
+async def test_request_success(mock_client_cls: MagicMock):
+    mock_client = AsyncMock()
+    # headers should be a MagicMock (sync) because .update() is sync
+    mock_client.headers = MagicMock()
+
     mock_resp = MagicMock(spec=httpx.Response)
     mock_resp.status_code = 200
     mock_resp.raise_for_status.return_value = None
@@ -36,16 +39,22 @@ def test_request_success(mock_client_cls: MagicMock):
     mock_client_cls.return_value = mock_client
 
     client = make_client()
-    resp = client.get("/path")
+    # We need to replace the client created in __init__ with our mock
+    # because __init__ calls httpx.AsyncClient() which is mocked by the patch
+    # but we want to control the instance.
+    # Actually, mock_client_cls.return_value = mock_client handles the instantiation return.
+
+    resp = await client.get("/path")
 
     mock_client.request.assert_called_once_with("GET", f"{BASE_URL}/path", json=None)
     mock_resp.raise_for_status.assert_called_once()
     assert resp is mock_resp
 
 
-@patch("openutm_verification.core.clients.flight_blender.base_client.httpx.Client")
-def test_request_http_status_error_raises_flight_blender_error(mock_client_cls: MagicMock):
-    mock_client = MagicMock()
+@patch("openutm_verification.core.clients.flight_blender.base_client.httpx.AsyncClient")
+async def test_request_http_status_error_raises_flight_blender_error(mock_client_cls: MagicMock):
+    mock_client = AsyncMock()
+    mock_client.headers = MagicMock()
     mock_client_cls.return_value = mock_client
 
     req = httpx.Request("GET", f"{BASE_URL}/path")
@@ -62,14 +71,15 @@ def test_request_http_status_error_raises_flight_blender_error(mock_client_cls: 
     client = make_client()
 
     with pytest.raises(FlightBlenderError) as ei:
-        client.get("/path")
+        await client.get("/path")
 
     assert "Request failed: 400" in str(ei.value)
 
 
-@patch("openutm_verification.core.clients.flight_blender.base_client.httpx.Client")
-def test_request_request_error_raises_flight_blender_error(mock_client_cls: MagicMock):
-    mock_client = MagicMock()
+@patch("openutm_verification.core.clients.flight_blender.base_client.httpx.AsyncClient")
+async def test_request_request_error_raises_flight_blender_error(mock_client_cls: MagicMock):
+    mock_client = AsyncMock()
+    mock_client.headers = MagicMock()
     mock_client_cls.return_value = mock_client
 
     req = httpx.Request("GET", f"{BASE_URL}/path")
@@ -78,24 +88,24 @@ def test_request_request_error_raises_flight_blender_error(mock_client_cls: Magi
     client = make_client()
 
     with pytest.raises(FlightBlenderError) as ei:
-        client.get("/path")
+        await client.get("/path")
 
     assert "Request failed" in str(ei.value)
 
 
 @patch.object(BaseBlenderAPIClient, "_request")
-def test_http_verbs_delegate_to_request(mock_request: MagicMock):
+async def test_http_verbs_delegate_to_request(mock_request: AsyncMock):
     client = make_client()
 
-    client.get("/g", silent_status=[204])
-    client.post("/p", json={"a":1}, silent_status=[201])
-    client.put("/u", json={"b":2})
-    client.delete("/d")
+    await client.get("/g", silent_status=[204])
+    await client.post("/p", json={"a": 1}, silent_status=[201])
+    await client.put("/u", json={"b": 2})
+    await client.delete("/d")
 
     assert mock_request.call_count == 4
     mock_request.assert_any_call("GET", "/g", silent_status=[204])
-    mock_request.assert_any_call("POST", "/p", json={"a":1}, silent_status=[201])
-    mock_request.assert_any_call("PUT", "/u", json={"b":2}, silent_status=None)
+    mock_request.assert_any_call("POST", "/p", json={"a": 1}, silent_status=[201])
+    mock_request.assert_any_call("PUT", "/u", json={"b": 2}, silent_status=None)
     mock_request.assert_any_call("DELETE", "/d", silent_status=None)
 
 

@@ -2,15 +2,13 @@
 No-authentication credentials provider for development/testing.
 """
 
-from typing import List
-
 from openutm_verification.auth.dev_auth import NoAuth
 
 
 class NoAuthCredentialsGetter:
     """Credentials getter that uses dummy authentication for development."""
 
-    def get_cached_credentials(self, audience: str, scopes: List[str]):
+    def get_cached_credentials(self, audience: str, scopes: list[str]):
         """Get cached credentials using dummy authentication."""
         if not audience:
             return {"error": "An audience parameter must be provided"}
