@@ -21,7 +21,7 @@ async def test_f1_no_telemetry_with_user_input(fb_client: FlightBlenderClient, d
         A ScenarioResult object containing the results of the scenario execution.
     """
     async with fb_client.create_flight_declaration(data_files):
-        await fb_client.wait_x_seconds(seconds=5)
+        await fb_client.wait_x_seconds(wait_time_seconds=5)
         await fb_client.update_operation_state(new_state=OperationState.ACTIVATED)
         await fb_client.wait_for_user_input(prompt="Press Enter to end the operation...")
         await fb_client.update_operation_state(new_state=OperationState.ENDED)
