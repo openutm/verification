@@ -2,7 +2,7 @@ import ast
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 
 def parse_type_annotation(annotation: Any) -> str:
@@ -105,7 +105,7 @@ def extract_enums(file_path: Path) -> Dict[str, List[Dict[str, Any]]]:
     return enums
 
 
-def extract_args(function_node: ast.FunctionDef, known_enums: Dict[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+def extract_args(function_node: Union[ast.FunctionDef, ast.AsyncFunctionDef], known_enums: Dict[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
     args = []
 
     # Calculate defaults mapping
@@ -138,7 +138,7 @@ def process_class_node(class_node: ast.ClassDef, file_path_str: str, known_enums
     steps = []
     class_name = class_node.name
     for item in class_node.body:
-        if isinstance(item, ast.FunctionDef):
+        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
             step_name = None
             # Check decorators
             for decorator in item.decorator_list:

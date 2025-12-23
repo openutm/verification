@@ -8,7 +8,7 @@
     "parameters": [
       {
         "name": "filename",
-        "type": "Optional[str]",
+        "type": "str | None",
         "default": null
       }
     ],
@@ -32,7 +32,7 @@
     "parameters": [
       {
         "name": "geo_fence_id",
-        "type": "Optional[str]",
+        "type": "str | None",
         "default": null
       }
     ],
@@ -47,7 +47,22 @@
     "parameters": [
       {
         "name": "declaration",
-        "type": "str | Any"
+        "type": "str | BaseModel"
+      }
+    ],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
+    "id": "FlightBlenderClient.wait_for_user_input",
+    "name": "Wait for User Input",
+    "functionName": "wait_for_user_input",
+    "className": "FlightBlenderClient",
+    "description": "Wait for user input to proceed.\n\nThis method prompts the user for input and waits until the user responds.\n\nArgs:\n    prompt: The message to display to the user.",
+    "parameters": [
+      {
+        "name": "prompt",
+        "type": "str",
+        "default": "Press Enter to continue..."
       }
     ],
     "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
@@ -153,7 +168,7 @@
     "parameters": [
       {
         "name": "states",
-        "type": "Optional[List[Dict[Any]]]",
+        "type": "list[RIDAircraftState] | None",
         "default": null
       },
       {
@@ -298,7 +313,7 @@
     "parameters": [
       {
         "name": "observations",
-        "type": "List[List[Dict[Any]]]"
+        "type": "list[list[FlightObservationSchema]]"
       },
       {
         "name": "single_or_multiple_sensors",
@@ -317,7 +332,7 @@
     "parameters": [
       {
         "name": "observations",
-        "type": "List[Dict[Any]]"
+        "type": "list[FlightObservationSchema]"
       }
     ],
     "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
@@ -396,6 +411,15 @@
     "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
   },
   {
+    "id": "FlightBlenderClient.teardown_flight_declaration",
+    "name": "Teardown Flight Declaration",
+    "functionName": "teardown_flight_declaration",
+    "className": "FlightBlenderClient",
+    "description": null,
+    "parameters": [],
+    "filePath": "src/openutm_verification/core/clients/flight_blender/flight_blender_client.py"
+  },
+  {
     "id": "FlightBlenderClient.setup_flight_declaration",
     "name": "Setup Flight Declaration",
     "functionName": "setup_flight_declaration",
@@ -422,12 +446,12 @@
     "parameters": [
       {
         "name": "config_path",
-        "type": "Optional[str]",
+        "type": "str | None",
         "default": null
       },
       {
         "name": "duration",
-        "type": "Optional[int]",
+        "type": "int | None",
         "default": null
       }
     ],

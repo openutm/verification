@@ -208,6 +208,10 @@ def scenario_step(step_name: str) -> StepDecorator:
             except Exception as e:
                 return handle_exception(e, start_time)
 
+        # Attach metadata for introspection
+        setattr(async_wrapper, "_is_scenario_step", True)
+        setattr(async_wrapper, "_step_name", step_name)
+
         return async_wrapper
 
     return cast(StepDecorator, decorator)

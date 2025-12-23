@@ -1,6 +1,8 @@
 import inspect
 import json
-from contextlib import ExitStack
+import re
+from contextlib import AsyncExitStack
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Type, cast
 
@@ -13,6 +15,7 @@ import openutm_verification.core.execution.dependencies  # noqa: F401
 from openutm_verification.core.clients.air_traffic.air_traffic_client import AirTrafficClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
+from openutm_verification.core.clients.system.system_client import SystemClient
 from openutm_verification.core.execution.config_models import AppConfig, ConfigProxy
 from openutm_verification.core.execution.dependency_resolution import DependencyResolver
 from openutm_verification.core.reporting.reporting_models import Status, StepResult
@@ -27,6 +30,7 @@ class StepDefinition(BaseModel):
     className: str
     functionName: str
     parameters: Dict[str, Any]
+    run_in_background: bool = False
 
 
 class ScenarioDefinition(BaseModel):
@@ -41,7 +45,125 @@ class DynamicRunner:
             "FlightBlenderClient": FlightBlenderClient,
             "OpenSkyClient": OpenSkyClient,
             "AirTrafficClient": AirTrafficClient,
+            "SystemClient": SystemClient,
         }
+        self.session_stack: AsyncExitStack | None = None
+        self.session_resolver: DependencyResolver | None = None
+        self.session_context: Dict[str, Any] = {}
+
+    async def initialize_session(self):
+        if self.session_stack:
+            await self.close_session()
+
+        self.session_stack = AsyncExitStack()
+        self.session_resolver = DependencyResolver(self.session_stack)
+
+        # Pre-generate data
+        try:
+            flight_declaration, telemetry_states = self._generate_data()
+            self.session_context = {
+                "operation_id": None,
+                "flight_declaration": flight_declaration,
+                "telemetry_states": telemetry_states,
+                "step_results": {},
+            }
+        except Exception as e:
+            logger.error(f"Data generation failed: {e}")
+            raise
+
+    async def close_session(self):
+        if self.session_stack:
+            await self.session_stack.aclose()
+            self.session_stack = None
+            self.session_resolver = None
+            self.session_context = {}
+
+    async def execute_single_step(self, step: StepDefinition) -> Dict[str, Any]:
+        if not self.session_resolver:
+            await self.initialize_session()
+
+        try:
+            return await self._execute_step(step, self.session_resolver, self.session_context)
+        except Exception as e:
+            logger.error(f"Error executing step {step.functionName}: {e}")
+            return {"step": f"{step.className}.{step.functionName}", "status": "error", "error": str(e)}
+
+    def _process_parameter(self, param_name: str, param: inspect.Parameter) -> Dict[str, Any] | None:
+        if param_name == "self":
+            return None
+
+        annotation = param.annotation
+        default = param.default
+
+        # Handle Type
+        type_str = "Any"
+        is_enum = False
+        options = None
+
+        if annotation != inspect.Parameter.empty:
+            # Check for Enum
+            if inspect.isclass(annotation) and issubclass(annotation, Enum):
+                is_enum = True
+                type_str = annotation.__name__
+                options = [{"name": e.name, "value": e.value} for e in annotation]
+            else:
+                # Clean up type string
+                type_str = str(annotation)
+                # Use regex to remove module paths (e.g. "list[openutm_verification.models.FlightObservation]" -> "list[FlightObservation]")
+                type_str = re.sub(r"([a-zA-Z_][a-zA-Z0-9_]*\.)+", "", type_str)
+                # Remove <class '...'> wrapper if present
+                if type_str.startswith("<class '") and type_str.endswith("'>"):
+                    type_str = type_str[8:-2]
+
+        # Handle Default
+        default_val = None
+        if default != inspect.Parameter.empty:
+            if default is None:
+                default_val = None
+            # If default is an Enum member, get its value
+            elif isinstance(default, Enum):
+                default_val = default.value
+            else:
+                default_val = str(default)
+
+        param_info = {"name": param_name, "type": type_str, "default": default_val, "required": default == inspect.Parameter.empty}
+
+        if is_enum:
+            param_info["isEnum"] = True
+            param_info["options"] = options
+
+        return param_info
+
+    def _process_method(self, class_name: str, client_class: Type, name: str, method: Any) -> Dict[str, Any] | None:
+        if not hasattr(method, "_is_scenario_step"):
+            return None
+
+        step_name = getattr(method, "_step_name")
+        sig = inspect.signature(method)
+        parameters = []
+        for param_name, param in sig.parameters.items():
+            param_info = self._process_parameter(param_name, param)
+            if param_info:
+                parameters.append(param_info)
+
+        return {
+            "id": f"{class_name}.{name}",
+            "name": step_name,
+            "functionName": name,
+            "className": class_name,
+            "description": inspect.getdoc(method) or "",
+            "parameters": parameters,
+            "filePath": inspect.getfile(client_class),
+        }
+
+    def get_available_operations(self) -> List[Dict[str, Any]]:
+        operations = []
+        for class_name, client_class in self.client_map.items():
+            for name, method in inspect.getmembers(client_class):
+                op_info = self._process_method(class_name, client_class, name, method)
+                if op_info:
+                    operations.append(op_info)
+        return operations
 
     def _load_config(self) -> AppConfig:
         if not self.config_path.exists():
@@ -188,19 +310,76 @@ class DynamicRunner:
 
         return params
 
-    def _execute_step(self, step: StepDefinition, resolver: DependencyResolver, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_step(self, step: StepDefinition, resolver: DependencyResolver, context: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"Executing step: {step.className}.{step.functionName}")
 
         if step.className not in self.client_map:
             raise ValueError(f"Unknown client class: {step.className}")
 
-        client_type = self.client_map[step.className]
-        client = resolver.resolve(client_type)
+        # Special handling for SystemClient.join_task
+        if step.className == "SystemClient" and step.functionName == "join_task":
+            task_id_param = step.parameters.get("task_id")
+            if not task_id_param:
+                raise ValueError("task_id is required for join_task")
 
-        method = getattr(client, step.functionName)
-        params = self._prepare_params(step, context, method)
+            # Handle if task_id is passed as a dictionary (from a previous step result)
+            if isinstance(task_id_param, dict) and "task_id" in task_id_param:
+                task_id = task_id_param["task_id"]
+            else:
+                task_id = str(task_id_param)
 
-        result = method(**params)
+            background_tasks = context.get("background_tasks", {})
+            if task_id not in background_tasks:
+                raise ValueError(f"Background task {task_id} not found")
+
+            logger.info(f"Joining background task {task_id}")
+            task = background_tasks[task_id]
+            result = await task
+            # Clean up
+            del background_tasks[task_id]
+
+            # Continue to result processing...
+        else:
+            client_type = self.client_map[step.className]
+            client = await resolver.resolve(client_type)
+
+            method = getattr(client, step.functionName)
+            params = self._prepare_params(step, context, method)
+
+            if step.run_in_background:
+                import asyncio
+                import uuid
+
+                task_id = str(uuid.uuid4())
+                logger.info(f"Starting background task {task_id} for {step.className}.{step.functionName}")
+
+                # Create a coroutine but don't await it yet
+                coro = method(**params)
+                if not inspect.isawaitable(coro):
+                    # If it's not async, wrap it? For now assume async.
+                    pass
+
+                task = asyncio.create_task(coro)
+                context.setdefault("background_tasks", {})[task_id] = task
+
+                result = {"task_id": task_id, "status": "running"}
+
+                # Store result for referencing
+                if step.id:
+                    context.setdefault("step_results", {})[step.id] = result
+
+                return {"id": step.id, "step": f"{step.className}.{step.functionName}", "status": "running", "result": result}
+
+            result = method(**params)
+            if inspect.isawaitable(result):
+                result = await result
+
+            # Store result for referencing
+            if step.id:
+                context.setdefault("step_results", {})[step.id] = result
+                logger.info(f"Stored result for step {step.id}")
+            else:
+                logger.warning(f"No step ID provided, result not stored for {step.functionName}")
 
         # Capture air traffic observations
         if step.functionName in ["generate_simulated_air_traffic_data", "fetch_data"]:
@@ -258,38 +437,16 @@ class DynamicRunner:
 
         return {"id": step.id, "step": f"{step.className}.{step.functionName}", "status": status_str, "result": result_data}
 
-    def _run_implicit_setup(self, resolver: DependencyResolver, context: Dict[str, Any]) -> Dict[str, Any]:
-        logger.info("Implicit Setup: Uploading Flight Declaration")
-        fb_client = cast(FlightBlenderClient, resolver.resolve(FlightBlenderClient))
-        upload_result = fb_client.upload_flight_declaration(declaration=context["flight_declaration"])
-
-        # Handle StepResult
-        if hasattr(upload_result, "details") and isinstance(upload_result.details, dict):
-            op_id = upload_result.details.get("id")
-            if op_id:
-                context["operation_id"] = op_id
-                logger.info(f"Setup complete. Operation ID: {op_id}")
-
-                result_data = getattr(upload_result, "model_dump")() if hasattr(upload_result, "model_dump") else str(upload_result)
-                return {"step": "Setup: Upload Flight Declaration", "status": "success", "result": result_data}
-            else:
-                raise ValueError("Failed to get operation ID from upload result")
-        else:
-            # Check if it failed
-            if hasattr(upload_result, "status") and upload_result.status == Status.FAIL:
-                raise ValueError(f"Setup failed: {upload_result.error_message}")
-            raise ValueError(f"Unexpected return from upload: {upload_result}")
-
-    def _run_implicit_teardown(self, resolver: DependencyResolver, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _run_implicit_teardown(self, resolver: DependencyResolver, context: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"Implicit Teardown: Deleting Operation {context['operation_id']}")
-        fb_client = cast(FlightBlenderClient, resolver.resolve(FlightBlenderClient))
+        fb_client = cast(FlightBlenderClient, await resolver.resolve(FlightBlenderClient))
         # delete_flight_declaration uses the stored latest_flight_declaration_id in the client instance
-        teardown_result = fb_client.delete_flight_declaration()
+        teardown_result = await fb_client.delete_flight_declaration()
 
         result_data = getattr(teardown_result, "model_dump")() if hasattr(teardown_result, "model_dump") else str(teardown_result)
         return {"step": "Teardown: Delete Flight Declaration", "status": "success", "result": result_data}
 
-    def run_scenario(self, scenario: ScenarioDefinition) -> List[Dict[str, Any]]:
+    async def run_scenario(self, scenario: ScenarioDefinition) -> List[Dict[str, Any]]:
         results = []
 
         # Pre-generate data
@@ -301,25 +458,13 @@ class DynamicRunner:
 
         context = {"operation_id": None, "flight_declaration": flight_declaration, "telemetry_states": telemetry_states, "step_results": {}}
 
-        # Check if user provided setup
-        user_has_setup = len(scenario.steps) > 0 and scenario.steps[0].functionName == "upload_flight_declaration"
-
-        with ExitStack() as stack:
+        async with AsyncExitStack() as stack:
             resolver = DependencyResolver(stack)
 
             try:
-                # Implicit Setup
-                if not user_has_setup:
-                    try:
-                        setup_result = self._run_implicit_setup(resolver, context)
-                        results.append(setup_result)
-                    except Exception as setup_error:
-                        logger.error(f"Implicit setup failed: {setup_error}")
-                        return [{"step": "Implicit Setup", "status": "error", "error": str(setup_error)}]
-
                 for step in scenario.steps:
                     try:
-                        step_result = self._execute_step(step, resolver, context)
+                        step_result = await self._execute_step(step, resolver, context)
                         results.append(step_result)
                     except Exception as e:
                         logger.error(f"Error in step {step.functionName}: {e}")
@@ -331,9 +476,9 @@ class DynamicRunner:
                 results.append({"step": "Scenario Setup", "status": "error", "error": str(e)})
             finally:
                 # Implicit Teardown
-                if not user_has_setup and context["operation_id"]:
+                if context["operation_id"]:
                     try:
-                        teardown_result = self._run_implicit_teardown(resolver, context)
+                        teardown_result = await self._run_implicit_teardown(resolver, context)
                         results.append(teardown_result)
                     except Exception as teardown_error:
                         logger.error(f"Teardown failed: {teardown_error}")

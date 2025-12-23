@@ -25,6 +25,7 @@ from openutm_verification.core.clients.opensky.base_client import (
     create_opensky_settings,
 )
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
+from openutm_verification.core.clients.system.system_client import SystemClient
 from openutm_verification.core.execution.config_models import (
     AppConfig,
     DataFiles,
@@ -196,3 +197,9 @@ async def air_traffic_client(
     settings = create_air_traffic_settings()
     async with AirTrafficClient(settings) as air_traffic_client:
         yield air_traffic_client
+
+
+@dependency(SystemClient)
+async def system_client() -> AsyncGenerator[SystemClient, None]:
+    """Provides a SystemClient instance for dependency injection."""
+    yield SystemClient()
