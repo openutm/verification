@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, Box } from 'lucide-react';
 import styles from '../../styles/Toolbox.module.css';
 import layoutStyles from '../../styles/EditorLayout.module.css';
-import operationsData from '../../data/operations.json';
 import type { Operation } from '../../types/scenario';
 
 const ToolboxGroup = ({ title, ops }: { title: string, ops: Operation[] }) => {
@@ -43,9 +42,7 @@ const ToolboxGroup = ({ title, ops }: { title: string, ops: Operation[] }) => {
     );
 };
 
-export const Toolbox = () => {
-    const operations = operationsData as Operation[];
-
+export const Toolbox = ({ operations }: { operations: Operation[] }) => {
     const groupedOperations = useMemo(() => {
         const grouped = operations.reduce((acc, op) => {
             if (!acc[op.className]) {

@@ -22,9 +22,10 @@ export interface NodeData extends Record<string, unknown> {
     functionName?: string;
     description?: string;
     parameters?: OperationParam[];
-    status?: 'success' | 'failure' | 'error';
+    status?: 'success' | 'failure' | 'error' | 'running';
     result?: unknown;
     onShowResult?: (result: unknown) => void;
+    runInBackground?: boolean;
 }
 
 export interface ScenarioStep {
@@ -32,6 +33,7 @@ export interface ScenarioStep {
     className: string;
     functionName: string;
     parameters: Record<string, unknown>;
+    run_in_background?: boolean;
 }
 
 export interface StepResult {

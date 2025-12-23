@@ -38,9 +38,10 @@ interface PropertiesPanelProps {
     connectedNodes: Node<NodeData>[];
     onClose: () => void;
     onUpdateParameter: (nodeId: string, paramName: string, value: unknown) => void;
+    onUpdateRunInBackground: (nodeId: string, value: boolean) => void;
 }
 
-export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdateParameter }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdateParameter, onUpdateRunInBackground }: PropertiesPanelProps) => {
     const formatParamValue = (value: unknown): string => {
         if (value === null || value === undefined) {
             return '';
@@ -80,6 +81,21 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdat
                 <div className={styles.content}>
                     <h3>{selectedNode.data.label}</h3>
                     <DocstringViewer text={selectedNode.data.description || ''} />
+
+                    <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={!!selectedNode.data.runInBackground}
+                                onChange={(e) => onUpdateRunInBackground(selectedNode.id, e.target.checked)}
+                            />
+                            Run in Background
+                        </label>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                            If checked, this step will run asynchronously. Use SystemClient.join_task to wait for it later.
+                        </div>
+                    </div>
+
                     <h4>Parameters</h4>
                     {(selectedNode.data.parameters || []).length > 0 ? (
                         (selectedNode.data.parameters || []).map(param => {
@@ -87,8 +103,7 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdat
 
                             return (
                                 <div key={param.name} className={styles.paramItem}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                        <label>{param.name} <span className={styles.paramType}>({param.type})</span></label>
+                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', gap: '8px' }}>
                                         <button
                                             className={styles.iconButton}
                                             onClick={() => {
@@ -107,6 +122,7 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdat
                                         >
                                             {isLinked ? <Unlink size={14} /> : <LinkIcon size={14} />}
                                         </button>
+                                        <label style={{ flex: 1 }}>{param.name} <span className={styles.paramType}>({param.type})</span></label>
                                     </div>
 
                                     {isLinked ? (

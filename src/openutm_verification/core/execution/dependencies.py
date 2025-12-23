@@ -8,6 +8,7 @@ from openutm_verification.core.clients.air_traffic.base_client import create_air
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.clients.opensky.base_client import create_opensky_settings
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
+from openutm_verification.core.clients.system.system_client import SystemClient
 from openutm_verification.core.execution.config_models import AppConfig, DataFiles, ScenarioId, get_settings
 from openutm_verification.core.execution.dependency_resolution import CONTEXT, dependency
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
@@ -156,3 +157,9 @@ async def air_traffic_client(config: AppConfig) -> AsyncGenerator[AirTrafficClie
     settings = create_air_traffic_settings()
     async with AirTrafficClient(settings) as air_traffic_client:
         yield air_traffic_client
+
+
+@dependency(SystemClient)
+async def system_client() -> AsyncGenerator[SystemClient, None]:
+    """Provides a SystemClient instance for dependency injection."""
+    yield SystemClient()

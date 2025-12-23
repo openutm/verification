@@ -1,6 +1,7 @@
 .customNode {
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  --node-color: var(--border-color);
+  background-color: var(--rf-node-bg);
+  border: 1px solid var(--node-color);
   border-radius: var(--radius-md);
   padding: 12px 16px;
   min-width: 180px;
@@ -10,7 +11,6 @@
 
 .customNode:hover {
   box-shadow: var(--shadow-lg);
-  border-color: var(--accent-primary);
 }
 
 .customNodeHeader {
@@ -34,7 +34,6 @@
 }
 
 .statusButton {
-  margin-left: auto;
   cursor: pointer;
   background: none;
   border: none;
@@ -44,23 +43,45 @@
   transition: transform 0.2s ease;
 }
 
-.statusButton:hover {
-  transform: scale(1.1);
+.statusIndicator {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Status indicators */
 .statusSuccess {
-  border-color: var(--success);
-  box-shadow: 0 0 0 1px var(--success);
+  --node-color: var(--success);
+  border-color: var(--node-color);
 }
 
 .statusError {
-  border-color: var(--danger);
-  box-shadow: 0 0 0 1px var(--danger);
+  --node-color: var(--danger);
+  border-color: var(--node-color);
   background-color: rgba(239, 68, 68, 0.05);
 }
 
+.statusRunning {
+  --node-color: var(--accent-primary);
+  border-color: var(--node-color);
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
 .selected {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px var(--accent-primary);
+  border-width: 2px;
+  padding: 11px 15px;
+  border-color: var(--node-color);
 }

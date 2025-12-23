@@ -1,11 +1,16 @@
 import { useState, useCallback } from 'react';
 import type { Node, Edge } from '@xyflow/react';
-import type { NodeData, ScenarioStep, ScenarioExecutionResult } from '../types/scenario';
+import type { NodeData } from '../types/scenario';
 
 export const useScenarioRunner = () => {
     const [isRunning, setIsRunning] = useState(false);
 
-    const runScenario = useCallback(async (nodes: Node<NodeData>[], edges: Edge[]) => {
+    const runScenario = useCallback(async (
+        nodes: Node<NodeData>[],
+        edges: Edge[],
+        onStepComplete?: (result: { id: string; status: 'success' | 'failure' | 'error'; result?: unknown }) => void,
+        onStepStart?: (nodeId: string) => void
+    ) => {
         if (nodes.length === 0) return null;
 
         // Simple topological sort / path following
@@ -38,9 +43,20 @@ export const useScenarioRunner = () => {
             }
         }
 
-        const steps: ScenarioStep[] = sortedNodes
-            .filter(node => node.data.operationId) // Filter out nodes without operationId (like Start node)
-            .map(node => {
+        const steps = sortedNodes.filter(node => node.data.operationId); // Filter out nodes without operationId
+
+        try {
+            // 1. Reset Session
+            await fetch('http://localhost:8989/session/reset', { method: 'POST' });
+
+            const results: { id: string; status: string; result?: unknown; error?: unknown }[] = [];
+
+            // 2. Execute steps one by one
+            for (const node of steps) {
+                if (onStepStart) {
+                    onStepStart(node.id);
+                }
+
                 const params = (node.data.parameters || []).reduce((acc, param) => {
                     if (param.default !== undefined && param.default !== null && param.default !== '') {
                         acc[param.name] = param.default;
@@ -51,7 +67,6 @@ export const useScenarioRunner = () => {
                 let className = node.data.className as string;
                 let functionName = node.data.functionName as string;
 
-                // Fallback to parsing operationId if className/functionName are missing
                 if ((!className || !functionName) && typeof node.data.operationId === 'string') {
                     const parts = node.data.operationId.split('.');
                     if (parts.length === 2) {
@@ -59,32 +74,53 @@ export const useScenarioRunner = () => {
                     }
                 }
 
-                return {
+                // Construct URL with query param for background execution
+                const url = new URL(`http://localhost:8989/api/${className}/${functionName}`);
+                if (node.data.runInBackground) {
+                    url.searchParams.append('run_in_background', 'true');
+                }
+                url.searchParams.append('step_id', node.id);
+
+                console.log(`Executing step ${node.id}: ${className}.${functionName}`, params);
+
+                const response = await fetch(url.toString(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Step ${className}.${functionName} failed: ${response.status} ${errorText}`);
+                }
+
+                const result = await response.json();
+
+                // Add ID to result to match expected format
+                const stepResult = {
                     id: node.id,
-                    className,
-                    functionName,
-                    parameters: params
+                    status: result.status || 'success',
+                    result: result.result || result,
+                    error: result.error
                 };
-            });
+                results.push(stepResult);
 
-        try {
-            console.log('Sending scenario steps:', steps);
-            const response = await fetch('http://localhost:8989/run-scenario', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ steps })
-            });
+                if (onStepComplete) {
+                    onStepComplete(stepResult as { id: string; status: 'success' | 'failure' | 'error'; result?: unknown });
+                }
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                // If error, stop execution
+                if (stepResult.status === 'error' || stepResult.status === 'failure') {
+                    console.error(`Step ${node.id} failed`, stepResult);
+                    break;
+                }
             }
 
-            const result: ScenarioExecutionResult = await response.json();
-            return result;
+            return { results, status: 'completed', duration: 0 };
 
         } catch (error) {
             console.error('Error running scenario:', error);
-            alert('Failed to run scenario. Is the backend server running?');
+            alert(`Failed to run scenario: ${error}`);
             return null;
         } finally {
             setIsRunning(false);

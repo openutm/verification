@@ -12,7 +12,6 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import layoutStyles from '../styles/EditorLayout.module.css';
-import operationsData from '../data/operations.json';
 import type { Operation, OperationParam, NodeData } from '../types/scenario';
 
 import { CustomNode } from './ScenarioEditor/CustomNode';
@@ -49,6 +48,36 @@ const ScenarioEditorContent = () => {
     const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
     const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
     const [resultToDisplay, setResultToDisplay] = useState<unknown>(null);
+    const [operations, setOperations] = useState<Operation[]>([]);
+    const [isConnected, setIsConnected] = useState(false);
+
+    useEffect(() => {
+        const checkHealth = async () => {
+            try {
+                const res = await fetch('http://localhost:8989/health');
+                if (res.ok) {
+                    setIsConnected(true);
+                } else {
+                    setIsConnected(false);
+                }
+            } catch {
+                setIsConnected(false);
+            }
+        };
+
+        checkHealth();
+        const interval = setInterval(checkHealth, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        if (isConnected) {
+            fetch('http://localhost:8989/operations')
+                .then(res => res.json())
+                .then(data => setOperations(data))
+                .catch(err => console.error('Failed to fetch operations:', err));
+        }
+    }, [isConnected]);
 
     const {
         nodes,
@@ -131,8 +160,8 @@ const ScenarioEditorContent = () => {
     }, []);
 
     const handleDrop = useCallback((event: React.DragEvent) => {
-        onDrop(event, operationsData as Operation[]);
-    }, [onDrop]);
+        onDrop(event, operations);
+    }, [onDrop, operations]);
 
     const handleClear = useCallback(() => {
         if (globalThis.confirm('Are you sure you want to clear the current scenario? All unsaved changes will be lost.')) {
@@ -182,10 +211,27 @@ const ScenarioEditorContent = () => {
         const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodesRef.current;
         const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edgesRef.current;
 
-        const result = await runScenario(currentNodes, currentEdges);
-        if (result?.results) {
-            setNodes((nds) => updateNodesWithResults(nds, result.results));
-        }
+        // Pass a callback to update nodes incrementally
+        const onStepComplete = (stepResult: { id: string; status: 'success' | 'failure' | 'error'; result?: unknown }) => {
+            setNodes((nds) => updateNodesWithResults(nds, [stepResult]));
+        };
+
+        const onStepStart = (nodeId: string) => {
+            setNodes((nds) => nds.map(node => {
+                if (node.id === nodeId) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            status: 'running'
+                        }
+                    };
+                }
+                return node;
+            }));
+        };
+
+        await runScenario(currentNodes, currentEdges, onStepComplete, onStepStart);
     }, [runScenario, setNodes, updateNodesWithResults, reactFlowInstance, setResultToDisplay]);
 
     const updateNodeParameter = useCallback((nodeId: string, paramName: string, value: unknown) => {
@@ -216,6 +262,28 @@ const ScenarioEditorContent = () => {
             return {
                 ...prev,
                 data: { ...prev.data, parameters: updatedParameters },
+            };
+        });
+    }, [setNodes]);
+
+    const updateNodeRunInBackground = useCallback((nodeId: string, value: boolean) => {
+        setNodes((nds) =>
+            nds.map((node) => {
+                if (node.id === nodeId) {
+                    return {
+                        ...node,
+                        data: { ...node.data, runInBackground: value },
+                    };
+                }
+                return node;
+            })
+        );
+
+        setSelectedNode((prev) => {
+            if (!prev || prev.id !== nodeId) return prev;
+            return {
+                ...prev,
+                data: { ...prev.data, runInBackground: value },
             };
         });
     }, [setNodes]);
@@ -266,7 +334,7 @@ const ScenarioEditorContent = () => {
             />
 
             <div className={layoutStyles.workspace}>
-                <MemoizedToolbox />
+                <MemoizedToolbox operations={operations} />
 
                 <div className={layoutStyles.graphContainer} ref={reactFlowWrapper}>
                     <ReactFlow<Node<NodeData>, Edge>
@@ -292,8 +360,8 @@ const ScenarioEditorContent = () => {
                         <Panel position="top-right">
                             <div style={{ display: 'flex', gap: '10px', padding: '10px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--success)' }}></div>
-                                    Connected
+                                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: isConnected ? 'var(--success)' : 'var(--danger)' }}></div>
+                                    {isConnected ? 'Connected' : 'Disconnected'}
                                 </div>
                             </div>
                         </Panel>
@@ -313,6 +381,7 @@ const ScenarioEditorContent = () => {
                         connectedNodes={connectedNodes}
                         onClose={() => setSelectedNode(null)}
                         onUpdateParameter={updateNodeParameter}
+                        onUpdateRunInBackground={updateNodeRunInBackground}
                     />
                 )}
             </div>
