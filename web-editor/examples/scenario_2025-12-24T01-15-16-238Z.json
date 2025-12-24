@@ -1,0 +1,1906 @@
+{
+  "nodes": [
+    {
+      "id": "dndnode_16",
+      "type": "custom",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "data": {
+        "label": "Setup Flight Declaration",
+        "operationId": "FlightBlenderClient.setup_flight_declaration",
+        "className": "FlightBlenderClient",
+        "functionName": "setup_flight_declaration",
+        "description": "Generates data and uploads flight declaration.",
+        "parameters": [
+          {
+            "name": "flight_declaration_path",
+            "type": "str",
+            "default": "config/bern/flight_declaration.json"
+          },
+          {
+            "name": "trajectory_path",
+            "type": "str",
+            "default": "config/bern/trajectory_f1.json"
+          }
+        ],
+        "status": "success",
+        "result": {
+          "name": "Setup Flight Declaration",
+          "status": "PASS",
+          "duration": 0.4281291961669922,
+          "details": null,
+          "error_message": null
+        }
+      },
+      "measured": {
+        "width": 248,
+        "height": 56
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "dndnode_17",
+      "type": "custom",
+      "position": {
+        "x": 0,
+        "y": 360
+      },
+      "data": {
+        "label": "Update Operation State",
+        "operationId": "FlightBlenderClient.update_operation_state",
+        "className": "FlightBlenderClient",
+        "functionName": "update_operation_state",
+        "description": "Update the state of a flight operation.\n\nPosts the new state and optionally waits for the specified duration.\n\nArgs:\n    new_state: The new OperationState to set.\n    duration_seconds: Optional seconds to sleep after update (default 0).\n\nReturns:\n    The JSON response from the API.\n\nRaises:\n    FlightBlenderError: If the update request fails.",
+        "parameters": [
+          {
+            "name": "new_state",
+            "type": "OperationState",
+            "options": [
+              {
+                "name": "PROCESSING",
+                "value": 0
+              },
+              {
+                "name": "ACCEPTED",
+                "value": 1
+              },
+              {
+                "name": "ACTIVATED",
+                "value": 2
+              },
+              {
+                "name": "NONCONFORMING",
+                "value": 3
+              },
+              {
+                "name": "CONTINGENT",
+                "value": 4
+              },
+              {
+                "name": "ENDED",
+                "value": 5
+              },
+              {
+                "name": "WITHDRAWN",
+                "value": 6
+              },
+              {
+                "name": "CANCELLED",
+                "value": 7
+              },
+              {
+                "name": "REJECTED",
+                "value": 8
+              }
+            ],
+            "isEnum": true,
+            "default": 2
+          },
+          {
+            "name": "duration_seconds",
+            "type": "int",
+            "default": 0
+          }
+        ],
+        "status": "success",
+        "result": {
+          "name": "Update Operation State",
+          "status": "PASS",
+          "duration": 0.10649800300598145,
+          "details": {
+            "state": 2,
+            "submitted_by": null
+          },
+          "error_message": null
+        }
+      },
+      "measured": {
+        "width": 244,
+        "height": 56
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "dndnode_18",
+      "type": "custom",
+      "position": {
+        "x": 0,
+        "y": 180
+      },
+      "data": {
+        "label": "Wait X seconds",
+        "operationId": "FlightBlenderClient.wait_x_seconds",
+        "className": "FlightBlenderClient",
+        "functionName": "wait_x_seconds",
+        "description": "Wait for a specified number of seconds.",
+        "parameters": [
+          {
+            "name": "wait_time_seconds",
+            "type": "int",
+            "default": 5
+          }
+        ],
+        "status": "success",
+        "result": {
+          "name": "Wait X seconds",
+          "status": "PASS",
+          "duration": 5.0012102127075195,
+          "details": "Waited for Flight Blender to process 5 seconds.",
+          "error_message": null
+        }
+      },
+      "measured": {
+        "width": 191,
+        "height": 56
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "dndnode_19",
+      "type": "custom",
+      "position": {
+        "x": 0,
+        "y": 720
+      },
+      "data": {
+        "label": "Submit Telemetry",
+        "operationId": "FlightBlenderClient.submit_telemetry",
+        "className": "FlightBlenderClient",
+        "functionName": "submit_telemetry",
+        "description": "Submit telemetry data for a flight operation from in-memory states.\n\nSubmits telemetry states sequentially from the provided list, with optional\nduration limiting and error handling for rate limits.\n\nArgs:\n    states: List of telemetry state dictionaries. If None, uses the generated telemetry states from context.\n    duration_seconds: Optional maximum duration in seconds to submit telemetry (default 0 for unlimited).\n\nReturns:\n    The JSON response from the last telemetry submission, or None if no submissions occurred.\n\nRaises:\n    FlightBlenderError: If maximum waiting time is exceeded due to rate limits.",
+        "parameters": [
+          {
+            "name": "states",
+            "type": "list[RIDAircraftState] | None",
+            "default": null
+          },
+          {
+            "name": "duration_seconds",
+            "type": "int",
+            "default": 5
+          }
+        ],
+        "status": "success",
+        "result": {
+          "name": "Submit Telemetry",
+          "status": "PASS",
+          "duration": 5.538996934890747,
+          "details": {
+            "message": "Telemetry data successfully submitted"
+          },
+          "error_message": null
+        }
+      },
+      "measured": {
+        "width": 205,
+        "height": 56
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "dndnode_20",
+      "type": "custom",
+      "position": {
+        "x": 0,
+        "y": 900
+      },
+      "data": {
+        "label": "Update Operation State",
+        "operationId": "FlightBlenderClient.update_operation_state",
+        "className": "FlightBlenderClient",
+        "functionName": "update_operation_state",
+        "description": "Update the state of a flight operation.\n\nPosts the new state and optionally waits for the specified duration.\n\nArgs:\n    new_state: The new OperationState to set.\n    duration_seconds: Optional seconds to sleep after update (default 0).\n\nReturns:\n    The JSON response from the API.\n\nRaises:\n    FlightBlenderError: If the update request fails.",
+        "parameters": [
+          {
+            "name": "new_state",
+            "type": "OperationState",
+            "options": [
+              {
+                "name": "PROCESSING",
+                "value": 0
+              },
+              {
+                "name": "ACCEPTED",
+                "value": 1
+              },
+              {
+                "name": "ACTIVATED",
+                "value": 2
+              },
+              {
+                "name": "NONCONFORMING",
+                "value": 3
+              },
+              {
+                "name": "CONTINGENT",
+                "value": 4
+              },
+              {
+                "name": "ENDED",
+                "value": 5
+              },
+              {
+                "name": "WITHDRAWN",
+                "value": 6
+              },
+              {
+                "name": "CANCELLED",
+                "value": 7
+              },
+              {
+                "name": "REJECTED",
+                "value": 8
+              }
+            ],
+            "isEnum": true,
+            "default": 5
+          },
+          {
+            "name": "duration_seconds",
+            "type": "int",
+            "default": 0
+          }
+        ],
+        "status": "success",
+        "result": {
+          "name": "Update Operation State",
+          "status": "PASS",
+          "duration": 0.1755518913269043,
+          "details": {
+            "state": 5,
+            "submitted_by": null
+          },
+          "error_message": null
+        }
+      },
+      "measured": {
+        "width": 244,
+        "height": 56
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "dndnode_21",
+      "type": "custom",
+      "position": {
+        "x": 0,
+        "y": 1260
+      },
+      "data": {
+        "label": "Delete Flight Declaration",
+        "operationId": "FlightBlenderClient.delete_flight_declaration",
+        "className": "FlightBlenderClient",
+        "functionName": "delete_flight_declaration",
+        "description": "Delete a flight declaration by ID.\n\nReturns:\n    A dictionary with deletion status, including whether it was successful.",
+        "parameters": [],
+        "status": "success",
+        "result": {
+          "name": "Delete Flight Declaration",
+          "status": "PASS",
+          "duration": 0.09616422653198242,
+          "details": {
+            "deleted": true,
+            "id": "4f925234-be8e-4480-9ecc-fa87f74843e5"
+          },
+          "error_message": null
+        }
+      },
+      "measured": {
+        "width": 251,
+        "height": 56
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "dndnode_0",
+      "type": "custom",
+      "position": {
+        "x": 0,
+        "y": 540
+      },
+      "data": {
+        "label": "Check Operation State Connected",
+        "operationId": "FlightBlenderClient.check_operation_state_connected",
+        "className": "FlightBlenderClient",
+        "functionName": "check_operation_state_connected",
+        "description": "Check the operation state by polling the API until the expected state is reached.\n\nArgs:\n    expected_state: The expected OperationState.\n    duration_seconds: Maximum seconds to poll for the state.\n\nReturns:\n    The JSON response from the API when the state is reached.\n\nRaises:\n    FlightBlenderError: If the expected state is not reached within the timeout.",
+        "parameters": [
+          {
+            "name": "expected_state",
+            "type": "OperationState",
+            "default": 2,
+            "required": true,
+            "isEnum": true,
+            "options": [
+              {
+                "name": "PROCESSING",
+                "value": 0
+              },
+              {
+                "name": "ACCEPTED",
+                "value": 1
+              },
+              {
+                "name": "ACTIVATED",
+                "value": 2
+              },
+              {
+                "name": "NONCONFORMING",
+                "value": 3
+              },
+              {
+                "name": "CONTINGENT",
+                "value": 4
+              },
+              {
+                "name": "ENDED",
+                "value": 5
+              },
+              {
+                "name": "WITHDRAWN",
+                "value": 6
+              },
+              {
+                "name": "CANCELLED",
+                "value": 7
+              },
+              {
+                "name": "REJECTED",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "name": "duration_seconds",
+            "type": "int",
+            "default": 2,
+            "required": false
+          }
+        ],
+        "status": "success",
+        "result": {
+          "name": "Check Operation State Connected",
+          "status": "PASS",
+          "duration": 0.09958386421203613,
+          "details": {
+            "operational_intent": {
+              "volumes": [
+                {
+                  "volume": {
+                    "outline_polygon": {
+                      "vertices": [
+                        {
+                          "lat": 46.9794127188804,
+                          "lng": 7.487045772981162
+                        },
+                        {
+                          "lat": 46.9794127188804,
+                          "lng": 7.471958949151656
+                        },
+                        {
+                          "lat": 46.97941512651706,
+                          "lng": 7.471909940581491
+                        },
+                        {
+                          "lat": 46.9794223262402,
+                          "lng": 7.471861403990648
+                        },
+                        {
+                          "lat": 46.979434248712536,
+                          "lng": 7.471813806813029
+                        },
+                        {
+                          "lat": 46.979450779114146,
+                          "lng": 7.471767607435473
+                        },
+                        {
+                          "lat": 46.97947175824822,
+                          "lng": 7.471723250783243
+                        },
+                        {
+                          "lat": 46.979496984074245,
+                          "lng": 7.471681164035146
+                        },
+                        {
+                          "lat": 46.97952621365372,
+                          "lng": 7.471641752509574
+                        },
+                        {
+                          "lat": 46.9795591654898,
+                          "lng": 7.471605395761062
+                        },
+                        {
+                          "lat": 46.97959552223832,
+                          "lng": 7.471572443924974
+                        },
+                        {
+                          "lat": 46.97963493376389,
+                          "lng": 7.4715432143455045
+                        },
+                        {
+                          "lat": 46.979677020511986,
+                          "lng": 7.471517988519482
+                        },
+                        {
+                          "lat": 46.97972137716422,
+                          "lng": 7.4714970093854
+                        },
+                        {
+                          "lat": 46.979767576541775,
+                          "lng": 7.47148047898379
+                        },
+                        {
+                          "lat": 46.979815173719395,
+                          "lng": 7.4714685565114545
+                        },
+                        {
+                          "lat": 46.979863710310234,
+                          "lng": 7.4714613567883195
+                        },
+                        {
+                          "lat": 46.9799127188804,
+                          "lng": 7.471458949151656
+                        },
+                        {
+                          "lat": 46.986538963424294,
+                          "lng": 7.471458949151656
+                        },
+                        {
+                          "lat": 46.98658797199446,
+                          "lng": 7.4714613567883195
+                        },
+                        {
+                          "lat": 46.9866365085853,
+                          "lng": 7.4714685565114545
+                        },
+                        {
+                          "lat": 46.98668410576292,
+                          "lng": 7.47148047898379
+                        },
+                        {
+                          "lat": 46.986730305140476,
+                          "lng": 7.4714970093854
+                        },
+                        {
+                          "lat": 46.98677466179271,
+                          "lng": 7.471517988519482
+                        },
+                        {
+                          "lat": 46.986816748540804,
+                          "lng": 7.4715432143455045
+                        },
+                        {
+                          "lat": 46.986856160066374,
+                          "lng": 7.471572443924974
+                        },
+                        {
+                          "lat": 46.98689251681489,
+                          "lng": 7.471605395761062
+                        },
+                        {
+                          "lat": 46.98692546865097,
+                          "lng": 7.471641752509574
+                        },
+                        {
+                          "lat": 46.98695469823045,
+                          "lng": 7.471681164035146
+                        },
+                        {
+                          "lat": 46.98697992405647,
+                          "lng": 7.471723250783243
+                        },
+                        {
+                          "lat": 46.98700090319055,
+                          "lng": 7.471767607435473
+                        },
+                        {
+                          "lat": 46.98701743359216,
+                          "lng": 7.471813806813029
+                        },
+                        {
+                          "lat": 46.9870293560645,
+                          "lng": 7.471861403990648
+                        },
+                        {
+                          "lat": 46.98703655578763,
+                          "lng": 7.471909940581491
+                        },
+                        {
+                          "lat": 46.9870389634243,
+                          "lng": 7.471958949151656
+                        },
+                        {
+                          "lat": 46.9870389634243,
+                          "lng": 7.487045772981162
+                        },
+                        {
+                          "lat": 46.98703655578763,
+                          "lng": 7.487094781551327
+                        },
+                        {
+                          "lat": 46.9870293560645,
+                          "lng": 7.48714331814217
+                        },
+                        {
+                          "lat": 46.98701743359216,
+                          "lng": 7.487190915319789
+                        },
+                        {
+                          "lat": 46.98700090319055,
+                          "lng": 7.487237114697344
+                        },
+                        {
+                          "lat": 46.98697992405647,
+                          "lng": 7.487281471349575
+                        },
+                        {
+                          "lat": 46.98695469823045,
+                          "lng": 7.487323558097672
+                        },
+                        {
+                          "lat": 46.98692546865097,
+                          "lng": 7.487362969623244
+                        },
+                        {
+                          "lat": 46.98689251681489,
+                          "lng": 7.487399326371755
+                        },
+                        {
+                          "lat": 46.986856160066374,
+                          "lng": 7.4874322782078435
+                        },
+                        {
+                          "lat": 46.986816748540804,
+                          "lng": 7.487461507787313
+                        },
+                        {
+                          "lat": 46.98677466179271,
+                          "lng": 7.487486733613336
+                        },
+                        {
+                          "lat": 46.986730305140476,
+                          "lng": 7.487507712747417
+                        },
+                        {
+                          "lat": 46.98668410576292,
+                          "lng": 7.487524243149028
+                        },
+                        {
+                          "lat": 46.9866365085853,
+                          "lng": 7.487536165621363
+                        },
+                        {
+                          "lat": 46.98658797199446,
+                          "lng": 7.487543365344498
+                        },
+                        {
+                          "lat": 46.986538963424294,
+                          "lng": 7.487545772981162
+                        },
+                        {
+                          "lat": 46.9799127188804,
+                          "lng": 7.487545772981162
+                        },
+                        {
+                          "lat": 46.979863710310234,
+                          "lng": 7.487543365344498
+                        },
+                        {
+                          "lat": 46.979815173719395,
+                          "lng": 7.487536165621363
+                        },
+                        {
+                          "lat": 46.979767576541775,
+                          "lng": 7.487524243149028
+                        },
+                        {
+                          "lat": 46.97972137716422,
+                          "lng": 7.487507712747417
+                        },
+                        {
+                          "lat": 46.979677020511986,
+                          "lng": 7.487486733613336
+                        },
+                        {
+                          "lat": 46.97963493376389,
+                          "lng": 7.487461507787313
+                        },
+                        {
+                          "lat": 46.97959552223832,
+                          "lng": 7.4874322782078435
+                        },
+                        {
+                          "lat": 46.9795591654898,
+                          "lng": 7.487399326371755
+                        },
+                        {
+                          "lat": 46.97952621365372,
+                          "lng": 7.487362969623244
+                        },
+                        {
+                          "lat": 46.979496984074245,
+                          "lng": 7.487323558097672
+                        },
+                        {
+                          "lat": 46.97947175824822,
+                          "lng": 7.487281471349575
+                        },
+                        {
+                          "lat": 46.979450779114146,
+                          "lng": 7.487237114697344
+                        },
+                        {
+                          "lat": 46.979434248712536,
+                          "lng": 7.487190915319789
+                        },
+                        {
+                          "lat": 46.9794223262402,
+                          "lng": 7.48714331814217
+                        },
+                        {
+                          "lat": 46.97941512651706,
+                          "lng": 7.487094781551327
+                        }
+                      ]
+                    },
+                    "altitude_lower": {
+                      "value": 50,
+                      "reference": "W84",
+                      "units": "M"
+                    },
+                    "altitude_upper": {
+                      "value": 120,
+                      "reference": "W84",
+                      "units": "M"
+                    },
+                    "outline_circle": null
+                  },
+                  "time_start": {
+                    "format": "RFC3339",
+                    "value": "2025-12-24T01:13:58.428252+00:00"
+                  },
+                  "time_end": {
+                    "format": "RFC3339",
+                    "value": "2025-12-24T01:17:53.428252+00:00"
+                  }
+                }
+              ],
+              "priority": 0,
+              "state": "Accepted",
+              "off_nominal_volumes": []
+            },
+            "originating_party": "Medicine Delivery Company",
+            "type_of_operation": 0,
+            "id": "4f925234-be8e-4480-9ecc-fa87f74843e5",
+            "state": 2,
+            "is_approved": true,
+            "start_datetime": "2025-12-24T01:13:58.428252Z",
+            "end_datetime": "2025-12-24T01:17:53.428252Z",
+            "flight_declaration_geojson": {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "properties": {
+                    "time_start": "2025-12-24T01:13:58.428252+00:00",
+                    "time_end": "2025-12-24T01:17:53.428252+00:00"
+                  },
+                  "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                      [
+                        [
+                          7.487045772981162,
+                          46.9794127188804
+                        ],
+                        [
+                          7.487094781551327,
+                          46.97941512651706
+                        ],
+                        [
+                          7.48714331814217,
+                          46.9794223262402
+                        ],
+                        [
+                          7.487190915319789,
+                          46.979434248712536
+                        ],
+                        [
+                          7.487237114697344,
+                          46.979450779114146
+                        ],
+                        [
+                          7.487281471349575,
+                          46.97947175824822
+                        ],
+                        [
+                          7.487323558097672,
+                          46.979496984074245
+                        ],
+                        [
+                          7.487362969623244,
+                          46.97952621365372
+                        ],
+                        [
+                          7.487399326371755,
+                          46.9795591654898
+                        ],
+                        [
+                          7.4874322782078435,
+                          46.97959552223832
+                        ],
+                        [
+                          7.487461507787313,
+                          46.97963493376389
+                        ],
+                        [
+                          7.487486733613336,
+                          46.979677020511986
+                        ],
+                        [
+                          7.487507712747417,
+                          46.97972137716422
+                        ],
+                        [
+                          7.487524243149028,
+                          46.979767576541775
+                        ],
+                        [
+                          7.487536165621363,
+                          46.979815173719395
+                        ],
+                        [
+                          7.487543365344498,
+                          46.979863710310234
+                        ],
+                        [
+                          7.487545772981162,
+                          46.9799127188804
+                        ],
+                        [
+                          7.487545772981162,
+                          46.986538963424294
+                        ],
+                        [
+                          7.487543365344498,
+                          46.98658797199446
+                        ],
+                        [
+                          7.487536165621363,
+                          46.9866365085853
+                        ],
+                        [
+                          7.487524243149028,
+                          46.98668410576292
+                        ],
+                        [
+                          7.487507712747417,
+                          46.986730305140476
+                        ],
+                        [
+                          7.487486733613336,
+                          46.98677466179271
+                        ],
+                        [
+                          7.487461507787313,
+                          46.986816748540804
+                        ],
+                        [
+                          7.4874322782078435,
+                          46.986856160066374
+                        ],
+                        [
+                          7.487399326371755,
+                          46.98689251681489
+                        ],
+                        [
+                          7.487362969623244,
+                          46.98692546865097
+                        ],
+                        [
+                          7.487323558097672,
+                          46.98695469823045
+                        ],
+                        [
+                          7.487281471349575,
+                          46.98697992405647
+                        ],
+                        [
+                          7.487237114697344,
+                          46.98700090319055
+                        ],
+                        [
+                          7.487190915319789,
+                          46.98701743359216
+                        ],
+                        [
+                          7.48714331814217,
+                          46.9870293560645
+                        ],
+                        [
+                          7.487094781551327,
+                          46.98703655578763
+                        ],
+                        [
+                          7.487045772981162,
+                          46.9870389634243
+                        ],
+                        [
+                          7.471958949151656,
+                          46.9870389634243
+                        ],
+                        [
+                          7.471909940581491,
+                          46.98703655578763
+                        ],
+                        [
+                          7.471861403990648,
+                          46.9870293560645
+                        ],
+                        [
+                          7.471813806813029,
+                          46.98701743359216
+                        ],
+                        [
+                          7.471767607435473,
+                          46.98700090319055
+                        ],
+                        [
+                          7.471723250783243,
+                          46.98697992405647
+                        ],
+                        [
+                          7.471681164035146,
+                          46.98695469823045
+                        ],
+                        [
+                          7.471641752509574,
+                          46.98692546865097
+                        ],
+                        [
+                          7.471605395761062,
+                          46.98689251681489
+                        ],
+                        [
+                          7.471572443924974,
+                          46.986856160066374
+                        ],
+                        [
+                          7.4715432143455045,
+                          46.986816748540804
+                        ],
+                        [
+                          7.471517988519482,
+                          46.98677466179271
+                        ],
+                        [
+                          7.4714970093854,
+                          46.986730305140476
+                        ],
+                        [
+                          7.47148047898379,
+                          46.98668410576292
+                        ],
+                        [
+                          7.4714685565114545,
+                          46.9866365085853
+                        ],
+                        [
+                          7.4714613567883195,
+                          46.98658797199446
+                        ],
+                        [
+                          7.471458949151656,
+                          46.986538963424294
+                        ],
+                        [
+                          7.471458949151656,
+                          46.9799127188804
+                        ],
+                        [
+                          7.4714613567883195,
+                          46.979863710310234
+                        ],
+                        [
+                          7.4714685565114545,
+                          46.979815173719395
+                        ],
+                        [
+                          7.47148047898379,
+                          46.979767576541775
+                        ],
+                        [
+                          7.4714970093854,
+                          46.97972137716422
+                        ],
+                        [
+                          7.471517988519482,
+                          46.979677020511986
+                        ],
+                        [
+                          7.4715432143455045,
+                          46.97963493376389
+                        ],
+                        [
+                          7.471572443924974,
+                          46.97959552223832
+                        ],
+                        [
+                          7.471605395761062,
+                          46.9795591654898
+                        ],
+                        [
+                          7.471641752509574,
+                          46.97952621365372
+                        ],
+                        [
+                          7.471681164035146,
+                          46.979496984074245
+                        ],
+                        [
+                          7.471723250783243,
+                          46.97947175824822
+                        ],
+                        [
+                          7.471767607435473,
+                          46.979450779114146
+                        ],
+                        [
+                          7.471813806813029,
+                          46.979434248712536
+                        ],
+                        [
+                          7.471861403990648,
+                          46.9794223262402
+                        ],
+                        [
+                          7.471909940581491,
+                          46.97941512651706
+                        ],
+                        [
+                          7.471958949151656,
+                          46.9794127188804
+                        ],
+                        [
+                          7.487045772981162,
+                          46.9794127188804
+                        ]
+                      ]
+                    ]
+                  }
+                }
+              ]
+            },
+            "flight_declaration_raw_geojson": {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                      [
+                        [
+                          7.487045772981162,
+                          46.9799127188804
+                        ],
+                        [
+                          7.487045772981162,
+                          46.986538963424294
+                        ],
+                        [
+                          7.471958949151656,
+                          46.986538963424294
+                        ],
+                        [
+                          7.471958949151656,
+                          46.9799127188804
+                        ],
+                        [
+                          7.487045772981162,
+                          46.9799127188804
+                        ]
+                      ]
+                    ]
+                  },
+                  "properties": {
+                    "min_altitude": {
+                      "meters": 50,
+                      "datum": "w84"
+                    },
+                    "max_altitude": {
+                      "meters": 120,
+                      "datum": "w84"
+                    }
+                  }
+                }
+              ]
+            },
+            "bounds": "7.4714589,46.9794127,7.4875458,46.9870390",
+            "approved_by": null,
+            "submitted_by": null
+          },
+          "error_message": null
+        }
+      },
+      "measured": {
+        "width": 316,
+        "height": 56
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "dndnode_1",
+      "type": "custom",
+      "position": {
+        "x": 0,
+        "y": 1080
+      },
+      "data": {
+        "label": "Check Operation State Connected",
+        "operationId": "FlightBlenderClient.check_operation_state_connected",
+        "className": "FlightBlenderClient",
+        "functionName": "check_operation_state_connected",
+        "description": "Check the operation state by polling the API until the expected state is reached.\n\nArgs:\n    expected_state: The expected OperationState.\n    duration_seconds: Maximum seconds to poll for the state.\n\nReturns:\n    The JSON response from the API when the state is reached.\n\nRaises:\n    FlightBlenderError: If the expected state is not reached within the timeout.",
+        "parameters": [
+          {
+            "name": "expected_state",
+            "type": "OperationState",
+            "default": 5,
+            "required": true,
+            "isEnum": true,
+            "options": [
+              {
+                "name": "PROCESSING",
+                "value": 0
+              },
+              {
+                "name": "ACCEPTED",
+                "value": 1
+              },
+              {
+                "name": "ACTIVATED",
+                "value": 2
+              },
+              {
+                "name": "NONCONFORMING",
+                "value": 3
+              },
+              {
+                "name": "CONTINGENT",
+                "value": 4
+              },
+              {
+                "name": "ENDED",
+                "value": 5
+              },
+              {
+                "name": "WITHDRAWN",
+                "value": 6
+              },
+              {
+                "name": "CANCELLED",
+                "value": 7
+              },
+              {
+                "name": "REJECTED",
+                "value": 8
+              }
+            ]
+          },
+          {
+            "name": "duration_seconds",
+            "type": "int",
+            "default": 2,
+            "required": false
+          }
+        ],
+        "status": "success",
+        "result": {
+          "name": "Check Operation State Connected",
+          "status": "PASS",
+          "duration": 0.09664797782897949,
+          "details": {
+            "operational_intent": {
+              "volumes": [
+                {
+                  "volume": {
+                    "outline_polygon": {
+                      "vertices": [
+                        {
+                          "lat": 46.9794127188804,
+                          "lng": 7.487045772981162
+                        },
+                        {
+                          "lat": 46.9794127188804,
+                          "lng": 7.471958949151656
+                        },
+                        {
+                          "lat": 46.97941512651706,
+                          "lng": 7.471909940581491
+                        },
+                        {
+                          "lat": 46.9794223262402,
+                          "lng": 7.471861403990648
+                        },
+                        {
+                          "lat": 46.979434248712536,
+                          "lng": 7.471813806813029
+                        },
+                        {
+                          "lat": 46.979450779114146,
+                          "lng": 7.471767607435473
+                        },
+                        {
+                          "lat": 46.97947175824822,
+                          "lng": 7.471723250783243
+                        },
+                        {
+                          "lat": 46.979496984074245,
+                          "lng": 7.471681164035146
+                        },
+                        {
+                          "lat": 46.97952621365372,
+                          "lng": 7.471641752509574
+                        },
+                        {
+                          "lat": 46.9795591654898,
+                          "lng": 7.471605395761062
+                        },
+                        {
+                          "lat": 46.97959552223832,
+                          "lng": 7.471572443924974
+                        },
+                        {
+                          "lat": 46.97963493376389,
+                          "lng": 7.4715432143455045
+                        },
+                        {
+                          "lat": 46.979677020511986,
+                          "lng": 7.471517988519482
+                        },
+                        {
+                          "lat": 46.97972137716422,
+                          "lng": 7.4714970093854
+                        },
+                        {
+                          "lat": 46.979767576541775,
+                          "lng": 7.47148047898379
+                        },
+                        {
+                          "lat": 46.979815173719395,
+                          "lng": 7.4714685565114545
+                        },
+                        {
+                          "lat": 46.979863710310234,
+                          "lng": 7.4714613567883195
+                        },
+                        {
+                          "lat": 46.9799127188804,
+                          "lng": 7.471458949151656
+                        },
+                        {
+                          "lat": 46.986538963424294,
+                          "lng": 7.471458949151656
+                        },
+                        {
+                          "lat": 46.98658797199446,
+                          "lng": 7.4714613567883195
+                        },
+                        {
+                          "lat": 46.9866365085853,
+                          "lng": 7.4714685565114545
+                        },
+                        {
+                          "lat": 46.98668410576292,
+                          "lng": 7.47148047898379
+                        },
+                        {
+                          "lat": 46.986730305140476,
+                          "lng": 7.4714970093854
+                        },
+                        {
+                          "lat": 46.98677466179271,
+                          "lng": 7.471517988519482
+                        },
+                        {
+                          "lat": 46.986816748540804,
+                          "lng": 7.4715432143455045
+                        },
+                        {
+                          "lat": 46.986856160066374,
+                          "lng": 7.471572443924974
+                        },
+                        {
+                          "lat": 46.98689251681489,
+                          "lng": 7.471605395761062
+                        },
+                        {
+                          "lat": 46.98692546865097,
+                          "lng": 7.471641752509574
+                        },
+                        {
+                          "lat": 46.98695469823045,
+                          "lng": 7.471681164035146
+                        },
+                        {
+                          "lat": 46.98697992405647,
+                          "lng": 7.471723250783243
+                        },
+                        {
+                          "lat": 46.98700090319055,
+                          "lng": 7.471767607435473
+                        },
+                        {
+                          "lat": 46.98701743359216,
+                          "lng": 7.471813806813029
+                        },
+                        {
+                          "lat": 46.9870293560645,
+                          "lng": 7.471861403990648
+                        },
+                        {
+                          "lat": 46.98703655578763,
+                          "lng": 7.471909940581491
+                        },
+                        {
+                          "lat": 46.9870389634243,
+                          "lng": 7.471958949151656
+                        },
+                        {
+                          "lat": 46.9870389634243,
+                          "lng": 7.487045772981162
+                        },
+                        {
+                          "lat": 46.98703655578763,
+                          "lng": 7.487094781551327
+                        },
+                        {
+                          "lat": 46.9870293560645,
+                          "lng": 7.48714331814217
+                        },
+                        {
+                          "lat": 46.98701743359216,
+                          "lng": 7.487190915319789
+                        },
+                        {
+                          "lat": 46.98700090319055,
+                          "lng": 7.487237114697344
+                        },
+                        {
+                          "lat": 46.98697992405647,
+                          "lng": 7.487281471349575
+                        },
+                        {
+                          "lat": 46.98695469823045,
+                          "lng": 7.487323558097672
+                        },
+                        {
+                          "lat": 46.98692546865097,
+                          "lng": 7.487362969623244
+                        },
+                        {
+                          "lat": 46.98689251681489,
+                          "lng": 7.487399326371755
+                        },
+                        {
+                          "lat": 46.986856160066374,
+                          "lng": 7.4874322782078435
+                        },
+                        {
+                          "lat": 46.986816748540804,
+                          "lng": 7.487461507787313
+                        },
+                        {
+                          "lat": 46.98677466179271,
+                          "lng": 7.487486733613336
+                        },
+                        {
+                          "lat": 46.986730305140476,
+                          "lng": 7.487507712747417
+                        },
+                        {
+                          "lat": 46.98668410576292,
+                          "lng": 7.487524243149028
+                        },
+                        {
+                          "lat": 46.9866365085853,
+                          "lng": 7.487536165621363
+                        },
+                        {
+                          "lat": 46.98658797199446,
+                          "lng": 7.487543365344498
+                        },
+                        {
+                          "lat": 46.986538963424294,
+                          "lng": 7.487545772981162
+                        },
+                        {
+                          "lat": 46.9799127188804,
+                          "lng": 7.487545772981162
+                        },
+                        {
+                          "lat": 46.979863710310234,
+                          "lng": 7.487543365344498
+                        },
+                        {
+                          "lat": 46.979815173719395,
+                          "lng": 7.487536165621363
+                        },
+                        {
+                          "lat": 46.979767576541775,
+                          "lng": 7.487524243149028
+                        },
+                        {
+                          "lat": 46.97972137716422,
+                          "lng": 7.487507712747417
+                        },
+                        {
+                          "lat": 46.979677020511986,
+                          "lng": 7.487486733613336
+                        },
+                        {
+                          "lat": 46.97963493376389,
+                          "lng": 7.487461507787313
+                        },
+                        {
+                          "lat": 46.97959552223832,
+                          "lng": 7.4874322782078435
+                        },
+                        {
+                          "lat": 46.9795591654898,
+                          "lng": 7.487399326371755
+                        },
+                        {
+                          "lat": 46.97952621365372,
+                          "lng": 7.487362969623244
+                        },
+                        {
+                          "lat": 46.979496984074245,
+                          "lng": 7.487323558097672
+                        },
+                        {
+                          "lat": 46.97947175824822,
+                          "lng": 7.487281471349575
+                        },
+                        {
+                          "lat": 46.979450779114146,
+                          "lng": 7.487237114697344
+                        },
+                        {
+                          "lat": 46.979434248712536,
+                          "lng": 7.487190915319789
+                        },
+                        {
+                          "lat": 46.9794223262402,
+                          "lng": 7.48714331814217
+                        },
+                        {
+                          "lat": 46.97941512651706,
+                          "lng": 7.487094781551327
+                        }
+                      ]
+                    },
+                    "altitude_lower": {
+                      "value": 50,
+                      "reference": "W84",
+                      "units": "M"
+                    },
+                    "altitude_upper": {
+                      "value": 120,
+                      "reference": "W84",
+                      "units": "M"
+                    },
+                    "outline_circle": null
+                  },
+                  "time_start": {
+                    "format": "RFC3339",
+                    "value": "2025-12-24T01:13:58.428252+00:00"
+                  },
+                  "time_end": {
+                    "format": "RFC3339",
+                    "value": "2025-12-24T01:17:53.428252+00:00"
+                  }
+                }
+              ],
+              "priority": 0,
+              "state": "Accepted",
+              "off_nominal_volumes": []
+            },
+            "originating_party": "Medicine Delivery Company",
+            "type_of_operation": 0,
+            "id": "4f925234-be8e-4480-9ecc-fa87f74843e5",
+            "state": 5,
+            "is_approved": true,
+            "start_datetime": "2025-12-24T01:13:58.428252Z",
+            "end_datetime": "2025-12-24T01:17:53.428252Z",
+            "flight_declaration_geojson": {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "properties": {
+                    "time_start": "2025-12-24T01:13:58.428252+00:00",
+                    "time_end": "2025-12-24T01:17:53.428252+00:00"
+                  },
+                  "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                      [
+                        [
+                          7.487045772981162,
+                          46.9794127188804
+                        ],
+                        [
+                          7.487094781551327,
+                          46.97941512651706
+                        ],
+                        [
+                          7.48714331814217,
+                          46.9794223262402
+                        ],
+                        [
+                          7.487190915319789,
+                          46.979434248712536
+                        ],
+                        [
+                          7.487237114697344,
+                          46.979450779114146
+                        ],
+                        [
+                          7.487281471349575,
+                          46.97947175824822
+                        ],
+                        [
+                          7.487323558097672,
+                          46.979496984074245
+                        ],
+                        [
+                          7.487362969623244,
+                          46.97952621365372
+                        ],
+                        [
+                          7.487399326371755,
+                          46.9795591654898
+                        ],
+                        [
+                          7.4874322782078435,
+                          46.97959552223832
+                        ],
+                        [
+                          7.487461507787313,
+                          46.97963493376389
+                        ],
+                        [
+                          7.487486733613336,
+                          46.979677020511986
+                        ],
+                        [
+                          7.487507712747417,
+                          46.97972137716422
+                        ],
+                        [
+                          7.487524243149028,
+                          46.979767576541775
+                        ],
+                        [
+                          7.487536165621363,
+                          46.979815173719395
+                        ],
+                        [
+                          7.487543365344498,
+                          46.979863710310234
+                        ],
+                        [
+                          7.487545772981162,
+                          46.9799127188804
+                        ],
+                        [
+                          7.487545772981162,
+                          46.986538963424294
+                        ],
+                        [
+                          7.487543365344498,
+                          46.98658797199446
+                        ],
+                        [
+                          7.487536165621363,
+                          46.9866365085853
+                        ],
+                        [
+                          7.487524243149028,
+                          46.98668410576292
+                        ],
+                        [
+                          7.487507712747417,
+                          46.986730305140476
+                        ],
+                        [
+                          7.487486733613336,
+                          46.98677466179271
+                        ],
+                        [
+                          7.487461507787313,
+                          46.986816748540804
+                        ],
+                        [
+                          7.4874322782078435,
+                          46.986856160066374
+                        ],
+                        [
+                          7.487399326371755,
+                          46.98689251681489
+                        ],
+                        [
+                          7.487362969623244,
+                          46.98692546865097
+                        ],
+                        [
+                          7.487323558097672,
+                          46.98695469823045
+                        ],
+                        [
+                          7.487281471349575,
+                          46.98697992405647
+                        ],
+                        [
+                          7.487237114697344,
+                          46.98700090319055
+                        ],
+                        [
+                          7.487190915319789,
+                          46.98701743359216
+                        ],
+                        [
+                          7.48714331814217,
+                          46.9870293560645
+                        ],
+                        [
+                          7.487094781551327,
+                          46.98703655578763
+                        ],
+                        [
+                          7.487045772981162,
+                          46.9870389634243
+                        ],
+                        [
+                          7.471958949151656,
+                          46.9870389634243
+                        ],
+                        [
+                          7.471909940581491,
+                          46.98703655578763
+                        ],
+                        [
+                          7.471861403990648,
+                          46.9870293560645
+                        ],
+                        [
+                          7.471813806813029,
+                          46.98701743359216
+                        ],
+                        [
+                          7.471767607435473,
+                          46.98700090319055
+                        ],
+                        [
+                          7.471723250783243,
+                          46.98697992405647
+                        ],
+                        [
+                          7.471681164035146,
+                          46.98695469823045
+                        ],
+                        [
+                          7.471641752509574,
+                          46.98692546865097
+                        ],
+                        [
+                          7.471605395761062,
+                          46.98689251681489
+                        ],
+                        [
+                          7.471572443924974,
+                          46.986856160066374
+                        ],
+                        [
+                          7.4715432143455045,
+                          46.986816748540804
+                        ],
+                        [
+                          7.471517988519482,
+                          46.98677466179271
+                        ],
+                        [
+                          7.4714970093854,
+                          46.986730305140476
+                        ],
+                        [
+                          7.47148047898379,
+                          46.98668410576292
+                        ],
+                        [
+                          7.4714685565114545,
+                          46.9866365085853
+                        ],
+                        [
+                          7.4714613567883195,
+                          46.98658797199446
+                        ],
+                        [
+                          7.471458949151656,
+                          46.986538963424294
+                        ],
+                        [
+                          7.471458949151656,
+                          46.9799127188804
+                        ],
+                        [
+                          7.4714613567883195,
+                          46.979863710310234
+                        ],
+                        [
+                          7.4714685565114545,
+                          46.979815173719395
+                        ],
+                        [
+                          7.47148047898379,
+                          46.979767576541775
+                        ],
+                        [
+                          7.4714970093854,
+                          46.97972137716422
+                        ],
+                        [
+                          7.471517988519482,
+                          46.979677020511986
+                        ],
+                        [
+                          7.4715432143455045,
+                          46.97963493376389
+                        ],
+                        [
+                          7.471572443924974,
+                          46.97959552223832
+                        ],
+                        [
+                          7.471605395761062,
+                          46.9795591654898
+                        ],
+                        [
+                          7.471641752509574,
+                          46.97952621365372
+                        ],
+                        [
+                          7.471681164035146,
+                          46.979496984074245
+                        ],
+                        [
+                          7.471723250783243,
+                          46.97947175824822
+                        ],
+                        [
+                          7.471767607435473,
+                          46.979450779114146
+                        ],
+                        [
+                          7.471813806813029,
+                          46.979434248712536
+                        ],
+                        [
+                          7.471861403990648,
+                          46.9794223262402
+                        ],
+                        [
+                          7.471909940581491,
+                          46.97941512651706
+                        ],
+                        [
+                          7.471958949151656,
+                          46.9794127188804
+                        ],
+                        [
+                          7.487045772981162,
+                          46.9794127188804
+                        ]
+                      ]
+                    ]
+                  }
+                }
+              ]
+            },
+            "flight_declaration_raw_geojson": {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                      [
+                        [
+                          7.487045772981162,
+                          46.9799127188804
+                        ],
+                        [
+                          7.487045772981162,
+                          46.986538963424294
+                        ],
+                        [
+                          7.471958949151656,
+                          46.986538963424294
+                        ],
+                        [
+                          7.471958949151656,
+                          46.9799127188804
+                        ],
+                        [
+                          7.487045772981162,
+                          46.9799127188804
+                        ]
+                      ]
+                    ]
+                  },
+                  "properties": {
+                    "min_altitude": {
+                      "meters": 50,
+                      "datum": "w84"
+                    },
+                    "max_altitude": {
+                      "meters": 120,
+                      "datum": "w84"
+                    }
+                  }
+                }
+              ]
+            },
+            "bounds": "7.4714589,46.9794127,7.4875458,46.9870390",
+            "approved_by": null,
+            "submitted_by": null
+          },
+          "error_message": null
+        }
+      },
+      "measured": {
+        "width": 316,
+        "height": 56
+      },
+      "selected": false,
+      "dragging": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "dndnode_16",
+      "target": "dndnode_18",
+      "animated": true,
+      "style": {
+        "stroke": "var(--accent-primary)",
+        "strokeWidth": 1
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "var(--accent-primary)"
+      },
+      "id": "xy-edge__dndnode_16-dndnode_18"
+    },
+    {
+      "source": "dndnode_18",
+      "target": "dndnode_17",
+      "animated": true,
+      "style": {
+        "stroke": "var(--accent-primary)",
+        "strokeWidth": 1
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "var(--accent-primary)"
+      },
+      "id": "xy-edge__dndnode_18-dndnode_17"
+    },
+    {
+      "source": "dndnode_19",
+      "target": "dndnode_20",
+      "animated": true,
+      "style": {
+        "stroke": "var(--accent-primary)",
+        "strokeWidth": 1
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "var(--accent-primary)"
+      },
+      "id": "xy-edge__dndnode_19-dndnode_20"
+    },
+    {
+      "source": "dndnode_17",
+      "target": "dndnode_0",
+      "animated": true,
+      "style": {
+        "stroke": "var(--accent-primary)",
+        "strokeWidth": 1
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "var(--accent-primary)"
+      },
+      "id": "xy-edge__dndnode_17-dndnode_0"
+    },
+    {
+      "source": "dndnode_0",
+      "target": "dndnode_19",
+      "animated": true,
+      "style": {
+        "stroke": "var(--accent-primary)",
+        "strokeWidth": 1
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "var(--accent-primary)"
+      },
+      "id": "xy-edge__dndnode_0-dndnode_19"
+    },
+    {
+      "source": "dndnode_20",
+      "target": "dndnode_1",
+      "animated": true,
+      "style": {
+        "stroke": "var(--accent-primary)",
+        "strokeWidth": 1
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "var(--accent-primary)"
+      },
+      "id": "xy-edge__dndnode_20-dndnode_1"
+    },
+    {
+      "source": "dndnode_1",
+      "target": "dndnode_21",
+      "animated": true,
+      "style": {
+        "stroke": "var(--accent-primary)",
+        "strokeWidth": 1
+      },
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "var(--accent-primary)"
+      },
+      "id": "xy-edge__dndnode_1-dndnode_21"
+    }
+  ],
+  "viewport": {
+    "x": 577.2942305770323,
+    "y": -361.29404313600276,
+    "zoom": 1.0434035118685243
+  }
+}
