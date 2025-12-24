@@ -5,6 +5,7 @@ from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, create_model
 
+from openutm_verification.core.execution.dependency_resolution import DEPENDENCIES
 from openutm_verification.server.runner import DynamicRunner, ScenarioDefinition, StepDefinition
 
 app = FastAPI()
@@ -70,6 +71,9 @@ for class_name, client_class in runner.client_map.items():
                 if param_name == "self":
                     continue
 
+                if param.annotation in DEPENDENCIES:
+                    continue
+
                 annotation = param.annotation
                 if annotation == inspect.Parameter.empty:
                     annotation = Any
@@ -105,4 +109,10 @@ for class_name, client_class in runner.client_map.items():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8989)
+    uvicorn.run(
+        "openutm_verification.server.main:app",
+        host="0.0.0.0",
+        port=8989,
+        reload=True,
+        reload_includes=["*.py"],
+    )
