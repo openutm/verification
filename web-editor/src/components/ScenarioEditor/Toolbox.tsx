@@ -45,10 +45,11 @@ const ToolboxGroup = ({ title, ops }: { title: string, ops: Operation[] }) => {
 export const Toolbox = ({ operations }: { operations: Operation[] }) => {
     const groupedOperations = useMemo(() => {
         const grouped = operations.reduce((acc, op) => {
-            if (!acc[op.className]) {
-                acc[op.className] = [];
+            const groupName = op.category || 'General';
+            if (!acc[groupName]) {
+                acc[groupName] = [];
             }
-            acc[op.className].push(op);
+            acc[groupName].push(op);
             return acc;
         }, {} as Record<string, Operation[]>);
 
@@ -65,11 +66,11 @@ export const Toolbox = ({ operations }: { operations: Operation[] }) => {
                 Toolbox
             </div>
             <div className={styles.nodeList}>
-                {groupedOperations.sortedKeys.map(className => (
+                {groupedOperations.sortedKeys.map(category => (
                     <ToolboxGroup
-                        key={className}
-                        title={className}
-                        ops={groupedOperations.grouped[className]}
+                        key={category}
+                        title={category}
+                        ops={groupedOperations.grouped[category]}
                     />
                 ))}
             </div>

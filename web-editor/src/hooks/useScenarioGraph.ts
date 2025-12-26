@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import {
     useNodesState,
     useEdgesState,
@@ -44,13 +44,60 @@ const getLayoutedElements = (nodes: Node<NodeData>[], edges: Edge[], direction =
     return { nodes: layoutedNodes, edges };
 };
 
-let id = 0;
-const getId = () => `dndnode_${id++}`;
+export const generateNodeId = (nodes: Node<NodeData>[], baseName: string) => {
+    const slug = baseName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    let counter = 1;
+    let newId = `${slug}_${counter}`;
+    while (nodes.some(n => n.id === newId)) {
+        counter++;
+        newId = `${slug}_${counter}`;
+    }
+    return newId;
+};
+
+const safeParse = <T>(key: string, fallback: T): T => {
+    if (typeof window === 'undefined') return fallback;
+    try {
+        const item = window.sessionStorage.getItem(key);
+        return item ? JSON.parse(item) : fallback;
+    } catch (e) {
+        console.warn(`Failed to parse ${key} from sessionStorage`, e);
+        return fallback;
+    }
+};
 
 export const useScenarioGraph = () => {
-    const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+    // Initialize state from sessionStorage if available
+    // We use useState to ensure we only read from storage once on mount
+    const [initialNodes] = useState<Node<NodeData>[]>(() => safeParse('scenario-nodes', []));
+    const [initialEdges] = useState<Edge[]>(() => safeParse('scenario-edges', []));
+
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>(initialNodes);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
     const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<Node<NodeData>, Edge> | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+
+    const onGraphDragStart = useCallback(() => {
+        setIsDragging(true);
+    }, []);
+
+    const onGraphDragStop = useCallback(() => {
+        setIsDragging(false);
+    }, []);
+
+    // Persist changes to sessionStorage
+    // We skip saving while dragging to improve performance
+    useEffect(() => {
+        if (isDragging) return;
+
+        if (nodes.length > 0 || edges.length > 0) {
+            sessionStorage.setItem('scenario-nodes', JSON.stringify(nodes));
+            sessionStorage.setItem('scenario-edges', JSON.stringify(edges));
+        } else {
+            sessionStorage.setItem('scenario-nodes', JSON.stringify(nodes));
+            sessionStorage.setItem('scenario-edges', JSON.stringify(edges));
+        }
+    }, [nodes, edges, isDragging]);
 
     const onConnect = useCallback(
         (params: Connection) => setEdges((eds) => addEdge({
@@ -80,21 +127,21 @@ export const useScenarioGraph = () => {
 
             const operation = operations.find(op => op.id === opId);
 
-            const newNode: Node<NodeData> = {
-                id: getId(),
-                type: 'custom',
-                position,
-                data: {
-                    label: type,
-                    operationId: opId,
-                    className: operation?.className,
-                    functionName: operation?.functionName,
-                    description: operation?.description,
-                    parameters: operation?.parameters ? JSON.parse(JSON.stringify(operation.parameters)) : [], // Deep copy parameters
-                },
-            };
-
-            setNodes((nds) => nds.concat(newNode));
+            setNodes((nds) => {
+                const newId = generateNodeId(nds, type);
+                const newNode: Node<NodeData> = {
+                    id: newId,
+                    type: 'custom',
+                    position,
+                    data: {
+                        label: type,
+                        operationId: opId,
+                        description: operation?.description,
+                        parameters: operation?.parameters ? JSON.parse(JSON.stringify(operation.parameters)) : [], // Deep copy parameters
+                    },
+                };
+                return nds.concat(newNode);
+            });
         },
         [reactFlowInstance, setNodes],
     );
@@ -117,6 +164,8 @@ export const useScenarioGraph = () => {
     const clearGraph = useCallback(() => {
         setNodes([]);
         setEdges([]);
+        sessionStorage.removeItem('scenario-nodes');
+        sessionStorage.removeItem('scenario-edges');
     }, [setNodes, setEdges]);
 
     return {
@@ -132,5 +181,7 @@ export const useScenarioGraph = () => {
         clearGraph,
         reactFlowInstance,
         setReactFlowInstance,
+        onGraphDragStart,
+        onGraphDragStop,
     };
 };

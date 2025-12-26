@@ -64,34 +64,24 @@ export const useScenarioRunner = () => {
                     return acc;
                 }, {} as Record<string, unknown>);
 
-                let className = node.data.className as string;
-                let functionName = node.data.functionName as string;
+                const stepDefinition = {
+                    id: node.id,
+                    name: node.data.label, // Assuming label is the step name
+                    parameters: params,
+                    run_in_background: !!node.data.runInBackground
+                };
 
-                if ((!className || !functionName) && typeof node.data.operationId === 'string') {
-                    const parts = node.data.operationId.split('.');
-                    if (parts.length === 2) {
-                        [className, functionName] = parts;
-                    }
-                }
+                console.log(`Executing step ${node.id}: ${node.data.label}`, stepDefinition);
 
-                // Construct URL with query param for background execution
-                const url = new URL(`http://localhost:8989/api/${className}/${functionName}`);
-                if (node.data.runInBackground) {
-                    url.searchParams.append('run_in_background', 'true');
-                }
-                url.searchParams.append('step_id', node.id);
-
-                console.log(`Executing step ${node.id}: ${className}.${functionName}`, params);
-
-                const response = await fetch(url.toString(), {
+                const response = await fetch('http://localhost:8989/api/step', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(params)
+                    body: JSON.stringify(stepDefinition)
                 });
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    throw new Error(`Step ${className}.${functionName} failed: ${response.status} ${errorText}`);
+                    throw new Error(`Step ${node.data.label} failed: ${response.status} ${errorText}`);
                 }
 
                 const result = await response.json();

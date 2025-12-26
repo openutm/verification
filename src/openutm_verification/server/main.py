@@ -1,14 +1,31 @@
-import inspect
-from typing import Any, Dict, List, Optional, Union
+import os
+import shutil
+import subprocess
+from contextlib import asynccontextmanager
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, create_model
+from fastapi.staticfiles import StaticFiles
+from loguru import logger
 
-from openutm_verification.core.execution.dependency_resolution import DEPENDENCIES
-from openutm_verification.server.runner import DynamicRunner, ScenarioDefinition, StepDefinition
+# Import dependencies to ensure they are registered and steps are populated
+import openutm_verification.core.execution.dependencies  # noqa: F401
+from openutm_verification.core.execution.definitions import ScenarioDefinition
+from openutm_verification.server.router import scenario_router
+from openutm_verification.server.runner import SessionManager
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    session_manager = SessionManager()
+    app.state.runner = session_manager
+    yield
+    # Shutdown
+    await session_manager.close_session()
+
+
+app = FastAPI(lifespan=lifespan)
 
 # Configure CORS
 app.add_middleware(
@@ -19,11 +36,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-runner = DynamicRunner()
+app.include_router(scenario_router)
 
 
-@app.get("/")
-async def root():
+def get_session_manager(request: Request) -> SessionManager:
+    return request.app.state.runner
+
+
+@app.get("/api/info")
+async def api_info():
     return {"message": "OpenUTM Verification API is running"}
 
 
@@ -33,78 +54,71 @@ async def health_check():
 
 
 @app.get("/operations")
-async def get_operations():
+async def get_operations(runner: SessionManager = Depends(get_session_manager)):
     return runner.get_available_operations()
 
 
 @app.post("/session/reset")
-async def reset_session():
+async def reset_session(runner: SessionManager = Depends(get_session_manager)):
     await runner.close_session()
     await runner.initialize_session()
     return {"status": "session_reset"}
 
 
 @app.post("/run-scenario")
-async def run_scenario(scenario: ScenarioDefinition):
-    # For full scenario run, we might want a fresh runner or use the session one?
-    # The original code created a new runner. Let's keep it that way for now,
-    # or use the global one but reset session.
-    # But DynamicRunner() creates a new instance.
-    local_runner = DynamicRunner()
+async def run_scenario(scenario: ScenarioDefinition, runner: SessionManager = Depends(get_session_manager)):
+    return await runner.run_scenario(scenario)
+
+
+# Mount static files for web-editor
+# Calculate path relative to this file
+# src/openutm_verification/server/main.py -> ../../../web-editor/dist
+web_editor_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../web-editor"))
+static_dir = os.path.join(web_editor_dir, "dist")
+
+
+def build_frontend():
+    """Attempt to build the web-editor frontend using npm."""
+    if not os.path.exists(web_editor_dir):
+        logger.warning(f"Web editor directory not found at {web_editor_dir}")
+        return
+
+    npm_cmd = shutil.which("npm")
+    if not npm_cmd:
+        logger.warning("npm not found. Skipping web editor build.")
+        return
+
     try:
-        results = await local_runner.run_scenario(scenario)
-        return {"status": "completed", "results": results}
+        logger.info("Building web editor frontend... This may take a while.")
+        # Run npm install
+        logger.info("Running 'npm install'...")
+        subprocess.run([npm_cmd, "install"], cwd=web_editor_dir, check=True)
+
+        # Run npm run build
+        logger.info("Running 'npm run build'...")
+        subprocess.run([npm_cmd, "run", "build"], cwd=web_editor_dir, check=True)
+
+        logger.info("Web editor built successfully.")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to build web editor: {e}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"An unexpected error occurred during web editor build: {e}")
 
 
-# Dynamic Route Generation
-for class_name, client_class in runner.client_map.items():
-    for name, method in inspect.getmembers(client_class):
-        if hasattr(method, "_is_scenario_step"):
-            step_name = getattr(method, "_step_name")
+if not os.path.exists(static_dir):
+    build_frontend()
 
-            # Create Pydantic model for parameters
-            sig = inspect.signature(method)
-            fields = {}
-            for param_name, param in sig.parameters.items():
-                if param_name == "self":
-                    continue
+if os.path.exists(static_dir):
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+else:
 
-                if param.annotation in DEPENDENCIES:
-                    continue
+    @app.get("/")
+    async def root():
+        return {
+            "message": "OpenUTM Verification API is running.",
+            "hint": "To use the web editor, run 'npm run build' in the web-editor directory. Automatic build failed or npm was not found.",
+        }
 
-                annotation = param.annotation
-                if annotation == inspect.Parameter.empty:
-                    annotation = Any
-                else:
-                    # Allow Dict for references (e.g. {"$ref": "..."})
-                    annotation = Union[annotation, Dict[str, Any]]
-
-                default = param.default
-                if default == inspect.Parameter.empty:
-                    fields[param_name] = (annotation, ...)
-                else:
-                    fields[param_name] = (annotation, default)
-
-            # Create the model
-            RequestModel = create_model(f"{class_name}_{name}_Request", __config__=ConfigDict(arbitrary_types_allowed=True), **fields)
-
-            # Define the route handler
-            # We need to capture class_name, name and RequestModel in the closure
-            def create_handler(req_model, c_name, f_name):
-                async def handler(body: req_model, run_in_background: bool = False, step_id: Optional[str] = None):
-                    step_def = StepDefinition(
-                        id=step_id, className=c_name, functionName=f_name, parameters=body.model_dump(), run_in_background=run_in_background
-                    )
-                    return await runner.execute_single_step(step_def)
-
-                return handler
-
-            handler = create_handler(RequestModel, class_name, name)
-
-            # Register the route
-            app.post(f"/api/{class_name}/{name}", response_model=Dict[str, Any], tags=[class_name], summary=step_name)(handler)
 
 if __name__ == "__main__":
     import uvicorn

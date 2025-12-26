@@ -29,21 +29,6 @@ def dependency(type: object) -> Callable:
     return wrapper
 
 
-async def call_with_dependencies(func: Callable[..., Coroutine[Any, Any, T]]) -> T:
-    """Call a function with its dependencies automatically provided.
-
-    Args:
-        func: The function to call.
-    Returns:
-        The result of the function call.
-    """
-    sig = inspect.signature(func)
-    async with provide(*(p.annotation for p in sig.parameters.values())) as dependencies:
-        if inspect.iscoroutinefunction(func):
-            return await func(*dependencies)
-        raise ValueError(f"Function {func.__name__} must be async")
-
-
 class DependencyResolver:
     """Resolves dependencies using a provided ExitStack."""
 
@@ -100,3 +85,33 @@ async def provide(*types: object) -> AsyncGenerator[tuple[object, ...], None]:
         for t in types:
             instances.append(await resolver.resolve(t))
         yield tuple(instances)
+
+
+async def call_with_dependencies(func: Callable[..., Coroutine[Any, Any, T]], resolver: DependencyResolver | None = None, **kwargs: Any) -> T:
+    """Call a function with its dependencies automatically provided.
+
+    Args:
+        func: The function to call.
+        resolver: Optional DependencyResolver to use. If None, a new one is created.
+        **kwargs: Additional arguments to pass to the function.
+    Returns:
+        The result of the function call.
+    """
+    if resolver:
+        sig = inspect.signature(func)
+        call_kwargs = kwargs.copy()
+
+        for name, param in sig.parameters.items():
+            if name in call_kwargs:
+                continue
+
+            if param.annotation in DEPENDENCIES:
+                call_kwargs[name] = await resolver.resolve(param.annotation)
+
+        if inspect.iscoroutinefunction(func):
+            return await func(**call_kwargs)
+        raise ValueError(f"Function {func.__name__} must be async")
+    else:
+        async with AsyncExitStack() as stack:
+            temp_resolver = DependencyResolver(stack)
+            return await call_with_dependencies(func, resolver=temp_resolver, **kwargs)

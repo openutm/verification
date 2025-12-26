@@ -19,43 +19,28 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                 {data.status && (
                     <div className={styles.statusIndicator}>
                         {data.status === 'success' && (
-                            <button
+                            <div
                                 className={styles.statusButton}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    data.onShowResult?.(data.result);
-                                }}
-                                title="Click to view results"
-                                type="button"
+                                title="Success"
                             >
                                 <CheckCircle size={16} color="var(--success)" />
-                            </button>
+                            </div>
                         )}
                         {data.status === 'failure' && (
-                            <button
+                            <div
                                 className={styles.statusButton}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    data.onShowResult?.(data.result);
-                                }}
-                                title="Click to view results"
-                                type="button"
+                                title="Failure"
                             >
                                 <XCircle size={16} color="var(--danger)" />
-                            </button>
+                            </div>
                         )}
                         {data.status === 'error' && (
-                            <button
+                            <div
                                 className={styles.statusButton}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    data.onShowResult?.(data.result);
-                                }}
-                                title="Click to view results"
-                                type="button"
+                                title="Error"
                             >
                                 <AlertTriangle size={16} color="var(--danger)" />
-                            </button>
+                            </div>
                         )}
                         {data.status === 'running' && (
                             <Loader2 size={16} className={styles.spinner} color="var(--accent-primary)" />

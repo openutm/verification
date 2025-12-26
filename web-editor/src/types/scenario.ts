@@ -9,29 +9,24 @@ export interface OperationParam {
 export interface Operation {
     id: string;
     name: string;
-    functionName: string;
-    className: string;
     description: string;
     parameters: OperationParam[];
+    category?: string;
 }
 
 export interface NodeData extends Record<string, unknown> {
     label: string;
     operationId?: string;
-    className?: string;
-    functionName?: string;
     description?: string;
     parameters?: OperationParam[];
     status?: 'success' | 'failure' | 'error' | 'running';
     result?: unknown;
-    onShowResult?: (result: unknown) => void;
     runInBackground?: boolean;
 }
 
 export interface ScenarioStep {
     id: string;
-    className: string;
-    functionName: string;
+    name: string;
     parameters: Record<string, unknown>;
     run_in_background?: boolean;
 }

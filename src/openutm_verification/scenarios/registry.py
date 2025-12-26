@@ -22,6 +22,7 @@ from loguru import logger
 from openutm_verification.core.execution.scenario_runner import (
     ScenarioContext,
     ScenarioRegistry,
+    _scenario_state,
 )
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
@@ -37,7 +38,11 @@ P = ParamSpec("P")
 async def _run_scenario_simple_async(scenario_id: str, func: Callable, args, kwargs) -> ScenarioResult:
     """Runs a scenario without auto-setup (async)."""
     try:
-        with ScenarioContext() as ctx:
+        # Reuse existing state if available (e.g. from SessionManager)
+        current_state = _scenario_state.get()
+        ctx_manager = ScenarioContext(state=current_state) if current_state else ScenarioContext()
+
+        with ctx_manager as ctx:
             result = await func(*args, **kwargs)
 
             if isinstance(result, ScenarioResult):
