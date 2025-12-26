@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Link as LinkIcon, Unlink } from 'lucide-react';
 import type { Node } from '@xyflow/react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
@@ -42,6 +42,39 @@ interface PropertiesPanelProps {
 }
 
 export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdateParameter, onUpdateRunInBackground }: PropertiesPanelProps) => {
+    const [width, setWidth] = useState(480);
+    const [isResizing, setIsResizing] = useState(false);
+
+    const startResizing = useCallback((mouseDownEvent: React.MouseEvent) => {
+        mouseDownEvent.preventDefault();
+        setIsResizing(true);
+    }, []);
+
+    const stopResizing = useCallback(() => {
+        setIsResizing(false);
+    }, []);
+
+    const resize = useCallback(
+        (mouseMoveEvent: MouseEvent) => {
+            if (isResizing) {
+                const newWidth = window.innerWidth - mouseMoveEvent.clientX;
+                if (newWidth > 300 && newWidth < 800) {
+                    setWidth(newWidth);
+                }
+            }
+        },
+        [isResizing]
+    );
+
+    useEffect(() => {
+        window.addEventListener("mousemove", resize);
+        window.addEventListener("mouseup", stopResizing);
+        return () => {
+            window.removeEventListener("mousemove", resize);
+            window.removeEventListener("mouseup", stopResizing);
+        };
+    }, [resize, stopResizing]);
+
     const formatParamValue = (value: unknown): string => {
         if (value === null || value === undefined) {
             return '';
@@ -65,7 +98,21 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdat
     };
 
     return (
-        <aside className={layoutStyles.rightSidebar}>
+        <aside className={layoutStyles.rightSidebar} style={{ width, position: 'relative' }}>
+            <div
+                onMouseDown={startResizing}
+                style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: '5px',
+                    cursor: 'col-resize',
+                    zIndex: 100,
+                    backgroundColor: isResizing ? 'var(--accent-primary)' : 'transparent',
+                }}
+                title="Drag to resize"
+            />
             <div className={styles.panel}>
                 <div className={layoutStyles.sidebarHeader}>
                     Properties
@@ -80,6 +127,9 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdat
                 </div>
                 <div className={styles.content}>
                     <h3>{selectedNode.data.label}</h3>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', fontFamily: 'monospace' }}>
+                        ID: {selectedNode.id}
+                    </div>
                     <DocstringViewer text={selectedNode.data.description || ''} />
 
                     <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>

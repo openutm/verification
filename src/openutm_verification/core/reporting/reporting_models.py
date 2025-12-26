@@ -18,6 +18,7 @@ class Status(StrEnum):
 
     PASS = "PASS"
     FAIL = "FAIL"
+    RUNNING = "RUNNING"
 
 
 T = TypeVar("T")
@@ -26,11 +27,13 @@ T = TypeVar("T")
 class StepResult(BaseModel, Generic[T]):
     """Data model for a single step within a scenario."""
 
+    id: str | None = None
     name: str
     status: Status
     duration: float
     details: T = None  # type: ignore
     error_message: str | None = None
+    logs: list[str] = []
 
 
 class ScenarioResult(BaseModel):

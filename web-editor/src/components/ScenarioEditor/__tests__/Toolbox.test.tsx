@@ -1,53 +1,48 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { Toolbox } from '../Toolbox';
+import type { Operation } from '../../../types/scenario';
 
-// Mock the operations data
-vi.mock('../../../data/operations.json', () => ({
-    default: [
-        {
-            id: 'op1',
-            name: 'Operation 1',
-            className: 'ClassA',
-            functionName: 'op1',
-            description: 'Docstring A',
-            parameters: []
-        },
-        {
-            id: 'op2',
-            name: 'Operation 2',
-            className: 'ClassA',
-            functionName: 'op2',
-            description: 'Docstring B',
-            parameters: []
-        },
-        {
-            id: 'op3',
-            name: 'Operation 3',
-            className: 'ClassB',
-            functionName: 'op3',
-            description: 'Docstring C',
-            parameters: []
-        }
-    ]
-}));
+const mockOperations: Operation[] = [
+    {
+        id: 'op1',
+        name: 'Operation 1',
+        category: 'ClassA',
+        description: 'Docstring A',
+        parameters: []
+    },
+    {
+        id: 'op2',
+        name: 'Operation 2',
+        category: 'ClassA',
+        description: 'Docstring B',
+        parameters: []
+    },
+    {
+        id: 'op3',
+        name: 'Operation 3',
+        category: 'ClassB',
+        description: 'Docstring C',
+        parameters: []
+    }
+];
 
 describe('Toolbox', () => {
     it('renders correctly', () => {
-        render(<Toolbox />);
+        render(<Toolbox operations={mockOperations} />);
         expect(screen.getByText('ClassA')).toBeInTheDocument();
         expect(screen.getByText('ClassB')).toBeInTheDocument();
     });
 
     it('displays operations under groups', () => {
-        render(<Toolbox />);
+        render(<Toolbox operations={mockOperations} />);
         expect(screen.getByText('Operation 1')).toBeInTheDocument();
         expect(screen.getByText('Operation 2')).toBeInTheDocument();
         expect(screen.getByText('Operation 3')).toBeInTheDocument();
     });
 
     it('collapses and expands groups', () => {
-        render(<Toolbox />);
+        render(<Toolbox operations={mockOperations} />);
         const groupHeader = screen.getByText('ClassA');
 
         // Initially expanded
@@ -63,7 +58,7 @@ describe('Toolbox', () => {
     });
 
     it('sets data transfer on drag start', () => {
-        render(<Toolbox />);
+        render(<Toolbox operations={mockOperations} />);
         const operationItem = screen.getByText('Operation 1');
 
         const dataTransfer = {

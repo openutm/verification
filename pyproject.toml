@@ -122,14 +122,9 @@ select = [
     "I",
     # "UP",
 ]
-ignore = [
-    "F401",
-]
-fixable = [
-    "I",
-]
-unfixable = [
-]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.format]

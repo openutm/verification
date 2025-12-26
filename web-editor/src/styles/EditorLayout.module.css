@@ -12,13 +12,30 @@
   overflow: hidden;
   position: relative;
   background-color: var(--bg-secondary);
-  /* Slightly different bg for contrast */
+}
+
+.centerPane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
 }
 
 .sidebar {
   width: 280px;
   background-color: var(--bg-primary);
   border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.bottomPanel {
+  height: 300px;
+  background-color: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   z-index: 10;

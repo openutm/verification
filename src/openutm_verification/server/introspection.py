@@ -63,7 +63,7 @@ def process_parameter(param_name: str, param: inspect.Parameter) -> Dict[str, An
     return param_info
 
 
-def process_method(class_name: str, client_class: Type, name: str, method: Any) -> Dict[str, Any] | None:
+def process_method(client_class: Type, method: Any) -> Dict[str, Any] | None:
     """
     Extracts metadata from a client method if it's a scenario step.
     """
@@ -83,11 +83,9 @@ def process_method(class_name: str, client_class: Type, name: str, method: Any) 
             parameters.append(param_info)
 
     return {
-        "id": f"{class_name}.{name}",
+        "id": step_name,
         "name": step_name,
-        "functionName": name,
-        "className": class_name,
+        "category": client_class.__name__,
         "description": inspect.getdoc(method) or "",
         "parameters": parameters,
-        "filePath": inspect.getfile(client_class),
     }

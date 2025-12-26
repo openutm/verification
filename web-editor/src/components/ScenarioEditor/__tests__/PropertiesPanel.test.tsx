@@ -23,6 +23,7 @@ describe('PropertiesPanel', () => {
         connectedNodes: [],
         onClose: vi.fn(),
         onUpdateParameter: vi.fn(),
+        onUpdateRunInBackground: vi.fn(),
     };
 
     it('renders correctly', () => {

@@ -17,10 +17,10 @@ import type { Operation, OperationParam, NodeData } from '../types/scenario';
 import { CustomNode } from './ScenarioEditor/CustomNode';
 import { Toolbox } from './ScenarioEditor/Toolbox';
 import { PropertiesPanel } from './ScenarioEditor/PropertiesPanel';
-import { ResultPanel } from './ScenarioEditor/ResultPanel';
+import { BottomPanel } from './ScenarioEditor/BottomPanel';
 import { Header } from './ScenarioEditor/Header';
 
-import { useScenarioGraph } from '../hooks/useScenarioGraph';
+import { useScenarioGraph, generateNodeId } from '../hooks/useScenarioGraph';
 import { useScenarioRunner } from '../hooks/useScenarioRunner';
 import { useScenarioFile } from '../hooks/useScenarioFile';
 
@@ -39,15 +39,20 @@ const updateParameterInList = (params: OperationParam[], paramName: string, valu
 // Memoize child components to prevent unnecessary re-renders
 const MemoizedToolbox = React.memo(Toolbox);
 const MemoizedPropertiesPanel = React.memo(PropertiesPanel);
-const MemoizedResultPanel = React.memo(ResultPanel);
+const MemoizedBottomPanel = React.memo(BottomPanel);
 const MemoizedHeader = React.memo(Header);
 
 const ScenarioEditorContent = () => {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
-    const [theme, setTheme] = useState<'light' | 'dark'>('light');
+    const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('editor-theme');
+            if (saved === 'light' || saved === 'dark') return saved;
+        }
+        return 'light';
+    });
     const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
     const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-    const [resultToDisplay, setResultToDisplay] = useState<unknown>(null);
     const [operations, setOperations] = useState<Operation[]>([]);
     const [isConnected, setIsConnected] = useState(false);
 
@@ -91,7 +96,9 @@ const ScenarioEditorContent = () => {
         onLayout,
         clearGraph,
         setReactFlowInstance,
-        reactFlowInstance
+        reactFlowInstance,
+        onGraphDragStart,
+        onGraphDragStop
     } = useScenarioGraph();
 
     // Refs to keep track of latest nodes/edges without triggering re-renders in callbacks
@@ -114,6 +121,7 @@ const ScenarioEditorContent = () => {
 
     useEffect(() => {
         document.documentElement.dataset.theme = theme;
+        sessionStorage.setItem('editor-theme', theme);
     }, [theme]);
 
     // Update edge styles when selection changes
@@ -134,19 +142,21 @@ const ScenarioEditorContent = () => {
     const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
         setSelectedNode(node as Node<NodeData>);
         setSelectedEdgeId(null);
-        setResultToDisplay(null);
     }, []);
 
     const onNodeDragStart = useCallback((_event: React.MouseEvent, node: Node) => {
         setSelectedNode(node as Node<NodeData>);
         setSelectedEdgeId(null);
-        setResultToDisplay(null);
-    }, []);
+        onGraphDragStart();
+    }, [onGraphDragStart]);
+
+    const onNodeDragStop = useCallback(() => {
+        onGraphDragStop();
+    }, [onGraphDragStop]);
 
     const onPaneClick = useCallback(() => {
         setSelectedNode(null);
         setSelectedEdgeId(null);
-        setResultToDisplay(null);
     }, []);
 
     const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
@@ -168,13 +178,8 @@ const ScenarioEditorContent = () => {
             clearGraph();
             setSelectedNode(null);
             setSelectedEdgeId(null);
-            setResultToDisplay(null);
         }
     }, [clearGraph]);
-
-    const handleShowResult = useCallback((res: unknown) => {
-        setResultToDisplay(res);
-    }, []);
 
     const updateNodesWithResults = useCallback((currentNodes: Node<NodeData>[], results: { id: string; status: 'success' | 'failure' | 'error'; result?: unknown }[]) => {
         return currentNodes.map(node => {
@@ -186,17 +191,15 @@ const ScenarioEditorContent = () => {
                         ...node.data,
                         status: stepResult.status,
                         result: stepResult.result,
-                        onShowResult: handleShowResult
                     }
                 };
             }
             return node;
         });
-    }, [handleShowResult]);
+    }, []);
 
     const handleRun = useCallback(async () => {
         // Clear previous results/errors from the UI immediately
-        setResultToDisplay(null);
         setNodes((nds) => nds.map(node => ({
             ...node,
             data: {
@@ -213,7 +216,41 @@ const ScenarioEditorContent = () => {
 
         // Pass a callback to update nodes incrementally
         const onStepComplete = (stepResult: { id: string; status: 'success' | 'failure' | 'error'; result?: unknown }) => {
-            setNodes((nds) => updateNodesWithResults(nds, [stepResult]));
+            setNodes((nds) => {
+                const updatedNodes = updateNodesWithResults(nds, [stepResult]);
+
+                // Check if this was a Join Background Task step
+                const completedNode = updatedNodes.find(n => n.id === stepResult.id);
+                if (completedNode && completedNode.data.label === "Join Background Task" && stepResult.status === 'success') {
+                    // Find the task_id parameter
+                    const taskIdParam = completedNode.data.parameters?.find(p => p.name === "task_id");
+                    const taskIdValue = taskIdParam?.default;
+
+                    // If it's a reference, extract the node ID
+                    if (taskIdValue && typeof taskIdValue === 'object' && '$ref' in taskIdValue) {
+                        const ref = (taskIdValue as { $ref: string }).$ref;
+                        // Assuming ref format is "nodeId.task_id"
+                        const targetNodeId = ref.split('.')[0];
+
+                        // Update the target node with the result
+                        return updatedNodes.map(node => {
+                            if (node.id === targetNodeId) {
+                                return {
+                                    ...node,
+                                    data: {
+                                        ...node.data,
+                                        status: 'success', // Or inherit status from result?
+                                        result: stepResult.result
+                                    }
+                                };
+                            }
+                            return node;
+                        });
+                    }
+                }
+
+                return updatedNodes;
+            });
         };
 
         const onStepStart = (nodeId: string) => {
@@ -232,7 +269,7 @@ const ScenarioEditorContent = () => {
         };
 
         await runScenario(currentNodes, currentEdges, onStepComplete, onStepStart);
-    }, [runScenario, setNodes, updateNodesWithResults, reactFlowInstance, setResultToDisplay]);
+    }, [runScenario, setNodes, updateNodesWithResults, reactFlowInstance]);
 
     const updateNodeParameter = useCallback((nodeId: string, paramName: string, value: unknown) => {
         setNodes((nds) =>
@@ -267,8 +304,12 @@ const ScenarioEditorContent = () => {
     }, [setNodes]);
 
     const updateNodeRunInBackground = useCallback((nodeId: string, value: boolean) => {
-        setNodes((nds) =>
-            nds.map((node) => {
+        const joinOp = operations.find(op => op.name === "Join Background Task");
+        const shouldCreateJoinNode = value && !!joinOp;
+        const newNodeId = shouldCreateJoinNode && joinOp ? generateNodeId(nodes, joinOp.name) : null;
+
+        setNodes((nds) => {
+            const updatedNodes = nds.map((node) => {
                 if (node.id === nodeId) {
                     return {
                         ...node,
@@ -276,8 +317,50 @@ const ScenarioEditorContent = () => {
                     };
                 }
                 return node;
-            })
-        );
+            });
+
+            if (shouldCreateJoinNode && newNodeId && joinOp) {
+                // Create a new node
+                const newNode: Node<NodeData> = {
+                    id: newNodeId,
+                    type: 'custom',
+                    position: { x: 0, y: 0 }, // Position will be adjusted by layout or user
+                    data: {
+                        label: joinOp.name,
+                        operationId: joinOp.name, // Using name as ID based on runner.py
+                        description: joinOp.description,
+                        parameters: joinOp.parameters.map(p => ({
+                            ...p,
+                            default: p.name === 'task_id' ? { $ref: `${nodeId}.id` } : p.default
+                        }))
+                    }
+                };
+
+                // Place it near the original node if possible
+                const originalNode = nds.find(n => n.id === nodeId);
+                if (originalNode) {
+                    newNode.position = {
+                        x: originalNode.position.x,
+                        y: originalNode.position.y + 150
+                    };
+                }
+
+                return [...updatedNodes, newNode];
+            }
+
+            return updatedNodes;
+        });
+
+        if (shouldCreateJoinNode && newNodeId) {
+            setEdges((eds) => [
+                ...eds,
+                {
+                    id: `e${nodeId}-${newNodeId}`,
+                    source: nodeId,
+                    target: newNodeId,
+                }
+            ]);
+        }
 
         setSelectedNode((prev) => {
             if (!prev || prev.id !== nodeId) return prev;
@@ -286,7 +369,7 @@ const ScenarioEditorContent = () => {
                 data: { ...prev.data, runInBackground: value },
             };
         });
-    }, [setNodes]);
+    }, [setNodes, setEdges, operations, nodes]);
 
     const getConnectedSourceNodes = useCallback((targetNodeId: string) => {
         const sourceNodeIds = new Set(edges
@@ -299,24 +382,6 @@ const ScenarioEditorContent = () => {
         selectedNode ? getConnectedSourceNodes(selectedNode.id) : [],
         [selectedNode, getConnectedSourceNodes]
     );
-
-    // Inject onShowResult handler into nodes whenever they change or are loaded
-    // This is a bit of a hack to ensure the callback is present after serialization/deserialization
-    // Ideally, we wouldn't store functions in node data.
-    useEffect(() => {
-        setNodes(nds => nds.map(node => {
-            if (!node.data.onShowResult) {
-                return {
-                    ...node,
-                    data: {
-                        ...node.data,
-                        onShowResult: handleShowResult
-                    }
-                };
-            }
-            return node;
-        }));
-    }, [setNodes, nodes.length, handleShowResult]); // Only run when node count changes (added/loaded)
 
     return (
         <div className={layoutStyles.editorContainer} style={{ height: '100vh', width: '100%' }}>
@@ -336,46 +401,49 @@ const ScenarioEditorContent = () => {
             <div className={layoutStyles.workspace}>
                 <MemoizedToolbox operations={operations} />
 
-                <div className={layoutStyles.graphContainer} ref={reactFlowWrapper}>
-                    <ReactFlow<Node<NodeData>, Edge>
-                        nodes={nodes}
-                        edges={edges}
-                        nodeTypes={nodeTypes}
-                        onNodesChange={onNodesChange}
-                        onEdgesChange={onEdgesChange}
-                        onConnect={onConnect}
-                        onInit={setReactFlowInstance}
-                        onDrop={handleDrop}
-                        onDragOver={onDragOver}
-                        onNodeClick={onNodeClick}
-                        onNodeDragStart={onNodeDragStart}
-                        onPaneClick={onPaneClick}
-                        onEdgeClick={onEdgeClick}
-                        fitView
-                        className={theme === 'dark' ? "dark-flow" : ""}
-                        colorMode={theme}
-                    >
-                        <Controls style={{ backgroundColor: 'var(--rf-bg)', borderColor: 'var(--border-color)', fill: 'var(--text-primary)' }} />
-                        <Background variant={BackgroundVariant.Dots} gap={12} size={1} color="var(--border-color)" />
-                        <Panel position="top-right">
-                            <div style={{ display: 'flex', gap: '10px', padding: '10px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: isConnected ? 'var(--success)' : 'var(--danger)' }}></div>
-                                    {isConnected ? 'Connected' : 'Disconnected'}
+                <div className={layoutStyles.centerPane}>
+                    <div className={layoutStyles.graphContainer} ref={reactFlowWrapper}>
+                        <ReactFlow<Node<NodeData>, Edge>
+                            nodes={nodes}
+                            edges={edges}
+                            nodeTypes={nodeTypes}
+                            onNodesChange={onNodesChange}
+                            onEdgesChange={onEdgesChange}
+                            onConnect={onConnect}
+                            onInit={setReactFlowInstance}
+                            onDrop={handleDrop}
+                            onDragOver={onDragOver}
+                            onNodeClick={onNodeClick}
+                            onNodeDragStart={onNodeDragStart}
+                            onNodeDragStop={onNodeDragStop}
+                            onPaneClick={onPaneClick}
+                            onEdgeClick={onEdgeClick}
+                            fitView
+                            className={theme === 'dark' ? "dark-flow" : ""}
+                            colorMode={theme}
+                        >
+                            <Controls style={{ backgroundColor: 'var(--rf-bg)', borderColor: 'var(--border-color)', fill: 'var(--text-primary)' }} />
+                            <Background variant={BackgroundVariant.Dots} gap={12} size={1} color="var(--border-color)" />
+                            <Panel position="top-right">
+                                <div style={{ display: 'flex', gap: '10px', padding: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: isConnected ? 'var(--success)' : 'var(--danger)' }}></div>
+                                        {isConnected ? 'Connected' : 'Disconnected'}
+                                    </div>
                                 </div>
-                            </div>
-                        </Panel>
-                    </ReactFlow>
+                            </Panel>
+                        </ReactFlow>
+                    </div>
+
+                    {selectedNode && (
+                        <MemoizedBottomPanel
+                            selectedNode={selectedNode}
+                            onClose={() => setSelectedNode(null)}
+                        />
+                    )}
                 </div>
 
-                {resultToDisplay !== null && resultToDisplay !== undefined && (
-                    <MemoizedResultPanel
-                        result={resultToDisplay}
-                        onClose={() => setResultToDisplay(null)}
-                    />
-                )}
-
-                {selectedNode && !resultToDisplay && (
+                {selectedNode && (
                     <MemoizedPropertiesPanel
                         selectedNode={selectedNode}
                         connectedNodes={connectedNodes}
