@@ -42,6 +42,20 @@ repos:
           - tomli
   - repo: local
     hooks:
+      - id: eslint-web-editor
+        name: eslint web-editor
+        entry: bash -c 'cd web-editor && npm run lint'
+        language: system
+        files: ^web-editor/
+        pass_filenames: false
+        types: [file]
+      - id: tsc-web-editor
+        name: tsc web-editor
+        entry: bash -c 'cd web-editor && npx tsc --noEmit'
+        language: system
+        files: ^web-editor/
+        pass_filenames: false
+        types: [file]
       - id: pytest
         name: pytest
         entry: uv run pytest tests

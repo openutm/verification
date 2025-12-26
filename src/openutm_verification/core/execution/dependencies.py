@@ -12,6 +12,7 @@ from openutm_verification.core.execution.config_models import AppConfig, DataFil
 from openutm_verification.core.execution.dependency_resolution import CONTEXT, dependency
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
+from openutm_verification.server.runner import SessionManager
 
 T = TypeVar("T")
 
@@ -156,3 +157,8 @@ async def air_traffic_client(config: AppConfig) -> AsyncGenerator[AirTrafficClie
     settings = create_air_traffic_settings()
     async with AirTrafficClient(settings) as air_traffic_client:
         yield air_traffic_client
+
+
+@dependency(SessionManager)
+async def session_manager() -> AsyncGenerator[SessionManager, None]:
+    yield SessionManager()
