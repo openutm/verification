@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -430,16 +430,16 @@ wheels = [
 
 [[package]]
 name = "implicitdict"
-version = "3.0.0"
+version = "4.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "arrow" },
     { name = "jsonschema" },
     { name = "pytimeparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3f/83/834fc20d08fc4551868b7062bd266f05d74e17cf1b854f594822cad9dd9b/implicitdict-3.0.0.tar.gz", hash = "sha256:11b9ea6d849a727b8473e9b41e7a21ebb02611c014a2b0c9e1c597c8764e631e", size = 28131, upload-time = "2025-03-05T18:22:51.345Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/92/335c435d15e2d198a679c3fbb56cd20907f204c386c1b8facdc06cea8256/implicitdict-4.0.1.tar.gz", hash = "sha256:6413da2faeb03f1d20a537f357c05a58cef8ab32e8923eae4e79ee2396546074", size = 57876, upload-time = "2025-10-01T15:07:54.467Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/10/396c1f9c22ee9a723f6751090710c32d302d8849c83921ee40a4e9c881ec/implicitdict-3.0.0-py3-none-any.whl", hash = "sha256:c2dc106d148825295c722a9edc6f766fd86cd565923b10fac5015174d3bcb073", size = 17351, upload-time = "2025-03-05T18:22:50.353Z" },
+    { url = "https://files.pythonhosted.org/packages/02/ce/d947f5995b160d56a2e4a2ba48eacc59884cc2cabfb9eafe4ac49d80575d/implicitdict-4.0.1-py3-none-any.whl", hash = "sha256:71e16dc977a944c0279f5f383db63b44a14a9961b32b535e011fbba782e88a70", size = 13658, upload-time = "2025-10-01T15:07:53.603Z" },
 ]
 
 [[package]]
@@ -867,7 +867,7 @@ requires-dist = [
     { name = "http-message-signatures", specifier = "==0.5.0" },
     { name = "http-sfv", specifier = "==0.9.9" },
     { name = "httpx", specifier = ">=0.27.0" },
-    { name = "implicitdict", specifier = "==3.0.0" },
+    { name = "implicitdict", specifier = "==4.0.1" },
     { name = "ipywidgets", specifier = ">=8.1.7" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "jwcrypto", specifier = "==1.5.6" },
@@ -887,7 +887,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "redis", specifier = "==6.0.0" },
     { name = "shapely", specifier = "==2.1.0" },
-    { name = "uas-standards", specifier = "==3.5.0" },
+    { name = "uas-standards", specifier = "==4.2.0" },
     { name = "walrus", specifier = "==0.9.4" },
     { name = "websocket-client", specifier = "==1.9.0" },
 ]
@@ -1779,14 +1779,14 @@ wheels = [
 
 [[package]]
 name = "uas-standards"
-version = "3.5.0"
+version = "4.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "implicitdict" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/71/0e/1ca14186983c3c9dfb1253acb6a463851f937d33cc851de6214f3f952e0b/uas_standards-3.5.0.tar.gz", hash = "sha256:2646be72442c987ec992b017d70ef305affa49d736991d4f90568c96840a37f0", size = 87685, upload-time = "2025-03-13T08:33:55.078Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/f9/23a2857405c72c9bb24ca06ef55317ef4ae03e8e43a905be7bc29fa8c1e0/uas_standards-4.2.0.tar.gz", hash = "sha256:5ef61a8a163422eac8525461a950f3f4fb443563ed5b610343da625c1eb5d95f", size = 126658, upload-time = "2025-10-30T16:07:39.238Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/11/24750cdcf875bedc0bf91bcde55393921ab3eaaae8a71fbcfd1b6d2490a7/uas_standards-3.5.0-py3-none-any.whl", hash = "sha256:e699246bc9b05e667123b052b7a67a8978bb746d626f7b1be7b9e0c22adaabfc", size = 86108, upload-time = "2025-03-13T08:33:53.788Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/6d/ac2ce5c67185b4d63e11815c705902432980dd4fb208130d110adb9a0803/uas_standards-4.2.0-py3-none-any.whl", hash = "sha256:732e2b293cfde7f75132d9abfddd63a97347273221ef2534f03676a1f0f623d5", size = 88533, upload-time = "2025-10-30T16:07:38.003Z" },
 ]
 
 [[package]]

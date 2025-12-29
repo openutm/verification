@@ -5,6 +5,7 @@ from typing import Any, ClassVar, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pyproj import Geod
 from shapely.geometry import Polygon, box
+from uas_standards.astm.f3548.v21.api import Volume4D
 
 MINIMUM_DIAGONAL_LENGTH_M = 500  # Minimum bounding box diagonal in meters
 
@@ -17,6 +18,16 @@ class FlightDeclaration(BaseModel):
     flight_declaration_geo_json: "FeatureCollection"
 
     model_config = ConfigDict(extra="allow")
+
+
+class FlightDeclarationViaOperationalIntent(BaseModel):
+    """Final validated flight declaration model."""
+
+    start_datetime: str
+    end_datetime: str
+    operational_intent_volume4ds: dict
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class FeatureCollection(BaseModel):
@@ -80,7 +91,31 @@ class BaseUpdates(BaseModel):
     flight_declaration_geo_json: "FeatureCollection"
 
 
+class BaseUpdatesViaOperationalIntent(BaseModel):
+    """Model for base updates in flight declaration generation."""
+
+    start_datetime: str
+    end_datetime: str
+    flight_declaration_operational_intent: list[dict[Any, Any]]
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
 class FlightDeclarationOverrides(BaseModel):
+    """Model for overrides in flight declaration generation."""
+
+    flight_id: str = "FL123"
+    operator_id: str = "OP456"
+    # TODO: verify if these fields are needed
+    # departure_time: str = "2024-01-01T10:00:00Z"
+    # arrival_time: str = "2024-01-01T10:30:00Z"
+    # origin: str = "POINT(1.0 2.0)"
+    # destination: str = "POINT(3.0 4.0)"
+
+    model_config = ConfigDict(extra="allow")
+
+
+class FlightDeclarationViaOperationalIntentOverrides(BaseModel):
     """Model for overrides in flight declaration generation."""
 
     flight_id: str = "FL123"

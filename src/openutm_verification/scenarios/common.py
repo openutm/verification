@@ -6,7 +6,7 @@ from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 from openutm_verification.simulator.flight_declaration import FlightDeclarationGenerator
 from openutm_verification.simulator.geo_json_telemetry import GeoJSONFlightsSimulator
-from openutm_verification.simulator.models.declaration_models import FlightDeclaration
+from openutm_verification.simulator.models.declaration_models import FlightDeclaration, FlightDeclarationViaOperationalIntent
 from openutm_verification.simulator.models.flight_data_types import (
     GeoJSONFlightsSimulatorConfiguration,
 )
@@ -21,6 +21,16 @@ def generate_flight_declaration(config_path: str) -> FlightDeclaration:
         return generator.generate()
     except Exception as e:
         logger.error(f"Failed to generate flight declaration from {config_path}: {e}")
+        raise
+
+
+def generate_flight_declaration_via_operational_intent(config_path: str) -> FlightDeclarationViaOperationalIntent:
+    """Generate a flight declaration via operational intent from the config file at the given path."""
+    try:
+        generator = FlightDeclarationGenerator(bounds_path=Path(config_path))
+        return generator.generate_via_operational_intent()
+    except Exception as e:
+        logger.error(f"Failed to generate flight declaration via operational intent from {config_path}: {e}")
         raise
 
 

@@ -40,7 +40,9 @@ from openutm_verification.rid import (
     RIDOperatorDetails,
     UAClassificationEU,
 )
-from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
+from openutm_verification.simulator.models.flight_data_types import (
+    FlightObservationSchema,
+)
 
 
 def _create_rid_operator_details(operation_id: str) -> RIDOperatorDetails:
@@ -212,6 +214,65 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             json.JSONDecodeError: If the file content is invalid JSON (when using filename).
         """
         endpoint = "/flight_declaration_ops/set_flight_declaration"
+
+        # Handle different input types
+        if isinstance(declaration, str):
+            # Load from file
+            logger.debug(f"Uploading flight declaration from {declaration}")
+            with open(declaration, "r", encoding="utf-8") as flight_declaration_file:
+                f_d = flight_declaration_file.read()
+            flight_declaration = json.loads(f_d)
+        else:
+            # Assume it's a model with model_dump method
+            logger.debug("Uploading flight declaration from model")
+            flight_declaration = declaration.model_dump(mode="json")
+
+        # Adjust datetimes to current time + offsets
+        now = arrow.now()
+        few_seconds_from_now = now.shift(seconds=5)
+        four_minutes_from_now = now.shift(minutes=4)
+
+        flight_declaration["start_datetime"] = few_seconds_from_now.isoformat()
+        flight_declaration["end_datetime"] = four_minutes_from_now.isoformat()
+
+        response = await self.post(endpoint, json=flight_declaration)
+        logger.info(f"Flight declaration upload response: {response.status_code}")
+
+        response_json = response.json()
+
+        if not response_json.get("is_approved"):
+            logger.error(f"Flight declaration not approved. State: {OperationState(response_json.get('state')).name}")
+            raise FlightBlenderError(f"Flight declaration not approved. State: {OperationState(response_json.get('state')).name}")
+        # Store latest declaration id for later use
+        try:
+            self.latest_flight_declaration_id = response_json.get("id")
+            logger.info(f"Flight declaration uploaded and approved, ID: {self.latest_flight_declaration_id}")
+        except AttributeError:
+            self.latest_flight_declaration_id = None
+            logger.warning("Failed to extract flight declaration ID from response")
+
+        return response_json
+
+    @scenario_step("Upload Flight Declaration Via Operational Intent")
+    async def upload_flight_declaration_via_operational_intent(self, declaration: str | BaseModel) -> dict[str, Any]:
+        """Upload a flight declaration to the Flight Blender API.
+
+        Accepts either a filename (str) containing JSON declaration data, or a
+        FlightDeclaration model instance. Adjusts datetimes to current time + offsets,
+        and posts it. Raises an error if the declaration is not approved.
+
+        Args:
+            declaration: Either a path to the JSON flight declaration file (str),
+                or a FlightDeclaration model instance.
+
+        Returns:
+            The JSON response from the API.
+
+        Raises:
+            FlightBlenderError: If the declaration is not approved or the request fails.
+            json.JSONDecodeError: If the file content is invalid JSON (when using filename).
+        """
+        endpoint = "/flight_declaration_ops/set_operational_intent"
 
         # Handle different input types
         if isinstance(declaration, str):
@@ -775,9 +836,37 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.info("Tearing down flight declaration...")
         await self.delete_flight_declaration()
 
+    @scenario_step("Setup Flight Declaration via Operational Intent")
+    async def setup_flight_declaration_via_operational_intent(
+        self,
+        flight_declaration_via_operational_intent_path: str,
+        trajectory_path: str,
+    ) -> None:
+        from openutm_verification.scenarios.common import (
+            generate_flight_declaration_via_operational_intent,
+            generate_telemetry,
+        )
+
+        """Generates data and uploads flight declaration via Operational Intent."""
+        flight_declaration = generate_flight_declaration_via_operational_intent(flight_declaration_via_operational_intent_path)
+        telemetry_states = generate_telemetry(trajectory_path)
+
+        self.telemetry_states = telemetry_states
+
+        # Store data in ScenarioContext for reporting
+        ScenarioContext.set_flight_declaration_via_operational_intent_data(flight_declaration)
+        ScenarioContext.set_telemetry_data(telemetry_states)
+
+        upload_result = await self.upload_flight_declaration_via_operational_intent(flight_declaration)
+
+        if upload_result.status == Status.FAIL:
+            logger.error(f"Flight declaration upload failed: {upload_result}")
+            raise FlightBlenderError("Failed to upload flight declaration during setup_flight_declaration_via_operational_intent")
+
     @scenario_step("Setup Flight Declaration")
     async def setup_flight_declaration(self, flight_declaration_path: str, trajectory_path: str) -> None:
         """Generates data and uploads flight declaration."""
+
         from openutm_verification.scenarios.common import (
             generate_flight_declaration,
             generate_telemetry,
@@ -804,6 +893,21 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         assert data_files.flight_declaration is not None, "Flight declaration file path must be provided"
         assert data_files.trajectory is not None, "Trajectory file path must be provided"
         await self.setup_flight_declaration(data_files.flight_declaration, data_files.trajectory)
+        try:
+            yield
+        finally:
+            logger.info("All test steps complete..")
+
+    @asynccontextmanager
+    async def create_flight_declaration_via_operational_intent(self, data_files: DataFiles):
+        """Context manager to setup and teardown a flight operation based on scenario config."""
+        assert data_files.flight_declaration_via_operational_intent is not None, (
+            "Flight declaration via operational intent file path must be provided"
+        )
+        assert data_files.trajectory is not None, "Trajectory file path must be provided"
+        await self.setup_flight_declaration_via_operational_intent(
+            flight_declaration_via_operational_intent_path=data_files.flight_declaration_via_operational_intent, trajectory_path=data_files.trajectory
+        )
         try:
             yield
         finally:
