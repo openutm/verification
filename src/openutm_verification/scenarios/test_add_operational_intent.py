@@ -20,7 +20,7 @@ async def test_add_flight_declaration_via_operational_intent(fb_client: FlightBl
         data_files: The DataFiles instance containing file paths for telemetry, flight declaration, and geo-fence.
 
     Returns:
-        A ScenarioResult object containing the results of< the scenario execution.
+        A ScenarioResult object containing the results of the scenario execution.
     """
 
     async with fb_client.create_flight_declaration_via_operational_intent(data_files):
