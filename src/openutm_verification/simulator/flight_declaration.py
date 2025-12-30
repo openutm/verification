@@ -136,12 +136,12 @@ class FlightDeclarationGenerator:
     def _build_volume4d_operational_intent(self, bbox: Polygon) -> list[dict[str, Any]]:
         coordinates = self._normalize_coordinates(bbox)
         geometry = PolygonGeometry(coordinates=coordinates)
-        all_verticies = []
+        all_vertices = []
         WGS84_OFFSET = 200  # between the WGS1984 ellipsoid and terrain surface
         for polygon in geometry.coordinates:
             for lat_lng in polygon:
-                all_verticies.append(LatLngPoint(lat=lat_lng[1], lng=lat_lng[0]))
-        polygon = ASTMPolygon(vertices=all_verticies)
+                all_vertices.append(LatLngPoint(lat=lat_lng[1], lng=lat_lng[0]))
+        polygon = ASTMPolygon(vertices=all_vertices)
         volume3d = Volume3D(
             outline_polygon=polygon,
             altitude_lower=Altitude(value=WGS84_OFFSET + 50, reference="w84", units="m"),
