@@ -13,8 +13,11 @@ export const useScenarioRunner = () => {
     ) => {
         if (nodes.length === 0) return null;
 
+        // Filter out visual/dependency edges (dotted lines)
+        const sequenceEdges = edges.filter(e => e.style?.strokeDasharray !== '5 5');
+
         // Simple topological sort / path following
-        const incomingEdges = new Set(edges.map(e => e.target));
+        const incomingEdges = new Set(sequenceEdges.map(e => e.target));
         const startNodes = nodes.filter(n => !incomingEdges.has(n.id));
 
         if (startNodes.length === 0) {
@@ -34,7 +37,7 @@ export const useScenarioRunner = () => {
             visited.add(node.id);
             sortedNodes.push(node);
 
-            const outgoing = edges.filter(e => e.source === node.id);
+            const outgoing = sequenceEdges.filter(e => e.source === node.id);
             for (const edge of outgoing) {
                 const targetNode = nodes.find(n => n.id === edge.target);
                 if (targetNode) {
@@ -59,7 +62,16 @@ export const useScenarioRunner = () => {
 
                 const params = (node.data.parameters || []).reduce((acc, param) => {
                     if (param.default !== undefined && param.default !== null && param.default !== '') {
-                        acc[param.name] = param.default;
+                        let value = param.default;
+                        // Transform reference object to string format expected by backend
+                        if (typeof value === 'object' && value !== null && '$ref' in value) {
+                            const ref = (value as { $ref: string }).$ref;
+                            const parts = ref.split('.');
+                            const stepName = parts[0];
+                            const fieldPath = parts.slice(1).join('.');
+                            value = `\${{ steps.${stepName}.result.${fieldPath} }}`;
+                        }
+                        acc[param.name] = value;
                     }
                     return acc;
                 }, {} as Record<string, unknown>);

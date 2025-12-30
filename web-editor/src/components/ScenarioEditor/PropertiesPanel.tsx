@@ -36,12 +36,23 @@ const DocstringViewer = ({ text }: { text: string }) => {
 interface PropertiesPanelProps {
     selectedNode: Node<NodeData>;
     connectedNodes: Node<NodeData>[];
+    allNodes: Node<NodeData>[];
     onClose: () => void;
     onUpdateParameter: (nodeId: string, paramName: string, value: unknown) => void;
     onUpdateRunInBackground: (nodeId: string, value: boolean) => void;
 }
 
-export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdateParameter, onUpdateRunInBackground }: PropertiesPanelProps) => {
+const parseRefString = (value: unknown) => {
+    if (typeof value !== 'string') return null;
+    const match = value.match(/^\$\{\{\s*steps\.([^.]+)\.result(?:\.(.*))?\s*\}\}$/);
+    if (!match) return null;
+    return {
+        stepId: match[1],
+        fieldPath: match[2] ? match[2].trim() : ''
+    };
+};
+
+export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground }: PropertiesPanelProps) => {
     const [width, setWidth] = useState(480);
     const [isResizing, setIsResizing] = useState(false);
 
@@ -149,7 +160,41 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdat
                     <h4>Parameters</h4>
                     {(selectedNode.data.parameters || []).length > 0 ? (
                         (selectedNode.data.parameters || []).map(param => {
-                            const isLinked = typeof param.default === 'object' && param.default !== null && '$ref' in param.default;
+                            // Special handling for Join Background Task -> task_id
+                            if (selectedNode.data.label === "Join Background Task" && param.name === "task_id") {
+                                return (
+                                    <div key={param.name} className={styles.paramItem}>
+                                        <label style={{ marginBottom: '4px', display: 'block' }}>{param.name} <span className={styles.paramType}>({param.type})</span></label>
+                                        <select
+                                            className={styles.paramInput}
+                                            value={String(param.default || '')}
+                                            onChange={(e) => onUpdateParameter(selectedNode.id, param.name, e.target.value)}
+                                        >
+                                            <option value="">Select a background task...</option>
+                                            {allNodes
+                                                .filter(n => n.id !== selectedNode.id && n.data.runInBackground)
+                                                .map(node => (
+                                                    <option key={node.id} value={node.data.label}>
+                                                        {node.data.label}
+                                                    </option>
+                                                ))
+                                            }
+                                        </select>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                            Select the background step to wait for.
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            const refData = (typeof param.default === 'object' && param.default !== null && '$ref' in param.default)
+                                ? { stepId: (param.default as { $ref: string }).$ref.split('.')[0], fieldPath: (param.default as { $ref: string }).$ref.split('.').slice(1).join('.') }
+                                : parseRefString(param.default);
+
+                            const isLinked = !!refData;
+
+                            // Helper to resolve step name/ID to the actual node ID in the graph
+                            const resolvedStepId = refData ? (allNodes.find(n => n.id === refData.stepId || n.data.label === refData.stepId)?.id || refData.stepId) : '';
 
                             return (
                                 <div key={param.name} className={styles.paramItem}>
@@ -175,16 +220,14 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdat
                                         <label style={{ flex: 1 }}>{param.name} <span className={styles.paramType}>({param.type})</span></label>
                                     </div>
 
-                                    {isLinked ? (
+                                    {isLinked && refData ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                             <select
                                                 className={styles.paramInput}
-                                                value={(param.default as { $ref: string }).$ref.split('.')[0]}
+                                                value={resolvedStepId}
                                                 onChange={(e) => {
                                                     const sourceId = e.target.value;
-                                                    const currentRef = (param.default as { $ref: string }).$ref;
-                                                    const parts = currentRef.split('.');
-                                                    const fieldPath = parts.slice(1).join('.');
+                                                    const fieldPath = refData.fieldPath;
                                                     onUpdateParameter(selectedNode.id, param.name, { $ref: `${sourceId}.${fieldPath}` });
                                                 }}
                                             >
@@ -193,19 +236,27 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, onClose, onUpdat
                                                         {node.data.label} ({node.id})
                                                     </option>
                                                 ))}
+                                                {/* If the referenced node is not in connectedNodes, show it anyway to avoid empty selection */}
+                                                {!connectedNodes.find(n => n.id === resolvedStepId) && resolvedStepId && (
+                                                    <option value={resolvedStepId}>
+                                                        {allNodes.find(n => n.id === resolvedStepId)?.data.label || resolvedStepId} (Disconnected)
+                                                    </option>
+                                                )}
                                             </select>
                                             <input
                                                 type="text"
                                                 placeholder="Field path (e.g. id, result.id)"
                                                 className={styles.paramInput}
-                                                value={(param.default as { $ref: string }).$ref.split('.').slice(1).join('.')}
+                                                value={refData.fieldPath}
                                                 onChange={(e) => {
                                                     const fieldPath = e.target.value;
-                                                    const currentRef = (param.default as { $ref: string }).$ref;
-                                                    const sourceId = currentRef.split('.')[0];
+                                                    const sourceId = resolvedStepId;
                                                     onUpdateParameter(selectedNode.id, param.name, { $ref: `${sourceId}.${fieldPath}` });
                                                 }}
                                             />
+                                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                                Reference: {`\${{ steps.${refData.stepId}.result${refData.fieldPath ? '.' + refData.fieldPath : ''} }}`}
+                                            </div>
                                         </div>
                                     ) : (
                                         param.isEnum && param.options ? (

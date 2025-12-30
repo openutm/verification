@@ -100,13 +100,29 @@ export const useScenarioGraph = () => {
     }, [nodes, edges, isDragging]);
 
     const onConnect = useCallback(
-        (params: Connection) => setEdges((eds) => addEdge({
-            ...params,
-            animated: true,
-            style: { stroke: 'var(--accent-primary)', strokeWidth: 1 },
-            markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-primary)' }
-        }, eds)),
-        [setEdges],
+        (params: Connection) => {
+            // Enforce 0 or 1 next/previous step constraint
+            const sourceHasOutgoing = edges.some(e => e.source === params.source);
+            const targetHasIncoming = edges.some(e => e.target === params.target);
+
+            if (sourceHasOutgoing) {
+                alert("A step can only have one next step.");
+                return;
+            }
+
+            if (targetHasIncoming) {
+                alert("A step can only have one previous step.");
+                return;
+            }
+
+            setEdges((eds) => addEdge({
+                ...params,
+                animated: true,
+                style: { stroke: 'var(--accent-primary)', strokeWidth: 1 },
+                markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-primary)' }
+            }, eds));
+        },
+        [edges, setEdges],
     );
 
     const onDrop = useCallback(

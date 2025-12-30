@@ -21,6 +21,7 @@ describe('PropertiesPanel', () => {
     const defaultProps = {
         selectedNode: mockNode,
         connectedNodes: [],
+        allNodes: [],
         onClose: vi.fn(),
         onUpdateParameter: vi.fn(),
         onUpdateRunInBackground: vi.fn(),

@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react';
 import styles from '../../styles/Toolbox.module.css';
 import type { Operation, ScenarioDefinition, NodeData } from '../../types/scenario';
 import type { Node, Edge } from '@xyflow/react';
+import { convertYamlToGraph } from '../../utils/scenarioConversion';
 
 interface ScenarioListProps {
     onLoadScenario: (nodes: Node<NodeData>[], edges: Edge[]) => void;
@@ -27,58 +28,7 @@ export const ScenarioList = ({ onLoadScenario, operations }: ScenarioListProps) 
             const res = await fetch(`/api/scenarios/${filename}`);
             const scenario: ScenarioDefinition = await res.json();
 
-            const nodes: Node<NodeData>[] = [];
-            const edges: Edge[] = [];
-
-            let yPos = 0;
-            const xPos = 250;
-            const gap = 150;
-
-            // Note: We assume sequential execution based on the list order
-            // since 'needs' was removed.
-            scenario.steps.forEach((step, index) => {
-                // Find operation by name (which matches 'step' in YAML)
-                const operation = operations.find(op => op.name === step.step);
-                if (!operation) {
-                    console.warn(`Operation ${step.step} not found`);
-                    return;
-                }
-
-                const nodeId = step.id || step.step;
-
-                // Map arguments to parameters
-                const parameters = operation.parameters.map(param => ({
-                    ...param,
-                    default: step.arguments?.[param.name] ?? param.default
-                }));
-
-                const node: Node<NodeData> = {
-                    id: nodeId,
-                    type: 'custom',
-                    position: { x: xPos, y: yPos },
-                    data: {
-                        label: step.step,
-                        operationId: operation.id,
-                        description: step.description || operation.description,
-                        parameters: parameters,
-                        runInBackground: step.background
-                    }
-                };
-
-                nodes.push(node);
-                yPos += gap;
-
-                // Create edge from previous node
-                if (index > 0) {
-                    const prevNode = nodes[index - 1];
-                    edges.push({
-                        id: `e_${prevNode.id}-${nodeId}`,
-                        source: prevNode.id,
-                        target: nodeId,
-                        type: 'smoothstep'
-                    });
-                }
-            });
+            const { nodes, edges } = convertYamlToGraph(scenario, operations);
 
             onLoadScenario(nodes, edges);
         } catch (err) {

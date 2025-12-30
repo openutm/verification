@@ -1,4 +1,4 @@
-import type { Node, Edge } from '@xyflow/react';
+import { type Node, type Edge, MarkerType } from '@xyflow/react';
 import type { Operation, ScenarioDefinition, ScenarioStep, NodeData } from '../types/scenario';
 
 export const convertYamlToGraph = (
@@ -62,8 +62,29 @@ export const convertYamlToGraph = (
                 id: `e_${prevNode.id}-${nodeId}`,
                 source: prevNode.id,
                 target: nodeId,
-                type: 'smoothstep'
+                type: 'smoothstep',
+                animated: true,
+                style: { stroke: 'var(--accent-primary)', strokeWidth: 1 },
+                markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-primary)' }
             });
+        }
+
+        // Add visual connection for Join Background Task
+        if (step.step === "Join Background Task" && step.arguments?.['task_id']) {
+            const targetLabel = step.arguments['task_id'];
+            // Find the node with this label
+            const backgroundNode = nodes.find(n => n.data.label === targetLabel);
+
+            if (backgroundNode) {
+                edges.push({
+                    id: `e${backgroundNode.id}-${nodeId}`,
+                    source: backgroundNode.id,
+                    target: nodeId,
+                    type: 'smoothstep',
+                    selectable: false,
+                    style: { strokeDasharray: '5 5' }
+                });
+            }
         }
     });
 
@@ -75,8 +96,11 @@ export const convertGraphToYaml = (
     edges: Edge[],
     operations: Operation[] = []
 ): ScenarioDefinition => {
+    // Filter out visual/dependency edges (dotted lines)
+    const sequenceEdges = edges.filter(e => e.style?.strokeDasharray !== '5 5');
+
     // Sort nodes based on edges to determine order
-    const targetIds = new Set(edges.map(e => e.target));
+    const targetIds = new Set(sequenceEdges.map(e => e.target));
     const roots = nodes.filter(n => !targetIds.has(n.id));
 
     // If multiple roots, sort by y position
@@ -91,7 +115,7 @@ export const convertGraphToYaml = (
         sortedNodes.push(node);
 
         // Find outgoing edges
-        const outgoing = edges
+        const outgoing = sequenceEdges
             .filter(e => e.source === node.id)
             .map(e => nodes.find(n => n.id === e.target))
             .filter((n): n is Node<NodeData> => !!n);
@@ -123,6 +147,16 @@ export const convertGraphToYaml = (
 
             // Skip undefined values
             if (currentValue === undefined) return;
+
+            // Transform reference object to string format expected by backend
+            if (typeof currentValue === 'object' && currentValue !== null && '$ref' in currentValue) {
+                const ref = (currentValue as { $ref: string }).$ref;
+                const parts = ref.split('.');
+                const stepName = parts[0];
+                const fieldPath = parts.slice(1).join('.');
+                args[param.name] = `\${{ steps.${stepName}.result.${fieldPath} }}`;
+                return;
+            }
 
             // Skip default values if operation is available
             if (operation) {

@@ -134,6 +134,7 @@ const ScenarioEditorContent = () => {
         setEdges(eds => eds.map(edge => ({
             ...edge,
             style: {
+                ...edge.style,
                 stroke: edge.id === selectedEdgeId ? 'var(--success)' : 'var(--accent-primary)',
                 strokeWidth: edge.id === selectedEdgeId ? 2 : 1
             }
@@ -251,6 +252,24 @@ const ScenarioEditorContent = () => {
                             }
                             return node;
                         });
+                    } else if (typeof taskIdValue === 'string') {
+                        // If it's a string, it's likely the label of the background node
+                        const targetNode = updatedNodes.find(n => n.data.label === taskIdValue);
+                        if (targetNode) {
+                            return updatedNodes.map(node => {
+                                if (node.id === targetNode.id) {
+                                    return {
+                                        ...node,
+                                        data: {
+                                            ...node.data,
+                                            status: 'success',
+                                            result: stepResult.result
+                                        }
+                                    };
+                                }
+                                return node;
+                            });
+                        }
                     }
                 }
 
@@ -277,8 +296,45 @@ const ScenarioEditorContent = () => {
     }, [runScenario, setNodes, updateNodesWithResults, reactFlowInstance]);
 
     const updateNodeParameter = useCallback((nodeId: string, paramName: string, value: unknown) => {
-        setNodes((nds) =>
-            nds.map((node) => {
+        setNodes((nds) => {
+            // Special handling for Join Background Task -> task_id
+            // If we are updating task_id, we might need to create/update an edge
+            if (paramName === 'task_id' && typeof value === 'string') {
+                const targetNode = nds.find(n => n.id === nodeId);
+                if (targetNode && targetNode.data.label === "Join Background Task") {
+                    // Find the source node by label (value)
+                    const sourceNode = nds.find(n => n.data.label === value);
+
+                    // Update edges: Remove existing background connection edges to this node
+                    setEdges(eds => {
+                        // Keep regular sequence edges (where source is NOT a background node)
+                        const filtered = eds.filter(e => {
+                            if (e.target !== nodeId) return true;
+                            const edgeSourceNode = nds.find(n => n.id === e.source);
+                            // If source is background node, remove it (we are replacing it)
+                            // If source is NOT background node, keep it (it's the sequence flow)
+                            return !edgeSourceNode?.data?.runInBackground;
+                        });
+
+                        if (sourceNode) {
+                            return [
+                                ...filtered,
+                                {
+                                    id: `e${sourceNode.id}-${nodeId}`,
+                                    source: sourceNode.id,
+                                    target: nodeId,
+                                    type: 'smoothstep',
+                                    selectable: false,
+                                    style: { strokeDasharray: '5 5' }
+                                }
+                            ];
+                        }
+                        return filtered;
+                    });
+                }
+            }
+
+            return nds.map((node) => {
                 if (node.id === nodeId) {
                     const updatedParameters = updateParameterInList(
                         (node.data.parameters || []),
@@ -291,8 +347,8 @@ const ScenarioEditorContent = () => {
                     };
                 }
                 return node;
-            })
-        );
+            });
+        });
 
         setSelectedNode((prev) => {
             if (!prev || prev.id !== nodeId) return prev;
@@ -306,7 +362,7 @@ const ScenarioEditorContent = () => {
                 data: { ...prev.data, parameters: updatedParameters },
             };
         });
-    }, [setNodes]);
+    }, [setNodes, setEdges]);
 
     const updateNodeRunInBackground = useCallback((nodeId: string, value: boolean) => {
         const joinOp = operations.find(op => op.name === "Join Background Task");
@@ -451,6 +507,7 @@ const ScenarioEditorContent = () => {
                     <MemoizedPropertiesPanel
                         selectedNode={selectedNode}
                         connectedNodes={connectedNodes}
+                        allNodes={nodes}
                         onClose={() => setSelectedNode(null)}
                         onUpdateParameter={updateNodeParameter}
                         onUpdateRunInBackground={updateNodeRunInBackground}
