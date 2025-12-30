@@ -34,54 +34,59 @@ def data_files():
     return MagicMock(spec=DataFiles)
 
 
+@pytest.fixture
+def common_client():
+    return AsyncMock()
+
+
 async def test_add_flight_declaration_scenario(fb_client, data_files):
     await scenario_add_flight_declaration(fb_client, data_files)
 
     fb_client.create_flight_declaration.assert_called_once_with(data_files)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.ACTIVATED, duration_seconds=20)
-    fb_client.submit_telemetry.assert_called_once_with(duration_seconds=30)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.ENDED)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.ACTIVATED, duration=20)
+    fb_client.submit_telemetry.assert_called_once_with(duration=30)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.ENDED)
 
 
 async def test_f1_happy_path_scenario(fb_client, data_files):
     await scenario_f1_happy_path(fb_client, data_files)
 
     fb_client.create_flight_declaration.assert_called_once_with(data_files)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.ACTIVATED)
-    fb_client.submit_telemetry.assert_called_once_with(duration_seconds=30)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.ENDED)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.ACTIVATED)
+    fb_client.submit_telemetry.assert_called_once_with(duration=30)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.ENDED)
 
 
 async def test_f2_contingent_path_scenario(fb_client, data_files):
     await scenario_f2_contingent_path(fb_client, data_files)
 
     fb_client.create_flight_declaration.assert_called_once_with(data_files)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.ACTIVATED)
-    fb_client.submit_telemetry.assert_called_once_with(duration_seconds=10)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.CONTINGENT, duration_seconds=7)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.ENDED)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.ACTIVATED)
+    fb_client.submit_telemetry.assert_called_once_with(duration=10)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.CONTINGENT, duration=7)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.ENDED)
 
 
-async def test_f3_non_conforming_path_scenario(fb_client, data_files):
-    await scenario_f3_non_conforming_path(fb_client, data_files)
+async def test_f3_non_conforming_path_scenario(fb_client, data_files, common_client):
+    await scenario_f3_non_conforming_path(fb_client, data_files, common_client)
 
     fb_client.create_flight_declaration.assert_called_once_with(data_files)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.ACTIVATED)
-    fb_client.wait_x_seconds.assert_called_once_with(5)
-    fb_client.submit_telemetry.assert_called_once_with(duration_seconds=20)
-    fb_client.check_operation_state.assert_called_once_with(expected_state=OperationState.NONCONFORMING, duration_seconds=5)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.ENDED)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.ACTIVATED)
+    common_client.wait.assert_called_once_with(5)
+    fb_client.submit_telemetry.assert_called_once_with(duration=20)
+    fb_client.check_operation_state.assert_called_once_with(expected_state=OperationState.NONCONFORMING, duration=5)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.ENDED)
 
 
 async def test_f5_non_conforming_contingent_path_scenario(fb_client, data_files):
     await scenario_f5_non_conforming_contingent_path(fb_client, data_files)
 
     fb_client.create_flight_declaration.assert_called_once_with(data_files)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.ACTIVATED)
-    fb_client.submit_telemetry.assert_called_once_with(duration_seconds=20)
-    fb_client.check_operation_state_connected.assert_called_once_with(expected_state=OperationState.NONCONFORMING, duration_seconds=5)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.CONTINGENT)
-    fb_client.update_operation_state.assert_any_call(new_state=OperationState.ENDED)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.ACTIVATED)
+    fb_client.submit_telemetry.assert_called_once_with(duration=20)
+    fb_client.check_operation_state_connected.assert_called_once_with(expected_state=OperationState.NONCONFORMING, duration=5)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.CONTINGENT)
+    fb_client.update_operation_state.assert_any_call(state=OperationState.ENDED)
 
 
 @patch("openutm_verification.scenarios.test_geo_fence_upload.get_geo_fence_path")
@@ -108,27 +113,27 @@ async def test_opensky_live_data_scenario(mock_sleep, fb_client):
     assert mock_sleep.call_count == 4  # Sleeps between iterations
 
 
-async def test_sdsp_heartbeat_scenario(fb_client):
-    await scenario_sdsp_heartbeat(fb_client)
+async def test_sdsp_heartbeat_scenario(fb_client, common_client):
+    await scenario_sdsp_heartbeat(fb_client, common_client)
 
     fb_client.start_stop_sdsp_session.assert_any_call(action=SDSPSessionAction.START, session_id=ANY)
-    fb_client.wait_x_seconds.assert_any_call(wait_time_seconds=2)
+    common_client.wait.assert_any_call(duration=2)
     fb_client.initialize_verify_sdsp_heartbeat.assert_called_once()
-    fb_client.wait_x_seconds.assert_any_call(wait_time_seconds=5)
+    common_client.wait.assert_any_call(duration=5)
     fb_client.start_stop_sdsp_session.assert_any_call(action=SDSPSessionAction.STOP, session_id=ANY)
 
 
-async def test_sdsp_track_scenario(fb_client):
+async def test_sdsp_track_scenario(fb_client, common_client):
     air_traffic_client = AsyncMock()
     step_result = MagicMock()
     step_result.details = ["obs1"]
     air_traffic_client.generate_simulated_air_traffic_data.return_value = step_result
-    await scenario_sdsp_track(fb_client, air_traffic_client)
+    await scenario_sdsp_track(fb_client, air_traffic_client, common_client)
 
     fb_client.start_stop_sdsp_session.assert_any_call(action=SDSPSessionAction.START, session_id=ANY)
-    fb_client.wait_x_seconds.assert_any_call(wait_time_seconds=2)
+    common_client.wait.assert_any_call(duration=2)
     fb_client.initialize_verify_sdsp_track.assert_called_once()
-    fb_client.wait_x_seconds.assert_any_call(wait_time_seconds=5)
+    common_client.wait.assert_any_call(duration=5)
     fb_client.start_stop_sdsp_session.assert_any_call(action=SDSPSessionAction.STOP, session_id=ANY)
 
 

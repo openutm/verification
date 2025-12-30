@@ -16,6 +16,7 @@ import type { Operation, OperationParam, NodeData } from '../types/scenario';
 
 import { CustomNode } from './ScenarioEditor/CustomNode';
 import { Toolbox } from './ScenarioEditor/Toolbox';
+import { ScenarioList } from './ScenarioEditor/ScenarioList';
 import { PropertiesPanel } from './ScenarioEditor/PropertiesPanel';
 import { BottomPanel } from './ScenarioEditor/BottomPanel';
 import { Header } from './ScenarioEditor/Header';
@@ -59,7 +60,7 @@ const ScenarioEditorContent = () => {
     useEffect(() => {
         const checkHealth = async () => {
             try {
-                const res = await fetch('http://localhost:8989/health');
+                const res = await fetch('/health');
                 if (res.ok) {
                     setIsConnected(true);
                 } else {
@@ -77,7 +78,7 @@ const ScenarioEditorContent = () => {
 
     useEffect(() => {
         if (isConnected) {
-            fetch('http://localhost:8989/operations')
+            fetch('/operations')
                 .then(res => res.json())
                 .then(data => setOperations(data))
                 .catch(err => console.error('Failed to fetch operations:', err));
@@ -111,13 +112,17 @@ const ScenarioEditorContent = () => {
     }, [nodes, edges]);
 
     const { isRunning, runScenario } = useScenarioRunner();
-    const { fileInputRef, handleExportJSON, handleLoadJSON, handleFileChange } = useScenarioFile(
+    const { handleSaveToServer } = useScenarioFile(
         nodes,
         edges,
-        setNodes,
-        setEdges,
-        reactFlowInstance
+        operations
     );
+
+    const loadScenarioFromYaml = useCallback((newNodes: Node<NodeData>[], newEdges: Edge[]) => {
+        setNodes(newNodes);
+        setEdges(newEdges);
+        setTimeout(() => reactFlowInstance?.fitView({ padding: 0.2, duration: 400 }), 100);
+    }, [setNodes, setEdges, reactFlowInstance]);
 
     useEffect(() => {
         document.documentElement.dataset.theme = theme;
@@ -390,16 +395,15 @@ const ScenarioEditorContent = () => {
                 toggleTheme={toggleTheme}
                 onLayout={onLayout}
                 onClear={handleClear}
-                onLoad={handleLoadJSON}
-                onExport={handleExportJSON}
+                onSave={handleSaveToServer}
                 onRun={handleRun}
                 isRunning={isRunning}
-                fileInputRef={fileInputRef as React.RefObject<HTMLInputElement>}
-                onFileChange={handleFileChange}
             />
 
             <div className={layoutStyles.workspace}>
-                <MemoizedToolbox operations={operations} />
+                <MemoizedToolbox operations={operations}>
+                    <ScenarioList onLoadScenario={loadScenarioFromYaml} operations={operations} />
+                </MemoizedToolbox>
 
                 <div className={layoutStyles.centerPane}>
                     <div className={layoutStyles.graphContainer} ref={reactFlowWrapper}>

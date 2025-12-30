@@ -23,6 +23,6 @@ async def test_add_flight_declaration(fb_client: FlightBlenderClient, data_files
         A ScenarioResult object containing the results of the scenario execution.
     """
     async with fb_client.create_flight_declaration(data_files):
-        await fb_client.update_operation_state(new_state=OperationState.ACTIVATED, duration_seconds=20)
-        await fb_client.submit_telemetry(duration_seconds=30)
-        await fb_client.update_operation_state(new_state=OperationState.ENDED)
+        await fb_client.update_operation_state(state=OperationState.ACTIVATED, duration=20)
+        await fb_client.submit_telemetry(duration=30)
+        await fb_client.update_operation_state(state=OperationState.ENDED)

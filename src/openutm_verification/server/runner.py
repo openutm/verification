@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import Any, Callable, Coroutine, Dict, List, Type, TypeVar, cast
@@ -45,6 +46,7 @@ class SessionManager:
         self.session_resolver: DependencyResolver | None = None
         self.session_context: ScenarioContext | None = None
         self.session_tasks: Dict[str, asyncio.Task] = {}
+        self.data_files: DataFiles | None = None
         self._initialized = True
 
     @scenario_step("Join Background Task")
@@ -85,8 +87,8 @@ class SessionManager:
 
         # Pre-generate data using resolved DataFiles
         try:
-            data_files = cast(DataFiles, await self.session_resolver.resolve(DataFiles))
-            flight_declaration, telemetry_states = self._generate_data(data_files)
+            self.data_files = cast(DataFiles, await self.session_resolver.resolve(DataFiles))
+            flight_declaration, telemetry_states = self._generate_data(self.data_files)
 
             self.session_context = ScenarioContext()
             with self.session_context:
@@ -108,22 +110,50 @@ class SessionManager:
             _scenario_state.set(None)
 
     def _resolve_ref(self, ref: str) -> Any:
-        # ref format: "step_id.field.subfield" or just "step_id"
+        if ref.startswith("data_files."):
+            if not self.data_files:
+                raise ValueError("Data files not initialized")
+            parts = ref.split(".")
+            if len(parts) != 2:
+                raise ValueError(f"Invalid data_files reference: {ref}")
+            attr = parts[1]
+            if not hasattr(self.data_files, attr):
+                raise ValueError(f"Data file '{attr}' not found")
+            return getattr(self.data_files, attr)
+
+        if not ref.startswith("steps."):
+            # Fallback for legacy refs if any, or just error
+            raise ValueError(f"Invalid reference format: {ref}. Expected 'steps.<step_name>.result...' or 'data_files.<name>'")
+
         parts = ref.split(".")
-        step_id = parts[0]
+        if len(parts) < 3:
+            raise ValueError(f"Invalid reference format: {ref}. Expected 'steps.<step_name>.result...'")
+
+        step_name = parts[1]
+        # parts[2] is likely "result" or "details"
 
         if not self.session_context or not self.session_context.state:
             raise ValueError("No active scenario context or state available")
 
         state = self.session_context.state
 
-        if step_id not in state.step_results:
-            raise ValueError(f"Referenced step '{step_id}' not found in results")
+        if step_name not in state.step_results:
+            logger.error(f"Step '{step_name}' not found in results. Available steps: {list(state.step_results.keys())}")
+            raise ValueError(f"Referenced step '{step_name}' not found in results")
 
-        current_value = state.step_results[step_id]
+        step_result = state.step_results[step_name]
 
-        # Traverse the rest of the path
-        for part in parts[1:]:
+        # Start traversing from the step result object
+        current_value = step_result
+
+        # Skip "steps" and "step_name"
+        remaining_parts = parts[2:]
+
+        # Handle "result" alias for "details"
+        if remaining_parts[0] == "result":
+            remaining_parts[0] = "details"
+
+        for part in remaining_parts:
             if not part:
                 continue
             if isinstance(current_value, dict):
@@ -133,20 +163,41 @@ class SessionManager:
             else:
                 raise ValueError(
                     f"Could not resolve '{part}' in '{ref}'."
-                    f"Available keys: {list(current_value.keys()) if isinstance(current_value, dict) else 'Not a dict'}"
+                    f"Available keys: {list(current_value.keys()) if isinstance(current_value, dict) else dir(current_value)}"
                 )
 
         return current_value
 
     def resolve_references_in_params(self, params: Dict[str, Any]) -> None:
+        # Regex to find ${{ ... }} patterns
+        pattern = re.compile(r"\$\{\{\s*(.*?)\s*\}\}")
+
+        def resolve_value(value: Any) -> Any:
+            if isinstance(value, str):
+                match = pattern.fullmatch(value)
+                if match:
+                    # Entire string is a reference
+                    ref = match.group(1)
+                    try:
+                        resolved = self._resolve_ref(ref)
+                        logger.info(f"Resolved reference {ref} to {resolved}")
+                        return resolved
+                    except Exception as e:
+                        logger.error(f"Failed to resolve reference {ref}: {e}")
+                        raise
+
+                # Check for partial matches (string interpolation)
+                # For now, let's only support full matches for simplicity and type safety
+                # If we need interpolation "Session ID: ${{ ... }}", we can add it later.
+                return value
+            elif isinstance(value, dict):
+                return {k: resolve_value(v) for k, v in value.items()}
+            elif isinstance(value, list):
+                return [resolve_value(v) for v in value]
+            return value
+
         for key, value in params.items():
-            if isinstance(value, dict) and "$ref" in value:
-                try:
-                    params[key] = self._resolve_ref(value["$ref"])
-                    logger.info(f"Resolved reference {value['$ref']} to {params[key]}")
-                except Exception as e:
-                    logger.error(f"Failed to resolve reference {value['$ref']}: {e}")
-                    raise
+            params[key] = resolve_value(value)
 
     def get_available_operations(self) -> List[Dict[str, Any]]:
         operations = []
@@ -176,7 +227,8 @@ class SessionManager:
         except TypeError:
             # If already initialized, we can optionally override it or just ignore
             # For now, let's override to ensure we have the latest config
-            ConfigProxy.override(config)
+            ConfigProxy._config = None
+            ConfigProxy.initialize(config)
 
         return config
 
@@ -198,52 +250,30 @@ class SessionManager:
 
         return flight_declaration, telemetry_states
 
-    def validate_params(self, params: Dict[str, Any], step_name: str) -> None:
-        if step_name not in STEP_REGISTRY:
-            raise ValueError(f"Step '{step_name}' not found in registry")
-
-        entry = STEP_REGISTRY[step_name]
-        DynamicModel = entry.param_model
-
-        # Create a dynamic Pydantic model for validation
-        try:
-            validated_data = DynamicModel(**params)
-            # Update params with validated data (coerced types, defaults)
-            params.update(validated_data.model_dump())
-        except Exception as e:
-            logger.error(f"Validation error for step '{step_name}': {e}")
-            raise ValueError(f"Invalid parameters for step '{step_name}': {e}")
-
     def _prepare_params(self, step: StepDefinition) -> Dict[str, Any]:
-        params = step.parameters.copy()
-
-        # Resolve references
+        params = step.arguments.copy() if step.arguments else {}
         self.resolve_references_in_params(params)
-        self.validate_params(params, step.name)
-
         return params
 
     def _serialize_result(self, result: Any) -> Any:
         if isinstance(result, BaseModel):
             return result.model_dump()
-        else:
-            return result
+        return result
 
     def _determine_status(self, result: Any) -> str:
-        if hasattr(result, "status"):
-            status_val = getattr(result, "status")
-            if status_val == Status.FAIL:
+        if isinstance(result, StepResult):
+            if result.status == Status.FAIL:
                 return "failure"
-            elif status_val == Status.PASS:
+            elif result.status == Status.PASS:
                 return "success"
         return "success"
 
     async def _execute_step(self, step: StepDefinition) -> Dict[str, Any]:
         assert self.session_resolver is not None and self.session_context is not None
-        if step.name not in STEP_REGISTRY:
-            raise ValueError(f"Step '{step.name}' not found in registry")
+        if step.step not in STEP_REGISTRY:
+            raise ValueError(f"Step '{step.step}' not found in registry")
 
-        entry = STEP_REGISTRY[step.name]
+        entry = STEP_REGISTRY[step.step]
         client = await self.session_resolver.resolve(entry.client_class)
 
         method = getattr(client, entry.method_name)
@@ -251,12 +281,14 @@ class SessionManager:
         # Prepare parameters (resolve refs, inject context)
         kwargs = self._prepare_params(step)
 
-        if step.run_in_background:
-            logger.info(f"Executing step '{step.name}' in background")
+        if step.background:
+            step_id = step.id or step.step
+            logger.info(f"Executing step '{step_id}' ({step.step}) in background")
             task = asyncio.create_task(call_with_dependencies(method, resolver=self.session_resolver, **kwargs))
-            self.session_tasks[step.id] = task
-            self.session_context.add_result(StepResult(id=step.id, name=step.name, status=Status.RUNNING, details={"task_id": step.id}, duration=0.0))
-            return {"id": step.id, "step": step.name, "status": "running", "task_id": step.id}
+            self.session_tasks[step_id] = task
+            self.session_context.add_result(StepResult(id=step_id, name=step.step, status=Status.RUNNING, details={"task_id": step_id}, duration=0.0))
+            return {"id": step_id, "step": step.step, "status": "running", "task_id": step_id}
+
         # Execute with dependencies
         result = await call_with_dependencies(method, resolver=self.session_resolver, **kwargs)
 
@@ -271,7 +303,34 @@ class SessionManager:
         # Determine overall status based on result content
         status_str = self._determine_status(result)
 
-        return {"id": step.id, "step": step.name, "status": status_str, "result": result_data}
+        # Add result to context
+        step_id = step.id or step.step
+        logger.info(f"Adding result for step '{step_id}' (name: {step.step}) to context")
+
+        # If the result is already a StepResult (from scenario_step decorator), use it directly but ensure ID is correct
+        if isinstance(result, StepResult):
+            result.id = step_id
+            # We don't need to add it again if it was already added by the decorator,
+            # but the decorator adds it with a generated ID or no ID if not running in full scenario context?
+            # Actually, the decorator adds it to ScenarioContext.add_result(step_result).
+            # Let's check if we need to update it or add it.
+
+            # The decorator adds the result to the context.
+            # If we add it again here, we might duplicate it or overwrite it.
+            # However, the decorator doesn't know the 'step.id' from the YAML, it only knows the function execution.
+            # So we should probably update the existing result in the context if possible, or ensure the ID matches.
+
+            # Let's just ensure the result in the context has the correct ID.
+            # The decorator calls ScenarioContext.add_result(step_result).
+            # step_result.id might be None or something else.
+
+            # Since we are in the runner, we want to ensure the result is stored with the step_id we expect.
+            # We can remove the old one (if any) and add the updated one.
+            self.session_context.add_result(result)
+        else:
+            self.session_context.add_result(StepResult(id=step_id, name=step.step, status=Status.PASS, details=result_data, duration=0.0))
+
+        return {"id": step.id, "step": step.step, "status": status_str, "result": result_data}
 
     async def execute_single_step(self, step: StepDefinition) -> Dict[str, Any]:
         if not self.session_resolver:
@@ -291,14 +350,24 @@ class SessionManager:
                     raise ValueError("Scenario state not initialized")
                 return await self._execute_step(step)
         except Exception as e:
-            logger.error(f"Error executing step {step.name}: {e}")
+            step_id = step.id or step.step
+            logger.error(f"Error executing step {step_id}: {e}")
             raise
-            return {"step": step.name, "status": "error", "error": str(e)}
 
     async def run_scenario(self, scenario: ScenarioDefinition) -> List[Dict[str, Any]]:
         results = []
         if not self.session_resolver:
             await self.initialize_session()
+
+        # Validate and prepare steps
+        seen_ids = set()
+        for step in scenario.steps:
+            if not step.id:
+                step.id = step.step
+
+            if step.id in seen_ids:
+                raise ValueError(f"Duplicate step ID found: '{step.id}'. Step IDs must be unique within a scenario.")
+            seen_ids.add(step.id)
 
         for step in scenario.steps:
             result = await self.execute_single_step(step)
@@ -318,3 +387,7 @@ class SessionManager:
 
         with self.session_context:
             return await call_with_dependencies(func, resolver=self.session_resolver)
+
+
+# Import dependencies to ensure they are registered
+import openutm_verification.core.execution.dependencies  # noqa: E402, F401

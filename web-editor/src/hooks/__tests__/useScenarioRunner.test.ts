@@ -39,7 +39,8 @@ describe('useScenarioRunner', () => {
         });
 
         expect(executionResult).toEqual(mockResult);
-        expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:8989/run-scenario', expect.any(Object));
+        expect(globalThis.fetch).toHaveBeenCalledWith('/session/reset', expect.any(Object));
+        expect(globalThis.fetch).toHaveBeenCalledWith('/api/step', expect.any(Object));
         expect(result.current.isRunning).toBe(false);
     });
 

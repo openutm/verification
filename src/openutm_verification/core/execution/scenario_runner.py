@@ -261,7 +261,7 @@ class ScenarioStepDescriptor:
 
             handler_id = logger.add(lambda msg: captured_logs.append(msg), filter=log_filter, format="{time:HH:mm:ss} | {level} | {message}")
 
-            step_result: StepResult[Any] | None = None
+            step_result: StepResult[Any]
             try:
                 with logger.contextualize(step_execution_id=step_execution_id):
                     logger.info("-" * 50)
@@ -286,7 +286,12 @@ class ScenarioStepDescriptor:
         return async_wrapper
 
     def __set_name__(self, owner: type, name: str):
-        STEP_REGISTRY[self.step_name] = StepRegistryEntry(
+        # Register using the human-readable step name
+        registry_key = self.step_name
+        if registry_key in STEP_REGISTRY:
+            logger.warning(f"Overwriting step registry for '{registry_key}'. Ensure step names are unique.")
+
+        STEP_REGISTRY[registry_key] = StepRegistryEntry(
             client_class=owner,
             method_name=name,
             param_model=self.param_model,

@@ -1,0 +1,6 @@
+name: geo_fence_upload
+description: Upload a geo-fence (Area of Interest) and then delete it (teardown).
+
+steps:
+  - step: Upload Geo Fence
+  - step: Get Geo Fence

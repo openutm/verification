@@ -29,7 +29,7 @@ class OpenSkySettings(BaseSettings):
 
     # Simulation settings
     simulation_config_path: str
-    simulation_duration_seconds: int = 30
+    simulation_duration: int = 30
 
 
 def create_opensky_settings() -> OpenSkySettings:
@@ -38,7 +38,7 @@ def create_opensky_settings() -> OpenSkySettings:
         opensky_client_id=config.opensky.auth.client_id or "",
         opensky_client_secret=config.opensky.auth.client_secret or "",
         simulation_config_path=config.data_files.trajectory or "",
-        simulation_duration_seconds=30,
+        simulation_duration=30,
     )
 
 

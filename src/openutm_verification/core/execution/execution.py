@@ -89,7 +89,7 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path):
             result = ScenarioResult(
                 name=scenario_id,
                 status=Status.FAIL,
-                duration_seconds=0,
+                duration=0,
                 steps=[],
                 error_message=str(e),
                 docs=None,
@@ -108,7 +108,7 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path):
 
     end_time_obj = datetime.now(timezone.utc)
     end_time_utc = end_time_obj.isoformat()
-    total_duration_seconds = (end_time_obj - start_time_obj).total_seconds()
+    total_duration = (end_time_obj - start_time_obj).total_seconds()
 
     failed_scenarios = sum(1 for r in scenario_results if r.status == Status.FAIL)
     overall_status = Status.FAIL if failed_scenarios > 0 else Status.PASS
@@ -120,7 +120,7 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path):
         tool_version=version("openutm-verification"),
         start_time_utc=start_time_utc,
         end_time_utc=end_time_utc,
-        total_duration_seconds=total_duration_seconds,
+        total_duration=total_duration,
         overall_status=overall_status,
         flight_blender_url=config.flight_blender.url,
         deployment_details=config.reporting.deployment_details,

@@ -1,87 +1,44 @@
-import { useCallback, useRef } from 'react';
-import type { Node, Edge, ReactFlowInstance } from '@xyflow/react';
-import type { NodeData } from '../types/scenario';
+import { useCallback } from 'react';
+import type { Node, Edge } from '@xyflow/react';
+import type { NodeData, Operation } from '../types/scenario';
+import { convertGraphToYaml } from '../utils/scenarioConversion';
 
 export const useScenarioFile = (
     nodes: Node<NodeData>[],
     edges: Edge[],
-    setNodes: (nodes: Node<NodeData>[]) => void,
-    setEdges: (edges: Edge[]) => void,
-    reactFlowInstance: ReactFlowInstance<Node<NodeData>, Edge> | null
+    operations: Operation[]
 ) => {
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const handleSaveToServer = useCallback(async () => {
+        const scenarioName = prompt("Enter scenario name (e.g. my_scenario):", "new_scenario");
+        if (!scenarioName) return;
 
-    const handleExportJSON = useCallback(() => {
-        // Remove style and width from nodes to keep export clean
-        const cleanNodes = nodes.map((node) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { style, ...rest } = node;
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { width: _width, ...data } = rest.data as { width?: number;[key: string]: unknown };
-            return {
-                ...rest,
-                data,
-            };
-        });
-
-        const flowData = {
-            nodes: cleanNodes,
-            edges,
-            viewport: reactFlowInstance?.getViewport() || { x: 0, y: 0, zoom: 1 },
-        };
-
-        const dataStr = JSON.stringify(flowData, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `scenario_${new Date().toISOString().replaceAll(/[:.]/g, '-')}.json`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-    }, [nodes, edges, reactFlowInstance]);
-
-    const handleLoadJSON = useCallback(() => {
-        fileInputRef.current?.click();
-    }, []);
-
-    const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
+        const scenario = convertGraphToYaml(nodes, edges, operations);
 
         try {
-            const content = await file.text();
-            const flowData = JSON.parse(content);
+            const response = await fetch(`/api/scenarios/${scenarioName}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(scenario),
+            });
 
-            if (flowData.nodes) {
-                // Apply custom node type to imported nodes
-                const nodesWithStyle = flowData.nodes.map((node: Node<NodeData>) => ({
-                    ...node,
-                    type: 'custom',
-                    style: undefined, // Remove hardcoded style
-                    data: {
-                        ...node.data,
-                    }
-                }));
-                setNodes(nodesWithStyle);
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.statusText}`);
             }
-            if (flowData.edges) {
-                setEdges(flowData.edges);
-            }
-            if (flowData.viewport && reactFlowInstance) {
-                reactFlowInstance.setViewport(flowData.viewport);
-            }
+
+            const result = await response.json();
+            alert(result.message || "Scenario saved successfully!");
         } catch (error) {
-            console.error('Error parsing JSON file:', error);
-            alert('Error loading file. Please ensure it is a valid JSON scenario file.');
+            console.error('Error saving scenario:', error);
+            alert('Failed to save scenario to server.');
         }
+    }, [nodes, edges]);
 
-        // Reset file input to allow loading the same file again
-        if (event.target) {
-            event.target.value = '';
-        }
-    }, [setNodes, setEdges, reactFlowInstance]);
+    // handleLoadYAML is not needed anymore as we load from the sidebar list
+    // but we keep handleFileChange if we want to support local file loading as a fallback?
+    // The user said "We don't need to handle YAML files locally".
+    // So I will remove local file handling.
 
-    return { fileInputRef, handleExportJSON, handleLoadJSON, handleFileChange };
+    return { handleSaveToServer };
 };

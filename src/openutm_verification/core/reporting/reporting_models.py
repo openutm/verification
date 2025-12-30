@@ -49,7 +49,7 @@ class ScenarioResult(BaseModel):
     name: str
     suite_name: str | None = None
     status: Status
-    duration_seconds: float
+    duration: float
     steps: list[StepResult[Any]]
     error_message: str | None = None
     flight_declaration_filename: str | None = None
@@ -78,7 +78,7 @@ class ReportData(BaseModel):
     tool_version: str
     start_time_utc: str
     end_time_utc: str
-    total_duration_seconds: float
+    total_duration: float
     overall_status: Status
     flight_blender_url: str
     deployment_details: DeploymentDetails

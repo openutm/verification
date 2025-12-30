@@ -1,0 +1,22 @@
+name: F3_non_conforming_path
+description: Runs the F3 non-conforming path scenario.
+steps:
+- step: Setup Flight Declaration
+- step: Update Operation State
+  arguments:
+    state: ACTIVATED
+- step: Wait X seconds
+  arguments:
+    duration: 5
+- step: Submit Telemetry
+  arguments:
+    duration: 20
+- step: Check Operation State
+  arguments:
+    expected_state: NONCONFORMING
+    duration: 5
+- id: update_state_ended
+  step: Update Operation State
+  arguments:
+    state: ENDED
+- step: Teardown Flight Declaration

@@ -71,13 +71,13 @@
       "position": { "x": 0, "y": 450 },
       "data": {
         "label": "Wait 2 Seconds",
-        "operationId": "FlightBlenderClient.wait_x_seconds",
-        "className": "FlightBlenderClient",
-        "functionName": "wait_x_seconds",
+        "operationId": "CommonClient.wait",
+        "className": "CommonClient",
+        "functionName": "wait",
         "description": "Wait for 2 seconds.",
         "parameters": [
           {
-            "name": "wait_time_seconds",
+            "name": "duration",
             "type": "int",
             "default": 2
           }
@@ -121,13 +121,13 @@
       "position": { "x": 0, "y": 750 },
       "data": {
         "label": "Wait 5 Seconds",
-        "operationId": "FlightBlenderClient.wait_x_seconds",
-        "className": "FlightBlenderClient",
-        "functionName": "wait_x_seconds",
+        "operationId": "CommonClient.wait",
+        "className": "CommonClient",
+        "functionName": "wait",
         "description": "Wait for 5 seconds.",
         "parameters": [
           {
-            "name": "wait_time_seconds",
+            "name": "duration",
             "type": "int",
             "default": 5
           }
@@ -171,8 +171,8 @@
       "position": { "x": 0, "y": 1050 },
       "data": {
         "label": "Join Background Task",
-        "operationId": "SystemClient.join_task",
-        "className": "SystemClient",
+        "operationId": "SessionManager.join_task",
+        "className": "SessionManager",
         "functionName": "join_task",
         "description": "Waits for the background task to complete.",
         "parameters": [

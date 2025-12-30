@@ -59,7 +59,7 @@ async def _run_scenario_simple_async(scenario_id: str, func: Callable, args, kwa
         return ScenarioResult(
             name=scenario_id,
             status=final_status,
-            duration_seconds=total_duration,
+            duration=total_duration,
             steps=steps,
             flight_declaration_data=flight_declaration_data,
             flight_declaration_via_operational_intent_data=flight_declaration_via_operational_intent_data,

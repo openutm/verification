@@ -47,7 +47,7 @@ export const useScenarioRunner = () => {
 
         try {
             // 1. Reset Session
-            await fetch('http://localhost:8989/session/reset', { method: 'POST' });
+            await fetch('/session/reset', { method: 'POST' });
 
             const results: { id: string; status: string; result?: unknown; error?: unknown }[] = [];
 
@@ -66,14 +66,14 @@ export const useScenarioRunner = () => {
 
                 const stepDefinition = {
                     id: node.id,
-                    name: node.data.label, // Assuming label is the step name
-                    parameters: params,
-                    run_in_background: !!node.data.runInBackground
+                    step: node.data.label, // The backend expects 'step', not 'name'
+                    arguments: params,     // The backend expects 'arguments', not 'parameters'
+                    background: !!node.data.runInBackground // The backend expects 'background', not 'run_in_background'
                 };
 
                 console.log(`Executing step ${node.id}: ${node.data.label}`, stepDefinition);
 
-                const response = await fetch('http://localhost:8989/api/step', {
+                const response = await fetch('/api/step', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(stepDefinition)

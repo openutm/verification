@@ -22,9 +22,9 @@ async def test_f2_contingent_path(fb_client: FlightBlenderClient, data_files: Da
         A ScenarioResult object containing the results of the scenario execution.
     """
     async with fb_client.create_flight_declaration(data_files):
-        await fb_client.update_operation_state(new_state=OperationState.ACTIVATED)
-        await fb_client.submit_telemetry(duration_seconds=10)
-        await fb_client.update_operation_state(new_state=OperationState.CONTINGENT, duration_seconds=7)
-        await fb_client.update_operation_state(new_state=OperationState.ENDED)
+        await fb_client.update_operation_state(state=OperationState.ACTIVATED)
+        await fb_client.submit_telemetry(duration=10)
+        await fb_client.update_operation_state(state=OperationState.CONTINGENT, duration=7)
+        await fb_client.update_operation_state(state=OperationState.ENDED)
 
     await fb_client.teardown_flight_declaration()

@@ -42,7 +42,9 @@ const ToolboxGroup = ({ title, ops }: { title: string, ops: Operation[] }) => {
     );
 };
 
-export const Toolbox = ({ operations }: { operations: Operation[] }) => {
+export const Toolbox = ({ operations, children }: { operations: Operation[], children?: React.ReactNode }) => {
+    const [activeTab, setActiveTab] = useState<'toolbox' | 'scenarios'>('toolbox');
+
     const groupedOperations = useMemo(() => {
         const grouped = operations.reduce((acc, op) => {
             const groupName = op.category || 'General';
@@ -62,17 +64,33 @@ export const Toolbox = ({ operations }: { operations: Operation[] }) => {
 
     return (
         <aside className={layoutStyles.sidebar}>
-            <div className={layoutStyles.sidebarHeader}>
-                Toolbox
+            <div className={styles.tabContainer}>
+                <button
+                    className={`${styles.tabButton} ${activeTab === 'toolbox' ? styles.activeTab : ''}`}
+                    onClick={() => setActiveTab('toolbox')}
+                >
+                    Toolbox
+                </button>
+                <button
+                    className={`${styles.tabButton} ${activeTab === 'scenarios' ? styles.activeTab : ''}`}
+                    onClick={() => setActiveTab('scenarios')}
+                >
+                    Scenarios
+                </button>
             </div>
+
             <div className={styles.nodeList}>
-                {groupedOperations.sortedKeys.map(category => (
-                    <ToolboxGroup
-                        key={category}
-                        title={category}
-                        ops={groupedOperations.grouped[category]}
-                    />
-                ))}
+                {activeTab === 'toolbox' ? (
+                    groupedOperations.sortedKeys.map(category => (
+                        <ToolboxGroup
+                            key={category}
+                            title={category}
+                            ops={groupedOperations.grouped[category]}
+                        />
+                    ))
+                ) : (
+                    children
+                )}
             </div>
         </aside>
     );

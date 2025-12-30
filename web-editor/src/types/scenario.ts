@@ -25,10 +25,18 @@ export interface NodeData extends Record<string, unknown> {
 }
 
 export interface ScenarioStep {
-    id: string;
+    id?: string;
+    step: string;
+    arguments: Record<string, unknown>;
+    needs?: string[];
+    background?: boolean;
+    description?: string;
+}
+
+export interface ScenarioDefinition {
     name: string;
-    parameters: Record<string, unknown>;
-    run_in_background?: boolean;
+    description?: string;
+    steps: ScenarioStep[];
 }
 
 export interface StepResult {

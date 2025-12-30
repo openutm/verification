@@ -50,7 +50,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
             List of simulated flight observation dictionaries, or None if generation fails.
         """
         config_path = config_path or self.settings.simulation_config_path
-        duration = duration or self.settings.simulation_duration_seconds
+        duration = duration or self.settings.simulation_duration
         number_of_aircraft = self.settings.number_of_aircraft
         session_ids = self.settings.sensor_ids
 

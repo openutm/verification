@@ -2,6 +2,7 @@ import uuid
 
 from loguru import logger
 
+from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
@@ -10,7 +11,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("sdsp_heartbeat")
-async def sdsp_heartbeat(fb_client: FlightBlenderClient):
+async def sdsp_heartbeat(fb_client: FlightBlenderClient, common_client: CommonClient):
     """Runs the SDSP heartbeat scenario.
     This scenario
     """
@@ -22,7 +23,7 @@ async def sdsp_heartbeat(fb_client: FlightBlenderClient):
         session_id=session_id,
     )
     # Wait for some time to simulate heartbeat period
-    await fb_client.wait_x_seconds(wait_time_seconds=2)
+    await common_client.wait(duration=2)
 
     await fb_client.initialize_verify_sdsp_heartbeat(
         session_id=session_id,
@@ -30,7 +31,7 @@ async def sdsp_heartbeat(fb_client: FlightBlenderClient):
         expected_heartbeat_count=3,
     )
 
-    await fb_client.wait_x_seconds(wait_time_seconds=5)
+    await common_client.wait(duration=5)
 
     await fb_client.start_stop_sdsp_session(
         action=SDSPSessionAction.STOP,

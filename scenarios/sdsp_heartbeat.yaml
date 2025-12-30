@@ -1,0 +1,31 @@
+name: sdsp_heartbeat
+description: Runs the SDSP heartbeat scenario.
+
+steps:
+  - step: Generate UUID
+
+  - id: start_session
+    step: Start / Stop SDSP Session
+    arguments:
+      action: START
+      session_id: ${{ steps.Generate UUID.result }}
+
+  - step: Wait X seconds
+    arguments:
+      duration: 2
+
+  - step: Verify SDSP Heartbeat
+    arguments:
+      session_id: ${{ steps.Generate UUID.result }}
+      expected_heartbeat_interval_seconds: 1
+      expected_heartbeat_count: 3
+
+  - id: wait_verification
+    step: Wait X seconds
+    arguments:
+      duration: 5
+
+  - step: Start / Stop SDSP Session
+    arguments:
+      action: STOP
+      session_id: ${{ steps.Generate UUID.result }}

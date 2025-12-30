@@ -1,0 +1,16 @@
+name: add_flight_declaration
+description: Runs the add flight declaration scenario.
+steps:
+- step: Setup Flight Declaration
+- step: Update Operation State
+  arguments:
+    state: ACTIVATED
+    duration: 20
+- step: Submit Telemetry
+  arguments:
+    duration: 30
+- id: update_state_ended
+  step: Update Operation State
+  arguments:
+    state: ENDED
+- step: Teardown Flight Declaration

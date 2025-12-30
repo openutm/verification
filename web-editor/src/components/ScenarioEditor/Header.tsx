@@ -1,5 +1,4 @@
-import React from 'react';
-import { Activity, Moon, Sun, Layout, Trash2, Upload, Save, Play, Loader2 } from 'lucide-react';
+import { Activity, Moon, Sun, Layout, Trash2, Save, Play, Loader2 } from 'lucide-react';
 import styles from '../../styles/Header.module.css';
 import btnStyles from '../../styles/Button.module.css';
 
@@ -8,12 +7,9 @@ interface HeaderProps {
     toggleTheme: () => void;
     onLayout: () => void;
     onClear: () => void;
-    onLoad: () => void;
-    onExport: () => void;
+    onSave: () => void;
     onRun: () => void;
     isRunning: boolean;
-    fileInputRef: React.RefObject<HTMLInputElement>;
-    onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export const Header = ({
@@ -21,12 +17,9 @@ export const Header = ({
     toggleTheme,
     onLayout,
     onClear,
-    onLoad,
-    onExport,
+    onSave,
     onRun,
     isRunning,
-    fileInputRef,
-    onFileChange
 }: HeaderProps) => {
     return (
         <header className={styles.header}>
@@ -46,20 +39,9 @@ export const Header = ({
                     <Trash2 size={16} />
                     Clear
                 </button>
-                <button className={btnStyles.button} onClick={onLoad} title="Load JSON scenario" type="button">
-                    <Upload size={16} />
-                    Load Scenario
-                </button>
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={onFileChange}
-                    style={{ display: 'none' }}
-                    accept=".json"
-                />
-                <button className={btnStyles.button} onClick={onExport} title="Export to JSON" type="button">
+                <button className={btnStyles.button} onClick={onSave} title="Save to Server" type="button">
                     <Save size={16} />
-                    Export
+                    Save
                 </button>
                 <button className={`${btnStyles.button} ${btnStyles.primary}`} onClick={onRun} disabled={isRunning} title="Run scenario" type="button">
                     {isRunning ? <Loader2 size={16} className={styles.spin} /> : <Play size={16} />}

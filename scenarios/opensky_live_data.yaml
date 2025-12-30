@@ -1,0 +1,22 @@
+name: opensky_live_data
+description: Fetch live flight data from OpenSky and submit to Flight Blender.
+
+steps:
+  - step: Fetch OpenSky Data
+
+  - step: Submit Air Traffic
+    arguments:
+      observations: ${{ steps.Fetch OpenSky Data.result }}
+
+  - step: Wait X seconds
+    arguments:
+      duration: 3
+
+  # Iteration 2
+  - id: fetch_2
+    step: Fetch OpenSky Data
+
+  - id: submit_2
+    step: Submit Air Traffic
+    arguments:
+      observations: ${{ steps.fetch_2.result }}

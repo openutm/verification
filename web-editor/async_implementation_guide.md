@@ -25,7 +25,7 @@ The frontend now executes scenarios step-by-step, allowing for dynamic updates a
 
 ## 2. Backend Support for Background Tasks
 
-The backend `DynamicRunner` has been updated to support "fire-and-forget" tasks and task joining.
+The backend `SessionManager` has been updated to support "fire-and-forget" tasks and task joining.
 
 ### Implementation Details (`src/openutm_verification/server/runner.py`)
 
@@ -35,8 +35,8 @@ The backend `DynamicRunner` has been updated to support "fire-and-forget" tasks 
         -   The task object is stored in `self.session_context["background_tasks"]` keyed by a UUID.
         -   Returns immediately with `{"task_id": <uuid>, "status": "running"}`.
 
-2.  **`SystemClient.join_task`**:
-    -   A special handling block in `_execute_step` intercepts calls to `SystemClient.join_task`.
+2.  **`SessionManager.join_task`**:
+    -   A special handling block in `_execute_step` intercepts calls to `SessionManager.join_task`.
     -   It retrieves the `task_id` from parameters (which can be a direct string or a reference to a previous step's result).
     -   It looks up the task in `session_context["background_tasks"]`.
     -   It `await`s the task completion and returns the result.
@@ -47,40 +47,21 @@ To create a scenario with async tasks (e.g., `sdsp_track`):
 
 1.  **Start Task**: Add a node (e.g., `FlightBlenderClient.submit_simulated_air_traffic`).
     -   Set `Run in Background` to `true` (via properties panel or JSON).
-2.  **Intermediate Steps**: Add other nodes (e.g., `Wait X Seconds`, `Verify Track`) that run while the background task is active.
-3.  **Join Task**: Add a `SystemClient.join_task` node.
+2.  **Intermediate Steps**: Add other nodes (e.g., `CommonClient.wait`, `Verify Track`) that run while the background task is active.
+3.  **Join Task**: Add a `SessionManager.join_task` node.
     -   Link its `task_id` parameter to the result of the Start Task node.
 
-### Example JSON (`web-editor/examples/sdsp_track_async.json`)
+### Example YAML (`scenarios/sdsp_track.yaml`)
 
-```json
-{
-  "nodes": [
-    {
-      "id": "node_3",
-      "data": {
-        "label": "Submit Air Traffic (Async)",
-        "runInBackground": true,
-        ...
-      }
-    },
-    ...
-    {
-      "id": "node_8",
-      "data": {
-        "label": "Join Background Task",
-        "operationId": "SystemClient.join_task",
-        "parameters": [
-            { "name": "task_id", "default": "" } // Link this in UI
-        ]
-      }
-    }
-  ]
-}
+```yaml
+  - step: Submit Simulated Air Traffic
+    arguments:
+      observations: ${{ steps.Generate Simulated Air Traffic Data.result }}
+    background: true
+
+  # ... other steps running in parallel ...
+
+  - step: Join Background Task
+    arguments:
+      task_id: Submit Simulated Air Traffic
 ```
-
-## 4. Pending / Future Work
-
--   **UI Property for Background**: Explicit checkbox in `PropertiesPanel` to toggle `runInBackground` (currently supported in JSON/Logic but needs UI control).
--   **SystemClient in Toolbox**: Ensure `SystemClient` operations are exposed in the `/operations` endpoint so `join_task` appears in the toolbox.
--   **Task ID Linking**: Improve UX for linking the `task_id` output of one node to the input of `join_task` (currently relies on implicit result passing or manual ID entry).

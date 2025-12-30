@@ -1,7 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { Header } from '../Header';
-import React from 'react';
 
 describe('Header', () => {
     const defaultProps = {
@@ -9,12 +8,9 @@ describe('Header', () => {
         toggleTheme: vi.fn(),
         onLayout: vi.fn(),
         onClear: vi.fn(),
-        onLoad: vi.fn(),
-        onExport: vi.fn(),
+        onSave: vi.fn(),
         onRun: vi.fn(),
         isRunning: false,
-        fileInputRef: React.createRef<HTMLInputElement>() as React.RefObject<HTMLInputElement>,
-        onFileChange: vi.fn(),
     };
 
     it('renders correctly', () => {
@@ -43,18 +39,11 @@ describe('Header', () => {
         expect(defaultProps.onClear).toHaveBeenCalled();
     });
 
-    it('calls onLoad when Load Scenario button is clicked', () => {
+    it('calls onSave when Save button is clicked', () => {
         render(<Header {...defaultProps} />);
-        const loadButton = screen.getByText('Load Scenario');
-        fireEvent.click(loadButton);
-        expect(defaultProps.onLoad).toHaveBeenCalled();
-    });
-
-    it('calls onExport when Save Scenario button is clicked', () => {
-        render(<Header {...defaultProps} />);
-        const exportButton = screen.getByText('Export');
-        fireEvent.click(exportButton);
-        expect(defaultProps.onExport).toHaveBeenCalled();
+        const saveButton = screen.getByText('Save');
+        fireEvent.click(saveButton);
+        expect(defaultProps.onSave).toHaveBeenCalled();
     });
 
     it('calls onRun when Run button is clicked', () => {
