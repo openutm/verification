@@ -842,12 +842,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         flight_declaration_via_operational_intent_path: str,
         trajectory_path: str,
     ) -> None:
+        """Generates data and uploads flight declaration via Operational Intent."""
         from openutm_verification.scenarios.common import (
             generate_flight_declaration_via_operational_intent,
             generate_telemetry,
         )
-
-        """Generates data and uploads flight declaration via Operational Intent."""
         flight_declaration = generate_flight_declaration_via_operational_intent(flight_declaration_via_operational_intent_path)
 
         telemetry_states = generate_telemetry(trajectory_path)
