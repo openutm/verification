@@ -10,7 +10,7 @@ import arrow
 from loguru import logger
 from pydantic import BaseModel
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState
-from websocket import WebSocket
+from websockets.asyncio.client import ClientConnection
 
 from openutm_verification.core.clients.flight_blender.base_client import (
     BaseBlenderAPIClient,
@@ -43,6 +43,7 @@ from openutm_verification.simulator.models.flight_data_types import (
     FlightObservationSchema,
 )
 from openutm_verification.utils.time_utils import parse_duration
+from openutm_verification.utils.websocket_utils import receive_messages_for_duration
 
 
 def _create_rid_operator_details(operation_id: str) -> RIDOperatorDetails:
@@ -695,14 +696,14 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.error(f"Failed to perform action {action.value} on SDSP session {session_id}. Response: {response.text}")
             raise FlightBlenderError(f"{action.value} Heartbeat Track message not received for {session_id}")
 
-    def initialize_heartbeat_websocket_connection(self, session_id: str) -> WebSocket:
+    async def initialize_heartbeat_websocket_connection(self, session_id: str) -> ClientConnection:
         endpoint = f"/ws/surveillance/heartbeat/{session_id}"
-        ws = self.create_websocket_connection(endpoint=endpoint)
+        ws = await self.create_websocket_connection(endpoint=endpoint)
         return ws
 
-    def initialize_track_websocket_connection(self, session_id: str) -> WebSocket:
+    async def initialize_track_websocket_connection(self, session_id: str) -> ClientConnection:
         endpoint = f"/ws/surveillance/track/{session_id}"
-        ws = self.create_websocket_connection(endpoint=endpoint)
+        ws = await self.create_websocket_connection(endpoint=endpoint)
         return ws
 
     @scenario_step("Verify SDSP Track")
@@ -712,17 +713,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         expected_track_count: int,
         session_id: str,
     ) -> StepResult:
-        ws_connection = self.initialize_track_websocket_connection(session_id=session_id)
+        ws_connection = await self.initialize_track_websocket_connection(session_id=session_id)
         start_time = time.time()
 
-        now = arrow.now()
-
-        six_seconds_from_now = now.shift(seconds=6)
         all_received_messages = []
         # Start Receiving messages from now till six seconds from now
-        while arrow.now() < six_seconds_from_now:
-            await asyncio.sleep(0.2)
-            message = await asyncio.to_thread(ws_connection.recv)
+        async for message in receive_messages_for_duration(ws_connection, 6):
             message = json.loads(message)
             if "track_data" not in message or not message["track_data"]:
                 logger.debug("WebSocket connection established message received or empty track data")
@@ -732,7 +728,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.debug(f"Received WebSocket message: {message}")
             all_received_messages.append(SDSPTrackMessage(message=track, timestamp=arrow.now().isoformat()))
         logger.info(f"Received {len(all_received_messages)} messages in the first six seconds")
-        self.close_heartbeat_websocket_connection(ws_connection)
+        await self.close_heartbeat_websocket_connection(ws_connection)
         end_time = time.time()
         duration = end_time - start_time
         # Sort messages by timestamp
@@ -777,17 +773,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         expected_heartbeat_count: int,
         session_id: str,
     ) -> StepResult:
-        ws_connection = self.initialize_heartbeat_websocket_connection(session_id=session_id)
+        ws_connection = await self.initialize_heartbeat_websocket_connection(session_id=session_id)
         start_time = time.time()
 
-        now = arrow.now()
-
-        six_seconds_from_now = now.shift(seconds=6)
         all_received_messages = []
         # Start Receiving messages from now till six seconds from now
-        while arrow.now() < six_seconds_from_now:
-            await asyncio.sleep(0.1)
-            message = await asyncio.to_thread(ws_connection.recv)
+        async for message in receive_messages_for_duration(ws_connection, 6):
             message = json.loads(message)
             if "heartbeat_data" not in message:
                 logger.debug("WebSocket connection established message received")
@@ -796,7 +787,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.debug(f"Received WebSocket message: {message}")
             all_received_messages.append(SDSPHeartbeatMessage(message=heartbeat_message, timestamp=arrow.now().isoformat()))
         logger.info(f"Received {len(all_received_messages)} messages in the first six seconds")
-        self.close_heartbeat_websocket_connection(ws_connection)
+        await self.close_heartbeat_websocket_connection(ws_connection)
         end_time = time.time()
 
         # Sort messages by timestamp
@@ -843,8 +834,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 duration=duration,
             )
 
-    def close_heartbeat_websocket_connection(self, ws_connection: WebSocket) -> None:
-        ws_connection.close()
+    async def close_heartbeat_websocket_connection(self, ws_connection: ClientConnection) -> None:
+        await ws_connection.close()
 
     @scenario_step("Teardown Flight Declaration")
     async def teardown_flight_declaration(self):

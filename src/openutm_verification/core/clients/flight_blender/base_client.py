@@ -1,6 +1,6 @@
 import httpx
 from loguru import logger
-from websocket import WebSocket, create_connection
+from websockets.asyncio.client import ClientConnection, connect
 
 from openutm_verification.models import FlightBlenderError
 
@@ -63,7 +63,7 @@ class BaseBlenderAPIClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.client.aclose()
 
-    def create_websocket_connection(self, endpoint) -> WebSocket:
+    async def create_websocket_connection(self, endpoint) -> ClientConnection:
         """Create and return a WebSocket connection to the Flight Blender service.
 
         This method establishes a WebSocket connection using the configured
@@ -76,18 +76,18 @@ class BaseBlenderAPIClient:
         websocket_base_url = self.base_url.replace("http", "ws")
         websocket_url = f"{websocket_base_url}{endpoint}"
         try:
-            websocket_connection = create_connection(websocket_url)
+            websocket_connection = await connect(websocket_url)
         except ConnectionRefusedError:
             logger.error(f"Failed to connect to WebSocket at {websocket_url}")
             raise FlightBlenderError("WebSocket connection failed") from None
         if "Authorization" in self.client.headers:
-            websocket_connection.send(self.client.headers["Authorization"])
+            await websocket_connection.send(self.client.headers["Authorization"])
         return websocket_connection
 
-    def close_websocket_connection(self, ws_connection: WebSocket) -> None:
+    async def close_websocket_connection(self, ws_connection: ClientConnection) -> None:
         """Close the given WebSocket connection.
 
         Args:
             ws_connection: The WebSocket connection object to close.
         """
-        ws_connection.close()
+        await ws_connection.close()
