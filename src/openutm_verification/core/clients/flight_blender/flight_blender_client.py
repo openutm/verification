@@ -907,7 +907,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         )
         assert data_files.trajectory is not None, "Trajectory file path must be provided"
         await self.setup_flight_declaration_via_operational_intent(
-            flight_declaration_via_operational_intent_path=data_files.flight_declaration_via_operational_intent, trajectory_path=data_files.trajectory
+            flight_declaration_via_operational_intent_path=data_files.flight_declaration_via_operational_intent,
+            trajectory_path=data_files.trajectory,
         )
         try:
             yield
