@@ -24,7 +24,6 @@ async def test_add_flight_declaration_via_operational_intent(fb_client: FlightBl
     """
 
     async with fb_client.create_flight_declaration_via_operational_intent(data_files):
-        pass
         await fb_client.update_operation_state(new_state=OperationState.ACTIVATED, duration_seconds=5)
-        await fb_client.wait_x_seconds(20)
+        await fb_client.wait_x_seconds(10)
         await fb_client.update_operation_state(new_state=OperationState.ENDED)
