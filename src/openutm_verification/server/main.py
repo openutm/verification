@@ -85,8 +85,7 @@ async def run_scenario(scenario: ScenarioDefinition, runner: SessionManager = De
 web_editor_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../web-editor"))
 
 # Allow override via environment variable (e.g. for Docker production builds)
-if os.environ.get("WEB_EDITOR_PATH"):
-    web_editor_dir = os.environ.get("WEB_EDITOR_PATH")
+web_editor_dir = os.environ.get("WEB_EDITOR_PATH", web_editor_dir)
 
 static_dir = os.path.join(web_editor_dir, "dist")
 
