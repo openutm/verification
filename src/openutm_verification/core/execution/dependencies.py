@@ -18,6 +18,7 @@ from openutm_verification.core.clients.air_traffic.air_traffic_client import (
 from openutm_verification.core.clients.air_traffic.base_client import (
     create_air_traffic_settings,
 )
+from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
@@ -37,6 +38,7 @@ from openutm_verification.core.execution.dependency_resolution import (
 )
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
+from openutm_verification.server.runner import SessionManager
 
 T = TypeVar("T")
 
@@ -140,6 +142,7 @@ def data_files(scenario_id: ScenarioId) -> Generator[DataFiles, None, None]:
         trajectory = config.data_files.trajectory
         flight_declaration = config.data_files.flight_declaration
         geo_fence = config.data_files.geo_fence
+        flight_declaration_via_operational_intent = config.data_files.flight_declaration_via_operational_intent
 
     data = DataFiles(
         trajectory=trajectory,
@@ -161,13 +164,12 @@ def app_config() -> Generator[AppConfig, None, None]:
 
 
 @dependency(FlightBlenderClient)
-async def flight_blender_client(
-    config: AppConfig,
-) -> AsyncGenerator[FlightBlenderClient, None]:
+async def flight_blender_client(config: AppConfig, data_files: DataFiles) -> AsyncGenerator[FlightBlenderClient, None]:
     """Provides a FlightBlenderClient instance for dependency injection.
 
     Args:
         config: The application configuration containing Flight Blender settings.
+        data_files: The data files configuration.
     Returns:
         An instance of FlightBlenderClient.
     """
@@ -176,7 +178,14 @@ async def flight_blender_client(
         audience=config.flight_blender.auth.audience or "",
         scopes=config.flight_blender.auth.scopes or [],
     )
-    async with FlightBlenderClient(base_url=config.flight_blender.url, credentials=credentials) as fb_client:
+    async with FlightBlenderClient(
+        base_url=config.flight_blender.url,
+        credentials=credentials,
+        flight_declaration_path=data_files.flight_declaration,
+        flight_declaration_via_operational_intent=data_files.flight_declaration_via_operational_intent,
+        trajectory_path=data_files.trajectory,
+        geo_fence_path=data_files.geo_fence,
+    ) as fb_client:
         yield fb_client
 
 
@@ -196,3 +205,13 @@ async def air_traffic_client(
     settings = create_air_traffic_settings()
     async with AirTrafficClient(settings) as air_traffic_client:
         yield air_traffic_client
+
+
+@dependency(SessionManager)
+async def session_manager() -> AsyncGenerator[SessionManager, None]:
+    yield SessionManager()
+
+
+@dependency(CommonClient)
+async def common_client() -> AsyncGenerator[CommonClient, None]:
+    yield CommonClient()

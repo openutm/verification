@@ -4,6 +4,7 @@ import uuid
 from loguru import logger
 
 from openutm_verification.core.clients.air_traffic.air_traffic_client import AirTrafficClient
+from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
@@ -12,7 +13,7 @@ from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("sdsp_track")
-async def sdsp_track(fb_client: FlightBlenderClient, air_traffic_client: AirTrafficClient) -> None:
+async def sdsp_track(fb_client: FlightBlenderClient, air_traffic_client: AirTrafficClient, common_client: CommonClient) -> None:
     """Runs the SDSP track scenario.
     This scenario
     """
@@ -29,7 +30,7 @@ async def sdsp_track(fb_client: FlightBlenderClient, air_traffic_client: AirTraf
     task = asyncio.create_task(fb_client.submit_simulated_air_traffic(observations=observations))
     # Task is now running, concurrently while any other `async await` calls are done.
     # Wait for some time to simulate track period
-    await fb_client.wait_x_seconds(wait_time_seconds=2)
+    await common_client.wait(duration=2)
 
     await fb_client.initialize_verify_sdsp_track(
         session_id=session_id,
@@ -37,7 +38,7 @@ async def sdsp_track(fb_client: FlightBlenderClient, air_traffic_client: AirTraf
         expected_track_count=3,
     )
 
-    await fb_client.wait_x_seconds(wait_time_seconds=5)
+    await common_client.wait(duration=5)
 
     await fb_client.start_stop_sdsp_session(
         action=SDSPSessionAction.STOP,

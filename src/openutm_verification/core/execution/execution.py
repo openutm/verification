@@ -19,7 +19,7 @@ from openutm_verification.core.clients.opensky.base_client import (
 )
 from openutm_verification.core.execution.config_models import AppConfig
 from openutm_verification.core.execution.dependencies import scenarios
-from openutm_verification.core.execution.dependency_resolution import CONTEXT, call_with_dependencies
+from openutm_verification.core.execution.dependency_resolution import CONTEXT
 from openutm_verification.core.reporting.reporting import generate_reports
 from openutm_verification.core.reporting.reporting_models import (
     ReportData,
@@ -59,6 +59,9 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path):
     """
     Executes the verification scenarios based on the provided configuration.
     """
+
+    from openutm_verification.server.runner import SessionManager
+
     run_timestamp = datetime.now(timezone.utc)
     start_time_utc = run_timestamp.isoformat()
     start_time_obj = run_timestamp
@@ -70,20 +73,30 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path):
     sanitized_config_dict = _sanitize_config(config.model_dump())
     logger.debug(f"Configuration details:\n{json.dumps(sanitized_config_dict, indent=2)}")
 
+    # Initialize SessionManager
+    session_manager = SessionManager(config_path=str(config_path))
+
     scenario_results = []
     for scenario_id, scenario_func in scenarios():
         try:
-            result = await call_with_dependencies(scenario_func)
+            # Initialize session with the current context
+            await session_manager.initialize_session()
+
+            # Execute the scenario function using the session manager
+            result = await session_manager.execute_function(scenario_func)
         except (AirTrafficError, OpenSkyError, ValidationError) as e:
             logger.error(f"Failed to run scenario '{scenario_id}': {e}")
             result = ScenarioResult(
                 name=scenario_id,
                 status=Status.FAIL,
-                duration_seconds=0,
+                duration=0,
                 steps=[],
                 error_message=str(e),
                 docs=None,
             )
+        finally:
+            # Ensure session is closed after each scenario to clean up resources
+            await session_manager.close_session()
 
         # Enrich result with context data
         context_data = CONTEXT.get()
@@ -95,7 +108,7 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path):
 
     end_time_obj = datetime.now(timezone.utc)
     end_time_utc = end_time_obj.isoformat()
-    total_duration_seconds = (end_time_obj - start_time_obj).total_seconds()
+    total_duration = (end_time_obj - start_time_obj).total_seconds()
 
     failed_scenarios = sum(1 for r in scenario_results if r.status == Status.FAIL)
     overall_status = Status.FAIL if failed_scenarios > 0 else Status.PASS
@@ -107,7 +120,7 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path):
         tool_version=version("openutm-verification"),
         start_time_utc=start_time_utc,
         end_time_utc=end_time_utc,
-        total_duration_seconds=total_duration_seconds,
+        total_duration=total_duration,
         overall_status=overall_status,
         flight_blender_url=config.flight_blender.url,
         deployment_details=config.reporting.deployment_details,

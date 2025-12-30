@@ -1,0 +1,15 @@
+name: F1_happy_path
+description: Runs the F1 happy path scenario.
+steps:
+- step: Setup Flight Declaration
+- step: Update Operation State
+  arguments:
+    state: ACTIVATED
+- step: Submit Telemetry
+  arguments:
+    duration: 30
+- id: update_state_ended
+  step: Update Operation State
+  arguments:
+    state: ENDED
+- step: Teardown Flight Declaration

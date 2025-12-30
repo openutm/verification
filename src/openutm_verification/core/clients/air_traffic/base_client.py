@@ -14,7 +14,7 @@ class AirTrafficSettings(BaseSettings):
 
     # Simulation settings
     simulation_config_path: str
-    simulation_duration_seconds: int = 30
+    simulation_duration: int = 30
     number_of_aircraft: int = 2
     single_or_multiple_sensors: str = "single"
     sensor_ids: list[str] = []
@@ -24,7 +24,7 @@ def create_air_traffic_settings() -> AirTrafficSettings:
     """Factory function to create AirTrafficSettings from config after initialization."""
     return AirTrafficSettings(
         simulation_config_path=config.data_files.trajectory or "",
-        simulation_duration_seconds=config.air_traffic_simulator_settings.simulation_duration_seconds or 30,
+        simulation_duration=config.air_traffic_simulator_settings.simulation_duration or 30,
         number_of_aircraft=config.air_traffic_simulator_settings.number_of_aircraft or 2,
         single_or_multiple_sensors=config.air_traffic_simulator_settings.single_or_multiple_sensors or "single",
         sensor_ids=config.air_traffic_simulator_settings.sensor_ids or [],

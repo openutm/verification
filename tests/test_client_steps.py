@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 import pytest
 
 from openutm_verification.core.clients.air_traffic.air_traffic_client import AirTrafficClient
+from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
 from openutm_verification.core.reporting.reporting_models import Status
@@ -39,6 +40,12 @@ def os_client():
     settings.viewport = [0, 0, 1, 1]
     client = OpenSkyClient(settings)
     client.get = AsyncMock()
+    return client
+
+
+@pytest.fixture
+def common_client():
+    client = CommonClient()
     return client
 
 
@@ -104,7 +111,7 @@ async def test_update_operation_state(fb_client):
     mock_response.json.return_value = {"status": "success"}
     fb_client.put.return_value = mock_response
 
-    result = await fb_client.update_operation_state(new_state=OperationState.ACTIVATED)
+    result = await fb_client.update_operation_state(state=OperationState.ACTIVATED)
 
     assert result.status == Status.PASS
     fb_client.put.assert_called_once()
@@ -147,9 +154,9 @@ async def test_submit_telemetry_from_file(fb_client):
     fb_client.put.assert_called_once()
 
 
-async def test_wait_x_seconds(fb_client):
+async def test_wait_x_seconds(common_client):
     with patch("asyncio.sleep", AsyncMock()) as mock_sleep:
-        result = await fb_client.wait_x_seconds(wait_time_seconds=2)
+        result = await common_client.wait(duration=2)
 
     assert "Waited for Flight Blender to process 2 seconds" in result.details
     mock_sleep.assert_called_once_with(2)
@@ -201,7 +208,7 @@ async def test_submit_telemetry(fb_client):
 
 async def test_check_operation_state(fb_client):
     with patch("asyncio.sleep", AsyncMock()) as mock_sleep:
-        result = await fb_client.check_operation_state(expected_state=OperationState.ACTIVATED, duration_seconds=1)
+        result = await fb_client.check_operation_state(expected_state=OperationState.ACTIVATED, duration=1)
 
     assert "Waited for Flight Blender to process OperationState.ACTIVATED state" in result.details
     mock_sleep.assert_called_once_with(1)
@@ -213,7 +220,7 @@ async def test_check_operation_state_connected(fb_client):
     mock_response.json.return_value = {"state": OperationState.ACTIVATED.value}
     fb_client.get.return_value = mock_response
 
-    result = await fb_client.check_operation_state_connected(expected_state=OperationState.ACTIVATED, duration_seconds=5)
+    result = await fb_client.check_operation_state_connected(expected_state=OperationState.ACTIVATED, duration=5)
 
     assert result.details["state"] == OperationState.ACTIVATED.value
     fb_client.get.assert_called()

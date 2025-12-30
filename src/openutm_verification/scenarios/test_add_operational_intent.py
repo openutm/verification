@@ -1,11 +1,11 @@
+from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
-from openutm_verification.core.execution.config_models import DataFiles
 from openutm_verification.models import OperationState
 from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("add_flight_declaration_via_operational_intent")
-async def test_add_flight_declaration_via_operational_intent(fb_client: FlightBlenderClient, data_files: DataFiles) -> None:
+async def test_add_flight_declaration_via_operational_intent(fb_client: FlightBlenderClient, common_client: CommonClient) -> None:
     """Runs the add flight declaration scenario.
 
     This scenario replicates the behavior of the add_flight_declaration.py importer:
@@ -23,7 +23,7 @@ async def test_add_flight_declaration_via_operational_intent(fb_client: FlightBl
         A ScenarioResult object containing the results of the scenario execution.
     """
 
-    async with fb_client.create_flight_declaration_via_operational_intent(data_files):
+    async with fb_client.create_flight_declaration_via_operational_intent():
         await fb_client.update_operation_state(new_state=OperationState.ACTIVATED, duration_seconds=5)
-        await fb_client.wait_x_seconds(10)
+        await common_client.wait(10)
         await fb_client.update_operation_state(new_state=OperationState.ENDED)
