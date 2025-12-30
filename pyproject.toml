@@ -44,7 +44,7 @@ dependencies = [
     "pydantic-settings>=2.10.1",
     "websocket-client==1.9.0",
     "markdown>=3.10",
-    "uas-standards==4.2.0"
+    "uas-standards==4.2.0",
 ]
 
 [project.scripts]
