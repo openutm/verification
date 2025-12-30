@@ -6,7 +6,6 @@ from typing import Any, ClassVar, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pyproj import Geod
 from shapely.geometry import Polygon, box
-from uas_standards.astm.f3548.v21.api import Volume4D
 
 MINIMUM_DIAGONAL_LENGTH_M = 500  # Minimum bounding box diagonal in meters
 
