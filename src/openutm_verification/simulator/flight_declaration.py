@@ -165,17 +165,17 @@ class FlightDeclarationGenerator:
         logger.info(f"Diagonal: {self.bounds.diagonal_length_m:.2f} m")
         _volume4ds = self._build_volume4d_operational_intent(bbox)
         now = arrow.utcnow()
+
         base_updates = BaseUpdatesViaOperationalIntent(
             start_datetime=now.shift(seconds=START_TIME_OFFSET_S).isoformat(),
             end_datetime=now.shift(seconds=END_TIME_OFFSET_S).isoformat(),
-            flight_declaration_operational_intent=_volume4ds,
+            operational_intent_volume4ds=_volume4ds,
         )
 
-        final_payload = self.template.copy()
+        final_payload = self.flight_declaration_via_operational_intent_template.copy()
         final_payload.update(base_updates.model_dump())
         final_payload.update(FlightDeclarationViaOperationalIntentOverrides().model_dump())
 
-        # Validate and return as FlightDeclaration model
         return FlightDeclarationViaOperationalIntent.model_validate(final_payload)
 
     def get_flight_declaration_model(self) -> FlightDeclaration:

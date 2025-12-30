@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -20,14 +21,52 @@ class FlightDeclaration(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class FlightBlenderOperationState(int, Enum):
+    """Enumeration for FlightBlender operation state values."""
+
+    NOT_SUBMITTED = 0
+    ACCEPTED = 1
+    ACTIVATED = 2
+    NONCONFORMING = 3
+    CONTINGENT = 4
+    ENDED = 5
+    WITHDRAWN = 6
+    CANCELLED = 7
+    REJECTED = 8
+
+
+class TypeOfOperation(int, Enum):
+    """Enumeration for type of operation values."""
+
+    UNKNOWN = 0
+    VISUAL_LINE_OF_SIGHT = 1
+    BEYOND_VISUAL_LINE_OF_SIGHT = 2
+    CREWED = 3
+
+
 class FlightDeclarationViaOperationalIntent(BaseModel):
     """Final validated flight declaration model."""
 
     start_datetime: str
     end_datetime: str
-    operational_intent_volume4ds: dict
+    operational_intent_volume4ds: list[dict]
+    exchange_type: str
+    aircraft_id: str
+    flight_id: str
+    plan_id: str
+    flight_state: FlightBlenderOperationState
+    flight_approved: bool
+    sequence_number: int
+    version: str
+    purpose: str
+    expect_telemetry: bool
+    originating_party: str
+    contact_url: str
+    type_of_operation: TypeOfOperation
+    vehicle_id: str
+    operator_id: str
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
 
 class FeatureCollection(BaseModel):
@@ -96,7 +135,7 @@ class BaseUpdatesViaOperationalIntent(BaseModel):
 
     start_datetime: str
     end_datetime: str
-    flight_declaration_operational_intent: list[dict[Any, Any]]
+    operational_intent_volume4ds: list[dict[Any, Any]]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

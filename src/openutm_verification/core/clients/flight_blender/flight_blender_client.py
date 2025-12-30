@@ -849,6 +849,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         """Generates data and uploads flight declaration via Operational Intent."""
         flight_declaration = generate_flight_declaration_via_operational_intent(flight_declaration_via_operational_intent_path)
+
         telemetry_states = generate_telemetry(trajectory_path)
 
         self.telemetry_states = telemetry_states
