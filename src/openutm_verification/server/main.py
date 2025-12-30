@@ -1,12 +1,10 @@
 import os
-import shutil
-import subprocess
 from contextlib import asynccontextmanager
 
+import uvicorn
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from loguru import logger
 
 # Import dependencies to ensure they are registered and steps are populated
 import openutm_verification.core.execution.dependencies  # noqa: F401
@@ -43,6 +41,17 @@ def get_session_manager(request: Request) -> SessionManager:
     return request.app.state.runner
 
 
+def start_server_mode(config_path: str | None = None, reload: bool = False):
+    if config_path:
+        os.environ["OPENUTM_CONFIG_PATH"] = str(config_path)
+    uvicorn.run(
+        "openutm_verification.server.main:app",
+        host="0.0.0.0",
+        port=8989,
+        reload=reload,
+    )
+
+
 @app.get("/api/info")
 async def api_info():
     return {"message": "OpenUTM Verification API is running"}
@@ -74,39 +83,13 @@ async def run_scenario(scenario: ScenarioDefinition, runner: SessionManager = De
 # Calculate path relative to this file
 # src/openutm_verification/server/main.py -> ../../../web-editor/dist
 web_editor_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../web-editor"))
+
+# Allow override via environment variable (e.g. for Docker production builds)
+if os.environ.get("WEB_EDITOR_PATH"):
+    web_editor_dir = os.environ.get("WEB_EDITOR_PATH")
+
 static_dir = os.path.join(web_editor_dir, "dist")
 
-
-def build_frontend():
-    """Attempt to build the web-editor frontend using npm."""
-    if not os.path.exists(web_editor_dir):
-        logger.warning(f"Web editor directory not found at {web_editor_dir}")
-        return
-
-    npm_cmd = shutil.which("npm")
-    if not npm_cmd:
-        logger.warning("npm not found. Skipping web editor build.")
-        return
-
-    try:
-        logger.info("Building web editor frontend... This may take a while.")
-        # Run npm install
-        logger.info("Running 'npm install'...")
-        subprocess.run([npm_cmd, "install"], cwd=web_editor_dir, check=True)
-
-        # Run npm run build
-        logger.info("Running 'npm run build'...")
-        subprocess.run([npm_cmd, "run", "build"], cwd=web_editor_dir, check=True)
-
-        logger.info("Web editor built successfully.")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to build web editor: {e}")
-    except Exception as e:
-        logger.error(f"An unexpected error occurred during web editor build: {e}")
-
-
-if not os.path.exists(static_dir):
-    build_frontend()
 
 if os.path.exists(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
@@ -121,12 +104,4 @@ else:
 
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(
-        "openutm_verification.server.main:app",
-        host="0.0.0.0",
-        port=8989,
-        reload=True,
-        reload_includes=["*.py"],
-    )
+    start_server_mode(reload=True)

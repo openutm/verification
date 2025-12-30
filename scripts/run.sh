@@ -13,6 +13,7 @@ source "$SCRIPT_DIR/common.sh"
 readonly COMPOSE_FILE="docker-compose.yml"
 readonly SERVICE_NAME="verification-tool"
 readonly DEV_SERVICE_NAME="verification-dev"
+readonly SERVER_SERVICE_NAME="verification-server"
 
 # Check if Docker and Docker Compose are available
 # Note: check_dependencies is now sourced from common.sh
@@ -49,6 +50,7 @@ Usage: $0 [OPTIONS] [ARGS...]
 Options:
     -d, --dev          Run in development mode with hot reload
     -p, --production   Run in production mode (default)
+    -s, --server       Run in server mode (starts API and UI)
     -b, --build        Build images before running
     --clean            Clean up containers and images after run
     -v, --verbose      Enable verbose output
@@ -60,6 +62,7 @@ Arguments:
 Examples:
     $0                                   # Run with default config
     $0 --config config/custom.yaml       # Run with custom config
+    $0 --server                          # Run in server mode
     $0 --debug                           # Run with debug logging
     $0 --dev --build                     # Build and run in development mode
     $0 --clean --config config/test.yaml # Clean up after run
@@ -120,6 +123,32 @@ run_development() {
         -e HOST_UID="${HOST_UID}" -e HOST_GID="${HOST_GID}" \
         "${DEV_SERVICE_NAME}" "$@"
 }
+# Run in server mode
+run_server() {
+    log_info "Running verification tool in server mode..."
+
+    local build_opts=()
+    if [[ "${VERBOSE}" == "true" ]]; then
+        log_info "Verbose mode enabled - additional logging will be shown"
+        build_opts+=("-v")
+    fi
+
+    if [[ "${BUILD_FIRST}" == "true" ]]; then
+        log_info "Building production image first..."
+        ./scripts/build.sh ${build_opts[@]+"${build_opts[@]}"} production
+    fi
+
+    local compose_opts=()
+    if [[ "${VERBOSE}" == "true" ]]; then
+        log_info "Starting container with verbose output..."
+        compose_opts+=("--verbose")
+    fi
+
+    # For server mode, we use 'up' instead of 'run' to keep the service running
+    # and we don't use --rm because we might want to inspect logs
+    docker compose ${compose_opts[@]+"${compose_opts[@]}"} --profile server up \
+        "${SERVER_SERVICE_NAME}"
+}
 
 # Cleanup function for run script
 run_cleanup() {
@@ -159,6 +188,10 @@ main() {
                 VERBOSE="true"
                 shift
                 ;;
+            -s|--server)
+                RUN_MODE="server"
+                shift
+                ;;
             -h|--help)
                 show_usage
                 exit 0
@@ -189,6 +222,9 @@ main() {
             ;;
         "development")
             run_development "$@"
+            ;;
+        "server")
+            run_server "$@"
             ;;
         *)
             log_error "Invalid run mode: ${RUN_MODE}"

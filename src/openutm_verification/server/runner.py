@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import Any, Callable, Coroutine, Dict, List, Type, TypeVar, cast
@@ -30,6 +31,8 @@ class SessionManager:
     def __init__(self, config_path: str = "config/default.yaml"):
         if hasattr(self, "_initialized") and self._initialized:
             return
+
+        config_path = os.environ.get("OPENUTM_CONFIG_PATH", config_path)
 
         self.config_path = Path(config_path)
         self.config = self._load_config()

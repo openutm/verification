@@ -12,6 +12,7 @@ import yaml
 from openutm_verification.cli.parser import create_parser
 from openutm_verification.core.execution.config_models import AppConfig, ConfigProxy
 from openutm_verification.core.execution.execution import run_verification_scenarios
+from openutm_verification.server.main import start_server_mode
 from openutm_verification.utils.logging import setup_logging
 
 
@@ -21,6 +22,10 @@ def main():
     """
     parser = create_parser()
     args = parser.parse_args()
+
+    if args.server:
+        start_server_mode(config_path=args.config)
+        sys.exit(0)
 
     # Load configuration
     config_path = Path(args.config)

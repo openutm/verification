@@ -1,3 +1,11 @@
+# --- UI Builder Stage ---
+FROM node:20-slim AS ui-builder
+WORKDIR /app/web-editor
+COPY web-editor/package.json web-editor/package-lock.json ./
+RUN npm ci
+COPY web-editor/ .
+RUN npm run build
+
 # Development Dockerfile for hot reload and debugging
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS development
 
@@ -30,6 +38,7 @@ ENV UV_COMPILE_BYTECODE=0
 ENV UV_LINK_MODE=copy
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
+ENV WEB_EDITOR_PATH=/app/web-editor
 
 # Copy dependency files
 COPY --chown=${UID}:${GID} LICENSE README.md pyproject.toml uv.lock ./
@@ -43,9 +52,15 @@ RUN --mount=type=cache,target=/home/${APP_USER}/.cache/uv,uid=${UID},gid=${GID} 
 # Copy source code
 COPY --chown=${UID}:${GID} . .
 
+# Copy UI artifacts from ui-builder stage
+COPY --chown=${UID}:${GID} --from=ui-builder /app/web-editor/dist /app/web-editor/dist
+
 # Create directories
 RUN mkdir -p /app/reports /app/config \
     && chown -R ${UID}:${GID} /app/reports /app/config
+
+# Expose the server port
+EXPOSE 8989
 
 # Switch to non-root user
 USER ${UID}:${GID}
