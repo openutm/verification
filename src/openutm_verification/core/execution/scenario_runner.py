@@ -4,16 +4,36 @@ import time
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Coroutine, ParamSpec, Protocol, TypedDict, TypeVar, cast, overload
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Coroutine,
+    ParamSpec,
+    Protocol,
+    TypedDict,
+    TypeVar,
+    cast,
+    overload,
+)
 
 from loguru import logger
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 from openutm_verification.core.clients.opensky.base_client import OpenSkyError
-from openutm_verification.core.reporting.reporting_models import ScenarioResult, Status, StepResult
+from openutm_verification.core.reporting.reporting_models import (
+    ScenarioResult,
+    Status,
+    StepResult,
+)
 from openutm_verification.models import FlightBlenderError
-from openutm_verification.simulator.models.declaration_models import FlightDeclaration
-from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
+from openutm_verification.simulator.models.declaration_models import (
+    FlightDeclaration,
+    FlightDeclarationViaOperationalIntent,
+)
+from openutm_verification.simulator.models.flight_data_types import (
+    FlightObservationSchema,
+)
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -25,6 +45,7 @@ class ScenarioState:
     steps: list[StepResult[Any]] = field(default_factory=list)
     active: bool = False
     flight_declaration_data: FlightDeclaration | None = None
+    flight_declaration_via_operational_intent_data: FlightDeclarationViaOperationalIntent | None = None
     telemetry_data: list[RIDAircraftState] | None = None
     air_traffic_data: list[list[FlightObservationSchema]] = field(default_factory=list)
 
@@ -66,6 +87,12 @@ class ScenarioContext:
             state.flight_declaration_data = data
 
     @classmethod
+    def set_flight_declaration_via_operational_intent_data(cls, data: FlightDeclarationViaOperationalIntent) -> None:
+        state = _scenario_state.get()
+        if state and state.active:
+            state.flight_declaration_via_operational_intent_data = data
+
+    @classmethod
     def set_telemetry_data(cls, data: list[RIDAircraftState]) -> None:
         state = _scenario_state.get()
         if state and state.active:
@@ -90,6 +117,15 @@ class ScenarioContext:
             return self._state.flight_declaration_data
         state = _scenario_state.get()
         return state.flight_declaration_data if state else None
+
+    @property
+    def flight_declaration_via_operational_intent_data(
+        self,
+    ) -> FlightDeclarationViaOperationalIntent | None:
+        if self._state:
+            return self._state.flight_declaration_via_operational_intent_data
+        state = _scenario_state.get()
+        return state.flight_declaration_via_operational_intent_data if state else None
 
     @property
     def telemetry_data(self) -> list[RIDAircraftState] | None:
@@ -117,7 +153,9 @@ class StepDecorator(Protocol):
 
 
 def scenario_step(step_name: str) -> StepDecorator:
-    def decorator(func: Callable[P, Awaitable[Any]]) -> Callable[P, Coroutine[Any, Any, Any]]:
+    def decorator(
+        func: Callable[P, Awaitable[Any]],
+    ) -> Callable[P, Coroutine[Any, Any, Any]]:
         def handle_result(result: Any, start_time: float) -> StepResult[Any]:
             duration = time.time() - start_time
             logger.info(f"Step '{step_name}' successful in {duration:.2f} seconds.")
@@ -125,7 +163,12 @@ def scenario_step(step_name: str) -> StepDecorator:
             if isinstance(result, StepResult):
                 step_result = result
             else:
-                step_result = StepResult(name=step_name, status=Status.PASS, duration=duration, details=result)
+                step_result = StepResult(
+                    name=step_name,
+                    status=Status.PASS,
+                    duration=duration,
+                    details=result,
+                )
 
             ScenarioContext.add_result(step_result)
             return step_result

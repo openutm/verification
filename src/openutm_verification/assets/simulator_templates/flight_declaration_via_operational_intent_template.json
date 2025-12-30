@@ -1,0 +1,20 @@
+{
+    "exchange_type": "flight_declaration",
+    "aircraft_id": "a5dd8899-bc19-c8c4-2dd7-57f786d1379d",
+    "flight_id": "5a7f3377-b991-4cc8-af2d-379d57f786d1",
+    "plan_id": "a5b5484c-a23c-4e83-8bb8-a6a5c294e45b",
+    "flight_state": 2,
+    "flight_approved": 0,
+    "sequence_number": 0,
+    "start_datetime": "2023-06-12T16:35:08.842Z",
+    "end_datetime": "2023-06-12T16:40:08.842Z",
+    "version": "1.0.0",
+    "purpose": "Delivery",
+    "expect_telemetry": true,
+    "originating_party": "Medicine Delivery Company",
+    "contact_url": "https://utm.originatingparty.com/contact?5a7f3377-b991-4cc8-af2d-379d57f786d1",
+    "type_of_operation": 1,
+    "vehicle_id": "157de9bb-6b49-496b-bf3f-0b768ce6a3b6",
+    "operator_id": "4a725cb5-02d2-4f78-888f-b93088d324be",
+    "operational_intent_volume4ds": []
+}

@@ -68,8 +68,14 @@ class DataFiles(StrictBaseModel):
     trajectory: str | None = None
     flight_declaration: str | None = None
     geo_fence: str | None = None
+    flight_declaration_via_operational_intent: str | None = None
 
-    @field_validator("trajectory", "flight_declaration", "geo_fence")
+    @field_validator(
+        "trajectory",
+        "flight_declaration",
+        "flight_declaration_via_operational_intent",
+        "geo_fence",
+    )
     @classmethod
     def validate_path(cls, v: str | None) -> str | None:
         """Validate that path is a non-empty string if provided."""
@@ -99,6 +105,11 @@ class DataFiles(StrictBaseModel):
             self.trajectory = resolve_and_validate_path(self.trajectory, "Trajectory")
         if self.flight_declaration:
             self.flight_declaration = resolve_and_validate_path(self.flight_declaration, "Flight declaration")
+        if self.flight_declaration_via_operational_intent:
+            self.flight_declaration_via_operational_intent = resolve_and_validate_path(
+                self.flight_declaration_via_operational_intent,
+                "Flight declaration via operational intent",
+            )
         if self.geo_fence:
             self.geo_fence = resolve_and_validate_path(self.geo_fence, "Geo-fence")
 

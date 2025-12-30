@@ -1,15 +1,40 @@
-from typing import Any, AsyncGenerator, Callable, Coroutine, Generator, Iterable, TypeVar, cast
+from typing import (
+    Any,
+    AsyncGenerator,
+    Callable,
+    Coroutine,
+    Generator,
+    Iterable,
+    TypeVar,
+    cast,
+)
 
 from loguru import logger
 
 from openutm_verification.auth.providers import get_auth_provider
-from openutm_verification.core.clients.air_traffic.air_traffic_client import AirTrafficClient
-from openutm_verification.core.clients.air_traffic.base_client import create_air_traffic_settings
-from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
-from openutm_verification.core.clients.opensky.base_client import create_opensky_settings
+from openutm_verification.core.clients.air_traffic.air_traffic_client import (
+    AirTrafficClient,
+)
+from openutm_verification.core.clients.air_traffic.base_client import (
+    create_air_traffic_settings,
+)
+from openutm_verification.core.clients.flight_blender.flight_blender_client import (
+    FlightBlenderClient,
+)
+from openutm_verification.core.clients.opensky.base_client import (
+    create_opensky_settings,
+)
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
-from openutm_verification.core.execution.config_models import AppConfig, DataFiles, ScenarioId, get_settings
-from openutm_verification.core.execution.dependency_resolution import CONTEXT, dependency
+from openutm_verification.core.execution.config_models import (
+    AppConfig,
+    DataFiles,
+    ScenarioId,
+    get_settings,
+)
+from openutm_verification.core.execution.dependency_resolution import (
+    CONTEXT,
+    dependency,
+)
 from openutm_verification.core.reporting.reporting_models import ScenarioResult
 from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 
@@ -66,7 +91,14 @@ def scenarios() -> Iterable[tuple[str, Callable[..., Coroutine[Any, Any, Scenari
             scenario_func = SCENARIO_REGISTRY[scenario_id].get("func")
             docs_content = get_scenario_docs(scenario_id)
 
-            CONTEXT.set({"scenario_id": scenario_id, "suite_scenario": suite_scenario, "suite_name": suite_name, "docs": docs_content})
+            CONTEXT.set(
+                {
+                    "scenario_id": scenario_id,
+                    "suite_scenario": suite_scenario,
+                    "suite_name": suite_name,
+                    "docs": docs_content,
+                }
+            )
             yield scenario_id, scenario_func
         else:
             logger.warning(f"Scenario {scenario_id} not found in registry.")
@@ -99,6 +131,9 @@ def data_files(scenario_id: ScenarioId) -> Generator[DataFiles, None, None]:
         # Merge suite overrides with base config
         trajectory = suite_scenario.trajectory or config.data_files.trajectory
         flight_declaration = suite_scenario.flight_declaration or config.data_files.flight_declaration
+        flight_declaration_via_operational_intent = (
+            suite_scenario.flight_declaration_via_operational_intent or config.data_files.flight_declaration_via_operational_intent
+        )
         geo_fence = suite_scenario.geo_fence or config.data_files.geo_fence
     else:
         # Use base config
@@ -109,6 +144,7 @@ def data_files(scenario_id: ScenarioId) -> Generator[DataFiles, None, None]:
     data = DataFiles(
         trajectory=trajectory,
         flight_declaration=flight_declaration,
+        flight_declaration_via_operational_intent=flight_declaration_via_operational_intent,
         geo_fence=geo_fence,
     )
     yield data
@@ -125,7 +161,9 @@ def app_config() -> Generator[AppConfig, None, None]:
 
 
 @dependency(FlightBlenderClient)
-async def flight_blender_client(config: AppConfig) -> AsyncGenerator[FlightBlenderClient, None]:
+async def flight_blender_client(
+    config: AppConfig,
+) -> AsyncGenerator[FlightBlenderClient, None]:
     """Provides a FlightBlenderClient instance for dependency injection.
 
     Args:
@@ -151,7 +189,9 @@ async def opensky_client(config: AppConfig) -> AsyncGenerator[OpenSkyClient, Non
 
 
 @dependency(AirTrafficClient)
-async def air_traffic_client(config: AppConfig) -> AsyncGenerator[AirTrafficClient, None]:
+async def air_traffic_client(
+    config: AppConfig,
+) -> AsyncGenerator[AirTrafficClient, None]:
     """Provides an AirTrafficClient instance for dependency injection."""
     settings = create_air_traffic_settings()
     async with AirTrafficClient(settings) as air_traffic_client:

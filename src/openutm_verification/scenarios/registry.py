@@ -19,7 +19,10 @@ from typing import Any, Callable, Coroutine, ParamSpec, TypeVar
 
 from loguru import logger
 
-from openutm_verification.core.execution.scenario_runner import ScenarioContext, ScenarioRegistry
+from openutm_verification.core.execution.scenario_runner import (
+    ScenarioContext,
+    ScenarioRegistry,
+)
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
     Status,
@@ -42,6 +45,7 @@ async def _run_scenario_simple_async(scenario_id: str, func: Callable, args, kwa
 
             steps = ctx.steps
             flight_declaration_data = ctx.flight_declaration_data
+            flight_declaration_via_operational_intent_data = ctx.flight_declaration_via_operational_intent_data
             telemetry_data = ctx.telemetry_data
             air_traffic_data = ctx.air_traffic_data
 
@@ -53,6 +57,7 @@ async def _run_scenario_simple_async(scenario_id: str, func: Callable, args, kwa
             duration_seconds=total_duration,
             steps=steps,
             flight_declaration_data=flight_declaration_data,
+            flight_declaration_via_operational_intent_data=flight_declaration_via_operational_intent_data,
             telemetry_data=telemetry_data,
             air_traffic_data=air_traffic_data,
         )
@@ -64,7 +69,10 @@ async def _run_scenario_simple_async(scenario_id: str, func: Callable, args, kwa
 
 def register_scenario(
     scenario_id: str,
-) -> Callable[[Callable[P, Coroutine[Any, Any, Any]]], Callable[P, Coroutine[Any, Any, ScenarioResult]]]:
+) -> Callable[
+    [Callable[P, Coroutine[Any, Any, Any]]],
+    Callable[P, Coroutine[Any, Any, ScenarioResult]],
+]:
     """
     A decorator to register a test scenario function.
 
@@ -73,7 +81,9 @@ def register_scenario(
                            This ID is used in the configuration file.
     """
 
-    def decorator(func: Callable[P, Coroutine[Any, Any, Any]]) -> Callable[P, Coroutine[Any, Any, ScenarioResult]]:
+    def decorator(
+        func: Callable[P, Coroutine[Any, Any, Any]],
+    ) -> Callable[P, Coroutine[Any, Any, ScenarioResult]]:
         if scenario_id in SCENARIO_REGISTRY:
             raise ValueError(f"Scenario with ID '{scenario_id}' is already registered.")
 
