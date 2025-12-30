@@ -33,7 +33,7 @@ START_TIME_OFFSET_S = 5  # Seconds from now for flight start
 END_TIME_OFFSET_S = 4 * 60  # Seconds from now for flight end
 
 DEFAULT_TEMPLATE_PATH: Final[Path] = Path(__file__).resolve().parent.parent / "assets" / "simulator_templates" / "flight_declaration_template.json"
-OPERTATIONAL_INTENT_TEMPLATE_PATH: Final[Path] = (
+OPERATIONAL_INTENT_TEMPLATE_PATH: Final[Path] = (
     Path(__file__).resolve().parent.parent / "assets" / "simulator_templates" / "flight_declaration_via_operational_intent_template.json"
 )
 BOUNDS_FILE_PATH: Final[Path] = Path(__file__).resolve().parents[3] / "config" / "bern" / "flight_declaration.json"
@@ -46,7 +46,7 @@ class FlightDeclarationGenerator:
         self,
         *,
         template_path: Path = DEFAULT_TEMPLATE_PATH,
-        operational_intent_template_path: Path = OPERTATIONAL_INTENT_TEMPLATE_PATH,
+        operational_intent_template_path: Path = OPERATIONAL_INTENT_TEMPLATE_PATH,
         bounds_path: Path = BOUNDS_FILE_PATH,
     ):
         self.bounds = self._load_bounds(bounds_path)
