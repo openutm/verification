@@ -34,6 +34,7 @@ air_traffic_simulator_settings:
 data_files:
   trajectory: "config/bern/trajectory_f1.json" # Path to flight declarations JSON file
   flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file
+  flight_declaration_via_operational_intent: "config/bern/flight_declaration_via_operational_intent.json" # Path to flight declaration via operational intent JSON file
   # geo_fence: "config/geo_fences.json" # Path to geo-fences
 
 # List of test scenario IDs to execute
