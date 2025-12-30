@@ -1,12 +1,11 @@
 from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
-from openutm_verification.core.execution.config_models import DataFiles
 from openutm_verification.models import OperationState
 from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F1_flow_no_telemetry_with_user_input")
-async def test_f1_no_telemetry_with_user_input(fb_client: FlightBlenderClient, data_files: DataFiles, common_client: CommonClient):
+async def test_f1_no_telemetry_with_user_input(fb_client: FlightBlenderClient, common_client: CommonClient):
     """Runs the F1 no telemetry with user input scenario.
 
     This scenario simulates a complete, successful flight operation:
@@ -21,7 +20,7 @@ async def test_f1_no_telemetry_with_user_input(fb_client: FlightBlenderClient, d
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
     """
-    async with fb_client.create_flight_declaration(data_files):
+    async with fb_client.create_flight_declaration():
         await common_client.wait(duration=5)
         await fb_client.update_operation_state(state=OperationState.ACTIVATED)
         await fb_client.wait_for_user_input(prompt="Press Enter to end the operation...")

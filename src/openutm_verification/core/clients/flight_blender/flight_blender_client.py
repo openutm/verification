@@ -15,7 +15,6 @@ from websocket import WebSocket
 from openutm_verification.core.clients.flight_blender.base_client import (
     BaseBlenderAPIClient,
 )
-from openutm_verification.core.execution.config_models import DataFiles
 from openutm_verification.core.execution.scenario_runner import (
     ScenarioContext,
     scenario_step,
@@ -93,6 +92,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         credentials: dict,
         request_timeout: int = 10,
         flight_declaration_path: str | None = None,
+        flight_declaration_via_operational_intent: str | None = None,
         trajectory_path: str | None = None,
         geo_fence_path: str | None = None,
     ) -> None:
@@ -107,6 +107,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self.flight_declaration_path = flight_declaration_path
         self.trajectory_path = trajectory_path
         self.geo_fence_path = geo_fence_path
+        self.flight_declaration_via_operational_intent = flight_declaration_via_operational_intent
 
         logger.debug(f"Initialized FlightBlenderClient with base_url={base_url}, request_timeout={request_timeout}")
 
@@ -720,7 +721,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         all_received_messages = []
         # Start Receiving messages from now till six seconds from now
         while arrow.now() < six_seconds_from_now:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.2)
             message = await asyncio.to_thread(ws_connection.recv)
             message = json.loads(message)
             if "track_data" not in message or not message["track_data"]:
@@ -917,26 +918,24 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             raise FlightBlenderError("Failed to upload flight declaration during setup_flight_declaration")
 
     @asynccontextmanager
-    async def create_flight_declaration(self, data_files: DataFiles):
+    async def create_flight_declaration(self):
         """Context manager to setup and teardown a flight operation based on scenario config."""
-        assert data_files.flight_declaration is not None, "Flight declaration file path must be provided"
-        assert data_files.trajectory is not None, "Trajectory file path must be provided"
-        await self.setup_flight_declaration(data_files.flight_declaration, data_files.trajectory)
+        assert self.flight_declaration_path is not None, "Flight declaration file path must be provided"
+        assert self.trajectory_path is not None, "Trajectory file path must be provided"
+        await self.setup_flight_declaration(self.flight_declaration_path, self.trajectory_path)
         try:
             yield
         finally:
             logger.info("All test steps complete..")
 
     @asynccontextmanager
-    async def create_flight_declaration_via_operational_intent(self, data_files: DataFiles):
+    async def create_flight_declaration_via_operational_intent(self):
         """Context manager to setup and teardown a flight operation based on scenario config."""
-        assert data_files.flight_declaration_via_operational_intent is not None, (
-            "Flight declaration via operational intent file path must be provided"
-        )
-        assert data_files.trajectory is not None, "Trajectory file path must be provided"
+        assert self.flight_declaration_via_operational_intent is not None, "Flight declaration via operational intent file path must be provided"
+        assert self.trajectory_path is not None, "Trajectory file path must be provided"
         await self.setup_flight_declaration_via_operational_intent(
-            flight_declaration_via_operational_intent_path=data_files.flight_declaration_via_operational_intent,
-            trajectory_path=data_files.trajectory,
+            flight_declaration_via_operational_intent_path=self.flight_declaration_via_operational_intent,
+            trajectory_path=self.trajectory_path,
         )
         try:
             yield

@@ -142,6 +142,7 @@ def data_files(scenario_id: ScenarioId) -> Generator[DataFiles, None, None]:
         trajectory = config.data_files.trajectory
         flight_declaration = config.data_files.flight_declaration
         geo_fence = config.data_files.geo_fence
+        flight_declaration_via_operational_intent = config.data_files.flight_declaration_via_operational_intent
 
     data = DataFiles(
         trajectory=trajectory,
@@ -181,6 +182,7 @@ async def flight_blender_client(config: AppConfig, data_files: DataFiles) -> Asy
         base_url=config.flight_blender.url,
         credentials=credentials,
         flight_declaration_path=data_files.flight_declaration,
+        flight_declaration_via_operational_intent=data_files.flight_declaration_via_operational_intent,
         trajectory_path=data_files.trajectory,
         geo_fence_path=data_files.geo_fence,
     ) as fb_client:

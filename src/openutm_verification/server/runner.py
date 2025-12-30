@@ -333,7 +333,7 @@ class SessionManager:
         return {"id": step.id, "step": step.step, "status": status_str, "result": result_data}
 
     async def execute_single_step(self, step: StepDefinition) -> Dict[str, Any]:
-        if not self.session_resolver:
+        if not self.session_resolver or not self.session_context:
             logger.info("Session resolver not found, initializing session")
             await self.initialize_session()
 

@@ -1,12 +1,11 @@
 from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
-from openutm_verification.core.execution.config_models import DataFiles
 from openutm_verification.models import OperationState
 from openutm_verification.scenarios.registry import register_scenario
 
 
 @register_scenario("F3_non_conforming_path")
-async def test_f3_non_conforming_path(fb_client: FlightBlenderClient, data_files: DataFiles, common_client: CommonClient):
+async def test_f3_non_conforming_path(fb_client: FlightBlenderClient, common_client: CommonClient):
     """Runs the F3 non-conforming path scenario.
 
     This scenario simulates a flight that deviates from its declared flight plan,
@@ -18,12 +17,10 @@ async def test_f3_non_conforming_path(fb_client: FlightBlenderClient, data_files
 
     Args:
         fb_client: The FlightBlenderClient instance for API interaction.
-        data_files: The DataFiles instance containing file paths for telemetry, flight declaration, and geo-fence.
-
     Returns:
         A ScenarioResult object containing the results of the scenario execution.
     """
-    async with fb_client.create_flight_declaration(data_files):
+    async with fb_client.create_flight_declaration():
         await fb_client.update_operation_state(state=OperationState.ACTIVATED)
         await common_client.wait(5)
         await fb_client.submit_telemetry(duration=20)
