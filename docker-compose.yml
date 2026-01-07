@@ -23,6 +23,7 @@ services:
     volumes:
       - ./config:/app/config:Z
       - ./reports:/app/reports:Z
+      - ./scenarios:/app/scenarios:Z
     # Network configuration for local Flight Blender access
     network_mode: host
     # Resource limits
@@ -97,6 +98,7 @@ services:
     volumes:
       - ./config:/app/config:Z
       - ./reports:/app/reports:Z
+      - ./scenarios:/app/scenarios:Z
     ports:
       - "8989:8989"
     extra_hosts:
