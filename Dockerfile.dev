@@ -39,6 +39,7 @@ ENV UV_LINK_MODE=copy
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 ENV WEB_EDITOR_PATH=/app/web-editor
+ENV SCENARIOS_PATH=/app/scenarios
 
 # Copy dependency files
 COPY --chown=${UID}:${GID} LICENSE README.md pyproject.toml uv.lock ./

@@ -33,6 +33,7 @@ ENV PYTHONUNBUFFERED=1
 # Copy dependency files first for better layer caching
 COPY pyproject.toml uv.lock ./
 COPY docs ./docs
+COPY scenarios ./scenarios
 
 # Install project dependencies using uv sync with cache mount for faster builds
 # --frozen: ensures reproducible builds from uv.lock
@@ -73,6 +74,7 @@ ENV PYTHONUNBUFFERED=1
 ENV TZ=UTC
 ENV PATH="/app/.venv/bin:$PATH"
 ENV WEB_EDITOR_PATH=/app/web-editor
+ENV SCENARIOS_PATH=/app/scenarios
 
 # Create non-root user and group for enhanced security
 RUN (getent group "${GID}" || groupadd -g "${GID}" "${APP_GROUP}") \

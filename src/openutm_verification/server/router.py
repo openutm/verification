@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Any, Type, TypeVar
 
@@ -12,7 +13,7 @@ scenario_router = APIRouter()
 
 # Define the scenarios directory relative to this file
 # src/openutm_verification/server/router.py -> .../scenarios
-SCENARIOS_DIR = Path(__file__).parents[3] / "scenarios"
+SCENARIOS_DIR = Path(os.getenv("SCENARIOS_PATH", str(Path(__file__).parents[3] / "scenarios")))
 
 
 def get_runner(request: Request) -> Any:

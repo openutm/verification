@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -8,7 +9,7 @@ from openutm_verification.core.execution.config_models import DataFiles
 from openutm_verification.core.execution.definitions import ScenarioDefinition
 from openutm_verification.server.runner import SessionManager
 
-SCENARIOS_DIR = Path(__file__).parent.parent / "scenarios"
+SCENARIOS_DIR = Path(os.getenv("SCENARIOS_PATH", Path(__file__).parent.parent / "scenarios"))
 YAML_FILES = list(SCENARIOS_DIR.glob("*.yaml"))
 
 
