@@ -40,6 +40,7 @@ interface PropertiesPanelProps {
     onClose: () => void;
     onUpdateParameter: (nodeId: string, paramName: string, value: unknown) => void;
     onUpdateRunInBackground: (nodeId: string, value: boolean) => void;
+    onUpdateStepId: (nodeId: string, stepId: string) => void;
 }
 
 const parseRefString = (value: unknown) => {
@@ -52,7 +53,7 @@ const parseRefString = (value: unknown) => {
     };
 };
 
-export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId }: PropertiesPanelProps) => {
     const [width, setWidth] = useState(480);
     const [isResizing, setIsResizing] = useState(false);
 
@@ -138,9 +139,24 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                 </div>
                 <div className={styles.content}>
                     <h3>{selectedNode.data.label}</h3>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px', fontFamily: 'monospace' }}>
-                        ID: {selectedNode.id}
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                        <div style={{ fontFamily: 'monospace' }}>Node ID: {selectedNode.id}</div>
                     </div>
+
+                    <div className={styles.paramItem}>
+                        <label>Step ID (Optional)</label>
+                        <input
+                            type="text"
+                            className={styles.paramInput}
+                            value={selectedNode.data.stepId || ''}
+                            onChange={(e) => onUpdateStepId(selectedNode.id, e.target.value)}
+                            placeholder={selectedNode.data.label}
+                        />
+                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                            Uniquely identify this step in the YAML. Explicitly set this if you have multiple steps with the same name.
+                        </div>
+                    </div>
+
                     <DocstringViewer text={selectedNode.data.description || ''} />
 
                     <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>

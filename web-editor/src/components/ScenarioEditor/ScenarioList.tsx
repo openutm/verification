@@ -8,18 +8,22 @@ import { convertYamlToGraph } from '../../utils/scenarioConversion';
 interface ScenarioListProps {
     onLoadScenario: (nodes: Node<NodeData>[], edges: Edge[]) => void;
     operations: Operation[];
+    currentScenarioName: string | null;
+    onSelectScenario: (name: string) => void;
+    refreshKey?: number;
+    onLoadDescription?: (description: string) => void;
 }
 
-export const ScenarioList = ({ onLoadScenario, operations }: ScenarioListProps) => {
+export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, onSelectScenario, refreshKey = 0, onLoadDescription }: ScenarioListProps) => {
     const [scenarios, setScenarios] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         fetch('/api/scenarios')
             .then(res => res.json())
-            .then(data => setScenarios(data))
+            .then((data: string[]) => setScenarios(data.sort()))
             .catch(err => console.error('Failed to load scenarios:', err));
-    }, []);
+    }, [refreshKey]);
 
     const handleLoad = async (filename: string) => {
         if (loading) return;
@@ -31,6 +35,15 @@ export const ScenarioList = ({ onLoadScenario, operations }: ScenarioListProps) 
             const { nodes, edges } = convertYamlToGraph(scenario, operations);
 
             onLoadScenario(nodes, edges);
+            onSelectScenario(filename);
+
+            // We need a way to pass description up.
+            // But onLoadScenario doesn't accept description yet.
+            // We should probably emit an event or update the prop signature.
+            // For now, let's just trigger a custom event or rely on parent component fetching details if needed?
+            // Actually, best is to update the callback signature in parent.
+            if (onLoadDescription) onLoadDescription(scenario.description || "");
+
         } catch (err) {
             console.error('Failed to load scenario:', err);
             alert('Failed to load scenario');
@@ -50,10 +63,16 @@ export const ScenarioList = ({ onLoadScenario, operations }: ScenarioListProps) 
                         onClick={() => handleLoad(name)}
                         role="button"
                         tabIndex={0}
-                        style={{ cursor: 'pointer', opacity: loading ? 0.5 : 1 }}
+                        title={name}
+                        style={{
+                            cursor: 'pointer',
+                            opacity: loading ? 0.5 : 1,
+                            borderColor: name === currentScenarioName ? 'var(--accent-primary)' : 'var(--border-color)',
+                            backgroundColor: name === currentScenarioName ? 'var(--bg-secondary)' : 'var(--bg-primary)'
+                        }}
                     >
-                        <FileText size={16} color="#8b949e" />
-                        <span>{name}</span>
+                        <FileText size={16} color={name === currentScenarioName ? "var(--accent-primary)" : "#8b949e"} />
+                        <span>{name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
                     </div>
                 ))}
                 {scenarios.length === 0 && (

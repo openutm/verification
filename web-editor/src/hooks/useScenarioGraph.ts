@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import {
     useNodesState,
     useEdgesState,
@@ -55,49 +55,19 @@ export const generateNodeId = (nodes: Node<NodeData>[], baseName: string) => {
     return newId;
 };
 
-const safeParse = <T>(key: string, fallback: T): T => {
-    if (typeof window === 'undefined') return fallback;
-    try {
-        const item = window.sessionStorage.getItem(key);
-        return item ? JSON.parse(item) : fallback;
-    } catch (e) {
-        console.warn(`Failed to parse ${key} from sessionStorage`, e);
-        return fallback;
-    }
-};
+export const useScenarioGraph = (initialNodesParams: Node<NodeData>[] = [], initialEdgesParams: Edge[] = []) => {
 
-export const useScenarioGraph = () => {
-    // Initialize state from sessionStorage if available
-    // We use useState to ensure we only read from storage once on mount
-    const [initialNodes] = useState<Node<NodeData>[]>(() => safeParse('scenario-nodes', []));
-    const [initialEdges] = useState<Edge[]>(() => safeParse('scenario-edges', []));
-
-    const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>(initialNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>(initialNodesParams);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdgesParams);
     const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<Node<NodeData>, Edge> | null>(null);
-    const [isDragging, setIsDragging] = useState(false);
 
     const onGraphDragStart = useCallback(() => {
-        setIsDragging(true);
+        // Placeholder for future drag handling
     }, []);
 
     const onGraphDragStop = useCallback(() => {
-        setIsDragging(false);
+        // Placeholder for future drag handling
     }, []);
-
-    // Persist changes to sessionStorage
-    // We skip saving while dragging to improve performance
-    useEffect(() => {
-        if (isDragging) return;
-
-        if (nodes.length > 0 || edges.length > 0) {
-            sessionStorage.setItem('scenario-nodes', JSON.stringify(nodes));
-            sessionStorage.setItem('scenario-edges', JSON.stringify(edges));
-        } else {
-            sessionStorage.setItem('scenario-nodes', JSON.stringify(nodes));
-            sessionStorage.setItem('scenario-edges', JSON.stringify(edges));
-        }
-    }, [nodes, edges, isDragging]);
 
     const onConnect = useCallback(
         (params: Connection) => {

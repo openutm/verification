@@ -7,8 +7,9 @@ describe('Header', () => {
         theme: 'light' as const,
         toggleTheme: vi.fn(),
         onLayout: vi.fn(),
-        onClear: vi.fn(),
+        onNew: vi.fn(),
         onSave: vi.fn(),
+        onSaveAs: vi.fn(),
         onRun: vi.fn(),
         isRunning: false,
     };
@@ -32,11 +33,11 @@ describe('Header', () => {
         expect(defaultProps.onLayout).toHaveBeenCalled();
     });
 
-    it('calls onClear when Clear button is clicked', () => {
+    it('calls onNew when New button is clicked', () => {
         render(<Header {...defaultProps} />);
-        const clearButton = screen.getByText('Clear');
-        fireEvent.click(clearButton);
-        expect(defaultProps.onClear).toHaveBeenCalled();
+        const newButton = screen.getByText('New');
+        fireEvent.click(newButton);
+        expect(defaultProps.onNew).toHaveBeenCalled();
     });
 
     it('calls onSave when Save button is clicked', () => {
@@ -44,6 +45,13 @@ describe('Header', () => {
         const saveButton = screen.getByText('Save');
         fireEvent.click(saveButton);
         expect(defaultProps.onSave).toHaveBeenCalled();
+    });
+
+    it('calls onSaveAs when Save As button is clicked', () => {
+        render(<Header {...defaultProps} />);
+        const saveAsButton = screen.getByText('Save As');
+        fireEvent.click(saveAsButton);
+        expect(defaultProps.onSaveAs).toHaveBeenCalled();
     });
 
     it('calls onRun when Run button is clicked', () => {

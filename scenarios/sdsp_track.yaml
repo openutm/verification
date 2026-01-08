@@ -1,44 +1,35 @@
 name: sdsp_track
 description: Runs the SDSP track scenario.
-
 steps:
-  - step: Generate UUID
-
-  - id: start_session
-    step: Start / Stop SDSP Session
-    arguments:
-      action: START
-      session_id: ${{ steps.Generate UUID.result }}
-
-  - step: Generate Simulated Air Traffic Data
-
-  - step: Submit Simulated Air Traffic
-    arguments:
-      observations: ${{ steps.Generate Simulated Air Traffic Data.result }}
-    background: true
-
-  - id: wait_initial
-    step: Wait X seconds
-    arguments:
-      duration: 2
-
-  - step: Verify SDSP Track
-    arguments:
-      session_id: ${{ steps.Generate UUID.result }}
-      expected_track_interval_seconds: 1
-      expected_track_count: 3
-
-  - id: wait_verification
-    step: Wait X seconds
-    arguments:
-      duration: 5
-
-  - id: stop_session
-    step: Start / Stop SDSP Session
-    arguments:
-      action: STOP
-      session_id: ${{ steps.Generate UUID.result }}
-
-  - step: Join Background Task
-    arguments:
-      task_id: Submit Simulated Air Traffic
+- step: Generate UUID
+- id: start_sdsp_session
+  step: Start / Stop SDSP Session
+  arguments:
+    session_id: ${{ steps.Generate UUID.result }}
+    action: START
+- step: Generate Simulated Air Traffic Data
+- step: Submit Simulated Air Traffic
+  arguments:
+    observations: ${{ steps.Generate Simulated Air Traffic Data.result }}
+  background: true
+- id: wait_2_seconds
+  step: Wait X seconds
+  arguments:
+    duration: 2
+- step: Verify SDSP Track
+  arguments:
+    expected_track_interval_seconds: 1
+    expected_track_count: 3
+    session_id: ${{ steps.Generate UUID.result }}
+- id: wait_5_seconds
+  step: Wait X seconds
+  arguments:
+    duration: 5
+- id: stop_sdsp_session
+  step: Start / Stop SDSP Session
+  arguments:
+    session_id: ${{ steps.Generate UUID.result }}
+    action: STOP
+- step: Join Background Task
+  arguments:
+    task_id: Submit Simulated Air Traffic

@@ -20,10 +20,12 @@ import { ScenarioList } from './ScenarioEditor/ScenarioList';
 import { PropertiesPanel } from './ScenarioEditor/PropertiesPanel';
 import { BottomPanel } from './ScenarioEditor/BottomPanel';
 import { Header } from './ScenarioEditor/Header';
+import { ScenarioInfoPanel } from './ScenarioEditor/ScenarioInfoPanel';
 
 import { useScenarioGraph, generateNodeId } from '../hooks/useScenarioGraph';
 import { useScenarioRunner } from '../hooks/useScenarioRunner';
 import { useScenarioFile } from '../hooks/useScenarioFile';
+import { convertYamlToGraph } from '../utils/scenarioConversion';
 
 const nodeTypes: NodeTypes = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,10 +42,29 @@ const updateParameterInList = (params: OperationParam[], paramName: string, valu
 // Memoize child components to prevent unnecessary re-renders
 const MemoizedToolbox = React.memo(Toolbox);
 const MemoizedPropertiesPanel = React.memo(PropertiesPanel);
+const MemoizedScenarioInfoPanel = React.memo(ScenarioInfoPanel);
 const MemoizedBottomPanel = React.memo(BottomPanel);
 const MemoizedHeader = React.memo(Header);
 
 const ScenarioEditorContent = () => {
+    // Synchronously read autosave state for lazy initialization
+    const [initialState] = useState(() => {
+        if (typeof window === 'undefined') return { nodes: [], edges: [], desc: "", isDirty: false, isRestored: false };
+
+        const savedIsDirty = sessionStorage.getItem('editor-is-dirty') === 'true';
+        if (savedIsDirty) {
+             try {
+                const nodes = JSON.parse(sessionStorage.getItem('editor-autosave-nodes') || '[]');
+                const edges = JSON.parse(sessionStorage.getItem('editor-autosave-edges') || '[]');
+                const desc = sessionStorage.getItem('editor-autosave-description') || "";
+                return { nodes, edges, desc, isDirty: true, isRestored: true };
+             } catch (e) {
+                 console.error("Failed to parse autosave data", e);
+             }
+        }
+        return { nodes: [], edges: [], desc: "", isDirty: false, isRestored: false };
+    });
+
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
         if (typeof window !== 'undefined') {
@@ -56,6 +77,19 @@ const ScenarioEditorContent = () => {
     const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
     const [operations, setOperations] = useState<Operation[]>([]);
     const [isConnected, setIsConnected] = useState(false);
+    const [currentScenarioName, setCurrentScenarioName] = useState<string | null>(() => {
+        if (typeof window !== 'undefined') {
+            return sessionStorage.getItem('currentScenarioName');
+        }
+        return null;
+    });
+    const [currentScenarioDescription, setCurrentScenarioDescription] = useState<string>(initialState.desc);
+    const [scenarioListRefreshKey, setScenarioListRefreshKey] = useState(0);
+    const [isDirty, setIsDirty] = useState(initialState.isDirty);
+
+    const incrementScenarioListRefreshKey = useCallback(() => {
+        setScenarioListRefreshKey(prev => prev + 1);
+    }, []);
 
     useEffect(() => {
         const checkHealth = async () => {
@@ -100,7 +134,7 @@ const ScenarioEditorContent = () => {
         reactFlowInstance,
         onGraphDragStart,
         onGraphDragStop
-    } = useScenarioGraph();
+    } = useScenarioGraph(initialState.nodes, initialState.edges);
 
     // Refs to keep track of latest nodes/edges without triggering re-renders in callbacks
     const nodesRef = useRef(nodes);
@@ -112,17 +146,82 @@ const ScenarioEditorContent = () => {
     }, [nodes, edges]);
 
     const { isRunning, runScenario } = useScenarioRunner();
-    const { handleSaveToServer } = useScenarioFile(
+    const { handleSaveToServer, handleSaveAs } = useScenarioFile(
         nodes,
         edges,
-        operations
+        operations,
+        currentScenarioName,
+        setCurrentScenarioName,
+        currentScenarioDescription,
+        incrementScenarioListRefreshKey,
+        () => setIsDirty(false)
     );
 
     const loadScenarioFromYaml = useCallback((newNodes: Node<NodeData>[], newEdges: Edge[]) => {
         setNodes(newNodes);
         setEdges(newEdges);
+        setIsDirty(false);
         setTimeout(() => reactFlowInstance?.fitView({ padding: 0.2, duration: 400 }), 100);
     }, [setNodes, setEdges, reactFlowInstance]);
+
+    useEffect(() => {
+        // Also load description from the ScenarioList load if possible,
+        // but for now the list only loads scenarios by name.
+        // We might want to clear description if we can't load it?
+    }, [loadScenarioFromYaml]);
+
+    useEffect(() => {
+        if (currentScenarioName) {
+            sessionStorage.setItem('currentScenarioName', currentScenarioName);
+        } else {
+            sessionStorage.removeItem('currentScenarioName');
+        }
+    }, [currentScenarioName]);
+
+    // Autosave dirty state
+    useEffect(() => {
+        const saveState = () => {
+            if (isDirty) {
+                sessionStorage.setItem('editor-is-dirty', 'true');
+                sessionStorage.setItem('editor-autosave-nodes', JSON.stringify(nodes));
+                sessionStorage.setItem('editor-autosave-edges', JSON.stringify(edges));
+                sessionStorage.setItem('editor-autosave-description', currentScenarioDescription);
+            } else {
+                sessionStorage.removeItem('editor-is-dirty');
+                sessionStorage.removeItem('editor-autosave-nodes');
+                sessionStorage.removeItem('editor-autosave-edges');
+                sessionStorage.removeItem('editor-autosave-description');
+            }
+        };
+
+        // Debounce save to avoid performance impact
+        const timeoutId = setTimeout(saveState, 500);
+        return () => clearTimeout(timeoutId);
+    }, [isDirty, nodes, edges, currentScenarioDescription]);
+
+    // Load saved scenario on mount (refresh) if available
+    const [isRestored, setIsRestored] = useState(initialState.isRestored);
+
+    // Fallback to server load on mount if not restored from autosave
+    useEffect(() => {
+        if (isRestored) return;
+
+        // Fallback to server load if not dirty or autosave failed
+        if (operations.length > 0 && currentScenarioName && nodes.length === 0) {
+            fetch(`/api/scenarios/${currentScenarioName}`)
+                .then(res => res.json())
+                .then(scenario => {
+                    const { nodes: newNodes, edges: newEdges } = convertYamlToGraph(scenario, operations);
+                    loadScenarioFromYaml(newNodes, newEdges);
+                    setCurrentScenarioDescription(scenario.description || "");
+                    setIsRestored(true);
+                })
+                .catch(err => {
+                    console.error('Failed to restore scenario:', err);
+                    setIsRestored(true);
+                });
+        }
+    }, [operations, currentScenarioName, nodes.length, loadScenarioFromYaml, isRestored]);
 
     useEffect(() => {
         document.documentElement.dataset.theme = theme;
@@ -176,16 +275,20 @@ const ScenarioEditorContent = () => {
     }, []);
 
     const handleDrop = useCallback((event: React.DragEvent) => {
+        setIsDirty(true);
         onDrop(event, operations);
     }, [onDrop, operations]);
 
-    const handleClear = useCallback(() => {
-        if (globalThis.confirm('Are you sure you want to clear the current scenario? All unsaved changes will be lost.')) {
+    const handleNew = useCallback(() => {
+        if (!isDirty || globalThis.confirm('Create new scenario? Any unsaved changes will be lost.')) {
             clearGraph();
             setSelectedNode(null);
             setSelectedEdgeId(null);
+            setCurrentScenarioName(null);
+            setCurrentScenarioDescription("");
+            setIsDirty(false);
         }
-    }, [clearGraph]);
+    }, [clearGraph, isDirty]);
 
     const updateNodesWithResults = useCallback((currentNodes: Node<NodeData>[], results: { id: string; status: 'success' | 'failure' | 'error'; result?: unknown }[]) => {
         return currentNodes.map(node => {
@@ -296,6 +399,7 @@ const ScenarioEditorContent = () => {
     }, [runScenario, setNodes, updateNodesWithResults, reactFlowInstance]);
 
     const updateNodeParameter = useCallback((nodeId: string, paramName: string, value: unknown) => {
+        setIsDirty(true);
         setNodes((nds) => {
             // Special handling for Join Background Task -> task_id
             // If we are updating task_id, we might need to create/update an edge
@@ -365,6 +469,7 @@ const ScenarioEditorContent = () => {
     }, [setNodes, setEdges]);
 
     const updateNodeRunInBackground = useCallback((nodeId: string, value: boolean) => {
+        setIsDirty(true);
         const joinOp = operations.find(op => op.name === "Join Background Task");
         const shouldCreateJoinNode = value && !!joinOp;
         const newNodeId = shouldCreateJoinNode && joinOp ? generateNodeId(nodes, joinOp.name) : null;
@@ -432,6 +537,29 @@ const ScenarioEditorContent = () => {
         });
     }, [setNodes, setEdges, operations, nodes]);
 
+    const updateNodeStepId = useCallback((nodeId: string, stepId: string) => {
+        setIsDirty(true);
+        setNodes((nds) => {
+            return nds.map((node) => {
+                if (node.id === nodeId) {
+                    return {
+                        ...node,
+                        data: { ...node.data, stepId: stepId },
+                    };
+                }
+                return node;
+            });
+        });
+
+        setSelectedNode((prev) => {
+            if (!prev || prev.id !== nodeId) return prev;
+            return {
+                ...prev,
+                data: { ...prev.data, stepId: stepId },
+            };
+        });
+    }, [setNodes]);
+
     const getConnectedSourceNodes = useCallback((targetNodeId: string) => {
         const sourceNodeIds = new Set(edges
             .filter(edge => edge.target === targetNodeId)
@@ -450,15 +578,23 @@ const ScenarioEditorContent = () => {
                 theme={theme}
                 toggleTheme={toggleTheme}
                 onLayout={onLayout}
-                onClear={handleClear}
+                onNew={handleNew}
                 onSave={handleSaveToServer}
+                onSaveAs={handleSaveAs}
                 onRun={handleRun}
                 isRunning={isRunning}
             />
 
             <div className={layoutStyles.workspace}>
                 <MemoizedToolbox operations={operations}>
-                    <ScenarioList onLoadScenario={loadScenarioFromYaml} operations={operations} />
+                    <ScenarioList
+                        onLoadScenario={loadScenarioFromYaml}
+                        operations={operations}
+                        currentScenarioName={currentScenarioName}
+                        onSelectScenario={setCurrentScenarioName}
+                        refreshKey={scenarioListRefreshKey}
+                        onLoadDescription={setCurrentScenarioDescription}
+                    />
                 </MemoizedToolbox>
 
                 <div className={layoutStyles.centerPane}>
@@ -467,9 +603,24 @@ const ScenarioEditorContent = () => {
                             nodes={nodes}
                             edges={edges}
                             nodeTypes={nodeTypes}
-                            onNodesChange={onNodesChange}
-                            onEdgesChange={onEdgesChange}
-                            onConnect={onConnect}
+                            onNodesChange={(changes) => {
+                                // Only mark dirty if relevant changes occur (add, remove, reset, position drag end?)
+                                // simple 'position' change fires on every mouse move, we might want to be less aggressive or just accept it.
+                                // But selection changes also fire onNodesChange.
+                                const isRelevantChange = changes.some(c => c.type !== 'select' && c.type !== 'dimensions');
+                                if (isRelevantChange) setIsDirty(true);
+                                onNodesChange(changes);
+                            }}
+                            onEdgesChange={(changes) => {
+                                // Selection changes fire onEdgesChange too
+                                const isRelevantChange = changes.some(c => c.type !== 'select');
+                                if (isRelevantChange) setIsDirty(true);
+                                onEdgesChange(changes);
+                            }}
+                            onConnect={(connection) => {
+                                setIsDirty(true);
+                                onConnect(connection);
+                            }}
                             onInit={setReactFlowInstance}
                             onDrop={handleDrop}
                             onDragOver={onDragOver}
@@ -486,6 +637,11 @@ const ScenarioEditorContent = () => {
                             <Background variant={BackgroundVariant.Dots} gap={12} size={1} color="var(--border-color)" />
                             <Panel position="top-right">
                                 <div style={{ display: 'flex', gap: '10px', padding: '10px' }}>
+                                    {currentScenarioName && (
+                                        <div style={{ display: 'flex', alignItems: 'center', fontWeight: '500', color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                                            {currentScenarioName}{isDirty && <span style={{ marginLeft: '4px', color: 'var(--accent-primary)' }}>*</span>}
+                                        </div>
+                                    )}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                                         <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: isConnected ? 'var(--success)' : 'var(--danger)' }}></div>
                                         {isConnected ? 'Connected' : 'Disconnected'}
@@ -503,7 +659,7 @@ const ScenarioEditorContent = () => {
                     )}
                 </div>
 
-                {selectedNode && (
+                {selectedNode ? (
                     <MemoizedPropertiesPanel
                         selectedNode={selectedNode}
                         connectedNodes={connectedNodes}
@@ -511,6 +667,20 @@ const ScenarioEditorContent = () => {
                         onClose={() => setSelectedNode(null)}
                         onUpdateParameter={updateNodeParameter}
                         onUpdateRunInBackground={updateNodeRunInBackground}
+                        onUpdateStepId={updateNodeStepId}
+                    />
+                ) : (
+                    <MemoizedScenarioInfoPanel
+                        name={currentScenarioName}
+                        description={currentScenarioDescription}
+                        onUpdateName={(name) => {
+                            setCurrentScenarioName(name);
+                            setIsDirty(true);
+                        }}
+                        onUpdateDescription={(desc) => {
+                            setCurrentScenarioDescription(desc);
+                            setIsDirty(true);
+                        }}
                     />
                 )}
             </div>

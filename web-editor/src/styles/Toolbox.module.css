@@ -48,6 +48,19 @@
   font-weight: 500;
   color: var(--text-primary);
   box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+
+.nodeItem span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.nodeItem svg {
+  flex-shrink: 0;
 }
 
 .nodeItem:hover {

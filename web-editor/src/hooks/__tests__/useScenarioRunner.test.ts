@@ -38,7 +38,18 @@ describe('useScenarioRunner', () => {
             executionResult = await result.current.runScenario(nodes, edges);
         });
 
-        expect(executionResult).toEqual(mockResult);
+        const expectedResult = {
+            results: [{
+                id: '1',
+                status: 'success',
+                result: mockResult,
+                error: undefined
+            }],
+            status: 'completed',
+            duration: 0
+        };
+
+        expect(executionResult).toEqual(expectedResult);
         expect(globalThis.fetch).toHaveBeenCalledWith('/session/reset', expect.any(Object));
         expect(globalThis.fetch).toHaveBeenCalledWith('/api/step', expect.any(Object));
         expect(result.current.isRunning).toBe(false);

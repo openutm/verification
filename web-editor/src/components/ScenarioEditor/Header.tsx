@@ -1,4 +1,4 @@
-import { Activity, Moon, Sun, Layout, Trash2, Save, Play, Loader2 } from 'lucide-react';
+import { Activity, Moon, Sun, Layout, FilePlus, Save, Play, Loader2, Copy } from 'lucide-react';
 import styles from '../../styles/Header.module.css';
 import btnStyles from '../../styles/Button.module.css';
 
@@ -6,8 +6,9 @@ interface HeaderProps {
     theme: 'light' | 'dark';
     toggleTheme: () => void;
     onLayout: () => void;
-    onClear: () => void;
+    onNew: () => void;
     onSave: () => void;
+    onSaveAs: () => void;
     onRun: () => void;
     isRunning: boolean;
 }
@@ -16,8 +17,9 @@ export const Header = ({
     theme,
     toggleTheme,
     onLayout,
-    onClear,
+    onNew,
     onSave,
+    onSaveAs,
     onRun,
     isRunning,
 }: HeaderProps) => {
@@ -35,13 +37,17 @@ export const Header = ({
                     <Layout size={16} />
                     Auto Layout
                 </button>
-                <button className={btnStyles.button} onClick={onClear} title="Clear current scenario" type="button">
-                    <Trash2 size={16} />
-                    Clear
+                <button className={btnStyles.button} onClick={onNew} title="Create new scenario" type="button">
+                    <FilePlus size={16} />
+                    New
                 </button>
                 <button className={btnStyles.button} onClick={onSave} title="Save to Server" type="button">
                     <Save size={16} />
                     Save
+                </button>
+                <button className={btnStyles.button} onClick={onSaveAs} title="Save As..." type="button">
+                    <Copy size={16} />
+                    Save As
                 </button>
                 <button className={`${btnStyles.button} ${btnStyles.primary}`} onClick={onRun} disabled={isRunning} title="Run scenario" type="button">
                     {isRunning ? <Loader2 size={16} className={styles.spin} /> : <Play size={16} />}

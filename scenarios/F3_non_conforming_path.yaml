@@ -1,22 +1,32 @@
 name: F3_non_conforming_path
-description: Runs the F3 non-conforming path scenario.
+description: >
+  Verifies the system's ability to detect and handle a non-conforming flight.
+  The flight deviates from its declared intent, and we expect the system
+  to transition the operation state to NONCONFORMING.
 steps:
 - step: Setup Flight Declaration
+  description: Initializes the flight declaration.
 - step: Update Operation State
+  description: Activates the operation.
   arguments:
     state: ACTIVATED
 - step: Wait X seconds
+  description: Pauses execution to allow initial state propagation.
   arguments:
     duration: 5
 - step: Submit Telemetry
+  description: Sends telemetry updates that intentionally deviate from the plan.
   arguments:
     duration: 20
 - step: Check Operation State
+  description: Verifies that the system has correctly identified the Non-Conforming state.
   arguments:
     expected_state: NONCONFORMING
     duration: 5
 - id: update_state_ended
   step: Update Operation State
+  description: Ends the operation.
   arguments:
     state: ENDED
 - step: Teardown Flight Declaration
+  description: Cleanup.

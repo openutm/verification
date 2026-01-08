@@ -46,6 +46,7 @@ export const convertYamlToGraph = (
             position: { x: xPos, y: yPos },
             data: {
                 label: step.step,
+                stepId: step.id,
                 operationId: operation.id,
                 description: step.description || operation.description,
                 parameters: parameters,
@@ -94,7 +95,9 @@ export const convertYamlToGraph = (
 export const convertGraphToYaml = (
     nodes: Node<NodeData>[],
     edges: Edge[],
-    operations: Operation[] = []
+    operations: Operation[] = [],
+    name: string = "Exported Scenario",
+    description: string = "Exported from OpenUTM Scenario Designer"
 ): ScenarioDefinition => {
     // Filter out visual/dependency edges (dotted lines)
     const sequenceEdges = edges.filter(e => e.style?.strokeDasharray !== '5 5');
@@ -174,15 +177,19 @@ export const convertGraphToYaml = (
             arguments: args,
         };
 
+        if (node.data.stepId && node.data.stepId.trim() !== '') {
+            step.id = node.data.stepId;
+        }
+
         // Don't save IDs to keep YAML clean
         // if (node.id && !node.id.startsWith('node_')) {
         //     step.id = node.id;
         // }
 
-        // Description is not saved to YAML to keep it clean
-        // if (node.data.description) {
-        //     step.description = node.data.description;
-        // }
+        // Description is saved if it differs from the default operation description
+        if (node.data.description && (!operation || node.data.description !== operation.description)) {
+            step.description = node.data.description;
+        }
 
         if (node.data.runInBackground) {
             step.background = true;
@@ -192,8 +199,8 @@ export const convertGraphToYaml = (
     });
 
     return {
-        name: "Exported Scenario",
-        description: "Exported from OpenUTM Scenario Designer",
+        name: name,
+        description: description,
         steps
     };
 };

@@ -75,6 +75,7 @@ ENV TZ=UTC
 ENV PATH="/app/.venv/bin:$PATH"
 ENV WEB_EDITOR_PATH=/app/web-editor
 ENV SCENARIOS_PATH=/app/scenarios
+ENV DOCS_PATH=/app/docs
 
 # Create non-root user and group for enhanced security
 RUN (getent group "${GID}" || groupadd -g "${GID}" "${APP_GROUP}") \

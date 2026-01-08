@@ -24,6 +24,7 @@ const ToolboxGroup = ({ title, ops }: { title: string, ops: Operation[] }) => {
                         <div
                             key={op.id}
                             className={styles.nodeItem}
+                            title={op.name}
                             onDragStart={(event) => {
                                 event.dataTransfer.setData('application/reactflow', op.name);
                                 event.dataTransfer.setData('application/reactflow/id', op.id);

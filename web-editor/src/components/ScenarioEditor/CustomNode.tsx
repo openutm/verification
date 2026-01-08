@@ -22,6 +22,10 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                             <div
                                 className={styles.statusButton}
                                 title="Success"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    data.onShowResult?.(data.result);
+                                }}
                             >
                                 <CheckCircle size={16} color="var(--success)" />
                             </div>
@@ -30,6 +34,10 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                             <div
                                 className={styles.statusButton}
                                 title="Failure"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    data.onShowResult?.(data.result);
+                                }}
                             >
                                 <XCircle size={16} color="var(--danger)" />
                             </div>
@@ -38,6 +46,10 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                             <div
                                 className={styles.statusButton}
                                 title="Error"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    data.onShowResult?.(data.result);
+                                }}
                             >
                                 <AlertTriangle size={16} color="var(--danger)" />
                             </div>
