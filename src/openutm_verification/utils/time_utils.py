@@ -10,7 +10,6 @@ def get_run_timestamp_str(dt: datetime) -> str:
 
 
 def parse_duration(duration: str | int | float) -> float:
-
     """
     Parses a duration string (e.g., "5s", "10m", "1h") into seconds.
     If no suffix is provided, defaults to seconds.
