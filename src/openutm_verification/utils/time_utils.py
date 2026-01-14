@@ -1,7 +1,16 @@
 import re
+from datetime import datetime
+
+
+def get_run_timestamp_str(dt: datetime) -> str:
+    """Safely format a datetime for use in filenames/directories."""
+    # Ensure UTC for consistency if naive? Or just format as is.
+    # The requirement is YYYY-MM-DD_HH-MM-SS
+    return dt.strftime("%Y-%m-%d_%H-%M-%S")
 
 
 def parse_duration(duration: str | int | float) -> float:
+
     """
     Parses a duration string (e.g., "5s", "10m", "1h") into seconds.
     If no suffix is provided, defaults to seconds.

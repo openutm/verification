@@ -1,16 +1,27 @@
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import TypeVar
 
 import uvicorn
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 # Import dependencies to ensure they are registered and steps are populated
 import openutm_verification.core.execution.dependencies  # noqa: F401
 from openutm_verification.core.execution.definitions import ScenarioDefinition
+from openutm_verification.core.reporting.reporting import create_report_data, generate_reports
+from openutm_verification.core.reporting.reporting_models import (
+    ScenarioResult,
+    Status,
+)
 from openutm_verification.server.router import scenario_router
 from openutm_verification.server.runner import SessionManager
+
+T = TypeVar("T")
 
 
 @asynccontextmanager
@@ -24,6 +35,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# Mount reports directory
+try:
+    # Initialize session manager to access configuration
+    session_manager = SessionManager()
+    output_dir = Path(session_manager.config.reporting.output_dir)
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/reports", StaticFiles(directory=str(output_dir)), name="reports")
+except Exception as e:
+    print(f"Warning: Could not mount reports directory: {e}")
 
 # Configure CORS
 app.add_middleware(
@@ -72,6 +94,66 @@ async def reset_session(runner: SessionManager = Depends(get_session_manager)):
     await runner.close_session()
     await runner.initialize_session()
     return {"status": "session_reset"}
+
+
+class GenerateReportRequest(BaseModel):
+    scenario_name: str = "Interactive Session"
+
+
+@app.post("/session/generate-report")
+async def generate_report_endpoint(request: GenerateReportRequest, runner: SessionManager = Depends(get_session_manager)):
+    if not runner.session_context or not runner.session_context.state:
+        return {"status": "error", "message": "No active session"}
+
+    # Construct ScenarioResult
+    state = runner.session_context.state
+    # Filter out steps without ID or name (though name is required)
+    steps = state.steps
+
+    # Determine status
+    failed = any(s.status == Status.FAIL for s in steps)
+    status = Status.FAIL if failed else Status.PASS
+
+    scenario_result = ScenarioResult(
+        name=request.scenario_name,
+        status=status,
+        duration=0.0,  # TODO: Track duration
+        steps=steps,
+        flight_declaration_data=state.flight_declaration_data,
+        flight_declaration_via_operational_intent_data=state.flight_declaration_via_operational_intent_data,
+        telemetry_data=state.telemetry_data,
+        air_traffic_data=state.air_traffic_data,
+    )
+
+    # Construct ReportData
+    run_timestamp = datetime.now(timezone.utc)
+    # Sanitize scenario name for filename: keep only alphanumerics and underscores
+    safe_name = "".join(c if c.isalnum() else "_" for c in request.scenario_name)
+    run_id = f"{safe_name}_{run_timestamp.strftime('%Y%m%d_%H%M%S')}"
+
+    # Get config
+    config = runner.config
+
+    report_data = create_report_data(
+        config=config,
+        config_path=str(runner.config_path),
+        results=[scenario_result],
+        start_time=run_timestamp,
+        end_time=run_timestamp,
+        run_id=run_id,
+        docs_dir=None,
+    )
+
+    try:
+        # Save report to a specifically named run subdirectory
+        generate_reports(
+            report_data,
+            config.reporting,
+        )
+        return {"status": "success", "report_id": run_id}
+    except Exception as e:
+        print(f"Error generating report: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 @app.post("/run-scenario")

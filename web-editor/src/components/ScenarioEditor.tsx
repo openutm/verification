@@ -86,6 +86,7 @@ const ScenarioEditorContent = () => {
     const [currentScenarioDescription, setCurrentScenarioDescription] = useState<string>(initialState.desc);
     const [scenarioListRefreshKey, setScenarioListRefreshKey] = useState(0);
     const [isDirty, setIsDirty] = useState(initialState.isDirty);
+    const [reportError, setReportError] = useState<{ title: string; message: string } | null>(null);
 
     const incrementScenarioListRefreshKey = useCallback(() => {
         setScenarioListRefreshKey(prev => prev + 1);
@@ -307,6 +308,45 @@ const ScenarioEditorContent = () => {
         });
     }, []);
 
+    const handleOpenReport = useCallback(async () => {
+        const scenarioParam = currentScenarioName ? `?scenario=${encodeURIComponent(currentScenarioName)}` : '';
+        const url = `/api/reports/latest${scenarioParam}`;
+
+        // Strategy: Open "about:blank" first, then navigate.
+        const newWindow = window.open('', '_blank');
+
+        if (!newWindow) {
+            setReportError({ title: "Popup Blocked", message: "Please allow popups for this site to view reports." });
+            return;
+        }
+
+        // Set a loading title or message
+        newWindow.document.title = "Loading Report...";
+        newWindow.document.body.innerHTML = '<div style="font-family:sans-serif;padding:20px;">Finding latest report...</div>';
+
+        try {
+            const res = await fetch(url);
+            if (res.ok) {
+                // If it's a redirect, res.url is the final destination.
+                // If the backend returns 200 OK directly, res.url is the served content url.
+                newWindow.location.href = res.url;
+            } else {
+                newWindow.close();
+                // Get error details from JSON if possible
+                let message = "Unable to find the report.";
+                try {
+                    const errorData = await res.json();
+                    if (errorData.detail) message = errorData.detail;
+                } catch { /* ignore JSON parse error */ }
+
+                setReportError({ title: "Report Not Found", message });
+            }
+        } catch (e) {
+            newWindow.close();
+            setReportError({ title: "Connection Error", message: "Failed to connect to the server." });
+        }
+    }, [currentScenarioName]);
+
     const handleRun = useCallback(async () => {
         // Clear previous results/errors from the UI immediately
         setNodes((nds) => nds.map(node => ({
@@ -395,8 +435,8 @@ const ScenarioEditorContent = () => {
             }));
         };
 
-        await runScenario(currentNodes, currentEdges, onStepComplete, onStepStart);
-    }, [runScenario, setNodes, updateNodesWithResults, reactFlowInstance]);
+        await runScenario(currentNodes, currentEdges, currentScenarioName || "Interactive Session", onStepComplete, onStepStart);
+    }, [runScenario, currentScenarioName, setNodes, updateNodesWithResults, reactFlowInstance]);
 
     const updateNodeParameter = useCallback((nodeId: string, paramName: string, value: unknown) => {
         setIsDirty(true);
@@ -681,9 +721,51 @@ const ScenarioEditorContent = () => {
                             setCurrentScenarioDescription(desc);
                             setIsDirty(true);
                         }}
+                        onOpenReport={handleOpenReport}
                     />
                 )}
             </div>
+            {reportError && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 2000,
+                    display: 'flex', justifyContent: 'center', alignItems: 'center'
+                }}>
+                    <div style={{
+                        backgroundColor: 'var(--bg-primary)',
+                        color: 'var(--text-primary)',
+                        padding: '24px', borderRadius: '8px',
+                        maxWidth: '400px', width: '100%',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        border: '1px solid var(--border-color)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{reportError.title}</h3>
+                            <button
+                                onClick={() => setReportError(null)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                            >
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                        <p style={{ margin: '0 0 20px', lineHeight: '1.5', color: 'var(--text-secondary)' }}>
+                            {reportError.message}
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => setReportError(null)}
+                                style={{
+                                    padding: '8px 16px', borderRadius: '4px',
+                                    backgroundColor: 'var(--accent-primary)', color: 'white',
+                                    border: 'none', cursor: 'pointer', fontWeight: 500
+                                }}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

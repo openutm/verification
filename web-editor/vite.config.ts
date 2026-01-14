@@ -12,6 +12,7 @@ export default defineConfig({
       '/operations': 'http://localhost:8989',
       '/session': 'http://localhost:8989',
       '/run-scenario': 'http://localhost:8989',
+      '/reports': 'http://localhost:8989',
     }
   },
   test: {

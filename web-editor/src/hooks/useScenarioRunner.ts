@@ -8,6 +8,7 @@ export const useScenarioRunner = () => {
     const runScenario = useCallback(async (
         nodes: Node<NodeData>[],
         edges: Edge[],
+        scenarioName: string,
         onStepComplete?: (result: { id: string; status: 'success' | 'failure' | 'error'; result?: unknown }) => void,
         onStepStart?: (nodeId: string) => void
     ) => {
@@ -116,6 +117,23 @@ export const useScenarioRunner = () => {
                     console.error(`Step ${node.id} failed`, stepResult);
                     break;
                 }
+            }
+
+            // 3. Generate Report
+            try {
+                console.log("Generating report...");
+                const reportRes = await fetch('/session/generate-report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scenario_name: scenarioName })
+                });
+                if (!reportRes.ok) {
+                    console.error("Failed to generate report:", await reportRes.text());
+                } else {
+                    console.log("Report generated successfully");
+                }
+            } catch (e) {
+                console.error("Error calling generate report endpoint:", e);
             }
 
             return { results, status: 'completed', duration: 0 };

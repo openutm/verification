@@ -1,8 +1,9 @@
+from pathlib import Path
 from typing import Any, Type, TypeVar
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from openutm_verification.core.execution.definitions import ScenarioDefinition, StepDefinition
 from openutm_verification.utils.paths import get_docs_directory, get_scenarios_directory
@@ -88,3 +89,36 @@ async def get_scenario_docs(scenario: str):
     with open(file_path, "r") as f:
         content = f.read()
         return PlainTextResponse(content)
+
+
+@scenario_router.get("/api/reports/latest")
+async def get_latest_report(request: Request, scenario: str | None = None):
+    """Redirect to the latest generated report. Optionally filter by scenario name."""
+    runner = request.app.state.runner
+    output_dir = Path(runner.config.reporting.output_dir)
+
+    if not output_dir.exists():
+        raise HTTPException(status_code=404, detail="Reports directory not found")
+
+    # Get all subdirectories that might contain reports
+    runs = [d for d in output_dir.iterdir() if d.is_dir()]
+    if not runs:
+        raise HTTPException(status_code=404, detail="No reports found")
+
+    if scenario:
+        runs = [d for d in runs if (d / scenario).exists()]
+        if not runs:
+            raise HTTPException(status_code=404, detail=f"No reports found for scenario '{scenario}'")
+
+    # Sort by directory name (timestamp) to find the latest
+    latest_run = sorted(runs, key=lambda d: d.name)[-1]
+
+    report_file = latest_run / "report.html"
+    if not report_file.exists():
+        raise HTTPException(status_code=404, detail="Report file not found in latest run")
+
+    # Construct URL relative to the mounted /reports path
+    relative_path = report_file.relative_to(output_dir)
+    url = f"/reports/{relative_path}"
+
+    return RedirectResponse(url=url)

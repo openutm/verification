@@ -9,10 +9,11 @@ interface ScenarioInfoPanelProps {
     description: string;
     onUpdateName: (name: string) => void;
     onUpdateDescription: (description: string) => void;
+    onOpenReport: () => void;
     onClose?: () => void;
 }
 
-export const ScenarioInfoPanel = ({ name, description, onUpdateName, onUpdateDescription, onClose }: ScenarioInfoPanelProps) => {
+export const ScenarioInfoPanel = ({ name, description, onUpdateName, onUpdateDescription, onOpenReport, onClose }: ScenarioInfoPanelProps) => {
     const [width, setWidth] = useState(480);
     const [isResizing, setIsResizing] = useState(false);
     const [isDocsOpen, setIsDocsOpen] = useState(false);
@@ -110,7 +111,7 @@ export const ScenarioInfoPanel = ({ name, description, onUpdateName, onUpdateDes
                     </div>
 
                     {name && (
-                        <div className={styles.paramItem}>
+                        <div className={styles.paramItem} style={{ display: 'flex', gap: '8px' }}>
                             <button
                                 onClick={() => setIsDocsOpen(true)}
                                 style={{
@@ -122,13 +123,34 @@ export const ScenarioInfoPanel = ({ name, description, onUpdateName, onUpdateDes
                                     border: '1px solid var(--border-color)',
                                     borderRadius: '4px',
                                     cursor: 'pointer',
-                                    width: '100%',
+                                    flex: 1,
                                     justifyContent: 'center',
                                     color: 'var(--text-primary)'
                                 }}
+                                title="View scenario documentation"
                             >
                                 <BookOpen size={16} />
-                                Open Documentation
+                                Docs
+                            </button>
+                            <button
+                                onClick={onOpenReport}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '8px 16px',
+                                    backgroundColor: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    flex: 1,
+                                    justifyContent: 'center',
+                                    color: 'var(--text-primary)'
+                                }}
+                                title="Open latest report"
+                            >
+                                <FileText size={16} />
+                                Report
                             </button>
                         </div>
                     )}

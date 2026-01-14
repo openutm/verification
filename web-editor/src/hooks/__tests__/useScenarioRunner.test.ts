@@ -35,7 +35,7 @@ describe('useScenarioRunner', () => {
 
         let executionResult;
         await act(async () => {
-            executionResult = await result.current.runScenario(nodes, edges);
+            executionResult = await result.current.runScenario(nodes, edges, 'Test Scenario');
         });
 
         const expectedResult = {
@@ -67,7 +67,7 @@ describe('useScenarioRunner', () => {
 
         let executionResult;
         await act(async () => {
-            executionResult = await result.current.runScenario(nodes, edges);
+            executionResult = await result.current.runScenario(nodes, edges, 'Test Scenario');
         });
 
         expect(executionResult).toBeNull();
@@ -80,7 +80,7 @@ describe('useScenarioRunner', () => {
 
         let executionResult;
         await act(async () => {
-            executionResult = await result.current.runScenario([], []);
+            executionResult = await result.current.runScenario([], [], 'Test Scenario');
         });
 
         expect(executionResult).toBeNull();

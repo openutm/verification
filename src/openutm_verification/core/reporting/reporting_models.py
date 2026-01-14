@@ -2,6 +2,7 @@
 Pydantic models for reporting configuration.
 """
 
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
@@ -76,8 +77,8 @@ class ReportData(BaseModel):
 
     run_id: str
     tool_version: str
-    start_time_utc: str
-    end_time_utc: str
+    start_time: datetime
+    end_time: datetime
     total_duration: float
     overall_status: Status
     flight_blender_url: str

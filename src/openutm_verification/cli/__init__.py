@@ -14,6 +14,7 @@ from openutm_verification.core.execution.config_models import AppConfig, ConfigP
 from openutm_verification.core.execution.execution import run_verification_scenarios
 from openutm_verification.server.main import start_server_mode
 from openutm_verification.utils.logging import setup_logging
+from openutm_verification.utils.time_utils import get_run_timestamp_str
 
 
 def main():
@@ -48,10 +49,10 @@ def main():
 
     # Setup logging
     run_timestamp = datetime.now(timezone.utc)
-    timestamp_str = run_timestamp.strftime("%Y-%m-%dT%H-%M-%SZ")
+    timestamp_str = get_run_timestamp_str(run_timestamp)
 
     base_output_dir = Path(config.reporting.output_dir)
-    output_dir = base_output_dir / f"run_{timestamp_str}"
+    output_dir = base_output_dir / timestamp_str
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Update config so downstream components use the new directory
