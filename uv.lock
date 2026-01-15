@@ -66,27 +66,6 @@ wheels = [
 ]
 
 [[package]]
-name = "bluesky"
-version = "1.14.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "cycler" },
-    { name = "event-model" },
-    { name = "historydict" },
-    { name = "msgpack" },
-    { name = "msgpack-numpy" },
-    { name = "numpy" },
-    { name = "opentelemetry-api" },
-    { name = "toolz" },
-    { name = "tqdm" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/70/6c/49ed7b75e2c9ed3cbf49b0ccc9d4bb45be432d290e0bb2a9341c246f9974/bluesky-1.14.6.tar.gz", hash = "sha256:7db1d34518fc0875627117813435f68fd2e27ad2ff0067bd55e2e7d659cb8151", size = 499579, upload-time = "2025-10-08T18:47:00.493Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/23/e6572cf2aca82938c241e02e150e2102f5b04a3f2f82c4720f6838c42a63/bluesky-1.14.6-py3-none-any.whl", hash = "sha256:8f24e02a2503d7cc895edb34f3917d1725ac143751dfcd50096a067b833c8bd3", size = 358374, upload-time = "2025-10-08T18:46:58.968Z" },
-]
-
-[[package]]
 name = "bluesky-navdata"
 version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -427,21 +406,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d8/cd/47b84c0381bb13c3d76f68a49d5c16c7aecda29adebb34fa38730315abd7/earcut-1.1.5.tar.gz", hash = "sha256:21c55b032fe0b90658e7f305e1ee408cb4f76782c5066d86273adfb4b6cc23e0", size = 9135, upload-time = "2022-08-15T14:34:48.628Z" }
 
 [[package]]
-name = "event-model"
-version = "1.23.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "importlib-resources" },
-    { name = "jsonschema" },
-    { name = "numpy" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f9/5a/de03f05fdbc4377db89fa6daf243e89370f9bcf2d21ad96b54d4549a74ed/event_model-1.23.1.tar.gz", hash = "sha256:5bb70fd8c7f345aa32afe561aff5a306b2c8a19cbdc3066b736643c8092ddaab", size = 185271, upload-time = "2025-08-28T13:26:38.647Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fb/32/e31e3363bf48ad2ba80b644b01ad9676ce154f1b755950de81eb4ed5b6bd/event_model-1.23.1-py3-none-any.whl", hash = "sha256:e0b951b829cebcf3879beff238bb370fd997d315856bc5d5ac2a66202b854958", size = 77057, upload-time = "2025-08-28T13:26:37.228Z" },
-]
-
-[[package]]
 name = "executing"
 version = "2.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -548,15 +512,6 @@ wheels = [
 ]
 
 [[package]]
-name = "historydict"
-version = "1.2.6"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/21/eb/91c2bd3684147ba8deef546ff2b6d091f32ece81ceb153831bab9f2ea6a5/historydict-1.2.6.tar.gz", hash = "sha256:a800ae05d28b618fe0c913ff0d64e4aebe05d76934fa610539f70ead37dc6fb5", size = 4011, upload-time = "2023-08-05T20:42:20.672Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/47/deb64c73aec25af7699247e021153a6bfe9a08452f7f7337dcee4aa07a2b/historydict-1.2.6-py3-none-any.whl", hash = "sha256:b4b00a170f05502aa682caba62435da5fe1f73037e884707581fe84f8d7b43f5", size = 4501, upload-time = "2023-08-05T20:42:19.244Z" },
-]
-
-[[package]]
 name = "http-message-signatures"
 version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -639,27 +594,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e8/92/335c435d15e2d198a679c3fbb56cd20907f204c386c1b8facdc06cea8256/implicitdict-4.0.1.tar.gz", hash = "sha256:6413da2faeb03f1d20a537f357c05a58cef8ab32e8923eae4e79ee2396546074", size = 57876, upload-time = "2025-10-01T15:07:54.467Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/02/ce/d947f5995b160d56a2e4a2ba48eacc59884cc2cabfb9eafe4ac49d80575d/implicitdict-4.0.1-py3-none-any.whl", hash = "sha256:71e16dc977a944c0279f5f383db63b44a14a9961b32b535e011fbba782e88a70", size = 13658, upload-time = "2025-10-01T15:07:53.603Z" },
-]
-
-[[package]]
-name = "importlib-metadata"
-version = "8.7.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "zipp" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f3/49/3b30cad09e7771a4982d9975a8cbf64f00d4a1ececb53297f1d9a7be1b10/importlib_metadata-8.7.1.tar.gz", hash = "sha256:49fef1ae6440c182052f407c8d34a68f72efc36db9ca90dc0113398f2fdde8bb", size = 57107, upload-time = "2025-12-21T10:00:19.278Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fa/5e/f8e9a1d23b9c20a551a8a02ea3637b4642e22c2626e3a13a9a29cdea99eb/importlib_metadata-8.7.1-py3-none-any.whl", hash = "sha256:5a1f80bf1daa489495071efbb095d75a634cf28a8bc299581244063b53176151", size = 27865, upload-time = "2025-12-21T10:00:18.329Z" },
-]
-
-[[package]]
-name = "importlib-resources"
-version = "6.5.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/cf/8c/f834fbf984f691b4f7ff60f50b514cc3de5cc08abfc3295564dd89c5e2e7/importlib_resources-6.5.2.tar.gz", hash = "sha256:185f87adef5bcc288449d98fb4fba07cea78bc036455dd44c5fc4a2fe78fed2c", size = 44693, upload-time = "2025-01-03T18:51:56.698Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/ed/1f1afb2e9e7f38a545d628f864d562a5ae64fe6f7a10e28ffb9b185b4e89/importlib_resources-6.5.2-py3-none-any.whl", hash = "sha256:789cfdc3ed28c78b67a06acb8126751ced69a3d5f79c095a98298cd8a760ccec", size = 37461, upload-time = "2025-01-03T18:51:54.306Z" },
 ]
 
 [[package]]
@@ -1079,19 +1013,6 @@ wheels = [
 ]
 
 [[package]]
-name = "msgpack-numpy"
-version = "0.4.8"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "msgpack" },
-    { name = "numpy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/08/94/61e8aee142733ebfdc400a05bdac6e1763c4514bba3b42743d223f388450/msgpack-numpy-0.4.8.tar.gz", hash = "sha256:c667d3180513422f9c7545be5eec5d296dcbb357e06f72ed39cc683797556e69", size = 10923, upload-time = "2022-06-09T03:43:08.739Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/5d/f25ac7d4fb77cbd53ddc6d05d833c6bf52b12770a44fa9a447eed470ca9a/msgpack_numpy-0.4.8-py2.py3-none-any.whl", hash = "sha256:773c19d4dfbae1b3c7b791083e2caf66983bb19b40901646f61d8731554ae3da", size = 6919, upload-time = "2022-06-09T03:43:06.82Z" },
-]
-
-[[package]]
 name = "mypy"
 version = "1.18.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1221,25 +1142,11 @@ wheels = [
 ]
 
 [[package]]
-name = "opentelemetry-api"
-version = "1.39.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "importlib-metadata" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/97/b9/3161be15bb8e3ad01be8be5a968a9237c3027c5be504362ff800fca3e442/opentelemetry_api-1.39.1.tar.gz", hash = "sha256:fbde8c80e1b937a2c61f20347e91c0c18a1940cecf012d62e65a7caf08967c9c", size = 65767, upload-time = "2025-12-11T13:32:39.182Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cf/df/d3f1ddf4bb4cb50ed9b1139cc7b1c54c34a1e7ce8fd1b9a37c0d1551a6bd/opentelemetry_api-1.39.1-py3-none-any.whl", hash = "sha256:2edd8463432a7f8443edce90972169b195e7d6a05500cd29e6d13898187c9950", size = 66356, upload-time = "2025-12-11T13:32:17.304Z" },
-]
-
-[[package]]
 name = "openutm-verification"
 version = "0.1.3"
 source = { editable = "." }
 dependencies = [
     { name = "arrow" },
-    { name = "bluesky" },
     { name = "bluesky-simulator" },
     { name = "cryptography" },
     { name = "dacite" },
@@ -1293,7 +1200,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "arrow", specifier = "==1.3.0" },
-    { name = "bluesky", specifier = "==1.14.6" },
     { name = "bluesky-simulator", specifier = "==1.1.0" },
     { name = "cryptography", specifier = "==44.0.3" },
     { name = "dacite", specifier = ">=1.9.2" },
@@ -2192,27 +2098,6 @@ wheels = [
 ]
 
 [[package]]
-name = "toolz"
-version = "1.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/11/d6/114b492226588d6ff54579d95847662fc69196bdeec318eb45393b24c192/toolz-1.1.0.tar.gz", hash = "sha256:27a5c770d068c110d9ed9323f24f1543e83b2f300a687b7891c1a6d56b697b5b", size = 52613, upload-time = "2025-10-17T04:03:21.661Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fb/12/5911ae3eeec47800503a238d971e51722ccea5feb8569b735184d5fcdbc0/toolz-1.1.0-py3-none-any.whl", hash = "sha256:15ccc861ac51c53696de0a5d6d4607f99c210739caf987b5d2054f3efed429d8", size = 58093, upload-time = "2025-10-17T04:03:20.435Z" },
-]
-
-[[package]]
-name = "tqdm"
-version = "4.67.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737, upload-time = "2024-11-24T20:12:22.481Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl", hash = "sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2", size = 78540, upload-time = "2024-11-24T20:12:19.698Z" },
-]
-
-[[package]]
 name = "traitlets"
 version = "5.14.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2452,15 +2337,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/00/af/c0f7f97bb320d14c089476f487b81f733238cc5603e0914f2e409f49d589/xyzservices-2025.4.0.tar.gz", hash = "sha256:6fe764713648fac53450fbc61a3c366cb6ae5335a1b2ae0c3796b495de3709d8", size = 1134722, upload-time = "2025-04-25T10:38:09.669Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d6/7d/b77455d7c7c51255b2992b429107fab811b2e36ceaf76da1e55a045dc568/xyzservices-2025.4.0-py3-none-any.whl", hash = "sha256:8d4db9a59213ccb4ce1cf70210584f30b10795bff47627cdfb862b39ff6e10c9", size = 90391, upload-time = "2025-04-25T10:38:08.468Z" },
-]
-
-[[package]]
-name = "zipp"
-version = "3.23.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e3/02/0f2892c661036d50ede074e376733dca2ae7c6eb617489437771209d4180/zipp-3.23.0.tar.gz", hash = "sha256:a07157588a12518c9d4034df3fbbee09c814741a33ff63c05fa29d26a2404166", size = 25547, upload-time = "2025-06-08T17:06:39.4Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl", hash = "sha256:071652d6115ed432f5ce1d34c336c0adfd6a884660d1e9712a256d3d3bd4b14e", size = 10276, upload-time = "2025-06-08T17:06:38.034Z" },
 ]
 
 [[package]]

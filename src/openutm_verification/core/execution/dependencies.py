@@ -17,6 +17,7 @@ from openutm_verification.core.clients.air_traffic.air_traffic_client import (
 )
 from openutm_verification.core.clients.air_traffic.base_client import (
     create_air_traffic_settings,
+    create_blue_sky_air_traffic_settings,
 )
 from openutm_verification.core.clients.air_traffic.blue_sky_client import (
     BlueSkyClient,
@@ -206,6 +207,6 @@ async def bluesky_client(
     config: AppConfig,
 ) -> AsyncGenerator[BlueSkyClient, None]:
     """Provides a BlueSkyClient instance for dependency injection."""
-    settings = create_air_traffic_settings()
+    settings = create_blue_sky_air_traffic_settings()
     async with BlueSkyClient(settings) as bluesky_client:
         yield bluesky_client

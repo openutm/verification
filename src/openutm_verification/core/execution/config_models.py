@@ -40,6 +40,13 @@ class AirTrafficSimulatorSettings(StrictBaseModel):
     sensor_ids: list[str] = Field(default_factory=list)
 
 
+class BlueSkyAirTrafficSimulatorSettings(StrictBaseModel):
+    number_of_aircraft: int
+    simulation_duration_seconds: int
+    single_or_multiple_sensors: Literal["single", "multiple"] = "single"
+    sensor_ids: list[str] = Field(default_factory=list)
+
+
 class OpenSkyConfig(StrictBaseModel):
     """OpenSky Network connection details."""
 
@@ -139,6 +146,7 @@ class AppConfig(StrictBaseModel):
     flight_blender: FlightBlenderConfig
     opensky: OpenSkyConfig
     air_traffic_simulator_settings: AirTrafficSimulatorSettings
+    blue_sky_air_traffic_simulator_settings: BlueSkyAirTrafficSimulatorSettings
     data_files: DataFiles
     suites: dict[str, SuiteConfig] = Field(default_factory=dict)
     reporting: ReportingConfig
