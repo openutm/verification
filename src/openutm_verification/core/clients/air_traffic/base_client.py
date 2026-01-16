@@ -45,7 +45,7 @@ def create_air_traffic_settings() -> AirTrafficSettings:
 def create_blue_sky_air_traffic_settings() -> BlueSkyAirTrafficSettings:
     """Factory function to create BlueSkyAirTrafficSettings from config after initialization."""
     return BlueSkyAirTrafficSettings(
-        simulation_config_path=config.data_files.trajectory or "",
+        simulation_config_path=config.data_files.simulation or "",
         simulation_duration_seconds=config.blue_sky_air_traffic_simulator_settings.simulation_duration_seconds or 30,
         number_of_aircraft=config.blue_sky_air_traffic_simulator_settings.number_of_aircraft or 2,
         single_or_multiple_sensors=config.blue_sky_air_traffic_simulator_settings.single_or_multiple_sensors or "single",

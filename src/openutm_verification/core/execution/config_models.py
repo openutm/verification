@@ -73,12 +73,14 @@ class DataFiles(StrictBaseModel):
     """Paths to data files used in the application."""
 
     trajectory: str | None = None
+    simulation: str | None = None
     flight_declaration: str | None = None
     geo_fence: str | None = None
     flight_declaration_via_operational_intent: str | None = None
 
     @field_validator(
         "trajectory",
+        "simulation",
         "flight_declaration",
         "flight_declaration_via_operational_intent",
         "geo_fence",
@@ -110,6 +112,8 @@ class DataFiles(StrictBaseModel):
 
         if self.trajectory:
             self.trajectory = resolve_and_validate_path(self.trajectory, "Trajectory")
+        if self.simulation:
+            self.simulation = resolve_and_validate_path(self.simulation, "Simulation")
         if self.flight_declaration:
             self.flight_declaration = resolve_and_validate_path(self.flight_declaration, "Flight declaration")
         if self.flight_declaration_via_operational_intent:

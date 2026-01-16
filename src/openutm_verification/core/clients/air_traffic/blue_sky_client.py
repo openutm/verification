@@ -70,8 +70,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         # Route console output to stdout (useful for debugging stack commands)
         bs.scr = ScreenDummy()
 
-        logger.info(f"=== Path: {scn_path} Duration: {duration_s}s ===")
-        logger.info(f"Initializing BlueSky (headless) and loading scenario: {scn_path}")
+        logger.info(f"Initializing BlueSky (headless) and loading scenario: {scn_path} with duration {duration_s}s")
 
         # ---- Load scenario ----
         # BlueSky scenario files (like scenario/DEMO/bluesky_flight.scn) are typically loaded with IC.
@@ -96,8 +95,6 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
             lons: list[float] = _tolist(getattr(bs.traf, "lon", []))
             alts: list[float] = _tolist(getattr(bs.traf, "alt", []))
 
-            # Print status every second
-            logger.debug(f"=== t={t:02d}s ntraf={len(acids)} ===")
             for i, acid in enumerate(acids):
                 lat = float(lats[i])
                 lon = float(lons[i])

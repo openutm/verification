@@ -39,7 +39,8 @@ blue_sky_air_traffic_simulator_settings:
   sensor_ids: ["562e6297036a4adebb4848afcd1ede90"] # List of sensor IDs to use when 'multiple' is selected
 
 data_files:
-  trajectory: "config/bern/blue_sky_sim_example.scn" # Path to flight declarations JSON file
+  trajectory: "config/bern/trajectory_f1.json" # Path to flight declarations JSON file
+  simulation: "config/bern/blue_sky_sim_example.scn" # Path to air traffic simulation scenario file
   flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file
   flight_declaration_via_operational_intent: "config/bern/flight_declaration_via_operational_intent.json" # Path to flight declaration via operational intent JSON file
   # geo_fence: "config/geo_fences.json" # Path to geo-fences
@@ -49,23 +50,23 @@ suites:
   basic_conformance:
     scenarios:
       - name: bluesky_sim_air_traffic_data
-        # trajectory: "config/bern/log_test.scn"
-    # - name: F1_flow_no_telemetry_with_user_input
-    # - name: F1_happy_path
-    #   trajectory: "config/bern/trajectory_f1.json"
-    # - name: F2_contingent_path
-    #   trajectory: "config/bern/trajectory_f2.json"
+        simulation: "config/bern/blue_sky_sim_example.scn"
+      - name: F1_flow_no_telemetry_with_user_input
+      - name: F1_happy_path
+        trajectory: "config/bern/trajectory_f1.json"
+      - name: F2_contingent_path
+        trajectory: "config/bern/trajectory_f2.json"
   extra:
     scenarios:
-#     - name: F3_non_conforming_path
-#       trajectory: "config/bern/trajectory_f3.json"
-# #     - name: F5_non_conforming_path
-# #       trajectory: "config/bern/trajectory_f5.json"
-    # - name: opensky_live_data
-#     - name: add_flight_declaration
-#     - name: geo_fence_upload
-#     - name: openutm_sim_air_traffic_data
-# #     - name: sdsp_track
+    - name: F3_non_conforming_path
+      trajectory: "config/bern/trajectory_f3.json"
+#     - name: F5_non_conforming_path
+#       trajectory: "config/bern/trajectory_f5.json"
+    - name: opensky_live_data
+    - name: add_flight_declaration
+    - name: geo_fence_upload
+    - name: openutm_sim_air_traffic_data
+#     - name: sdsp_track
 #     - name: sdsp_heartbeat
 
 # Reporting configuration
