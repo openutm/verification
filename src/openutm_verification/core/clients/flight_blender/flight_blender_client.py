@@ -712,10 +712,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             if "track_data" not in message or not message["track_data"]:
                 logger.debug("WebSocket connection established message received or empty track data")
                 continue
+            logger.info("Receiving track message...")
+            logger.info(f"Raw WebSocket message received: {message}")
+            for message in message.get("track_data", []):
+                track = TrackMessage(**message)
+                all_received_messages.append(SDSPTrackMessage(message=track, timestamp=arrow.now().isoformat()))
 
-            track = TrackMessage(**message["track_data"])
-            logger.debug(f"Received WebSocket message: {message}")
-            all_received_messages.append(SDSPTrackMessage(message=track, timestamp=arrow.now().isoformat()))
         logger.info(f"Received {len(all_received_messages)} messages in the first six seconds")
         self.close_heartbeat_websocket_connection(ws_connection)
         end_time = time.time()
