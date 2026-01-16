@@ -45,6 +45,8 @@ dependencies = [
     "websocket-client==1.9.0",
     "markdown>=3.10",
     "uas-standards==4.2.0",
+    "bluesky-simulator==1.1.0",
+    "rtree==1.4.1",
 ]
 
 [project.scripts]
