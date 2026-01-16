@@ -699,7 +699,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
     ) -> StepResult:
         ws_connection = self.initialize_track_websocket_connection(session_id=session_id)
         start_time = time.time()
-
+        logger.info("Starting to receive track messages...")
         now = arrow.now()
 
         six_seconds_from_now = now.shift(seconds=6)
@@ -770,9 +770,13 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         six_seconds_from_now = now.shift(seconds=6)
         all_received_messages = []
         # Start Receiving messages from now till six seconds from now
+        logger.debug("Starting to receive heartbeat messages...")
         while arrow.now() < six_seconds_from_now:
+            logger.debug("Waiting for heartbeat message...")
             await asyncio.sleep(0.1)
+            logger.debug("Receiving heartbeat message...")
             message = await asyncio.to_thread(ws_connection.recv)
+            logger.debug(f"Raw WebSocket message received: {message}")
             message = json.loads(message)
             if "heartbeat_data" not in message:
                 logger.debug("WebSocket connection established message received")
@@ -783,6 +787,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.info(f"Received {len(all_received_messages)} messages in the first six seconds")
         self.close_heartbeat_websocket_connection(ws_connection)
         end_time = time.time()
+        logger.debug("Verifying heartbeat message intervals...")
 
         # Sort messages by timestamp
         sorted_messages = sorted(all_received_messages, key=lambda msg: arrow.get(msg.timestamp))
@@ -847,6 +852,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             generate_flight_declaration_via_operational_intent,
             generate_telemetry,
         )
+
         flight_declaration = generate_flight_declaration_via_operational_intent(flight_declaration_via_operational_intent_path)
 
         telemetry_states = generate_telemetry(trajectory_path)

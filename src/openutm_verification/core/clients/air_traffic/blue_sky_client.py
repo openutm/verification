@@ -4,6 +4,7 @@ import uuid
 from collections.abc import Iterable
 from uuid import UUID
 
+import arrow
 import bluesky as bs
 from bluesky.simulation.screenio import ScreenIO
 from loguru import logger
@@ -69,7 +70,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
 
         # Route console output to stdout (useful for debugging stack commands)
         bs.scr = ScreenDummy()
-
+        now = arrow.now()
         logger.info(f"Initializing BlueSky (headless) and loading scenario: {scn_path} with duration {duration_s}s")
 
         # ---- Load scenario ----
@@ -88,6 +89,8 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         for t in range(1, duration_s + 1):
             # Advance sim by one step (DT=1 sec)
             bs.sim.step()
+            timestamp = now.shift(seconds=t)
+            timestamp_microseconds = int(timestamp.float_timestamp * 1_000_000)  # microseconds
 
             # Snapshot traffic arrays
             acids: list[str] = list(getattr(bs.traf, "id", []))
@@ -113,7 +116,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
                     traffic_source=0,
                     source_type=0,
                     icao_address=acid,
-                    timestamp=t,
+                    timestamp=timestamp_microseconds,
                     metadata=metadata,
                 )
                 results_by_acid.setdefault(acid, []).append(obs)
