@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { Node, Edge } from '@xyflow/react';
-import type { NodeData, Operation, ScenarioConfig } from '../types/scenario';
+import type { NodeData, Operation, ScenarioConfig, GroupDefinition } from '../types/scenario';
 import { convertGraphToYaml } from '../utils/scenarioConversion';
 
 export const useScenarioFile = (
@@ -11,6 +11,7 @@ export const useScenarioFile = (
     setCurrentScenarioName: (name: string) => void,
     currentScenarioDescription: string,
     currentScenarioConfig: ScenarioConfig,
+    currentScenarioGroups?: Record<string, GroupDefinition>,
     onScenarioSaved?: () => void,
     onSaveSuccess?: () => void
 ) => {
@@ -22,7 +23,7 @@ export const useScenarioFile = (
             if (!scenarioName) return;
         }
 
-        const scenario = convertGraphToYaml(nodes, edges, operations, scenarioName, currentScenarioDescription, currentScenarioConfig);
+        const scenario = convertGraphToYaml(nodes, edges, operations, scenarioName, currentScenarioDescription, currentScenarioConfig, currentScenarioGroups);
 
         try {
             const response = await fetch(`/api/scenarios/${scenarioName}`, {
@@ -46,14 +47,14 @@ export const useScenarioFile = (
             console.error('Error saving scenario:', error);
             alert('Failed to save scenario to server.');
         }
-    }, [nodes, edges, operations, currentScenarioName, setCurrentScenarioName, currentScenarioDescription, currentScenarioConfig, onScenarioSaved, onSaveSuccess]);
+    }, [nodes, edges, operations, currentScenarioName, setCurrentScenarioName, currentScenarioDescription, currentScenarioConfig, currentScenarioGroups, onScenarioSaved, onSaveSuccess]);
 
     const handleSaveAs = useCallback(async () => {
         const defaultName = currentScenarioName || "new_scenario";
         const scenarioName = prompt("Enter new scenario name:", defaultName);
         if (!scenarioName) return;
 
-        const scenario = convertGraphToYaml(nodes, edges, operations, scenarioName, currentScenarioDescription, currentScenarioConfig);
+        const scenario = convertGraphToYaml(nodes, edges, operations, scenarioName, currentScenarioDescription, currentScenarioConfig, currentScenarioGroups);
 
         try {
             const response = await fetch(`/api/scenarios/${scenarioName}`, {
@@ -77,7 +78,7 @@ export const useScenarioFile = (
             console.error('Error saving scenario:', error);
             alert('Failed to save scenario to server.');
         }
-    }, [nodes, edges, operations, currentScenarioName, setCurrentScenarioName, currentScenarioDescription, currentScenarioConfig, onScenarioSaved, onSaveSuccess]);
+    }, [nodes, edges, operations, currentScenarioName, setCurrentScenarioName, currentScenarioDescription, currentScenarioConfig, currentScenarioGroups, onScenarioSaved, onSaveSuccess]);
 
     return { handleSaveToServer, handleSaveAs };
 };

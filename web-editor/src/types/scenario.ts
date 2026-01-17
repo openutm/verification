@@ -25,6 +25,7 @@ export interface NodeData extends Record<string, unknown> {
     runInBackground?: boolean;
     ifCondition?: string;
     loop?: LoopConfig;
+    isGroupReference?: boolean;
     onShowResult?: (result: unknown) => void;
 }
 
@@ -32,6 +33,18 @@ export interface LoopConfig {
     count?: number;
     items?: unknown[];
     while?: string;
+}
+
+export interface GroupStepDefinition {
+    id?: string;
+    step: string;
+    arguments: Record<string, unknown>;
+    description?: string;
+}
+
+export interface GroupDefinition {
+    description?: string;
+    steps: GroupStepDefinition[];
 }
 
 export interface ScenarioStep {
@@ -48,6 +61,7 @@ export interface ScenarioStep {
 export interface ScenarioDefinition {
     name: string;
     description?: string;
+    groups?: Record<string, GroupDefinition>;
     steps: ScenarioStep[];
 }
 

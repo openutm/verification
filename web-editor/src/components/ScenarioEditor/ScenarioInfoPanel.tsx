@@ -4,20 +4,23 @@ import layoutStyles from '../../styles/EditorLayout.module.css';
 import styles from '../../styles/SidebarPanel.module.css';
 import { DocumentationModal } from './DocumentationModal';
 import { ConfigEditor } from './ConfigEditor';
-import type { ScenarioConfig } from '../../types/scenario';
+import { GroupsManager } from './GroupsManager';
+import type { ScenarioConfig, GroupDefinition } from '../../types/scenario';
 
 interface ScenarioInfoPanelProps {
     name: string | null;
     description: string;
     config: ScenarioConfig;
+    groups: Record<string, GroupDefinition>;
     onUpdateName: (name: string) => void;
     onUpdateDescription: (description: string) => void;
     onUpdateConfig: (config: ScenarioConfig) => void;
+    onUpdateGroups: (groups: Record<string, GroupDefinition>) => void;
     onOpenReport: () => void;
     onClose?: () => void;
 }
 
-export const ScenarioInfoPanel = ({ name, description, config, onUpdateName, onUpdateDescription, onUpdateConfig, onOpenReport, onClose }: ScenarioInfoPanelProps) => {
+export const ScenarioInfoPanel = ({ name, description, config, groups, onUpdateName, onUpdateDescription, onUpdateConfig, onUpdateGroups, onOpenReport, onClose }: ScenarioInfoPanelProps) => {
     const [width, setWidth] = useState(480);
     const [isResizing, setIsResizing] = useState(false);
     const [isDocsOpen, setIsDocsOpen] = useState(false);
@@ -81,7 +84,7 @@ export const ScenarioInfoPanel = ({ name, description, config, onUpdateName, onU
                         </button>
                     )}
                 </div>
-                <div className={styles.content}>
+                <div className={styles.content} style={{ maxHeight: 'calc(100% - 60px)', overflowY: 'auto' }}>
                     <div className={styles.paramItem}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <FileText size={16} />
@@ -115,6 +118,8 @@ export const ScenarioInfoPanel = ({ name, description, config, onUpdateName, onU
                     </div>
 
                     <ConfigEditor config={config} onUpdateConfig={onUpdateConfig} />
+
+                    <GroupsManager groups={groups} onGroupsChange={onUpdateGroups} />
 
                     {name && (
                         <div className={styles.paramItem} style={{ display: 'flex', gap: '8px' }}>

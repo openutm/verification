@@ -128,6 +128,36 @@ class SessionManager:
             else:
                 raise ValueError(f"Unknown loop field '{field}', must be 'index' or 'item'")
 
+        # Handle group.step_id.result references
+        if ref.startswith("group."):
+            if not loop_context or "group_context" not in loop_context:
+                raise ValueError(f"Group variable '{ref}' used outside of group context")
+            parts = ref.split(".")
+            if len(parts) < 3:
+                raise ValueError(f"Group reference must be 'group.step_id.result...', got '{ref}'")
+            step_id = parts[1]
+            # Remaining parts start from index 2 (e.g., 'result', 'result.field', etc.)
+            group_context = loop_context["group_context"]
+            if step_id not in group_context:
+                raise ValueError(f"Step '{step_id}' not found in group context. Available: {list(group_context.keys())}")
+
+            current_value = group_context[step_id]
+            # Traverse remaining parts starting from parts[2]
+            remaining_parts = parts[2:]
+            for part in remaining_parts:
+                if not part:
+                    continue
+                if isinstance(current_value, dict):
+                    current_value = current_value.get(part)
+                elif hasattr(current_value, part):
+                    current_value = getattr(current_value, part)
+                else:
+                    raise ValueError(
+                        f"Could not resolve '{part}' in '{ref}'."
+                        f"Available keys: {list(current_value.keys()) if isinstance(current_value, dict) else dir(current_value)}"
+                    )
+            return current_value
+
         if ref.startswith("data_files."):
             if not self.data_files:
                 raise ValueError("Data files not initialized")
@@ -373,6 +403,48 @@ class SessionManager:
             logger.error(f"Error executing step {step_id}: {e}")
             raise
 
+    def _is_group_reference(self, step_name: str, scenario: ScenarioDefinition) -> bool:
+        """Check if a step name references a group."""
+        return step_name in scenario.groups
+
+    async def _execute_group(
+        self, step: StepDefinition, scenario: ScenarioDefinition, loop_context: Dict[str, Any] | None = None
+    ) -> List[Dict[str, Any]]:
+        """Execute a group of steps."""
+        group_name = step.step
+        if group_name not in scenario.groups:
+            raise ValueError(f"Group '{group_name}' not found in scenario")
+
+        group = scenario.groups[group_name]
+        results = []
+        group_context = {}  # Store results within this group execution
+
+        # Create enhanced loop context with group_context
+        enhanced_loop_context = (loop_context or {}).copy()
+        enhanced_loop_context["group_context"] = group_context
+
+        logger.info(f"Executing group '{group_name}' with {len(group.steps)} steps")
+
+        for group_step in group.steps:
+            # Ensure each step has an ID
+            if not group_step.id:
+                group_step.id = group_step.step
+
+            # Execute the step with the enhanced context
+            result = await self.execute_single_step(group_step, enhanced_loop_context)
+            results.append(result)
+
+            # Store result in group context for subsequent steps
+            # Store the entire result dict so nested access works (group.step_id.result)
+            group_context[group_step.id] = result
+
+            # If step failed and it's not allowed to fail, break the group
+            if result.get("status") == "error":
+                logger.error(f"Group step '{group_step.id}' failed, stopping group execution")
+                break
+
+        return results
+
     async def run_scenario(self, scenario: ScenarioDefinition) -> List[Dict[str, Any]]:
         results = []
         if not self.session_resolver:
@@ -418,19 +490,77 @@ class SessionManager:
                 results.append({"id": step.id, "status": "skipped", "result": None, "message": f"Condition not met: {condition_to_evaluate}"})
                 continue
 
-            # Handle loop execution
-            if step.loop:
-                loop_results = await self._execute_loop(step)
-                results.extend(loop_results)
-                # Check if any loop iteration failed
-                if loop_results and any(r.get("status") == "error" for r in loop_results):
-                    logger.error(f"Loop for step '{step.id}' failed, breaking scenario")
-                    break
+            # Check if this step references a group
+            if self._is_group_reference(step.step, scenario):
+                # Handle loop execution for groups
+                if step.loop:
+                    loop_results = await self._execute_loop_for_group(step, scenario)
+                    results.extend(loop_results)
+                    if loop_results and any(r.get("status") == "error" for r in loop_results):
+                        logger.error(f"Loop for group '{step.id}' failed, breaking scenario")
+                        break
+                else:
+                    group_results = await self._execute_group(step, scenario)
+                    results.extend(group_results)
+                    if any(r.get("status") == "error" for r in group_results):
+                        logger.error(f"Group '{step.id}' failed, breaking scenario")
+                        break
             else:
-                result = await self.execute_single_step(step)
-                results.append(result)
-                # Don't break on error - let conditions handle execution flow
-                # Steps with always() condition will still run after errors
+                # Regular step execution
+                # Handle loop execution
+                if step.loop:
+                    loop_results = await self._execute_loop(step)
+                    results.extend(loop_results)
+                    # Check if any loop iteration failed
+                    if loop_results and any(r.get("status") == "error" for r in loop_results):
+                        logger.error(f"Loop for step '{step.id}' failed, breaking scenario")
+                        break
+                else:
+                    result = await self.execute_single_step(step)
+                    results.append(result)
+                    # Don't break on error - let conditions handle execution flow
+                    # Steps with always() condition will still run after errors
+        return results
+
+    async def _execute_loop_for_group(self, step: StepDefinition, scenario: ScenarioDefinition) -> List[Dict[str, Any]]:
+        """Execute a group multiple times based on loop configuration."""
+        results = []
+        loop_config = step.loop
+
+        if not loop_config:
+            return results
+
+        # Determine loop iterations
+        iterations = []
+        if loop_config.count is not None:
+            iterations = list(range(loop_config.count))
+        elif loop_config.items is not None:
+            iterations = loop_config.items
+
+        if iterations:
+            for index, item in enumerate(iterations):
+                loop_context = {"index": index, "item": item if loop_config.items else index}
+
+                # Check while condition if present
+                if loop_config.while_condition:
+                    step_results_dict = {}
+                    if self.session_context and self.session_context.state:
+                        step_results_dict = self.session_context.state.step_results
+
+                    evaluator = ConditionEvaluator(step_results_dict, loop_context)
+                    should_continue = evaluator.evaluate(loop_config.while_condition)
+                    if not should_continue:
+                        logger.info(f"Breaking loop for group '{step.id}' at iteration {index} due to while condition")
+                        break
+
+                logger.info(f"Executing loop iteration {index} for group '{step.id}'")
+                group_results = await self._execute_group(step, scenario, loop_context)
+                results.extend(group_results)
+
+                if any(r.get("status") == "error" for r in group_results):
+                    logger.error(f"Loop iteration {index} for group failed, breaking loop")
+                    break
+
         return results
 
     async def _execute_loop(self, step: StepDefinition) -> List[Dict[str, Any]]:

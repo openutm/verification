@@ -1,5 +1,5 @@
 import { type Node, type Edge, MarkerType } from '@xyflow/react';
-import type { Operation, ScenarioDefinition, ScenarioStep, NodeData, ScenarioConfig } from '../types/scenario';
+import type { Operation, ScenarioDefinition, ScenarioStep, NodeData, ScenarioConfig, GroupDefinition } from '../types/scenario';
 
 export const convertYamlToGraph = (
     scenario: ScenarioDefinition,
@@ -14,8 +14,11 @@ export const convertYamlToGraph = (
     const usedIds = new Set<string>();
 
     scenario.steps.forEach((step, index) => {
-        const operation = operations.find(op => op.name === step.step);
-        if (!operation) {
+        // Check if this is a group reference
+        const isGroupReference = scenario.groups && step.step in scenario.groups;
+        const operation = !isGroupReference ? operations.find(op => op.name === step.step) : null;
+
+        if (!isGroupReference && !operation) {
             console.warn(`Operation ${step.step} not found`);
             return;
         }
@@ -23,22 +26,21 @@ export const convertYamlToGraph = (
         let nodeId = step.id;
 
         if (!nodeId) {
-            // Use the step name as is for the ID
             nodeId = step.step;
         }
 
-        // Ensure uniqueness (in case the provided ID was already used)
         if (usedIds.has(nodeId)) {
-             nodeId = `node_${index}_${Date.now()}`;
+            nodeId = `node_${index}_${Date.now()}`;
         }
 
         usedIds.add(nodeId);
 
-        // Map arguments to parameters
-        const parameters = operation.parameters.map(param => ({
-            ...param,
-            default: step.arguments?.[param.name] ?? param.default
-        }));
+        const parameters = !isGroupReference
+            ? (operation?.parameters || []).map(param => ({
+                ...param,
+                default: step.arguments?.[param.name] ?? param.default
+            }))
+            : [];
 
         const node: Node<NodeData> = {
             id: nodeId,
@@ -47,12 +49,13 @@ export const convertYamlToGraph = (
             data: {
                 label: step.step,
                 stepId: step.id,
-                operationId: operation.id,
-                description: step.description || operation.description,
+                operationId: operation?.id,
+                description: step.description || operation?.description || (scenario.groups?.[step.step]?.description || ''),
                 parameters: parameters,
                 runInBackground: step.background,
                 ifCondition: step.if,
-                loop: step.loop
+                loop: step.loop,
+                isGroupReference: isGroupReference
             }
         };
 
@@ -72,10 +75,8 @@ export const convertYamlToGraph = (
             });
         }
 
-        // Add visual connection for Join Background Task
         if (step.step === "Join Background Task" && step.arguments?.['task_id']) {
             const targetLabel = step.arguments['task_id'];
-            // Find the node with this label
             const backgroundNode = nodes.find(n => n.data.label === targetLabel);
 
             if (backgroundNode) {
@@ -93,7 +94,6 @@ export const convertYamlToGraph = (
 
     const result: { nodes: Node<NodeData>[]; edges: Edge[]; config?: ScenarioConfig } = { nodes, edges };
 
-    // Include config if it exists in scenario
     if ('config' in scenario) {
         result.config = scenario.config as ScenarioConfig;
     }
@@ -107,7 +107,8 @@ export const convertGraphToYaml = (
     operations: Operation[] = [],
     name: string = "Exported Scenario",
     description: string = "Exported from OpenUTM Scenario Designer",
-    config?: ScenarioConfig
+    config?: ScenarioConfig,
+    groups?: Record<string, GroupDefinition>
 ): ScenarioDefinition & { config?: ScenarioConfig } => {
     // Filter out visual/dependency edges (dotted lines)
     const sequenceEdges = edges.filter(e => e.style?.strokeDasharray !== '5 5');
@@ -149,6 +150,31 @@ export const convertGraphToYaml = (
     });
 
     const steps: ScenarioStep[] = sortedNodes.map(node => {
+        const isGroupReference = node.data.isGroupReference;
+
+        if (isGroupReference) {
+            // For group references, just reference the group name
+            const step: ScenarioStep = {
+                step: node.data.label,
+                arguments: {},
+            };
+
+            if (node.data.stepId && node.data.stepId.trim() !== '') {
+                step.id = node.data.stepId;
+            }
+
+            if (node.data.ifCondition && node.data.ifCondition.trim() !== '') {
+                step.if = node.data.ifCondition;
+            }
+
+            if (node.data.loop) {
+                step.loop = node.data.loop;
+            }
+
+            return step;
+        }
+
+        // Regular operation step
         const operation = operations.find(op => op.id === node.data.operationId);
         const args: Record<string, unknown> = {};
 
@@ -165,9 +191,22 @@ export const convertGraphToYaml = (
             if (typeof currentValue === 'object' && currentValue !== null && '$ref' in currentValue) {
                 const ref = (currentValue as { $ref: string }).$ref;
                 const parts = ref.split('.');
-                const stepName = parts[0];
-                const fieldPath = parts.slice(1).join('.');
-                args[param.name] = `\${{ steps.${stepName}.result.${fieldPath} }}`;
+
+                // Handle both steps.step_id.result and group.step_id.result references
+                if (parts[0] === 'steps' || parts[0] === 'group') {
+                    const stepName = parts[1];
+                    const fieldPath = parts.slice(2).join('.');
+                    if (fieldPath) {
+                        args[param.name] = `\${{ ${parts[0]}.${stepName}.result.${fieldPath} }}`;
+                    } else {
+                        args[param.name] = `\${{ ${parts[0]}.${stepName}.result }}`;
+                    }
+                } else {
+                    // Legacy support
+                    const stepName = parts[0];
+                    const fieldPath = parts.slice(1).join('.');
+                    args[param.name] = `\${{ steps.${stepName}.result.${fieldPath} }}`;
+                }
                 return;
             }
 
@@ -191,12 +230,6 @@ export const convertGraphToYaml = (
             step.id = node.data.stepId;
         }
 
-        // Don't save IDs to keep YAML clean
-        // if (node.id && !node.id.startsWith('node_')) {
-        //     step.id = node.id;
-        // }
-
-        // Description is saved if it differs from the default operation description
         if (node.data.description && (!operation || node.data.description !== operation.description)) {
             step.description = node.data.description;
         }
@@ -221,6 +254,11 @@ export const convertGraphToYaml = (
         description: description,
         steps
     };
+
+    // Include groups if provided
+    if (groups && Object.keys(groups).length > 0) {
+        result.groups = groups;
+    }
 
     // Include config if provided
     if (config) {

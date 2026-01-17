@@ -47,11 +47,13 @@ interface PropertiesPanelProps {
 
 const parseRefString = (value: unknown) => {
     if (typeof value !== 'string') return null;
-    const match = value.match(/^\$\{\{\s*steps\.([^.]+)\.result(?:\.(.*))?\s*\}\}$/);
+    // Support both steps.X.result and group.X.result patterns
+    const match = value.match(/^\$\{\{\s*(steps|group)\.([^.]+)\.result(?:\.(.*))?\s*\}\}$/);
     if (!match) return null;
     return {
-        stepId: match[1],
-        fieldPath: match[2] ? match[2].trim() : ''
+        refType: match[1] as 'steps' | 'group',
+        stepId: match[2],
+        fieldPath: match[3] ? match[3].trim() : ''
     };
 };
 
@@ -291,7 +293,25 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     </div>
 
                     <h4>Parameters</h4>
-                    {(selectedNode.data.parameters || []).length > 0 ? (
+                    {selectedNode.data.isGroupReference ? (
+                        <div style={{
+                            padding: '12px',
+                            backgroundColor: 'var(--bg-hover)',
+                            borderRadius: '4px',
+                            border: '1px solid var(--accent-primary)',
+                            marginBottom: '12px'
+                        }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: 'var(--accent-primary)' }}>
+                                📦 Step Group Reference
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                This step references a group defined in the Groups panel. The group contains multiple steps that will execute together.
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', padding: '8px', backgroundColor: 'var(--bg-primary)', borderRadius: '4px', fontFamily: 'monospace' }}>
+                                Steps within this group can reference each other using: <code>${'${{ group.step_id.result }}'}</code>
+                            </div>
+                        </div>
+                    ) : (selectedNode.data.parameters || []).length > 0 ? (
                         (selectedNode.data.parameters || []).map(param => {
                             // Special handling for Join Background Task -> task_id
                             if (selectedNode.data.label === "Join Background Task" && param.name === "task_id") {
@@ -321,7 +341,11 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                             }
 
                             const refData = (typeof param.default === 'object' && param.default !== null && '$ref' in param.default)
-                                ? { stepId: (param.default as { $ref: string }).$ref.split('.')[0], fieldPath: (param.default as { $ref: string }).$ref.split('.').slice(1).join('.') }
+                                ? {
+                                    refType: 'steps' as const,
+                                    stepId: (param.default as { $ref: string }).$ref.split('.')[0],
+                                    fieldPath: (param.default as { $ref: string }).$ref.split('.').slice(1).join('.')
+                                }
                                 : parseRefString(param.default);
 
                             const isLinked = !!refData;
@@ -357,6 +381,21 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                             <select
                                                 className={styles.paramInput}
+                                                value={refData.refType}
+                                                onChange={(e) => {
+                                                    const newRefType = e.target.value as 'steps' | 'group';
+                                                    // Keep the current step and field path, just change the type
+                                                    onUpdateParameter(selectedNode.id, param.name, {
+                                                        $ref: `${newRefType}.${refData.stepId}.${refData.fieldPath}`
+                                                    });
+                                                }}
+                                                style={{ marginBottom: '8px' }}
+                                            >
+                                                <option value="steps">Reference from steps</option>
+                                                <option value="group">Reference from group</option>
+                                            </select>
+                                            <select
+                                                className={styles.paramInput}
                                                 value={resolvedStepId}
                                                 onChange={(e) => {
                                                     const sourceId = e.target.value;
@@ -388,7 +427,7 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                                                 }}
                                             />
                                             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                                Reference: {`\${{ steps.${refData.stepId}.result${refData.fieldPath ? '.' + refData.fieldPath : ''} }}`}
+                                                Reference: {`\${{ ${refData.refType}.${refData.stepId}.result${refData.fieldPath ? '.' + refData.fieldPath : ''} }}`}
                                             </div>
                                         </div>
                                     ) : (

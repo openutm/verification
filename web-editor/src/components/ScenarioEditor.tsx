@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import layoutStyles from '../styles/EditorLayout.module.css';
-import type { Operation, OperationParam, NodeData, ScenarioConfig } from '../types/scenario';
+import type { Operation, OperationParam, NodeData, ScenarioConfig, GroupDefinition } from '../types/scenario';
 
 import { CustomNode } from './ScenarioEditor/CustomNode';
 import { Toolbox } from './ScenarioEditor/Toolbox';
@@ -109,6 +109,7 @@ const ScenarioEditorContent = () => {
     });
     const [currentScenarioDescription, setCurrentScenarioDescription] = useState<string>(initialState.desc);
     const [currentScenarioConfig, setCurrentScenarioConfig] = useState<ScenarioConfig>(initialState.config);
+    const [currentScenarioGroups, setCurrentScenarioGroups] = useState<Record<string, GroupDefinition>>({});
     const [scenarioListRefreshKey, setScenarioListRefreshKey] = useState(0);
     const [isDirty, setIsDirty] = useState(initialState.isDirty);
     const [reportError, setReportError] = useState<{ title: string; message: string } | null>(null);
@@ -180,15 +181,19 @@ const ScenarioEditorContent = () => {
         setCurrentScenarioName,
         currentScenarioDescription,
         currentScenarioConfig,
+        currentScenarioGroups,
         incrementScenarioListRefreshKey,
         () => setIsDirty(false)
     );
 
-    const loadScenarioFromYaml = useCallback((newNodes: Node<NodeData>[], newEdges: Edge[], newConfig?: ScenarioConfig) => {
+    const loadScenarioFromYaml = useCallback((newNodes: Node<NodeData>[], newEdges: Edge[], newConfig?: ScenarioConfig, newGroups?: Record<string, GroupDefinition>) => {
         setNodes(newNodes);
         setEdges(newEdges);
         if (newConfig) {
             setCurrentScenarioConfig(newConfig);
+        }
+        if (newGroups) {
+            setCurrentScenarioGroups(newGroups);
         }
         setIsDirty(false);
         setTimeout(() => reactFlowInstance?.fitView({ padding: 0.2, duration: 400 }), 100);
@@ -217,19 +222,21 @@ const ScenarioEditorContent = () => {
                 sessionStorage.setItem('editor-autosave-edges', JSON.stringify(edges));
                 sessionStorage.setItem('editor-autosave-description', currentScenarioDescription);
                 sessionStorage.setItem('editor-autosave-config', JSON.stringify(currentScenarioConfig));
+                sessionStorage.setItem('editor-autosave-groups', JSON.stringify(currentScenarioGroups));
             } else {
                 sessionStorage.removeItem('editor-is-dirty');
                 sessionStorage.removeItem('editor-autosave-nodes');
                 sessionStorage.removeItem('editor-autosave-edges');
                 sessionStorage.removeItem('editor-autosave-description');
                 sessionStorage.removeItem('editor-autosave-config');
+                sessionStorage.removeItem('editor-autosave-groups');
             }
         };
 
         // Debounce save to avoid performance impact
         const timeoutId = setTimeout(saveState, 500);
         return () => clearTimeout(timeoutId);
-    }, [isDirty, nodes, edges, currentScenarioDescription, currentScenarioConfig]);
+    }, [isDirty, nodes, edges, currentScenarioDescription, currentScenarioConfig, currentScenarioGroups]);
 
     // Load saved scenario on mount (refresh) if available
     const [isRestored, setIsRestored] = useState(initialState.isRestored);
@@ -244,7 +251,7 @@ const ScenarioEditorContent = () => {
                 .then(res => res.json())
                 .then(scenario => {
                     const { nodes: newNodes, edges: newEdges, config } = convertYamlToGraph(scenario, operations);
-                    loadScenarioFromYaml(newNodes, newEdges, config);
+                    loadScenarioFromYaml(newNodes, newEdges, config, scenario.groups);
                     setCurrentScenarioDescription(scenario.description || "");
                     setIsRestored(true);
                 })
@@ -793,6 +800,7 @@ const ScenarioEditorContent = () => {
                         name={currentScenarioName}
                         description={currentScenarioDescription}
                         config={currentScenarioConfig}
+                        groups={currentScenarioGroups}
                         onUpdateName={(name) => {
                             setCurrentScenarioName(name);
                             setIsDirty(true);
@@ -803,6 +811,10 @@ const ScenarioEditorContent = () => {
                         }}
                         onUpdateConfig={(config) => {
                             setCurrentScenarioConfig(config);
+                            setIsDirty(true);
+                        }}
+                        onUpdateGroups={(groups) => {
+                            setCurrentScenarioGroups(groups);
                             setIsDirty(true);
                         }}
                         onOpenReport={handleOpenReport}
