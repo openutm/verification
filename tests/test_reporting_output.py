@@ -6,6 +6,7 @@ from openutm_verification.core.execution.config_models import (
     AirTrafficSimulatorSettings,
     AppConfig,
     AuthConfig,
+    BlueSkyAirTrafficSimulatorSettings,
     DataFiles,
     DeploymentDetails,
     FlightBlenderConfig,
@@ -25,6 +26,9 @@ def test_report_outputs_use_result(tmp_path: Path):
         opensky=OpenSkyConfig(auth=AuthConfig()),
         air_traffic_simulator_settings=AirTrafficSimulatorSettings(
             number_of_aircraft=1, simulation_duration=1, single_or_multiple_sensors="single", sensor_ids=[]
+        ),
+        blue_sky_air_traffic_simulator_settings=BlueSkyAirTrafficSimulatorSettings(
+            number_of_aircraft=1, simulation_duration_seconds=1, single_or_multiple_sensors="single", sensor_ids=[]
         ),
         data_files=DataFiles(),
         suites={},
