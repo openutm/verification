@@ -35,23 +35,21 @@ async def lifespan(app: FastAPI):
     # Startup
     session_manager = SessionManager()
     app.state.runner = session_manager
+
+    # Mount reports directory after session manager is ready to avoid import-time side effects
+    try:
+        output_dir = Path(session_manager.config.reporting.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        app.mount("/reports", StaticFiles(directory=str(output_dir)), name="reports")
+    except Exception as e:
+        logger.warning(f"Could not mount reports directory: {e}")
+
     yield
     # Shutdown
     await session_manager.close_session()
 
 
 app = FastAPI(lifespan=lifespan)
-
-# Mount reports directory
-try:
-    # Initialize session manager to access configuration
-    session_manager = SessionManager()
-    output_dir = Path(session_manager.config.reporting.output_dir)
-    if not output_dir.exists():
-        output_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/reports", StaticFiles(directory=str(output_dir)), name="reports")
-except Exception as e:
-    print(f"Warning: Could not mount reports directory: {e}")
 
 # Configure CORS
 app.add_middleware(

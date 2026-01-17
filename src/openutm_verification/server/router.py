@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from openutm_verification.core.execution.definitions import ScenarioDefinition, StepDefinition
+from openutm_verification.core.execution.scenario_loader import load_yaml_scenario_definition
 from openutm_verification.utils.paths import get_docs_directory, get_scenarios_directory
 
 T = TypeVar("T")
@@ -44,17 +45,13 @@ async def list_scenarios():
 @scenario_router.get("/api/scenarios/{scenario}")
 async def get_scenario(scenario: str):
     """Get the content of a specific scenario."""
-    path = get_scenarios_directory()
-    file_path = (path / scenario).with_suffix(".yaml")
-    if not file_path.exists():
+    try:
+        scenario_def = load_yaml_scenario_definition(scenario)
+        return scenario_def.model_dump()
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Scenario not found")
-
-    with open(file_path, "r") as f:
-        try:
-            content = yaml.safe_load(f)
-            return content
-        except yaml.YAMLError as e:
-            raise HTTPException(status_code=500, detail=f"Invalid YAML: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Invalid YAML: {e}")
 
 
 @scenario_router.post("/api/scenarios/{name}")

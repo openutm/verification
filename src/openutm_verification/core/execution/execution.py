@@ -5,6 +5,7 @@ Core execution logic for running verification scenarios.
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from loguru import logger
 from pydantic import ValidationError
@@ -18,6 +19,7 @@ from openutm_verification.core.clients.opensky.base_client import (
 from openutm_verification.core.execution.config_models import AppConfig
 from openutm_verification.core.execution.dependencies import scenarios
 from openutm_verification.core.execution.dependency_resolution import CONTEXT
+from openutm_verification.core.execution.scenario_loader import load_yaml_scenario_definition
 from openutm_verification.core.reporting.reporting import _sanitize_config, create_report_data, generate_reports
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
@@ -25,13 +27,14 @@ from openutm_verification.core.reporting.reporting_models import (
 )
 from openutm_verification.utils.paths import get_docs_directory
 
+if TYPE_CHECKING:
+    from openutm_verification.server.runner import SessionManager
 
-async def run_verification_scenarios(config: AppConfig, config_path: Path):
+
+async def run_verification_scenarios(config: AppConfig, config_path: Path, session_manager: "SessionManager | None" = None):
     """
     Executes the verification scenarios based on the provided configuration.
     """
-
-    from openutm_verification.server.runner import SessionManager
 
     start_time = datetime.now(timezone.utc)
 
@@ -43,16 +46,33 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path):
     logger.debug(f"Configuration details:\n{json.dumps(sanitized_config_dict, indent=2)}")
 
     # Initialize SessionManager
-    session_manager = SessionManager(config_path=str(config_path))
+    if session_manager is None:
+        from openutm_verification.server.runner import SessionManager as RunnerSessionManager
+
+        session_manager = RunnerSessionManager(config_path=str(config_path))
 
     scenario_results = []
-    for scenario_id, scenario_func in scenarios():
+    for scenario_id in scenarios():
         try:
             # Initialize session with the current context
             await session_manager.initialize_session()
 
-            # Execute the scenario function using the session manager
-            result = await session_manager.execute_function(scenario_func)
+            scenario_def = load_yaml_scenario_definition(scenario_id)
+            await session_manager.run_scenario(scenario_def)
+            state = session_manager.session_context.state if session_manager.session_context else None
+            steps = state.steps if state else []
+            failed = any(s.status == Status.FAIL for s in steps)
+            status = Status.FAIL if failed else Status.PASS
+            result = ScenarioResult(
+                name=scenario_id,
+                status=status,
+                duration=0,
+                steps=steps,
+                flight_declaration_data=state.flight_declaration_data if state else None,
+                flight_declaration_via_operational_intent_data=state.flight_declaration_via_operational_intent_data if state else None,
+                telemetry_data=state.telemetry_data if state else None,
+                air_traffic_data=state.air_traffic_data if state else [],
+            )
         except (AirTrafficError, OpenSkyError, ValidationError) as e:
             logger.error(f"Failed to run scenario '{scenario_id}': {e}")
             result = ScenarioResult(

@@ -12,7 +12,7 @@ import yaml
 from openutm_verification.cli.parser import create_parser
 from openutm_verification.core.execution.config_models import AppConfig, ConfigProxy
 from openutm_verification.core.execution.execution import run_verification_scenarios
-from openutm_verification.server.main import start_server_mode
+from openutm_verification.server.runner import SessionManager
 from openutm_verification.utils.logging import setup_logging
 from openutm_verification.utils.time_utils import get_run_timestamp_str
 
@@ -25,6 +25,8 @@ def main():
     args = parser.parse_args()
 
     if args.server:
+        from openutm_verification.server.main import start_server_mode
+
         start_server_mode(config_path=args.config)
         sys.exit(0)
 
@@ -61,8 +63,13 @@ def main():
     base_filename = "report"
     log_file = setup_logging(output_dir, base_filename, config.reporting.formats, args.debug)
 
+    # Reuse the same SessionManager object as the server
+    session_manager = SessionManager(config_path=str(config_path))
+    session_manager.config = config
+    session_manager.config_path = config_path
+
     # Run verification scenarios
-    failed = asyncio.run(run_verification_scenarios(config, args.config))
+    failed = asyncio.run(run_verification_scenarios(config, config_path, session_manager=session_manager))
 
     if log_file:
         from loguru import logger
