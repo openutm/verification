@@ -23,6 +23,7 @@ export interface NodeData extends Record<string, unknown> {
     status?: 'success' | 'failure' | 'error' | 'running';
     result?: unknown;
     runInBackground?: boolean;
+    ifCondition?: string;
     onShowResult?: (result: unknown) => void;
 }
 
@@ -33,6 +34,7 @@ export interface ScenarioStep {
     needs?: string[];
     background?: boolean;
     description?: string;
+    if?: string;
 }
 
 export interface ScenarioDefinition {

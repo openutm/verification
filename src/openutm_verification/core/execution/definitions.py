@@ -10,6 +10,7 @@ class StepDefinition(BaseModel):
     needs: List[str] = Field(default_factory=list, description="List of step IDs this step depends on")
     background: bool = Field(False, description="Whether to run this step in the background")
     description: str | None = None
+    if_condition: str | None = Field(None, alias="if", description="Conditional expression to determine if step should run")
 
 
 class ScenarioDefinition(BaseModel):

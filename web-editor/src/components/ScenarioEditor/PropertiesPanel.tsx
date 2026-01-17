@@ -41,6 +41,7 @@ interface PropertiesPanelProps {
     onUpdateParameter: (nodeId: string, paramName: string, value: unknown) => void;
     onUpdateRunInBackground: (nodeId: string, value: boolean) => void;
     onUpdateStepId: (nodeId: string, stepId: string) => void;
+    onUpdateIfCondition: (nodeId: string, condition: string) => void;
 }
 
 const parseRefString = (value: unknown) => {
@@ -53,7 +54,7 @@ const parseRefString = (value: unknown) => {
     };
 };
 
-export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId, onUpdateIfCondition }: PropertiesPanelProps) => {
     const [width, setWidth] = useState(480);
     const [isResizing, setIsResizing] = useState(false);
 
@@ -170,6 +171,24 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                         </label>
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                             If checked, this step will run asynchronously. Use SystemClient.join_task to wait for it later.
+                        </div>
+                    </div>
+
+                    <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                        <label>If Condition</label>
+                        <input
+                            type="text"
+                            className={styles.paramInput}
+                            value={selectedNode.data.ifCondition || ''}
+                            onChange={(e) => onUpdateIfCondition(selectedNode.id, e.target.value)}
+                            placeholder="e.g., success() or steps.step1.status == 'pass'"
+                        />
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                            Conditional expression (GitHub Actions-style). Examples:<br/>
+                            • <code style={{ fontSize: '10px' }}>success()</code> - run if previous step succeeded<br/>
+                            • <code style={{ fontSize: '10px' }}>failure()</code> - run if previous step failed<br/>
+                            • <code style={{ fontSize: '10px' }}>always()</code> - always run<br/>
+                            • <code style={{ fontSize: '10px' }}>steps.step1.status == 'pass'</code> - check specific step
                         </div>
                     </div>
 

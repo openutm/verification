@@ -631,6 +631,29 @@ const ScenarioEditorContent = () => {
         });
     }, [setNodes]);
 
+    const updateNodeIfCondition = useCallback((nodeId: string, condition: string) => {
+        setIsDirty(true);
+        setNodes((nds) => {
+            return nds.map((node) => {
+                if (node.id === nodeId) {
+                    return {
+                        ...node,
+                        data: { ...node.data, ifCondition: condition },
+                    };
+                }
+                return node;
+            });
+        });
+
+        setSelectedNode((prev) => {
+            if (!prev || prev.id !== nodeId) return prev;
+            return {
+                ...prev,
+                data: { ...prev.data, ifCondition: condition },
+            };
+        });
+    }, [setNodes]);
+
     const getConnectedSourceNodes = useCallback((targetNodeId: string) => {
         const sourceNodeIds = new Set(edges
             .filter(edge => edge.target === targetNodeId)
@@ -739,6 +762,7 @@ const ScenarioEditorContent = () => {
                         onUpdateParameter={updateNodeParameter}
                         onUpdateRunInBackground={updateNodeRunInBackground}
                         onUpdateStepId={updateNodeStepId}
+                        onUpdateIfCondition={updateNodeIfCondition}
                     />
                 ) : (
                     <MemoizedScenarioInfoPanel

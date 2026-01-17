@@ -9,6 +9,7 @@ import yaml
 from loguru import logger
 from pydantic import BaseModel
 
+from openutm_verification.core.execution.conditions import ConditionEvaluator
 from openutm_verification.core.execution.config_models import AppConfig, ConfigProxy, DataFiles
 from openutm_verification.core.execution.definitions import ScenarioDefinition, StepDefinition
 from openutm_verification.core.execution.dependency_resolution import CONTEXT, DEPENDENCIES, DependencyResolver, call_with_dependencies
@@ -370,6 +371,30 @@ class SessionManager:
             seen_ids.add(step.id)
 
         for step in scenario.steps:
+            # Evaluate condition if present
+            if step.if_condition:
+                step_results_dict = {}
+                if self.session_context and self.session_context.state:
+                    step_results_dict = self.session_context.state.step_results
+
+                evaluator = ConditionEvaluator(step_results_dict)
+                should_run = evaluator.evaluate(step.if_condition)
+
+                if not should_run:
+                    logger.info(f"Skipping step '{step.id}' due to condition: {step.if_condition}")
+                    # Record as skipped
+                    skipped_result = StepResult(
+                        id=step.id or step.step,
+                        name=step.step,
+                        status=Status.SKIP,
+                        duration=0.0,
+                        result=None,
+                        message=f"Skipped due to condition: {step.if_condition}",
+                    )
+                    ScenarioContext.add_result(skipped_result)
+                    results.append({"id": step.id, "status": "skipped", "result": None, "message": f"Condition not met: {step.if_condition}"})
+                    continue
+
             result = await self.execute_single_step(step)
             results.append(result)
             if result.get("status") == "error":

@@ -26,6 +26,7 @@ describe('PropertiesPanel', () => {
         onUpdateParameter: vi.fn(),
         onUpdateRunInBackground: vi.fn(),
         onUpdateStepId: vi.fn(),
+        onUpdateIfCondition: vi.fn(),
     };
 
     it('renders correctly', () => {

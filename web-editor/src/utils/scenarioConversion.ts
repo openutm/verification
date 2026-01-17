@@ -50,7 +50,8 @@ export const convertYamlToGraph = (
                 operationId: operation.id,
                 description: step.description || operation.description,
                 parameters: parameters,
-                runInBackground: step.background
+                runInBackground: step.background,
+                ifCondition: step.if
             }
         };
 
@@ -201,6 +202,10 @@ export const convertGraphToYaml = (
 
         if (node.data.runInBackground) {
             step.background = true;
+        }
+
+        if (node.data.ifCondition && node.data.ifCondition.trim() !== '') {
+            step.if = node.data.ifCondition;
         }
 
         return step;
