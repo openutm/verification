@@ -13,7 +13,7 @@ from openutm_verification.core.execution.conditions import ConditionEvaluator
 from openutm_verification.core.execution.config_models import AppConfig, ConfigProxy, DataFiles
 from openutm_verification.core.execution.definitions import ScenarioDefinition, StepDefinition
 from openutm_verification.core.execution.dependency_resolution import CONTEXT, DEPENDENCIES, DependencyResolver, call_with_dependencies
-from openutm_verification.core.execution.scenario_runner import STEP_REGISTRY, ScenarioContext, _scenario_state, scenario_step
+from openutm_verification.core.execution.scenario_runner import STEP_REGISTRY, ScenarioContext, _scenario_state
 from openutm_verification.core.reporting.reporting_models import Status, StepResult
 from openutm_verification.scenarios.common import generate_flight_declaration, generate_telemetry
 from openutm_verification.server.introspection import process_method
@@ -49,22 +49,6 @@ class SessionManager:
         self.session_tasks: Dict[str, asyncio.Task] = {}
         self.data_files: DataFiles | None = None
         self._initialized = True
-
-    @scenario_step("Join Background Task")
-    async def join_task(self, task_id: str) -> Any:
-        """Wait for a background task to complete and return its result.
-
-        Args:
-            task_id: The ID of the background task to join.
-        Returns:
-            The result of the background task.
-        """
-        if task_id not in self.session_tasks:
-            raise ValueError(f"Task ID '{task_id}' not found in session tasks")
-
-        task = self.session_tasks[task_id]
-        result = await task
-        return result
 
     async def initialize_session(self):
         logger.info("Initializing new session")
@@ -317,6 +301,29 @@ class SessionManager:
                 return "success"
         return "success"
 
+    def _record_background_result(self, step_id: str, step_name: str, task: asyncio.Task) -> None:
+        """Attach a completion handler so background steps store their final result."""
+
+        def _on_done(t: asyncio.Task) -> None:
+            if not self.session_context:
+                return
+
+            try:
+                res = t.result()
+                if isinstance(res, StepResult):
+                    res.id = step_id
+                    self.session_context.add_result(res)
+                    return
+
+                result_data = self._serialize_result(res)
+                status_str = self._determine_status(res)
+                status = Status.PASS if status_str == "success" else Status.FAIL
+                self.session_context.add_result(StepResult(id=step_id, name=step_name, status=status, result=result_data, duration=0.0))
+            except Exception as exc:  # noqa: BLE001
+                self.session_context.add_result(StepResult(id=step_id, name=step_name, status=Status.FAIL, error_message=str(exc), duration=0.0))
+
+        task.add_done_callback(_on_done)
+
     async def _execute_step(self, step: StepDefinition, loop_context: Dict[str, Any] | None = None) -> Dict[str, Any]:
         assert self.session_resolver is not None and self.session_context is not None
         if step.step not in STEP_REGISTRY:
@@ -336,6 +343,7 @@ class SessionManager:
             task = asyncio.create_task(call_with_dependencies(method, resolver=self.session_resolver, **kwargs))
             self.session_tasks[step_id] = task
             self.session_context.add_result(StepResult(id=step_id, name=step.step, status=Status.RUNNING, result={"task_id": step_id}, duration=0.0))
+            self._record_background_result(step_id, step.step, task)
             return {"id": step_id, "step": step.step, "status": "running", "task_id": step_id}
 
         # Execute with dependencies
@@ -445,6 +453,27 @@ class SessionManager:
 
         return results
 
+    async def _wait_for_dependencies(self, step: StepDefinition) -> None:
+        """Wait for any declared dependencies (by step ID) before executing a step."""
+        if not step.needs:
+            return
+
+        for dep_id in step.needs:
+            # If dependency already completed and recorded, continue
+            if self.session_context and self.session_context.state and dep_id in self.session_context.state.step_results:
+                continue
+
+            if dep_id not in self.session_tasks:
+                raise ValueError(f"Dependency '{dep_id}' not found or not running")
+
+            logger.info(f"Waiting for dependency '{dep_id}' to complete")
+            task = self.session_tasks[dep_id]
+            try:
+                await task
+            finally:
+                # Leave the result in context; drop the handle so it doesn't pile up
+                self.session_tasks.pop(dep_id, None)
+
     async def run_scenario(self, scenario: ScenarioDefinition) -> List[Dict[str, Any]]:
         results = []
         if not self.session_resolver:
@@ -489,6 +518,9 @@ class SessionManager:
                     self.session_context.add_result(skipped_result)
                 results.append({"id": step.id, "status": "skipped", "result": None, "message": f"Condition not met: {condition_to_evaluate}"})
                 continue
+
+            # Wait for declared dependencies (useful for background steps)
+            await self._wait_for_dependencies(step)
 
             # Check if this step references a group
             if self._is_group_reference(step.step, scenario):

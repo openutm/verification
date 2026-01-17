@@ -25,7 +25,9 @@ export interface NodeData extends Record<string, unknown> {
     runInBackground?: boolean;
     ifCondition?: string;
     loop?: LoopConfig;
+    needs?: string[];
     isGroupReference?: boolean;
+    isGroupContainer?: boolean;
     onShowResult?: (result: unknown) => void;
 }
 

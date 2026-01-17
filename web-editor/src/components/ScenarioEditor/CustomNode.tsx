@@ -1,15 +1,47 @@
 
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle } from 'lucide-react';
+import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer } from 'lucide-react';
 import styles from '../../styles/Node.module.css';
 import type { NodeData } from '../../types/scenario';
 
 export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
+    const isGroupContainer = data.isGroupContainer;
     const statusClass = data.status === 'success' ? styles.statusSuccess :
         (data.status === 'failure' || data.status === 'error') ? styles.statusError :
             data.status === 'running' ? styles.statusRunning :
                 data.status === 'skipped' ? styles.statusSkipped : '';
     const selectedClass = selected ? styles.selected : '';
+
+    // Render group containers with label and badges overlay
+    if (isGroupContainer) {
+        return (
+            <div className={`${styles.groupContainerLabel} ${selectedClass}`}>
+                <div className={styles.groupLabelContent}>
+                    <span>{data.label}</span>
+                    <div className={styles.modifierBadges}>
+                        {data.runInBackground && (
+                            <div className={styles.backgroundBadge} title="Runs in background">
+                                <Timer size={14} />
+                                <span>bg</span>
+                            </div>
+                        )}
+                        {data.ifCondition && data.ifCondition.trim() !== '' && (
+                            <div className={styles.conditionBadge} title={`Condition: ${data.ifCondition}`}>
+                                <GitBranch size={14} />
+                                <span>if</span>
+                            </div>
+                        )}
+                        {data.loop && (
+                            <div className={styles.loopBadge} title={`Loop: ${JSON.stringify(data.loop)}`}>
+                                <RotateCw size={14} />
+                                <span>loop</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={`${styles.customNode} ${statusClass} ${selectedClass}`}>
@@ -17,6 +49,26 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
             <div className={styles.customNodeHeader}>
                 <Box size={16} className={styles.icon} />
                 <span>{data.label}</span>
+                <div className={styles.modifierBadges}>
+                    {data.runInBackground && (
+                        <div className={styles.backgroundBadge} title="Runs in background">
+                            <Timer size={14} />
+                            <span>bg</span>
+                        </div>
+                    )}
+                    {data.ifCondition && data.ifCondition.trim() !== '' && (
+                        <div className={styles.conditionBadge} title={`Condition: ${data.ifCondition}`}>
+                            <GitBranch size={14} />
+                            <span>if</span>
+                        </div>
+                    )}
+                    {data.loop && (
+                        <div className={styles.loopBadge} title={`Loop: ${JSON.stringify(data.loop)}`}>
+                            <RotateCw size={14} />
+                            <span>loop</span>
+                        </div>
+                    )}
+                </div>
                 {data.status && (
                     <div className={styles.statusIndicator}>
                         {data.status === 'success' && (

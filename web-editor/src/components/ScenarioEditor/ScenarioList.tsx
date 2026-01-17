@@ -6,15 +6,14 @@ import type { Node, Edge } from '@xyflow/react';
 import { convertYamlToGraph } from '../../utils/scenarioConversion';
 
 interface ScenarioListProps {
-    onLoadScenario: (nodes: Node<NodeData>[], edges: Edge[], config?: ScenarioConfig) => void;
+    onLoadScenario: (nodes: Node<NodeData>[], edges: Edge[], config?: ScenarioConfig, groups?: ScenarioDefinition['groups'], description?: string) => void;
     operations: Operation[];
     currentScenarioName: string | null;
     onSelectScenario: (name: string) => void;
     refreshKey?: number;
-    onLoadDescription?: (description: string) => void;
 }
 
-export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, onSelectScenario, refreshKey = 0, onLoadDescription }: ScenarioListProps) => {
+export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, onSelectScenario, refreshKey = 0 }: ScenarioListProps) => {
     const [scenarios, setScenarios] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -34,15 +33,8 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
 
             const { nodes, edges, config } = convertYamlToGraph(scenario, operations);
 
-            onLoadScenario(nodes, edges, config);
+            onLoadScenario(nodes, edges, config, scenario.groups, scenario.description);
             onSelectScenario(filename);
-
-            // We need a way to pass description up.
-            // But onLoadScenario doesn't accept description yet.
-            // We should probably emit an event or update the prop signature.
-            // For now, let's just trigger a custom event or rely on parent component fetching details if needed?
-            // Actually, best is to update the callback signature in parent.
-            if (onLoadDescription) onLoadDescription(scenario.description || "");
 
         } catch (err) {
             console.error('Failed to load scenario:', err);

@@ -9,6 +9,7 @@ import {
     type Node,
     type Edge,
     type NodeTypes,
+    type OnSelectionChangeParams,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import layoutStyles from '../styles/EditorLayout.module.css';
@@ -22,10 +23,11 @@ import { BottomPanel } from './ScenarioEditor/BottomPanel';
 import { Header } from './ScenarioEditor/Header';
 import { ScenarioInfoPanel } from './ScenarioEditor/ScenarioInfoPanel';
 
-import { useScenarioGraph, generateNodeId } from '../hooks/useScenarioGraph';
+import { useScenarioGraph } from '../hooks/useScenarioGraph';
 import { useScenarioRunner } from '../hooks/useScenarioRunner';
 import { useScenarioFile } from '../hooks/useScenarioFile';
-import { convertYamlToGraph } from '../utils/scenarioConversion';
+import { convertGraphToYaml, convertYamlToGraph } from '../utils/scenarioConversion';
+import { createWaitEdge } from '../utils/edgeStyles';
 
 const nodeTypes: NodeTypes = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -70,23 +72,29 @@ const ScenarioEditorContent = () => {
         }
     });
 
+    const groupPadding = 40;
+
     // Synchronously read autosave state for lazy initialization
     const [initialState] = useState(() => {
-        if (typeof window === 'undefined') return { nodes: [], edges: [], desc: "", config: getDefaultConfig(), isDirty: false, isRestored: false };
+        if (typeof window === 'undefined') return { nodes: [], edges: [], desc: "", config: getDefaultConfig(), groups: {}, isDirty: false, isRestored: false };
 
         const savedIsDirty = sessionStorage.getItem('editor-is-dirty') === 'true';
-        if (savedIsDirty) {
+        const savedScenarioName = sessionStorage.getItem('editor-autosave-scenario-name');
+        const currentScenarioName = sessionStorage.getItem('currentScenarioName');
+
+        if (savedIsDirty && savedScenarioName === currentScenarioName) {
              try {
                 const nodes = JSON.parse(sessionStorage.getItem('editor-autosave-nodes') || '[]');
                 const edges = JSON.parse(sessionStorage.getItem('editor-autosave-edges') || '[]');
                 const desc = sessionStorage.getItem('editor-autosave-description') || "";
                 const config = JSON.parse(sessionStorage.getItem('editor-autosave-config') || JSON.stringify(getDefaultConfig()));
-                return { nodes, edges, desc, config, isDirty: true, isRestored: true };
+                const groups = JSON.parse(sessionStorage.getItem('editor-autosave-groups') || '{}');
+                return { nodes, edges, desc, config, groups, isDirty: true, isRestored: true };
              } catch (e) {
                  console.error("Failed to parse autosave data", e);
              }
         }
-        return { nodes: [], edges: [], desc: "", config: getDefaultConfig(), isDirty: false, isRestored: false };
+        return { nodes: [], edges: [], desc: "", config: getDefaultConfig(), groups: {}, isDirty: false, isRestored: false };
     });
 
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -98,6 +106,7 @@ const ScenarioEditorContent = () => {
         return 'light';
     });
     const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
+    const [selectedNodes, setSelectedNodes] = useState<Node<NodeData>[]>([]);
     const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
     const [operations, setOperations] = useState<Operation[]>([]);
     const [isConnected, setIsConnected] = useState(false);
@@ -109,7 +118,7 @@ const ScenarioEditorContent = () => {
     });
     const [currentScenarioDescription, setCurrentScenarioDescription] = useState<string>(initialState.desc);
     const [currentScenarioConfig, setCurrentScenarioConfig] = useState<ScenarioConfig>(initialState.config);
-    const [currentScenarioGroups, setCurrentScenarioGroups] = useState<Record<string, GroupDefinition>>({});
+    const [currentScenarioGroups, setCurrentScenarioGroups] = useState<Record<string, GroupDefinition>>(initialState.groups || {});
     const [scenarioListRefreshKey, setScenarioListRefreshKey] = useState(0);
     const [isDirty, setIsDirty] = useState(initialState.isDirty);
     const [reportError, setReportError] = useState<{ title: string; message: string } | null>(null);
@@ -186,14 +195,16 @@ const ScenarioEditorContent = () => {
         () => setIsDirty(false)
     );
 
-    const loadScenarioFromYaml = useCallback((newNodes: Node<NodeData>[], newEdges: Edge[], newConfig?: ScenarioConfig, newGroups?: Record<string, GroupDefinition>) => {
+    const loadScenarioFromYaml = useCallback((newNodes: Node<NodeData>[], newEdges: Edge[], newConfig?: ScenarioConfig, newGroups?: Record<string, GroupDefinition>, newDescription?: string) => {
         setNodes(newNodes);
         setEdges(newEdges);
         if (newConfig) {
             setCurrentScenarioConfig(newConfig);
         }
-        if (newGroups) {
-            setCurrentScenarioGroups(newGroups);
+        // Always set groups to the new scenario's groups (or empty object if none provided)
+        setCurrentScenarioGroups(newGroups || {});
+        if (typeof newDescription === 'string') {
+            setCurrentScenarioDescription(newDescription);
         }
         setIsDirty(false);
         setTimeout(() => reactFlowInstance?.fitView({ padding: 0.2, duration: 400 }), 100);
@@ -223,6 +234,10 @@ const ScenarioEditorContent = () => {
                 sessionStorage.setItem('editor-autosave-description', currentScenarioDescription);
                 sessionStorage.setItem('editor-autosave-config', JSON.stringify(currentScenarioConfig));
                 sessionStorage.setItem('editor-autosave-groups', JSON.stringify(currentScenarioGroups));
+                // Save the scenario name to verify autosave is for the correct scenario
+                if (currentScenarioName) {
+                    sessionStorage.setItem('editor-autosave-scenario-name', currentScenarioName);
+                }
             } else {
                 sessionStorage.removeItem('editor-is-dirty');
                 sessionStorage.removeItem('editor-autosave-nodes');
@@ -230,13 +245,14 @@ const ScenarioEditorContent = () => {
                 sessionStorage.removeItem('editor-autosave-description');
                 sessionStorage.removeItem('editor-autosave-config');
                 sessionStorage.removeItem('editor-autosave-groups');
+                sessionStorage.removeItem('editor-autosave-scenario-name');
             }
         };
 
         // Debounce save to avoid performance impact
         const timeoutId = setTimeout(saveState, 500);
         return () => clearTimeout(timeoutId);
-    }, [isDirty, nodes, edges, currentScenarioDescription, currentScenarioConfig, currentScenarioGroups]);
+    }, [isDirty, nodes, edges, currentScenarioDescription, currentScenarioConfig, currentScenarioGroups, currentScenarioName]);
 
     // Load saved scenario on mount (refresh) if available
     const [isRestored, setIsRestored] = useState(initialState.isRestored);
@@ -294,9 +310,84 @@ const ScenarioEditorContent = () => {
         onGraphDragStart();
     }, [onGraphDragStart]);
 
-    const onNodeDragStop = useCallback(() => {
+    const onNodeDragStop = useCallback((_event: React.MouseEvent, node: Node<NodeData>) => {
         onGraphDragStop();
-    }, [onGraphDragStop]);
+
+        // Only auto-attach when the node is free-floating (no edges) and not itself a group
+        const hasEdges = edgesRef.current.some(e => e.source === node.id || e.target === node.id);
+        if (hasEdges || node.data?.isGroupContainer || node.data?.isGroupReference) return;
+
+        // Compute absolute position (child nodes store positions relative to parent)
+        const getAbsolutePosition = (n: Node<NodeData>): { x: number; y: number } => {
+            let x = n.position.x;
+            let y = n.position.y;
+            if (n.parentId) {
+                const parent = nodesRef.current.find(p => p.id === n.parentId);
+                if (parent) {
+                    const parentPos = getAbsolutePosition(parent);
+                    x += parentPos.x;
+                    y += parentPos.y;
+                }
+            }
+            return { x, y };
+        };
+
+        const nodeAbs = getAbsolutePosition(node);
+
+        const parseSize = (value: unknown, fallback: number) => {
+            if (typeof value === 'number') return value;
+            if (typeof value === 'string') {
+                const num = parseFloat(value);
+                return Number.isFinite(num) ? num : fallback;
+            }
+            return fallback;
+        };
+
+        // Find the first group container that encloses the drop point
+        const targetGroup = nodesRef.current.find(g => {
+            if (!g.data?.isGroupContainer) return false;
+            const width = parseSize(g.style?.minWidth, 400);
+            const height = parseSize(g.style?.minHeight, 200);
+            const gx = g.position.x;
+            const gy = g.position.y;
+            return nodeAbs.x >= gx && nodeAbs.x <= gx + width && nodeAbs.y >= gy && nodeAbs.y <= gy + height;
+        });
+
+        if (!targetGroup || targetGroup.id === node.parentId) return;
+
+        const gx = targetGroup.position.x;
+        const gy = targetGroup.position.y;
+        const relativePos = {
+            x: nodeAbs.x - gx,
+            y: nodeAbs.y - gy,
+        };
+
+        setNodes(prev => prev.map(n => {
+            if (n.id === node.id) {
+                return {
+                    ...n,
+                    parentId: targetGroup.id,
+                    position: relativePos,
+                };
+            }
+            if (n.id === targetGroup.id) {
+                const width = parseSize(n.style?.minWidth, 400);
+                const height = parseSize(n.style?.minHeight, 200);
+                const neededW = Math.max(width, relativePos.x + groupPadding);
+                const neededH = Math.max(height, relativePos.y + groupPadding);
+                return {
+                    ...n,
+                    style: {
+                        ...n.style,
+                        minWidth: `${neededW}px`,
+                        minHeight: `${neededH}px`,
+                    }
+                };
+            }
+            return n;
+        }));
+        setIsDirty(true);
+    }, [onGraphDragStop, setNodes, groupPadding]);
 
     const onPaneClick = useCallback(() => {
         setSelectedNode(null);
@@ -307,6 +398,277 @@ const ScenarioEditorContent = () => {
         setSelectedEdgeId(edge.id);
         setSelectedNode(null);
     }, []);
+
+    const onSelectionChange = useCallback((params: OnSelectionChangeParams) => {
+        const nodesSel = (params.nodes || []) as Node<NodeData>[];
+        setSelectedNodes(nodesSel);
+
+        if (nodesSel.length === 1) {
+            setSelectedNode(nodesSel[0]);
+        } else {
+            setSelectedNode(null);
+        }
+    }, []);
+
+    const clampChildPositionChanges = useCallback((changes: Parameters<typeof onNodesChange>[0]) => {
+        return changes.map(change => {
+            if (change.type !== 'position' || !('position' in change) || !change.position) return change;
+            const node = nodesRef.current.find(n => n.id === change.id);
+            if (!node?.parentId) return change;
+            const clampedX = Math.max(groupPadding, change.position.x);
+            const clampedY = Math.max(groupPadding, change.position.y);
+            if (clampedX === change.position.x && clampedY === change.position.y) return change;
+            return { ...change, position: { x: clampedX, y: clampedY } };
+        });
+    }, [groupPadding]);
+
+    const expandParentForChildren = useCallback((changes: Parameters<typeof onNodesChange>[0]) => {
+        const sizeUpdates: Record<string, { minWidth: number; minHeight: number }> = {};
+
+        const parseSize = (value: unknown, fallback: number) => {
+            if (typeof value === 'number') return value;
+            if (typeof value === 'string') {
+                const num = parseFloat(value);
+                return Number.isFinite(num) ? num : fallback;
+            }
+            return fallback;
+        };
+
+        changes.forEach(change => {
+            if (change.type !== 'position' || !('position' in change) || !change.position) return;
+            const node = nodesRef.current.find(n => n.id === change.id);
+            if (!node?.parentId) return;
+            const parent = nodesRef.current.find(n => n.id === node.parentId);
+            if (!parent) return;
+
+            const currentMinW = parseSize(parent.style?.minWidth, 400);
+            const currentMinH = parseSize(parent.style?.minHeight, 200);
+            const neededW = Math.max(currentMinW, change.position.x + groupPadding);
+            const neededH = Math.max(currentMinH, change.position.y + groupPadding);
+
+            if (neededW !== currentMinW || neededH !== currentMinH) {
+                const prev = sizeUpdates[parent.id];
+                sizeUpdates[parent.id] = {
+                    minWidth: prev ? Math.max(prev.minWidth, neededW) : neededW,
+                    minHeight: prev ? Math.max(prev.minHeight, neededH) : neededH,
+                };
+            }
+        });
+
+        if (Object.keys(sizeUpdates).length > 0) {
+            setNodes(prev => prev.map(n => {
+                const update = sizeUpdates[n.id];
+                if (!update) return n;
+                return {
+                    ...n,
+                    style: {
+                        ...n.style,
+                        minWidth: `${update.minWidth}px`,
+                        minHeight: `${update.minHeight}px`,
+                    }
+                };
+            }));
+        }
+    }, [setNodes]);
+
+    const ungroupSelectedNode = useCallback(() => {
+        if (!selectedNode?.data.isGroupContainer) return;
+        const groupId = selectedNode.id;
+        const groupName = selectedNode.data.label.replace(/^📦\s*/, '').trim();
+
+        // Prefer unwrapping existing child nodes to avoid duplication
+        const childNodes = nodes.filter(n => n.parentId === groupId);
+        const childIds = new Set(childNodes.map(n => n.id));
+        const childInternalEdges = edges.filter(e => childIds.has(e.source) && childIds.has(e.target));
+
+        let unwrapNodes: Node<NodeData>[] = [];
+        let internalEdges: Edge[] = childInternalEdges;
+
+        if (childNodes.length > 0) {
+            // Convert child positions to absolute and drop parentId
+            unwrapNodes = childNodes.map(n => ({
+                ...n,
+                parentId: undefined,
+                position: {
+                    x: n.position.x + selectedNode.position.x,
+                    y: n.position.y + selectedNode.position.y,
+                },
+                selected: false,
+            }));
+        } else {
+            // Fall back to rebuilding from group definition if children missing
+            const groupDef = currentScenarioGroups[groupName];
+            if (!groupDef) return;
+
+            const tempScenario = {
+                name: 'temp',
+                description: '',
+                steps: groupDef.steps,
+            } as unknown as Parameters<typeof convertYamlToGraph>[0];
+
+            const { nodes: groupNodes, edges: groupEdges } = convertYamlToGraph(tempScenario, operations);
+            const offsetX = selectedNode.position.x + 50;
+            const offsetY = selectedNode.position.y + 50;
+
+            unwrapNodes = groupNodes.map(n => ({
+                ...n,
+                position: {
+                    x: n.position.x + offsetX,
+                    y: n.position.y + offsetY,
+                },
+                selected: false,
+            }));
+            internalEdges = groupEdges as Edge[];
+        }
+
+        // Identify roots and leaves for rewiring
+        const incomingCount: Record<string, number> = {};
+        const outgoingCount: Record<string, number> = {};
+        internalEdges.forEach(e => {
+            incomingCount[e.target] = (incomingCount[e.target] || 0) + 1;
+            outgoingCount[e.source] = (outgoingCount[e.source] || 0) + 1;
+        });
+        const roots = unwrapNodes.filter(n => !incomingCount[n.id]);
+        const leaves = unwrapNodes.filter(n => !outgoingCount[n.id]);
+
+        // External edges
+        const incomingEdges = edges.filter(e => e.target === groupId && e.style?.strokeDasharray !== '5 5');
+        const outgoingEdges = edges.filter(e => e.source === groupId && e.style?.strokeDasharray !== '5 5');
+
+        // Remove group container and any existing children
+        const remainingNodes = nodes.filter(n => n.id !== groupId && n.parentId !== groupId);
+        const remainingEdges = edges.filter(e => e.source !== groupId && e.target !== groupId && !childIds.has(e.source) && !childIds.has(e.target));
+
+        const rewiredIncoming: Edge[] = incomingEdges.flatMap(e => roots.map(root => ({
+            ...e,
+            id: `e_${e.source}-${root.id}`,
+            target: root.id,
+        })));
+
+        const rewiredOutgoing: Edge[] = outgoingEdges.flatMap(e => leaves.map(leaf => ({
+            ...e,
+            id: `e_${leaf.id}-${e.target}`,
+            source: leaf.id,
+        })));
+
+        const nodesAfterUngroup = [...remainingNodes, ...unwrapNodes];
+        setNodes(nodesAfterUngroup);
+        setEdges([...remainingEdges, ...internalEdges, ...rewiredIncoming, ...rewiredOutgoing]);
+        setCurrentScenarioGroups(prev => {
+            const next = { ...prev };
+            delete next[groupName];
+            return next;
+        });
+        setSelectedNode(null);
+        setSelectedNodes([]);
+        setIsDirty(true);
+    }, [selectedNode, currentScenarioGroups, operations, edges, nodes, setNodes, setEdges, setCurrentScenarioGroups]);
+
+    const groupSelectedNodes = useCallback(() => {
+        if (selectedNodes.length < 2) return;
+
+        const selectedIds = new Set(selectedNodes.map(n => n.id));
+
+        // Keep only sequence edges (non dotted) fully inside selection
+        const internalEdges = edges.filter(e => selectedIds.has(e.source) && selectedIds.has(e.target) && e.style?.strokeDasharray !== '5 5');
+
+        // Build steps from the selected subgraph using existing converter
+        const tempScenario = convertGraphToYaml(selectedNodes, internalEdges, operations, 'temp', 'temp');
+        const groupSteps = tempScenario.steps || [];
+        if (groupSteps.length === 0) return;
+
+        const defaultName = `group_${Date.now()}`;
+        const groupName = window.prompt('Name this group', defaultName);
+        if (!groupName) return;
+
+        // Compute placement of new group node near selection
+        const minX = Math.min(...selectedNodes.map(n => n.position.x));
+        const minY = Math.min(...selectedNodes.map(n => n.position.y));
+        const maxX = Math.max(...selectedNodes.map(n => n.position.x));
+        const maxY = Math.max(...selectedNodes.map(n => n.position.y));
+        const containerMinWidth = Math.max(400, (maxX - minX) + groupPadding * 3);
+        const containerMinHeight = Math.max(200, (maxY - minY) + groupPadding * 3);
+        const groupNodeId = `group_${groupName}`;
+
+        // Rewire external edges to group roots/leaves (not to container) so flow stays intact
+        const incomingEdges = edges.filter(e => !selectedIds.has(e.source) && selectedIds.has(e.target) && e.style?.strokeDasharray !== '5 5');
+        const outgoingEdges = edges.filter(e => selectedIds.has(e.source) && !selectedIds.has(e.target) && e.style?.strokeDasharray !== '5 5');
+
+        // Identify roots and leaves within the selection
+        const incomingCount: Record<string, number> = {};
+        const outgoingCount: Record<string, number> = {};
+        internalEdges.forEach(e => {
+            incomingCount[e.target] = (incomingCount[e.target] || 0) + 1;
+            outgoingCount[e.source] = (outgoingCount[e.source] || 0) + 1;
+        });
+        const roots = selectedNodes.filter(n => !incomingCount[n.id]);
+        const leaves = selectedNodes.filter(n => !outgoingCount[n.id]);
+
+        // Base edges: those fully outside selection
+        const rewiredEdges: Edge[] = edges.filter(e => !selectedIds.has(e.source) && !selectedIds.has(e.target));
+
+        // Add incoming edges mapped to all roots
+        rewiredEdges.push(
+            ...incomingEdges.flatMap(e => roots.map(root => ({ ...e, id: `e_${e.source}-${root.id}`, target: root.id })))
+        );
+
+        // Add outgoing edges mapped from all leaves
+        rewiredEdges.push(
+            ...outgoingEdges.flatMap(e => leaves.map(leaf => ({ ...e, id: `e_${leaf.id}-${e.target}`, source: leaf.id })))
+        );
+
+        // Keep internal edges so child steps remain connected
+        rewiredEdges.push(...internalEdges);
+
+        // Create container node
+        const groupNode: Node<NodeData> = {
+            id: groupNodeId,
+            type: 'custom',
+            position: { x: minX - 50, y: minY - 50 },
+            data: {
+                label: `📦 ${groupName}`,
+                description: `Group created from selection (${groupSteps.length} steps)`,
+                isGroupContainer: true,
+                isGroupReference: true,
+            },
+            style: {
+                background: 'rgba(100, 150, 200, 0.05)',
+                border: '2px solid var(--accent-primary)',
+                borderRadius: '12px',
+                padding: `${groupPadding}px`,
+                boxShadow: 'inset 0 0 0 1px var(--border-color)',
+                minWidth: `${containerMinWidth}px`,
+                minHeight: `${containerMinHeight}px`
+            }
+        };
+
+        // Re-parent selected nodes as children of the group container so they stay visible
+        const childNodes = selectedNodes.map(n => ({
+            ...n,
+            parentId: groupNodeId,
+            position: {
+                x: n.position.x - (minX - 50),
+                y: n.position.y - (minY - 50),
+            },
+            selected: false,
+        }));
+
+        const remainingNodes = nodes.filter(n => !selectedIds.has(n.id));
+        const nodesAfterGroup = [...remainingNodes, groupNode, ...childNodes];
+
+        setNodes(nodesAfterGroup);
+        setEdges(rewiredEdges);
+        setCurrentScenarioGroups(prev => ({
+            ...prev,
+            [groupName]: {
+                description: 'Group created from selection',
+                steps: groupSteps as GroupDefinition['steps']
+            }
+        }));
+        setSelectedNodes([]);
+        setSelectedNode(null);
+        setIsDirty(true);
+    }, [selectedNodes, edges, operations, nodes, setNodes, setEdges, setCurrentScenarioGroups]);
 
     const onDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault();
@@ -403,59 +765,7 @@ const ScenarioEditorContent = () => {
 
         // Pass a callback to update nodes incrementally
         const onStepComplete = (stepResult: { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown }) => {
-            setNodes((nds) => {
-                const updatedNodes = updateNodesWithResults(nds, [stepResult]);
-
-                // Check if this was a Join Background Task step
-                const completedNode = updatedNodes.find(n => n.id === stepResult.id);
-                if (completedNode && completedNode.data.label === "Join Background Task" && stepResult.status === 'success') {
-                    // Find the task_id parameter
-                    const taskIdParam = completedNode.data.parameters?.find(p => p.name === "task_id");
-                    const taskIdValue = taskIdParam?.default;
-
-                    // If it's a reference, extract the node ID
-                    if (taskIdValue && typeof taskIdValue === 'object' && '$ref' in taskIdValue) {
-                        const ref = (taskIdValue as { $ref: string }).$ref;
-                        // Assuming ref format is "nodeId.task_id"
-                        const targetNodeId = ref.split('.')[0];
-
-                        // Update the target node with the result
-                        return updatedNodes.map(node => {
-                            if (node.id === targetNodeId) {
-                                return {
-                                    ...node,
-                                    data: {
-                                        ...node.data,
-                                        status: 'success', // Or inherit status from result?
-                                        result: stepResult.result
-                                    }
-                                };
-                            }
-                            return node;
-                        });
-                    } else if (typeof taskIdValue === 'string') {
-                        // If it's a string, it's likely the label of the background node
-                        const targetNode = updatedNodes.find(n => n.data.label === taskIdValue);
-                        if (targetNode) {
-                            return updatedNodes.map(node => {
-                                if (node.id === targetNode.id) {
-                                    return {
-                                        ...node,
-                                        data: {
-                                            ...node.data,
-                                            status: 'success',
-                                            result: stepResult.result
-                                        }
-                                    };
-                                }
-                                return node;
-                            });
-                        }
-                    }
-                }
-
-                return updatedNodes;
-            });
+            setNodes((nds) => updateNodesWithResults(nds, [stepResult]));
         };
 
         const onStepStart = (nodeId: string) => {
@@ -479,43 +789,6 @@ const ScenarioEditorContent = () => {
     const updateNodeParameter = useCallback((nodeId: string, paramName: string, value: unknown) => {
         setIsDirty(true);
         setNodes((nds) => {
-            // Special handling for Join Background Task -> task_id
-            // If we are updating task_id, we might need to create/update an edge
-            if (paramName === 'task_id' && typeof value === 'string') {
-                const targetNode = nds.find(n => n.id === nodeId);
-                if (targetNode && targetNode.data.label === "Join Background Task") {
-                    // Find the source node by label (value)
-                    const sourceNode = nds.find(n => n.data.label === value);
-
-                    // Update edges: Remove existing background connection edges to this node
-                    setEdges(eds => {
-                        // Keep regular sequence edges (where source is NOT a background node)
-                        const filtered = eds.filter(e => {
-                            if (e.target !== nodeId) return true;
-                            const edgeSourceNode = nds.find(n => n.id === e.source);
-                            // If source is background node, remove it (we are replacing it)
-                            // If source is NOT background node, keep it (it's the sequence flow)
-                            return !edgeSourceNode?.data?.runInBackground;
-                        });
-
-                        if (sourceNode) {
-                            return [
-                                ...filtered,
-                                {
-                                    id: `e${sourceNode.id}-${nodeId}`,
-                                    source: sourceNode.id,
-                                    target: nodeId,
-                                    type: 'smoothstep',
-                                    selectable: false,
-                                    style: { strokeDasharray: '5 5' }
-                                }
-                            ];
-                        }
-                        return filtered;
-                    });
-                }
-            }
-
             return nds.map((node) => {
                 if (node.id === nodeId) {
                     const updatedParameters = updateParameterInList(
@@ -544,67 +817,15 @@ const ScenarioEditorContent = () => {
                 data: { ...prev.data, parameters: updatedParameters },
             };
         });
-    }, [setNodes, setEdges]);
+    }, [setNodes]);
 
     const updateNodeRunInBackground = useCallback((nodeId: string, value: boolean) => {
         setIsDirty(true);
-        const joinOp = operations.find(op => op.name === "Join Background Task");
-        const shouldCreateJoinNode = value && !!joinOp;
-        const newNodeId = shouldCreateJoinNode && joinOp ? generateNodeId(nodes, joinOp.name) : null;
-
-        setNodes((nds) => {
-            const updatedNodes = nds.map((node) => {
-                if (node.id === nodeId) {
-                    return {
-                        ...node,
-                        data: { ...node.data, runInBackground: value },
-                    };
-                }
-                return node;
-            });
-
-            if (shouldCreateJoinNode && newNodeId && joinOp) {
-                // Create a new node
-                const newNode: Node<NodeData> = {
-                    id: newNodeId,
-                    type: 'custom',
-                    position: { x: 0, y: 0 }, // Position will be adjusted by layout or user
-                    data: {
-                        label: joinOp.name,
-                        operationId: joinOp.name, // Using name as ID based on runner.py
-                        description: joinOp.description,
-                        parameters: joinOp.parameters.map(p => ({
-                            ...p,
-                            default: p.name === 'task_id' ? { $ref: `${nodeId}.id` } : p.default
-                        }))
-                    }
-                };
-
-                // Place it near the original node if possible
-                const originalNode = nds.find(n => n.id === nodeId);
-                if (originalNode) {
-                    newNode.position = {
-                        x: originalNode.position.x,
-                        y: originalNode.position.y + 150
-                    };
-                }
-
-                return [...updatedNodes, newNode];
-            }
-
-            return updatedNodes;
-        });
-
-        if (shouldCreateJoinNode && newNodeId) {
-            setEdges((eds) => [
-                ...eds,
-                {
-                    id: `e${nodeId}-${newNodeId}`,
-                    source: nodeId,
-                    target: newNodeId,
-                }
-            ]);
-        }
+        setNodes((nds) => nds.map((node) => (
+            node.id === nodeId
+                ? { ...node, data: { ...node.data, runInBackground: value } }
+                : node
+        )));
 
         setSelectedNode((prev) => {
             if (!prev || prev.id !== nodeId) return prev;
@@ -613,7 +834,38 @@ const ScenarioEditorContent = () => {
                 data: { ...prev.data, runInBackground: value },
             };
         });
-    }, [setNodes, setEdges, operations, nodes]);
+    }, [setNodes]);
+
+    const updateNodeNeeds = useCallback((nodeId: string, needs: string[]) => {
+        setIsDirty(true);
+        const cleanedNeeds = needs.filter(Boolean);
+
+        setNodes((nds) => nds.map((node) => (
+            node.id === nodeId
+                ? { ...node, data: { ...node.data, needs: cleanedNeeds } }
+                : node
+        )));
+
+        setEdges((eds) => {
+            const base = eds.filter(e => !(e.target === nodeId && e.style?.strokeDasharray === '5 5'));
+            const newEdges: Edge[] = cleanedNeeds
+                .map(depId => {
+                    const sourceExists = nodesRef.current.find(n => n.id === depId);
+                    if (!sourceExists) return null;
+                    return createWaitEdge(depId, nodeId);
+                })
+                .filter((e): e is Edge => !!e);
+            return [...base, ...newEdges];
+        });
+
+        setSelectedNode((prev) => {
+            if (!prev || prev.id !== nodeId) return prev;
+            return {
+                ...prev,
+                data: { ...prev.data, needs: cleanedNeeds },
+            };
+        });
+    }, [setNodes, setEdges]);
 
     const updateNodeStepId = useCallback((nodeId: string, stepId: string) => {
         setIsDirty(true);
@@ -684,9 +936,43 @@ const ScenarioEditorContent = () => {
         });
     }, [setNodes]);
 
+    const updateGroupDescription = useCallback((groupName: string, newDescription: string) => {
+        setIsDirty(true);
+        // Update in state
+        setCurrentScenarioGroups(prev => ({
+            ...prev,
+            [groupName]: {
+                ...prev[groupName],
+                description: newDescription
+            }
+        }));
+        // Also update the container node data
+        setNodes((nds) => {
+            return nds.map((node) => {
+                if (node.data.isGroupContainer && node.data.label.includes(groupName)) {
+                    return {
+                        ...node,
+                        data: { ...node.data, description: newDescription }
+                    };
+                }
+                return node;
+            });
+        });
+        setSelectedNode((prev) => {
+            if (!prev || !prev.data.isGroupContainer) return prev;
+            if (prev.data.label.includes(groupName)) {
+                return {
+                    ...prev,
+                    data: { ...prev.data, description: newDescription }
+                };
+            }
+            return prev;
+        });
+    }, [setNodes]);
+
     const getConnectedSourceNodes = useCallback((targetNodeId: string) => {
         const sourceNodeIds = new Set(edges
-            .filter(edge => edge.target === targetNodeId)
+            .filter(edge => edge.target === targetNodeId && edge.style?.strokeDasharray !== '5 5')
             .map(edge => edge.source));
         return nodes.filter(node => sourceNodeIds.has(node.id));
     }, [edges, nodes]);
@@ -717,7 +1003,6 @@ const ScenarioEditorContent = () => {
                         currentScenarioName={currentScenarioName}
                         onSelectScenario={setCurrentScenarioName}
                         refreshKey={scenarioListRefreshKey}
-                        onLoadDescription={setCurrentScenarioDescription}
                     />
                 </MemoizedToolbox>
 
@@ -728,12 +1013,14 @@ const ScenarioEditorContent = () => {
                             edges={edges}
                             nodeTypes={nodeTypes}
                             onNodesChange={(changes) => {
+                                const boundedChanges = clampChildPositionChanges(changes);
+                                expandParentForChildren(boundedChanges);
                                 // Only mark dirty if relevant changes occur (add, remove, reset, position drag end?)
                                 // simple 'position' change fires on every mouse move, we might want to be less aggressive or just accept it.
                                 // But selection changes also fire onNodesChange.
-                                const isRelevantChange = changes.some(c => c.type !== 'select' && c.type !== 'dimensions');
+                                const isRelevantChange = boundedChanges.some(c => c.type !== 'select' && c.type !== 'dimensions');
                                 if (isRelevantChange) setIsDirty(true);
-                                onNodesChange(changes);
+                                onNodesChange(boundedChanges);
                             }}
                             onEdgesChange={(changes) => {
                                 // Selection changes fire onEdgesChange too
@@ -753,6 +1040,7 @@ const ScenarioEditorContent = () => {
                             onNodeDragStop={onNodeDragStop}
                             onPaneClick={onPaneClick}
                             onEdgeClick={onEdgeClick}
+                            onSelectionChange={onSelectionChange}
                             fitView
                             className={theme === 'dark' ? "dark-flow" : ""}
                             colorMode={theme}
@@ -760,11 +1048,45 @@ const ScenarioEditorContent = () => {
                             <Controls style={{ backgroundColor: 'var(--rf-bg)', borderColor: 'var(--border-color)', fill: 'var(--text-primary)' }} />
                             <Background variant={BackgroundVariant.Dots} gap={12} size={1} color="var(--border-color)" />
                             <Panel position="top-right">
-                                <div style={{ display: 'flex', gap: '10px', padding: '10px' }}>
+                                <div style={{ display: 'flex', gap: '10px', padding: '10px', alignItems: 'center' }}>
                                     {currentScenarioName && (
                                         <div style={{ display: 'flex', alignItems: 'center', fontWeight: '500', color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
                                             {currentScenarioName}{isDirty && <span style={{ marginLeft: '4px', color: 'var(--accent-primary)' }}>*</span>}
                                         </div>
+                                    )}
+                                    {selectedNodes.length >= 2 && (
+                                        <button
+                                            onClick={groupSelectedNodes}
+                                            style={{
+                                                padding: '6px 12px',
+                                                borderRadius: '6px',
+                                                border: '1px solid var(--accent-primary)',
+                                                backgroundColor: 'var(--accent-primary)',
+                                                color: '#fff',
+                                                cursor: 'pointer',
+                                                fontWeight: 600,
+                                            }}
+                                            title="Group selected nodes"
+                                        >
+                                            Group Selection
+                                        </button>
+                                    )}
+                                    {selectedNode?.data.isGroupContainer && (
+                                        <button
+                                            onClick={ungroupSelectedNode}
+                                            style={{
+                                                padding: '6px 12px',
+                                                borderRadius: '6px',
+                                                border: '1px solid var(--accent-primary)',
+                                                backgroundColor: 'transparent',
+                                                color: 'var(--accent-primary)',
+                                                cursor: 'pointer',
+                                                fontWeight: 600,
+                                            }}
+                                            title="Ungroup selected group"
+                                        >
+                                            Ungroup
+                                        </button>
                                     )}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                                         <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: isConnected ? 'var(--success)' : 'var(--danger)' }}></div>
@@ -791,16 +1113,17 @@ const ScenarioEditorContent = () => {
                         onClose={() => setSelectedNode(null)}
                         onUpdateParameter={updateNodeParameter}
                         onUpdateRunInBackground={updateNodeRunInBackground}
+                        onUpdateNeeds={updateNodeNeeds}
                         onUpdateStepId={updateNodeStepId}
                         onUpdateIfCondition={updateNodeIfCondition}
                         onUpdateLoop={updateNodeLoop}
+                        onUpdateGroupDescription={updateGroupDescription}
                     />
                 ) : (
                     <MemoizedScenarioInfoPanel
                         name={currentScenarioName}
                         description={currentScenarioDescription}
                         config={currentScenarioConfig}
-                        groups={currentScenarioGroups}
                         onUpdateName={(name) => {
                             setCurrentScenarioName(name);
                             setIsDirty(true);
@@ -811,10 +1134,6 @@ const ScenarioEditorContent = () => {
                         }}
                         onUpdateConfig={(config) => {
                             setCurrentScenarioConfig(config);
-                            setIsDirty(true);
-                        }}
-                        onUpdateGroups={(groups) => {
-                            setCurrentScenarioGroups(groups);
                             setIsDirty(true);
                         }}
                         onOpenReport={handleOpenReport}

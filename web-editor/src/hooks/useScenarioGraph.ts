@@ -72,8 +72,8 @@ export const useScenarioGraph = (initialNodesParams: Node<NodeData>[] = [], init
     const onConnect = useCallback(
         (params: Connection) => {
             // Enforce 0 or 1 next/previous step constraint
-            const sourceHasOutgoing = edges.some(e => e.source === params.source);
-            const targetHasIncoming = edges.some(e => e.target === params.target);
+            const sourceHasOutgoing = edges.some(e => e.source === params.source && e.style?.strokeDasharray !== '5 5');
+            const targetHasIncoming = edges.some(e => e.target === params.target && e.style?.strokeDasharray !== '5 5');
 
             if (sourceHasOutgoing) {
                 alert("A step can only have one next step.");

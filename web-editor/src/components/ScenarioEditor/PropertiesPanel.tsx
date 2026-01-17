@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, Link as LinkIcon, Unlink } from 'lucide-react';
 import type { Node } from '@xyflow/react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
 import styles from '../../styles/SidebarPanel.module.css';
 import type { NodeData } from '../../types/scenario';
+import { useSidebarResize } from '../../hooks/useSidebarResize';
 
 const DocstringViewer = ({ text }: { text: string }) => {
+    const [expanded, setExpanded] = useState(false);
+
     if (!text) return <div className={styles.docstring}>No description available.</div>;
 
     const sectionRegex = /(Args:|Returns:|Raises:)/;
@@ -27,8 +30,25 @@ const DocstringViewer = ({ text }: { text: string }) => {
 
     return (
         <div className={styles.docstring}>
-            <div className={styles.docSummary}>{mainDesc}</div>
-            {sections}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <div className={styles.docSummary} style={{ marginBottom: 0 }}>
+                    {expanded ? mainDesc : mainDesc.slice(0, 120) + (mainDesc.length > 120 ? '…' : '')}
+                </div>
+                <button
+                    className={styles.iconButton}
+                    type="button"
+                    onClick={() => setExpanded(prev => !prev)}
+                    aria-expanded={expanded}
+                >
+                    {expanded ? 'Hide' : 'Show'}
+                </button>
+            </div>
+            {expanded && sections}
+            {!expanded && sections.length > 0 && (
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    (Args/Returns hidden)
+                </div>
+            )}
         </div>
     );
 };
@@ -43,23 +63,22 @@ interface PropertiesPanelProps {
     onUpdateStepId: (nodeId: string, stepId: string) => void;
     onUpdateIfCondition: (nodeId: string, condition: string) => void;
     onUpdateLoop: (nodeId: string, loopConfig: { count?: number; items?: unknown[]; while?: string } | undefined) => void;
+    onUpdateNeeds: (nodeId: string, needs: string[]) => void;
+    onUpdateGroupDescription?: (groupName: string, description: string) => void;
 }
 
 const parseRefString = (value: unknown) => {
     if (typeof value !== 'string') return null;
-    // Support both steps.X.result and group.X.result patterns
-    const match = value.match(/^\$\{\{\s*(steps|group)\.([^.]+)\.result(?:\.(.*))?\s*\}\}$/);
+    const match = value.match(/^\$\{\{\s*steps\.([^.]+)\.result(?:\.(.*))?\s*\}\}$/);
     if (!match) return null;
     return {
-        refType: match[1] as 'steps' | 'group',
-        stepId: match[2],
-        fieldPath: match[3] ? match[3].trim() : ''
+        stepId: match[1],
+        fieldPath: match[2] ? match[2].trim() : ''
     };
 };
 
-export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId, onUpdateIfCondition, onUpdateLoop }: PropertiesPanelProps) => {
-    const [width, setWidth] = useState(480);
-    const [isResizing, setIsResizing] = useState(false);
+export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId, onUpdateIfCondition, onUpdateLoop, onUpdateNeeds, onUpdateGroupDescription }: PropertiesPanelProps) => {
+    const { sidebarWidth: width, isResizing, startResizing } = useSidebarResize(480, 300, 800);
 
     // Compute loop type from node data
     const computedLoopType = useMemo<'none' | 'count' | 'items' | 'while'>(() => {
@@ -76,36 +95,6 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
     if (loopType !== computedLoopType) {
         setLoopType(computedLoopType);
     }
-
-    const startResizing = useCallback((mouseDownEvent: React.MouseEvent) => {
-        mouseDownEvent.preventDefault();
-        setIsResizing(true);
-    }, []);
-
-    const stopResizing = useCallback(() => {
-        setIsResizing(false);
-    }, []);
-
-    const resize = useCallback(
-        (mouseMoveEvent: MouseEvent) => {
-            if (isResizing) {
-                const newWidth = window.innerWidth - mouseMoveEvent.clientX;
-                if (newWidth > 300 && newWidth < 800) {
-                    setWidth(newWidth);
-                }
-            }
-        },
-        [isResizing]
-    );
-
-    useEffect(() => {
-        window.addEventListener("mousemove", resize);
-        window.addEventListener("mouseup", stopResizing);
-        return () => {
-            window.removeEventListener("mousemove", resize);
-            window.removeEventListener("mouseup", stopResizing);
-        };
-    }, [resize, stopResizing]);
 
     const formatParamValue = (value: unknown): string => {
         if (value === null || value === undefined) {
@@ -132,7 +121,10 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
     return (
         <aside className={layoutStyles.rightSidebar} style={{ width, position: 'relative' }}>
             <div
-                onMouseDown={startResizing}
+                onMouseDown={(e) => {
+                    e.preventDefault();
+                    startResizing();
+                }}
                 style={{
                     position: 'absolute',
                     left: 0,
@@ -189,7 +181,43 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                             Run in Background
                         </label>
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                            If checked, this step will run asynchronously. Use SystemClient.join_task to wait for it later.
+                            If checked, this step will run asynchronously. Use the Needs list below to wait for background tasks.
+                        </div>
+                    </div>
+
+                    <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                        <label>Needs (wait for background tasks)</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', padding: '6px', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                            {allNodes
+                                .filter(n => n.data.runInBackground && n.id !== selectedNode.id)
+                                .map(n => {
+                                    const label = n.data.stepId || n.data.label;
+                                    const checked = (selectedNode.data.needs || []).includes(n.id);
+                                    return (
+                                        <label key={n.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={(e) => {
+                                                    const current = new Set(selectedNode.data.needs || []);
+                                                    if (e.target.checked) {
+                                                        current.add(n.id);
+                                                    } else {
+                                                        current.delete(n.id);
+                                                    }
+                                                    onUpdateNeeds(selectedNode.id, Array.from(current));
+                                                }}
+                                            />
+                                            <span>{label}</span>
+                                        </label>
+                                    );
+                                })}
+                            {allNodes.filter(n => n.data.runInBackground && n.id !== selectedNode.id).length === 0 && (
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>No background tasks available.</div>
+                            )}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                            Check background steps to wait on. Uncheck to remove. Holds execution until those tasks complete.
                         </div>
                     </div>
 
@@ -293,65 +321,68 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     </div>
 
                     <h4>Parameters</h4>
-                    {selectedNode.data.isGroupReference ? (
-                        <div style={{
-                            padding: '12px',
-                            backgroundColor: 'var(--bg-hover)',
-                            borderRadius: '4px',
-                            border: '1px solid var(--accent-primary)',
-                            marginBottom: '12px'
-                        }}>
-                            <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: 'var(--accent-primary)' }}>
-                                📦 Step Group Reference
+                    {selectedNode.data.isGroupReference || selectedNode.data.isGroupContainer ? (
+                        <>
+                            <div style={{
+                                padding: '12px',
+                                backgroundColor: 'var(--bg-hover)',
+                                borderRadius: '4px',
+                                border: '1px solid var(--accent-primary)',
+                                marginBottom: '12px'
+                            }}>
+                                <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: 'var(--accent-primary)' }}>
+                                    📦 Step Group {selectedNode.data.isGroupContainer ? 'Container' : 'Reference'}
+                                </div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                    This step references a group defined in the Groups panel. The group contains multiple steps that will execute together.
+                                </div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', padding: '8px', backgroundColor: 'var(--bg-primary)', borderRadius: '4px', fontFamily: 'monospace' }}>
+                                    Steps within this group can reference each other using: <code>{'${{ group.step_id.result }}'}</code>
+                                </div>
                             </div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                                This step references a group defined in the Groups panel. The group contains multiple steps that will execute together.
-                            </div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', padding: '8px', backgroundColor: 'var(--bg-primary)', borderRadius: '4px', fontFamily: 'monospace' }}>
-                                Steps within this group can reference each other using: <code>${'${{ group.step_id.result }}'}</code>
-                            </div>
-                        </div>
+                            {(selectedNode.data.isGroupContainer || selectedNode.data.isGroupReference) && onUpdateGroupDescription && (
+                                <div className={styles.paramItem} style={{ marginBottom: '12px' }}>
+                                    <label>Group Description</label>
+                                    <textarea
+                                        className={styles.paramInput}
+                                        value={selectedNode.data.description || ''}
+                                        onChange={(e) => {
+                                            const groupName = selectedNode.data.label.replace('📦 ', '').trim();
+                                            onUpdateGroupDescription(groupName, e.target.value);
+                                        }}
+                                        placeholder="Describe what this group of steps does..."
+                                        rows={3}
+                                        style={{ fontFamily: 'inherit', fontSize: '12px' }}
+                                    />
+                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                        Optionally describe the purpose of this group.
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     ) : (selectedNode.data.parameters || []).length > 0 ? (
                         (selectedNode.data.parameters || []).map(param => {
-                            // Special handling for Join Background Task -> task_id
-                            if (selectedNode.data.label === "Join Background Task" && param.name === "task_id") {
-                                return (
-                                    <div key={param.name} className={styles.paramItem}>
-                                        <label style={{ marginBottom: '4px', display: 'block' }}>{param.name} <span className={styles.paramType}>({param.type})</span></label>
-                                        <select
-                                            className={styles.paramInput}
-                                            value={String(param.default || '')}
-                                            onChange={(e) => onUpdateParameter(selectedNode.id, param.name, e.target.value)}
-                                        >
-                                            <option value="">Select a background task...</option>
-                                            {allNodes
-                                                .filter(n => n.id !== selectedNode.id && n.data.runInBackground)
-                                                .map(node => (
-                                                    <option key={node.id} value={node.data.label}>
-                                                        {node.data.label}
-                                                    </option>
-                                                ))
-                                            }
-                                        </select>
-                                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                                            Select the background step to wait for.
-                                        </div>
-                                    </div>
-                                );
-                            }
-
                             const refData = (typeof param.default === 'object' && param.default !== null && '$ref' in param.default)
-                                ? {
-                                    refType: 'steps' as const,
-                                    stepId: (param.default as { $ref: string }).$ref.split('.')[0],
-                                    fieldPath: (param.default as { $ref: string }).$ref.split('.').slice(1).join('.')
-                                }
+                                ? (() => {
+                                    const refValue = (param.default as { $ref: string }).$ref;
+                                    const parts = refValue.split('.');
+                                    if (parts[0] !== 'steps') return null;
+                                    const stepId = parts[1] || '';
+                                    const fieldPathParts = parts.slice(2);
+                                    if (fieldPathParts[0] === 'result') {
+                                        fieldPathParts.shift();
+                                    }
+                                    const fieldPath = fieldPathParts.join('.') || '';
+                                    return { stepId, fieldPath };
+                                })()
                                 : parseRefString(param.default);
 
                             const isLinked = !!refData;
 
-                            // Helper to resolve step name/ID to the actual node ID in the graph
-                            const resolvedStepId = refData ? (allNodes.find(n => n.id === refData.stepId || n.data.label === refData.stepId)?.id || refData.stepId) : '';
+                            const resolvedStepId = refData ? (() => {
+                                const found = allNodes.find(n => n.id === refData.stepId || n.data.label === refData.stepId || n.data.stepId === refData.stepId);
+                                return found?.data.stepId || found?.id || refData.stepId;
+                            })() : '';
 
                             return (
                                 <div key={param.name} className={styles.paramItem}>
@@ -363,7 +394,8 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                                                     onUpdateParameter(selectedNode.id, param.name, '');
                                                 } else {
                                                     if (connectedNodes.length > 0) {
-                                                        onUpdateParameter(selectedNode.id, param.name, { $ref: `${connectedNodes[0].id}.` });
+                                                        const sourceStepId = connectedNodes[0].data.stepId || connectedNodes[0].id;
+                                                        onUpdateParameter(selectedNode.id, param.name, { $ref: `steps.${sourceStepId}.result` });
                                                     } else {
                                                         alert("Connect a node to this step first to link parameters.");
                                                     }
@@ -379,39 +411,30 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
 
                                     {isLinked && refData ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            <select
-                                                className={styles.paramInput}
-                                                value={refData.refType}
-                                                onChange={(e) => {
-                                                    const newRefType = e.target.value as 'steps' | 'group';
-                                                    // Keep the current step and field path, just change the type
-                                                    onUpdateParameter(selectedNode.id, param.name, {
-                                                        $ref: `${newRefType}.${refData.stepId}.${refData.fieldPath}`
-                                                    });
-                                                }}
-                                                style={{ marginBottom: '8px' }}
-                                            >
-                                                <option value="steps">Reference from steps</option>
-                                                <option value="group">Reference from group</option>
-                                            </select>
+                                            <div className={styles.paramInput} style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>
+                                                Reference from steps
+                                            </div>
                                             <select
                                                 className={styles.paramInput}
                                                 value={resolvedStepId}
                                                 onChange={(e) => {
                                                     const sourceId = e.target.value;
                                                     const fieldPath = refData.fieldPath;
-                                                    onUpdateParameter(selectedNode.id, param.name, { $ref: `${sourceId}.${fieldPath}` });
+                                                    onUpdateParameter(
+                                                        selectedNode.id,
+                                                        param.name,
+                                                        { $ref: `steps.${sourceId}.result${fieldPath ? '.' + fieldPath : ''}` }
+                                                    );
                                                 }}
                                             >
                                                 {connectedNodes.map(node => (
-                                                    <option key={node.id} value={node.id}>
-                                                        {node.data.label} ({node.id})
+                                                    <option key={node.id} value={node.data.stepId || node.id}>
+                                                        {node.data.label} ({node.data.stepId || node.id})
                                                     </option>
                                                 ))}
-                                                {/* If the referenced node is not in connectedNodes, show it anyway to avoid empty selection */}
-                                                {!connectedNodes.find(n => n.id === resolvedStepId) && resolvedStepId && (
+                                                {!connectedNodes.find(n => (n.data.stepId || n.id) === resolvedStepId) && resolvedStepId && (
                                                     <option value={resolvedStepId}>
-                                                        {allNodes.find(n => n.id === resolvedStepId)?.data.label || resolvedStepId} (Disconnected)
+                                                        {allNodes.find(n => n.id === resolvedStepId || n.data.stepId === resolvedStepId)?.data.label || resolvedStepId} (Disconnected)
                                                     </option>
                                                 )}
                                             </select>
@@ -422,12 +445,21 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                                                 value={refData.fieldPath}
                                                 onChange={(e) => {
                                                     const fieldPath = e.target.value;
-                                                    const sourceId = resolvedStepId;
-                                                    onUpdateParameter(selectedNode.id, param.name, { $ref: `${sourceId}.${fieldPath}` });
+                                                    const sourceId = resolvedStepId || refData.stepId;
+                                                    onUpdateParameter(
+                                                        selectedNode.id,
+                                                        param.name,
+                                                        { $ref: `steps.${sourceId}.result${fieldPath ? '.' + fieldPath : ''}` }
+                                                    );
                                                 }}
                                             />
                                             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                                Reference: {`\${{ ${refData.refType}.${refData.stepId}.result${refData.fieldPath ? '.' + refData.fieldPath : ''} }}`}
+                                                {(() => {
+                                                    const refDisplay = '${{ steps.'
+                                                        + refData.stepId
+                                                        + `.result${refData.fieldPath ? '.' + refData.fieldPath : ''} }}`;
+                                                    return `Reference: ${refDisplay}`;
+                                                })()}
                                             </div>
                                         </div>
                                     ) : (
@@ -471,7 +503,7 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                                         )
                                     )}
                                 </div>
-                            )
+                            );
                         })
                     ) : (
                         <p style={{ fontSize: '12px', fontStyle: 'italic' }}>No parameters required.</p>

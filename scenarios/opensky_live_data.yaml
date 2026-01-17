@@ -11,7 +11,7 @@ groups:
       - id: submit
         step: Submit Air Traffic
         arguments:
-          observations: ${{ group.fetch.result }}
+          observations: ${{ steps.fetch.result }}
 
       - id: wait
         step: Wait X seconds

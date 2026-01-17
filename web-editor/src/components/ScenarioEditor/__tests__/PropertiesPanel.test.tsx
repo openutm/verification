@@ -28,6 +28,7 @@ describe('PropertiesPanel', () => {
         onUpdateStepId: vi.fn(),
         onUpdateIfCondition: vi.fn(),
         onUpdateLoop: vi.fn(),
+        onUpdateNeeds: vi.fn(),
     };
 
     it('renders correctly', () => {
@@ -56,5 +57,60 @@ describe('PropertiesPanel', () => {
         const input = screen.getByDisplayValue('value1');
         fireEvent.change(input, { target: { value: 'newValue' } });
         expect(defaultProps.onUpdateParameter).toHaveBeenCalledWith('1', 'arg1', 'newValue');
+    });
+
+    it('resolves group step references correctly', () => {
+        const groupContainerNode: Node<NodeData> = {
+            id: 'group_container_1',
+            type: 'custom',
+            position: { x: 0, y: 0 },
+            data: {
+                label: '📦 group_1',
+                isGroupContainer: true,
+                parameters: []
+            }
+        };
+
+        const groupStep1: Node<NodeData> = {
+            id: 'group_container_1_step_0',
+            type: 'custom',
+            parentId: 'group_container_1',
+            position: { x: 0, y: 0 },
+            data: {
+                label: 'Fetch Data',
+                stepId: 'fetch',
+                parameters: []
+            }
+        };
+
+        const groupStep2: Node<NodeData> = {
+            id: 'group_container_1_step_1',
+            type: 'custom',
+            parentId: 'group_container_1',
+            position: { x: 0, y: 100 },
+            data: {
+                label: 'Submit Data',
+                stepId: 'submit',
+                parameters: [
+                    {
+                        name: 'data',
+                        type: 'object',
+                        default: '${{ group.fetch.result }}'
+                    }
+                ]
+            }
+        };
+
+        const props = {
+            ...defaultProps,
+            selectedNode: groupStep2,
+            allNodes: [groupContainerNode, groupStep1, groupStep2]
+        };
+
+        render(<PropertiesPanel {...props} />);
+
+        // The dropdown should have an option for the fetch step
+        const options = screen.getAllByRole('option');
+        expect(options.some(opt => opt.textContent?.includes('Fetch Data'))).toBe(true);
     });
 });

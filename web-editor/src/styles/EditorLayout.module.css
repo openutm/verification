@@ -60,6 +60,8 @@
   height: 100%;
   background-color: var(--rf-bg);
   transition: background-color 0.3s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .sidebarHeader {

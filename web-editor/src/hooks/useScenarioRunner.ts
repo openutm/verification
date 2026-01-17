@@ -95,7 +95,8 @@ export const useScenarioRunner = () => {
                     id: node.id,
                     step: node.data.label, // The backend expects 'step', not 'name'
                     arguments: params,     // The backend expects 'arguments', not 'parameters'
-                    background: !!node.data.runInBackground // The backend expects 'background', not 'run_in_background'
+                    background: !!node.data.runInBackground, // The backend expects 'background', not 'run_in_background'
+                    needs: (node.data.needs || []).filter(Boolean)
                 };
 
                 console.log(`Executing step ${node.id}: ${node.data.label}`, stepDefinition);

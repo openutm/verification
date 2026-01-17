@@ -1,64 +1,34 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { X, FileText, Info, BookOpen } from 'lucide-react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
 import styles from '../../styles/SidebarPanel.module.css';
 import { DocumentationModal } from './DocumentationModal';
 import { ConfigEditor } from './ConfigEditor';
-import { GroupsManager } from './GroupsManager';
-import type { ScenarioConfig, GroupDefinition } from '../../types/scenario';
+import type { ScenarioConfig } from '../../types/scenario';
+import { useSidebarResize } from '../../hooks/useSidebarResize';
 
 interface ScenarioInfoPanelProps {
     name: string | null;
     description: string;
     config: ScenarioConfig;
-    groups: Record<string, GroupDefinition>;
     onUpdateName: (name: string) => void;
     onUpdateDescription: (description: string) => void;
     onUpdateConfig: (config: ScenarioConfig) => void;
-    onUpdateGroups: (groups: Record<string, GroupDefinition>) => void;
     onOpenReport: () => void;
     onClose?: () => void;
 }
 
-export const ScenarioInfoPanel = ({ name, description, config, groups, onUpdateName, onUpdateDescription, onUpdateConfig, onUpdateGroups, onOpenReport, onClose }: ScenarioInfoPanelProps) => {
-    const [width, setWidth] = useState(480);
-    const [isResizing, setIsResizing] = useState(false);
+export const ScenarioInfoPanel = ({ name, description, config, onUpdateName, onUpdateDescription, onUpdateConfig, onOpenReport, onClose }: ScenarioInfoPanelProps) => {
+    const { sidebarWidth: width, isResizing, startResizing } = useSidebarResize(480, 300, 800);
     const [isDocsOpen, setIsDocsOpen] = useState(false);
-
-    const startResizing = useCallback((mouseDownEvent: React.MouseEvent) => {
-        mouseDownEvent.preventDefault();
-        setIsResizing(true);
-    }, []);
-
-    const stopResizing = useCallback(() => {
-        setIsResizing(false);
-    }, []);
-
-    const resize = useCallback(
-        (mouseMoveEvent: MouseEvent) => {
-            if (isResizing) {
-                const newWidth = window.innerWidth - mouseMoveEvent.clientX;
-                if (newWidth > 300 && newWidth < 800) {
-                    setWidth(newWidth);
-                }
-            }
-        },
-        [isResizing]
-    );
-
-    useEffect(() => {
-        window.addEventListener("mousemove", resize);
-        window.addEventListener("mouseup", stopResizing);
-        return () => {
-            window.removeEventListener("mousemove", resize);
-            window.removeEventListener("mouseup", stopResizing);
-        };
-    }, [resize, stopResizing]);
 
     return (
         <aside className={layoutStyles.rightSidebar} style={{ width, position: 'relative' }}>
             <div
-                onMouseDown={startResizing}
+                onMouseDown={(e) => {
+                    e.preventDefault();
+                    startResizing();
+                }}
                 style={{
                     position: 'absolute',
                     left: 0,
@@ -118,8 +88,6 @@ export const ScenarioInfoPanel = ({ name, description, config, groups, onUpdateN
                     </div>
 
                     <ConfigEditor config={config} onUpdateConfig={onUpdateConfig} />
-
-                    <GroupsManager groups={groups} onGroupsChange={onUpdateGroups} />
 
                     {name && (
                         <div className={styles.paramItem} style={{ display: 'flex', gap: '8px' }}>

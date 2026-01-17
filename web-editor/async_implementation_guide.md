@@ -48,8 +48,6 @@ To create a scenario with async tasks (e.g., `sdsp_track`):
 1.  **Start Task**: Add a node (e.g., `FlightBlenderClient.submit_simulated_air_traffic`).
     -   Set `Run in Background` to `true` (via properties panel or JSON).
 2.  **Intermediate Steps**: Add other nodes (e.g., `CommonClient.wait`, `Verify Track`) that run while the background task is active.
-3.  **Join Task**: Add a `SessionManager.join_task` node.
-    -   Link its `task_id` parameter to the result of the Start Task node.
 
 ### Example YAML (`scenarios/sdsp_track.yaml`)
 
@@ -61,7 +59,7 @@ To create a scenario with async tasks (e.g., `sdsp_track`):
 
   # ... other steps running in parallel ...
 
-  - step: Join Background Task
-    arguments:
-      task_id: Submit Simulated Air Traffic
+  - step: Other step that needs to wait for BG task to finish.
+    needs:
+    - Submit Simulated Air Traffic
 ```
