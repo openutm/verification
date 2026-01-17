@@ -47,6 +47,13 @@ class AirTrafficSimulatorSettings(StrictBaseModel):
         return int(parse_duration(v))
 
 
+class BlueSkyAirTrafficSimulatorSettings(StrictBaseModel):
+    number_of_aircraft: int
+    simulation_duration_seconds: int
+    single_or_multiple_sensors: Literal["single", "multiple"] = "single"
+    sensor_ids: list[str] = Field(default_factory=list)
+
+
 class OpenSkyConfig(StrictBaseModel):
     """OpenSky Network connection details."""
 
@@ -73,12 +80,14 @@ class DataFiles(StrictBaseModel):
     """Paths to data files used in the application."""
 
     trajectory: str | None = None
+    simulation: str | None = None
     flight_declaration: str | None = None
     geo_fence: str | None = None
     flight_declaration_via_operational_intent: str | None = None
 
     @field_validator(
         "trajectory",
+        "simulation",
         "flight_declaration",
         "flight_declaration_via_operational_intent",
         "geo_fence",
@@ -110,6 +119,8 @@ class DataFiles(StrictBaseModel):
 
         if self.trajectory:
             self.trajectory = resolve_and_validate_path(self.trajectory, "Trajectory")
+        if self.simulation:
+            self.simulation = resolve_and_validate_path(self.simulation, "Simulation")
         if self.flight_declaration:
             self.flight_declaration = resolve_and_validate_path(self.flight_declaration, "Flight declaration")
         if self.flight_declaration_via_operational_intent:
@@ -146,6 +157,7 @@ class AppConfig(StrictBaseModel):
     flight_blender: FlightBlenderConfig
     opensky: OpenSkyConfig
     air_traffic_simulator_settings: AirTrafficSimulatorSettings
+    blue_sky_air_traffic_simulator_settings: BlueSkyAirTrafficSimulatorSettings
     data_files: DataFiles
     suites: dict[str, SuiteConfig] = Field(default_factory=dict)
     reporting: ReportingConfig
