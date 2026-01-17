@@ -1,0 +1,9 @@
+name: openutm_sim_air_traffic_data
+description: Generate simulated air traffic data using OpenSky client and submit to Flight Blender.
+
+steps:
+  - step: Generate Simulated Air Traffic Data
+
+  - step: Submit Simulated Air Traffic
+    arguments:
+      observations: ${{ steps.Generate Simulated Air Traffic Data.result }}

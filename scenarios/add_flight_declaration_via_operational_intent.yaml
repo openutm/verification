@@ -1,0 +1,16 @@
+name: add_flight_declaration_via_operational_intent
+description: Runs the add flight declaration via operational intent scenario.
+steps:
+- step: Setup Flight Declaration via Operational Intent
+- step: Update Operation State
+  arguments:
+    state: ACTIVATED
+    duration: 5
+- step: Wait X seconds
+  arguments:
+    duration: 10
+- id: update_state_ended
+  step: Update Operation State
+  arguments:
+    state: ENDED
+- step: Teardown Flight Declaration

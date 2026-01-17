@@ -1,0 +1,85 @@
+name: Loop Examples
+description: >
+  Demonstrates all loop features including fixed count loops, item iteration,
+  and while loops with conditions and loop variables.
+
+steps:
+  # Example 1: Fixed count loop
+  - id: retry_setup
+    step: Setup Flight Declaration
+    description: Retry setup 3 times if needed
+    loop:
+      count: 3
+
+  # Example 2: Loop with iteration variable in arguments
+  - id: batch_telemetry
+    step: Submit Telemetry
+    description: Submit telemetry 5 times with increasing durations
+    loop:
+      count: 5
+    arguments:
+      duration: 10  # Each iteration will run for 10 seconds
+
+  # Example 3: Iterate over a list of items
+  - id: process_states
+    step: Update Operation State
+    description: Process through different operational states
+    loop:
+      items:
+        - ACTIVATED
+        - CONTINGENT
+        - NONCONFORMING
+        - ENDED
+    arguments:
+      state: ${{ loop.item }}  # Use ${{ loop.item }} to reference current item
+
+  # Example 4: Loop with string interpolation
+  - id: batch_with_index
+    step: Submit Telemetry
+    description: Use loop.index in argument values
+    loop:
+      count: 3
+    arguments:
+      duration: 5
+      # Note: loop.index can be used directly or in expressions
+
+  # Example 5: Conditional loop termination
+  - id: wait_for_success
+    step: Submit Telemetry
+    description: Keep submitting telemetry until a previous step succeeds
+    loop:
+      count: 10
+      while: loop.index < 5  # Stop after 5 iterations
+    arguments:
+      duration: 2
+
+  # Example 6: Pure while loop
+  - id: monitor_until_ready
+    step: Setup Flight Declaration
+    description: Keep trying until loop index reaches threshold
+    loop:
+      while: loop.index < 3
+
+  # Example 7: Conditional execution with loop
+  - id: conditional_loop
+    step: Submit Telemetry
+    if: success()
+    description: Only loop if previous steps succeeded
+    loop:
+      count: 2
+    arguments:
+      duration: 5
+
+  # Example 8: Check loop iteration in condition
+  - id: after_loops
+    step: Update Operation State
+    if: steps.retry_setup[0].status == 'success'
+    description: Run only if first iteration of retry_setup succeeded
+    arguments:
+      state: ENDED
+
+  # Final cleanup
+  - id: cleanup
+    step: Teardown Flight Declaration
+    if: always()
+    description: Always cleanup after all loops complete

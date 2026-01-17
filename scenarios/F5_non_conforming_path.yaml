@@ -1,0 +1,23 @@
+name: F5_non_conforming_path
+description: Runs the F5 non-conforming path scenario.
+steps:
+- step: Setup Flight Declaration
+- step: Update Operation State
+  arguments:
+    state: ACTIVATED
+- step: Submit Telemetry
+  arguments:
+    duration: 20
+- step: Check Operation State Connected
+  arguments:
+    expected_state: NONCONFORMING
+    duration: 5
+- id: update_state_contingent
+  step: Update Operation State
+  arguments:
+    state: CONTINGENT
+- id: update_state_ended
+  step: Update Operation State
+  arguments:
+    state: ENDED
+- step: Teardown Flight Declaration

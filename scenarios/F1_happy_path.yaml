@@ -1,0 +1,23 @@
+name: F1_happy_path
+description: >
+  This scenario verifies the nominal flow (Happy Path) for a flight operation.
+  It walks through the lifecycle of a flight from declaration to activation,
+  submission of telemetry, and finally ending the operation.
+steps:
+- step: Setup Flight Declaration
+  description: Creates a fresh flight declaration in the DSS.
+- step: Update Operation State
+  description: Activates the flight operation, transitioning it to the active state.
+  arguments:
+    state: ACTIVATED
+- step: Submit Telemetry
+  description: Simulates the broadcast of telemetry data for 30 seconds.
+  arguments:
+    duration: 30
+- id: update_state_ended
+  step: Update Operation State
+  description: Marks the operation as ended after the flight is complete.
+  arguments:
+    state: ENDED
+- step: Teardown Flight Declaration
+  description: Cleans up the flight declaration and any associated resources.

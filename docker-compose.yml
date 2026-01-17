@@ -23,6 +23,7 @@ services:
     volumes:
       - ./config:/app/config:Z
       - ./reports:/app/reports:Z
+      - ./scenarios:/app/scenarios:Z
     # Network configuration for local Flight Blender access
     network_mode: host
     # Resource limits
@@ -74,3 +75,45 @@ services:
     network_mode: host
     profiles:
       - dev
+
+  # Server mode service
+  verification-server:
+    image: openutm/verification:latest
+    container_name: openutm-verification-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UV_COMPILE_BYTECODE: 1
+        UV_LINK_MODE: copy
+        APP_USER: appuser
+        APP_GROUP: appgrp
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=UTC
+      - FLIGHT_BLENDER_URL=${FLIGHT_BLENDER_URL:-http://host.docker.internal:8000}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./config:/app/config:Z
+      - ./reports:/app/reports:Z
+      - ./scenarios:/app/scenarios:Z
+    ports:
+      - "8989:8989"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["--server", "--config", "config/default.yaml"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8989/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    labels:
+      - "project=openutm-verification"
+      - "component=verification-server"
+      - "environment=${ENVIRONMENT:-production}"
+    profiles:
+      - server

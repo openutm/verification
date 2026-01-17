@@ -1,3 +1,11 @@
+# --- UI Builder Stage ---
+FROM node:20-slim AS ui-builder
+WORKDIR /app/web-editor
+COPY web-editor/package.json web-editor/package-lock.json ./
+RUN npm ci
+COPY web-editor/ .
+RUN npm run build
+
 # --- Builder Stage ---
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
@@ -25,6 +33,7 @@ ENV PYTHONUNBUFFERED=1
 # Copy dependency files first for better layer caching
 COPY pyproject.toml uv.lock ./
 COPY docs ./docs
+COPY scenarios ./scenarios
 
 # Install project dependencies using uv sync with cache mount for faster builds
 # --frozen: ensures reproducible builds from uv.lock
@@ -64,6 +73,9 @@ RUN apt-get update \
 ENV PYTHONUNBUFFERED=1
 ENV TZ=UTC
 ENV PATH="/app/.venv/bin:$PATH"
+ENV WEB_EDITOR_PATH=/app/web-editor
+ENV SCENARIOS_PATH=/app/scenarios
+ENV DOCS_PATH=/app/docs
 
 # Create non-root user and group for enhanced security
 RUN (getent group "${GID}" || groupadd -g "${GID}" "${APP_GROUP}") \
@@ -71,6 +83,9 @@ RUN (getent group "${GID}" || groupadd -g "${GID}" "${APP_GROUP}") \
 
 # Copy application artifacts from builder stage
 COPY --chown=${UID}:${GID} --from=builder /app /app
+
+# Copy UI artifacts from ui-builder stage
+COPY --chown=${UID}:${GID} --from=ui-builder /app/web-editor/dist /app/web-editor/dist
 
 # Set working directory
 WORKDIR /app
@@ -81,6 +96,9 @@ RUN mkdir -p /app/config /app/reports \
 
 # Switch to non-root user
 USER ${UID}:${GID}
+
+# Expose the server port
+EXPOSE 8989
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

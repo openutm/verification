@@ -1,0 +1,80 @@
+name: Conditional Workflow Demo
+description: >
+  Demonstrates all conditional execution features including success(), failure(),
+  always(), and steps.X.status conditions. This scenario intentionally includes
+  steps that may fail to showcase conditional branching.
+
+steps:
+  - id: setup
+    step: Setup Flight Declaration
+    description: Initial setup - creates a flight declaration
+
+  - id: risky_operation
+    step: Update Operation State
+    description: This operation might fail (simulates potential failure scenario)
+    arguments:
+      state: ACTIVATED
+
+  - id: on_success_only
+    step: Submit Telemetry
+    if: success()
+    description: Only runs if all previous steps succeeded
+    arguments:
+      duration: 10
+
+  - id: on_failure_only
+    step: Teardown Flight Declaration
+    if: failure()
+    description: Only runs if any previous step failed (cleanup on error)
+
+  - id: check_specific_step
+    step: Update Operation State
+    if: steps.risky_operation.status == 'success'
+    description: Runs only if risky_operation specifically succeeded
+    arguments:
+      state: CONTINGENT
+
+  - id: complex_condition
+    step: Submit Telemetry
+    if: success() && steps.risky_operation.status != 'skipped'
+    description: Runs if all steps succeeded AND risky_operation was not skipped
+    arguments:
+      duration: 5
+
+  - id: another_complex
+    step: Update Operation State
+    if: steps.on_success_only.status == 'success' || steps.on_failure_only.status == 'success'
+    description: Runs if either success path OR failure path executed
+    arguments:
+      state: NONCONFORMING
+
+  - id: cleanup
+    step: Teardown Flight Declaration
+    if: always()
+    description: Always runs for final cleanup, regardless of success or failure
+
+  - id: post_cleanup_success
+    step: Submit Telemetry
+    if: success() && steps.cleanup.status == 'success'
+    description: Final telemetry only if everything succeeded including cleanup
+    arguments:
+      duration: 3
+
+  - id: check_telemetry_result
+    step: Update Operation State
+    if: steps.on_success_only.result != None
+    description: Runs only if on_success_only step returned a result value
+    arguments:
+      state: ENDED
+
+  - id: conditional_on_result_value
+    step: Teardown Flight Declaration
+    if: steps.risky_operation.result != None && steps.risky_operation.status == 'success'
+    description: Uses both status and return value in condition
+
+  - id: result_comparison
+    step: Submit Telemetry
+    if: steps.setup.result != None
+    description: Checks if setup returned any data
+    arguments:
+      duration: 2

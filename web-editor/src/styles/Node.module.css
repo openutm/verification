@@ -1,0 +1,173 @@
+.customNode {
+  --node-color: var(--border-color);
+  background-color: var(--rf-node-bg);
+  border: 1px solid var(--node-color);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  min-width: 180px;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s ease;
+}
+
+.customNode:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.customNodeHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.customNodeBody {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.icon {
+  color: var(--text-secondary);
+}
+
+.statusButton {
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.statusIndicator {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Status indicators */
+.statusSuccess {
+  --node-color: var(--success);
+  border-color: var(--node-color);
+}
+
+.statusError {
+  --node-color: var(--danger);
+  border-color: var(--node-color);
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.statusRunning {
+  --node-color: var(--accent-primary);
+  border-color: var(--node-color);
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.statusSkipped {
+  --node-color: var(--text-tertiary);
+  border-color: var(--border-secondary);
+  background-color: var(--bg-tertiary);
+  opacity: 0.7;
+}
+
+.selected {
+  border-width: 2px;
+  padding: 11px 15px;
+  border-color: var(--node-color);
+}
+
+/* Modifier badges (loop, condition) */
+.modifierBadges {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.loopBadge,
+.conditionBadge,
+.backgroundBadge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.loopBadge {
+  background-color: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.loopBadge:hover {
+  background-color: rgba(168, 85, 247, 0.3);
+}
+
+.conditionBadge {
+  background-color: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.conditionBadge:hover {
+  background-color: rgba(34, 197, 94, 0.3);
+}
+
+.backgroundBadge {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.backgroundBadge:hover {
+  background-color: rgba(59, 130, 246, 0.28);
+}
+
+/* Group container label */
+.groupContainerLabel {
+  position: absolute;
+  top: 12px;
+  left: 20px;
+  right: 20px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+}
+
+.groupLabelContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+
+.groupContainerLabel:hover {
+  background-color: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}

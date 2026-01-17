@@ -4,6 +4,10 @@
 
 This section documents the various test scenarios used to verify UTM functionality.
 
+## Scenario Format
+
+All scenarios are defined as YAML files and executed via the runner. See the [scenarios/README.md](scenarios/README.md) for the YAML schema, references, and examples.
+
 ## Scenarios
 
 * [Add Flight Declaration](scenarios/add_flight_declaration.md)
