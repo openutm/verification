@@ -3,17 +3,21 @@ import { X, FileText, Info, BookOpen } from 'lucide-react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
 import styles from '../../styles/SidebarPanel.module.css';
 import { DocumentationModal } from './DocumentationModal';
+import { ConfigEditor } from './ConfigEditor';
+import type { ScenarioConfig } from '../../types/scenario';
 
 interface ScenarioInfoPanelProps {
     name: string | null;
     description: string;
+    config: ScenarioConfig;
     onUpdateName: (name: string) => void;
     onUpdateDescription: (description: string) => void;
+    onUpdateConfig: (config: ScenarioConfig) => void;
     onOpenReport: () => void;
     onClose?: () => void;
 }
 
-export const ScenarioInfoPanel = ({ name, description, onUpdateName, onUpdateDescription, onOpenReport, onClose }: ScenarioInfoPanelProps) => {
+export const ScenarioInfoPanel = ({ name, description, config, onUpdateName, onUpdateDescription, onUpdateConfig, onOpenReport, onClose }: ScenarioInfoPanelProps) => {
     const [width, setWidth] = useState(480);
     const [isResizing, setIsResizing] = useState(false);
     const [isDocsOpen, setIsDocsOpen] = useState(false);
@@ -109,6 +113,8 @@ export const ScenarioInfoPanel = ({ name, description, onUpdateName, onUpdateDes
                             placeholder="Describe what this scenario tests..."
                         />
                     </div>
+
+                    <ConfigEditor config={config} onUpdateConfig={onUpdateConfig} />
 
                     {name && (
                         <div className={styles.paramItem} style={{ display: 'flex', gap: '8px' }}>

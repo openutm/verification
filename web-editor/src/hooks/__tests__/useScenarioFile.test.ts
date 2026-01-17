@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useScenarioFile } from '../useScenarioFile';
 import type { Node, Edge } from '@xyflow/react';
-import type { NodeData } from '../../types/scenario';
+import type { NodeData, ScenarioConfig } from '../../types/scenario';
 
 describe('useScenarioFile', () => {
     const mockNodes: Node<NodeData>[] = [
@@ -10,6 +10,14 @@ describe('useScenarioFile', () => {
     ];
     const mockEdges: Edge[] = [];
     const mockSetCurrentScenarioName = vi.fn();
+    const mockConfig: ScenarioConfig = {
+        flight_blender: {
+            url: "http://localhost:8000",
+            auth: { type: "none", audience: "test", scopes: [] }
+        },
+        data_files: {},
+        air_traffic_simulator_settings: {}
+    };
 
     beforeEach(() => {
         globalThis.fetch = vi.fn();
@@ -23,7 +31,7 @@ describe('useScenarioFile', () => {
     });
 
     it('saves scenario to server successfully', async () => {
-        const { result } = renderHook(() => useScenarioFile(mockNodes, mockEdges, [], null, mockSetCurrentScenarioName, ""));
+        const { result } = renderHook(() => useScenarioFile(mockNodes, mockEdges, [], null, mockSetCurrentScenarioName, "", mockConfig));
 
         vi.mocked(globalThis.prompt).mockReturnValue('test_scenario');
         vi.mocked(globalThis.fetch).mockResolvedValue({
@@ -45,7 +53,7 @@ describe('useScenarioFile', () => {
     });
 
     it('handles save error', async () => {
-        const { result } = renderHook(() => useScenarioFile(mockNodes, mockEdges, [], null, mockSetCurrentScenarioName, ""));
+        const { result } = renderHook(() => useScenarioFile(mockNodes, mockEdges, [], null, mockSetCurrentScenarioName, "", mockConfig));
 
         vi.mocked(globalThis.prompt).mockReturnValue('test_scenario');
         vi.mocked(globalThis.fetch).mockResolvedValue({
@@ -61,7 +69,7 @@ describe('useScenarioFile', () => {
     });
 
     it('does nothing if prompt is cancelled', async () => {
-        const { result } = renderHook(() => useScenarioFile(mockNodes, mockEdges, [], null, mockSetCurrentScenarioName, ""));
+        const { result } = renderHook(() => useScenarioFile(mockNodes, mockEdges, [], null, mockSetCurrentScenarioName, "", mockConfig));
 
         vi.mocked(globalThis.prompt).mockReturnValue(null);
 
@@ -73,7 +81,7 @@ describe('useScenarioFile', () => {
     });
 
     it('uses existing scenario name if provided', async () => {
-        const { result } = renderHook(() => useScenarioFile(mockNodes, mockEdges, [], 'existing_scenario', mockSetCurrentScenarioName, ""));
+        const { result } = renderHook(() => useScenarioFile(mockNodes, mockEdges, [], 'existing_scenario', mockSetCurrentScenarioName, "", mockConfig));
 
         vi.mocked(globalThis.fetch).mockResolvedValue({
             ok: true,

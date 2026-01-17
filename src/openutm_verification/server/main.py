@@ -2,16 +2,22 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypeVar
+from typing import Optional, TypeVar
 
 import uvicorn
-from fastapi import Depends, FastAPI, Request
+from fastapi import Body, Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from loguru import logger
 from pydantic import BaseModel
 
 # Import dependencies to ensure they are registered and steps are populated
 import openutm_verification.core.execution.dependencies  # noqa: F401
+from openutm_verification.core.execution.config_models import (
+    AirTrafficSimulatorSettings,
+    DataFiles,
+    FlightBlenderConfig,
+)
 from openutm_verification.core.execution.definitions import ScenarioDefinition
 from openutm_verification.core.reporting.reporting import create_report_data, generate_reports
 from openutm_verification.core.reporting.reporting_models import (
@@ -63,6 +69,14 @@ def get_session_manager(request: Request) -> SessionManager:
     return request.app.state.runner
 
 
+class SessionResetRequest(BaseModel):
+    """Request model for session reset with optional configuration."""
+
+    flight_blender: Optional[FlightBlenderConfig] = None
+    data_files: Optional[DataFiles] = None
+    air_traffic_simulator_settings: Optional[AirTrafficSimulatorSettings] = None
+
+
 def start_server_mode(config_path: str | None = None, reload: bool = False):
     if config_path:
         os.environ["OPENUTM_CONFIG_PATH"] = str(config_path)
@@ -90,8 +104,33 @@ async def get_operations(runner: SessionManager = Depends(get_session_manager)):
 
 
 @app.post("/session/reset")
-async def reset_session(runner: SessionManager = Depends(get_session_manager)):
+async def reset_session(
+    config: SessionResetRequest = Body(default_factory=SessionResetRequest, embed=True),
+    runner: SessionManager = Depends(get_session_manager),
+):
+    """Reset session and optionally apply new configuration.
+
+    The configuration from the frontend allows users to:
+    - Override Flight Blender connection details
+    - Specify data file paths
+    - Configure air traffic simulator settings
+    """
+
+    logger.debug(f"Session reset request received: {config.model_dump()}")
+
     await runner.close_session()
+
+    # If configuration is provided from the frontend, apply it
+    if config.flight_blender:
+        runner.config.flight_blender = config.flight_blender
+        logger.info(f"Applied Flight Blender config: {config.flight_blender.url}")
+    if config.data_files:
+        runner.config.data_files = config.data_files
+        logger.info("Applied data files config")
+    if config.air_traffic_simulator_settings:
+        runner.config.air_traffic_simulator_settings = config.air_traffic_simulator_settings
+        logger.info("Applied air traffic simulator settings")
+
     await runner.initialize_session()
     return {"status": "session_reset"}
 

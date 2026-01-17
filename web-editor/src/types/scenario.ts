@@ -53,3 +53,38 @@ export interface ScenarioExecutionResult {
     status: string;
     duration: number;
 }
+
+export interface FlightBlenderAuth {
+    type: string;
+    client_id?: string;
+    client_secret?: string;
+    token_endpoint?: string;
+    passport_base_url?: string;
+    audience?: string;
+    scopes?: string[];
+}
+
+export interface FlightBlenderConfig {
+    url: string;
+    auth: FlightBlenderAuth;
+}
+
+export interface DataFilesConfig {
+    trajectory?: string;
+    flight_declaration?: string;
+    flight_declaration_via_operational_intent?: string;
+    geo_fence?: string;
+}
+
+export interface AirTrafficSimulatorSettings {
+    number_of_aircraft?: number;
+    simulation_duration?: number;
+    single_or_multiple_sensors?: string;
+    sensor_ids?: string[];
+}
+
+export interface ScenarioConfig {
+    flight_blender: FlightBlenderConfig;
+    data_files: DataFilesConfig;
+    air_traffic_simulator_settings: AirTrafficSimulatorSettings;
+}

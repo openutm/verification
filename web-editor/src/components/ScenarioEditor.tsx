@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import layoutStyles from '../styles/EditorLayout.module.css';
-import type { Operation, OperationParam, NodeData } from '../types/scenario';
+import type { Operation, OperationParam, NodeData, ScenarioConfig } from '../types/scenario';
 
 import { CustomNode } from './ScenarioEditor/CustomNode';
 import { Toolbox } from './ScenarioEditor/Toolbox';
@@ -47,9 +47,32 @@ const MemoizedBottomPanel = React.memo(BottomPanel);
 const MemoizedHeader = React.memo(Header);
 
 const ScenarioEditorContent = () => {
+    // Default configuration
+    const getDefaultConfig = (): ScenarioConfig => ({
+        flight_blender: {
+            url: "http://localhost:8000",
+            auth: {
+                type: "none",
+                audience: "testflight.flightblender.com",
+                scopes: ["flightblender.write", "flightblender.read"]
+            }
+        },
+        data_files: {
+            trajectory: "config/bern/trajectory_f1.json",
+            flight_declaration: "config/bern/flight_declaration.json",
+            flight_declaration_via_operational_intent: "config/bern/flight_declaration_via_operational_intent.json"
+        },
+        air_traffic_simulator_settings: {
+            number_of_aircraft: 3,
+            simulation_duration: 10,
+            single_or_multiple_sensors: "multiple",
+            sensor_ids: ["a0b7d47e5eac45dc8cbaf47e6fe0e558"]
+        }
+    });
+
     // Synchronously read autosave state for lazy initialization
     const [initialState] = useState(() => {
-        if (typeof window === 'undefined') return { nodes: [], edges: [], desc: "", isDirty: false, isRestored: false };
+        if (typeof window === 'undefined') return { nodes: [], edges: [], desc: "", config: getDefaultConfig(), isDirty: false, isRestored: false };
 
         const savedIsDirty = sessionStorage.getItem('editor-is-dirty') === 'true';
         if (savedIsDirty) {
@@ -57,12 +80,13 @@ const ScenarioEditorContent = () => {
                 const nodes = JSON.parse(sessionStorage.getItem('editor-autosave-nodes') || '[]');
                 const edges = JSON.parse(sessionStorage.getItem('editor-autosave-edges') || '[]');
                 const desc = sessionStorage.getItem('editor-autosave-description') || "";
-                return { nodes, edges, desc, isDirty: true, isRestored: true };
+                const config = JSON.parse(sessionStorage.getItem('editor-autosave-config') || JSON.stringify(getDefaultConfig()));
+                return { nodes, edges, desc, config, isDirty: true, isRestored: true };
              } catch (e) {
                  console.error("Failed to parse autosave data", e);
              }
         }
-        return { nodes: [], edges: [], desc: "", isDirty: false, isRestored: false };
+        return { nodes: [], edges: [], desc: "", config: getDefaultConfig(), isDirty: false, isRestored: false };
     });
 
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -84,6 +108,7 @@ const ScenarioEditorContent = () => {
         return null;
     });
     const [currentScenarioDescription, setCurrentScenarioDescription] = useState<string>(initialState.desc);
+    const [currentScenarioConfig, setCurrentScenarioConfig] = useState<ScenarioConfig>(initialState.config);
     const [scenarioListRefreshKey, setScenarioListRefreshKey] = useState(0);
     const [isDirty, setIsDirty] = useState(initialState.isDirty);
     const [reportError, setReportError] = useState<{ title: string; message: string } | null>(null);
@@ -154,13 +179,17 @@ const ScenarioEditorContent = () => {
         currentScenarioName,
         setCurrentScenarioName,
         currentScenarioDescription,
+        currentScenarioConfig,
         incrementScenarioListRefreshKey,
         () => setIsDirty(false)
     );
 
-    const loadScenarioFromYaml = useCallback((newNodes: Node<NodeData>[], newEdges: Edge[]) => {
+    const loadScenarioFromYaml = useCallback((newNodes: Node<NodeData>[], newEdges: Edge[], newConfig?: ScenarioConfig) => {
         setNodes(newNodes);
         setEdges(newEdges);
+        if (newConfig) {
+            setCurrentScenarioConfig(newConfig);
+        }
         setIsDirty(false);
         setTimeout(() => reactFlowInstance?.fitView({ padding: 0.2, duration: 400 }), 100);
     }, [setNodes, setEdges, reactFlowInstance]);
@@ -187,18 +216,20 @@ const ScenarioEditorContent = () => {
                 sessionStorage.setItem('editor-autosave-nodes', JSON.stringify(nodes));
                 sessionStorage.setItem('editor-autosave-edges', JSON.stringify(edges));
                 sessionStorage.setItem('editor-autosave-description', currentScenarioDescription);
+                sessionStorage.setItem('editor-autosave-config', JSON.stringify(currentScenarioConfig));
             } else {
                 sessionStorage.removeItem('editor-is-dirty');
                 sessionStorage.removeItem('editor-autosave-nodes');
                 sessionStorage.removeItem('editor-autosave-edges');
                 sessionStorage.removeItem('editor-autosave-description');
+                sessionStorage.removeItem('editor-autosave-config');
             }
         };
 
         // Debounce save to avoid performance impact
         const timeoutId = setTimeout(saveState, 500);
         return () => clearTimeout(timeoutId);
-    }, [isDirty, nodes, edges, currentScenarioDescription]);
+    }, [isDirty, nodes, edges, currentScenarioDescription, currentScenarioConfig]);
 
     // Load saved scenario on mount (refresh) if available
     const [isRestored, setIsRestored] = useState(initialState.isRestored);
@@ -212,8 +243,8 @@ const ScenarioEditorContent = () => {
             fetch(`/api/scenarios/${currentScenarioName}`)
                 .then(res => res.json())
                 .then(scenario => {
-                    const { nodes: newNodes, edges: newEdges } = convertYamlToGraph(scenario, operations);
-                    loadScenarioFromYaml(newNodes, newEdges);
+                    const { nodes: newNodes, edges: newEdges, config } = convertYamlToGraph(scenario, operations);
+                    loadScenarioFromYaml(newNodes, newEdges, config);
                     setCurrentScenarioDescription(scenario.description || "");
                     setIsRestored(true);
                 })
@@ -341,8 +372,8 @@ const ScenarioEditorContent = () => {
 
                 setReportError({ title: "Report Not Found", message });
             }
-        } catch (e) {
-            newWindow.close();
+        } catch {
+            newWindow?.close();
             setReportError({ title: "Connection Error", message: "Failed to connect to the server." });
         }
     }, [currentScenarioName]);
@@ -435,8 +466,8 @@ const ScenarioEditorContent = () => {
             }));
         };
 
-        await runScenario(currentNodes, currentEdges, currentScenarioName || "Interactive Session", onStepComplete, onStepStart);
-    }, [runScenario, currentScenarioName, setNodes, updateNodesWithResults, reactFlowInstance]);
+        await runScenario(currentNodes, currentEdges, currentScenarioName || "Interactive Session", onStepComplete, onStepStart, currentScenarioConfig);
+    }, [runScenario, currentScenarioName, currentScenarioConfig, setNodes, updateNodesWithResults, reactFlowInstance]);
 
     const updateNodeParameter = useCallback((nodeId: string, paramName: string, value: unknown) => {
         setIsDirty(true);
@@ -713,12 +744,17 @@ const ScenarioEditorContent = () => {
                     <MemoizedScenarioInfoPanel
                         name={currentScenarioName}
                         description={currentScenarioDescription}
+                        config={currentScenarioConfig}
                         onUpdateName={(name) => {
                             setCurrentScenarioName(name);
                             setIsDirty(true);
                         }}
                         onUpdateDescription={(desc) => {
                             setCurrentScenarioDescription(desc);
+                            setIsDirty(true);
+                        }}
+                        onUpdateConfig={(config) => {
+                            setCurrentScenarioConfig(config);
                             setIsDirty(true);
                         }}
                         onOpenReport={handleOpenReport}

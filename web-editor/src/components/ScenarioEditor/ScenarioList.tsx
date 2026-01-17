@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { FileText } from 'lucide-react';
 import styles from '../../styles/Toolbox.module.css';
-import type { Operation, ScenarioDefinition, NodeData } from '../../types/scenario';
+import type { Operation, ScenarioDefinition, NodeData, ScenarioConfig } from '../../types/scenario';
 import type { Node, Edge } from '@xyflow/react';
 import { convertYamlToGraph } from '../../utils/scenarioConversion';
 
 interface ScenarioListProps {
-    onLoadScenario: (nodes: Node<NodeData>[], edges: Edge[]) => void;
+    onLoadScenario: (nodes: Node<NodeData>[], edges: Edge[], config?: ScenarioConfig) => void;
     operations: Operation[];
     currentScenarioName: string | null;
     onSelectScenario: (name: string) => void;
@@ -32,9 +32,9 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
             const res = await fetch(`/api/scenarios/${filename}`);
             const scenario: ScenarioDefinition = await res.json();
 
-            const { nodes, edges } = convertYamlToGraph(scenario, operations);
+            const { nodes, edges, config } = convertYamlToGraph(scenario, operations);
 
-            onLoadScenario(nodes, edges);
+            onLoadScenario(nodes, edges, config);
             onSelectScenario(filename);
 
             // We need a way to pass description up.

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { Node, Edge } from '@xyflow/react';
-import type { NodeData } from '../types/scenario';
+import type { NodeData, ScenarioConfig } from '../types/scenario';
 
 export const useScenarioRunner = () => {
     const [isRunning, setIsRunning] = useState(false);
@@ -10,7 +10,8 @@ export const useScenarioRunner = () => {
         edges: Edge[],
         scenarioName: string,
         onStepComplete?: (result: { id: string; status: 'success' | 'failure' | 'error'; result?: unknown }) => void,
-        onStepStart?: (nodeId: string) => void
+        onStepStart?: (nodeId: string) => void,
+        config?: ScenarioConfig
     ) => {
         if (nodes.length === 0) return null;
 
@@ -50,8 +51,21 @@ export const useScenarioRunner = () => {
         const steps = sortedNodes.filter(node => node.data.operationId); // Filter out nodes without operationId
 
         try {
-            // 1. Reset Session
-            await fetch('/session/reset', { method: 'POST' });
+            // 1. Reset Session and apply configuration
+            const resetPayload: { config?: ScenarioConfig } = {};
+            if (config) {
+                resetPayload.config = config;
+            }
+
+            const resetResponse = await fetch('/session/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(resetPayload)
+            });
+
+            if (!resetResponse.ok) {
+                throw new Error(`Failed to initialize session: ${resetResponse.statusText}`);
+            }
 
             const results: { id: string; status: string; result?: unknown; error?: unknown }[] = [];
 

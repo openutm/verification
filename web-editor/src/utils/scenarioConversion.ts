@@ -1,10 +1,10 @@
 import { type Node, type Edge, MarkerType } from '@xyflow/react';
-import type { Operation, ScenarioDefinition, ScenarioStep, NodeData } from '../types/scenario';
+import type { Operation, ScenarioDefinition, ScenarioStep, NodeData, ScenarioConfig } from '../types/scenario';
 
 export const convertYamlToGraph = (
     scenario: ScenarioDefinition,
     operations: Operation[]
-): { nodes: Node<NodeData>[]; edges: Edge[] } => {
+): { nodes: Node<NodeData>[]; edges: Edge[]; config?: ScenarioConfig } => {
     const nodes: Node<NodeData>[] = [];
     const edges: Edge[] = [];
 
@@ -89,7 +89,14 @@ export const convertYamlToGraph = (
         }
     });
 
-    return { nodes, edges };
+    const result: { nodes: Node<NodeData>[]; edges: Edge[]; config?: ScenarioConfig } = { nodes, edges };
+
+    // Include config if it exists in scenario
+    if ('config' in scenario) {
+        result.config = scenario.config as ScenarioConfig;
+    }
+
+    return result;
 };
 
 export const convertGraphToYaml = (
@@ -97,8 +104,9 @@ export const convertGraphToYaml = (
     edges: Edge[],
     operations: Operation[] = [],
     name: string = "Exported Scenario",
-    description: string = "Exported from OpenUTM Scenario Designer"
-): ScenarioDefinition => {
+    description: string = "Exported from OpenUTM Scenario Designer",
+    config?: ScenarioConfig
+): ScenarioDefinition & { config?: ScenarioConfig } => {
     // Filter out visual/dependency edges (dotted lines)
     const sequenceEdges = edges.filter(e => e.style?.strokeDasharray !== '5 5');
 
@@ -198,9 +206,16 @@ export const convertGraphToYaml = (
         return step;
     });
 
-    return {
+    const result: ScenarioDefinition & { config?: ScenarioConfig } = {
         name: name,
         description: description,
         steps
     };
+
+    // Include config if provided
+    if (config) {
+        result.config = config;
+    }
+
+    return result;
 };
