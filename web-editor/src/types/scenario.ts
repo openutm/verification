@@ -20,11 +20,18 @@ export interface NodeData extends Record<string, unknown> {
     operationId?: string;
     description?: string;
     parameters?: OperationParam[];
-    status?: 'success' | 'failure' | 'error' | 'running';
+    status?: 'success' | 'failure' | 'error' | 'running' | 'skipped';
     result?: unknown;
     runInBackground?: boolean;
     ifCondition?: string;
+    loop?: LoopConfig;
     onShowResult?: (result: unknown) => void;
+}
+
+export interface LoopConfig {
+    count?: number;
+    items?: unknown[];
+    while?: string;
 }
 
 export interface ScenarioStep {
@@ -35,6 +42,7 @@ export interface ScenarioStep {
     background?: boolean;
     description?: string;
     if?: string;
+    loop?: LoopConfig;
 }
 
 export interface ScenarioDefinition {

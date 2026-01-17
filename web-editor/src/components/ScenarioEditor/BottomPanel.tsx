@@ -85,8 +85,14 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
                                 fontSize: '10px',
                                 padding: '2px 6px',
                                 borderRadius: '4px',
-                                backgroundColor: status === 'success' ? 'var(--success-bg)' : status === 'failure' ? 'var(--danger-bg)' : 'var(--bg-secondary)',
-                                color: status === 'success' ? 'var(--success)' : status === 'failure' ? 'var(--danger)' : 'var(--text-secondary)',
+                                backgroundColor: status === 'success' ? 'var(--success-bg)' :
+                                                 status === 'failure' ? 'var(--danger-bg)' :
+                                                 status === 'skipped' ? 'var(--bg-tertiary)' :
+                                                 'var(--bg-secondary)',
+                                color: status === 'success' ? 'var(--success)' :
+                                       status === 'failure' ? 'var(--danger)' :
+                                       status === 'skipped' ? 'var(--text-tertiary)' :
+                                       'var(--text-secondary)',
                                 border: '1px solid currentColor'
                             }}>
                                 {status.toUpperCase()}

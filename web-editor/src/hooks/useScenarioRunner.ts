@@ -9,7 +9,7 @@ export const useScenarioRunner = () => {
         nodes: Node<NodeData>[],
         edges: Edge[],
         scenarioName: string,
-        onStepComplete?: (result: { id: string; status: 'success' | 'failure' | 'error'; result?: unknown }) => void,
+        onStepComplete?: (result: { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown }) => void,
         onStepStart?: (nodeId: string) => void,
         config?: ScenarioConfig
     ) => {
@@ -123,7 +123,7 @@ export const useScenarioRunner = () => {
                 results.push(stepResult);
 
                 if (onStepComplete) {
-                    onStepComplete(stepResult as { id: string; status: 'success' | 'failure' | 'error'; result?: unknown });
+                    onStepComplete(stepResult as { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown });
                 }
 
                 // If error, stop execution

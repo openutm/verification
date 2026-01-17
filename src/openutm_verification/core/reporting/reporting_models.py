@@ -22,9 +22,10 @@ from openutm_verification.simulator.models.flight_data_types import (
 class Status(StrEnum):
     """Enumeration for status values."""
 
-    PASS = "PASS"
-    FAIL = "FAIL"
-    RUNNING = "RUNNING"
+    PASS = "success"
+    FAIL = "failure"
+    RUNNING = "running"
+    SKIP = "skipped"
 
 
 T = TypeVar("T")

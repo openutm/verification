@@ -3,14 +3,27 @@ from typing import Any, Dict, List
 from pydantic import BaseModel, Field
 
 
+class LoopConfig(BaseModel):
+    """Configuration for step looping."""
+
+    model_config = {"populate_by_name": True}
+
+    count: int | None = Field(default=None, description="Number of times to repeat (fixed iteration)")
+    items: List[Any] | None = Field(default=None, description="List of items to iterate over")
+    while_condition: str | None = Field(default=None, alias="while", description="Condition to continue looping")
+
+
 class StepDefinition(BaseModel):
-    id: str | None = Field(None, description="Unique identifier for the step. If not provided, it defaults to the step name.")
+    model_config = {"populate_by_name": True}
+
+    id: str | None = Field(default=None, description="Unique identifier for the step. If not provided, it defaults to the step name.")
     step: str = Field(..., description="The operation/function to execute (human-readable name)")
     arguments: Dict[str, Any] = Field(default_factory=dict, description="Arguments for the operation")
     needs: List[str] = Field(default_factory=list, description="List of step IDs this step depends on")
-    background: bool = Field(False, description="Whether to run this step in the background")
+    background: bool = Field(default=False, description="Whether to run this step in the background")
     description: str | None = None
-    if_condition: str | None = Field(None, alias="if", description="Conditional expression to determine if step should run")
+    if_condition: str | None = Field(default=None, alias="if", description="Conditional expression to determine if step should run")
+    loop: LoopConfig | None = Field(default=None, description="Loop configuration for repeating the step")
 
 
 class ScenarioDefinition(BaseModel):

@@ -1,13 +1,14 @@
 
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Box, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle } from 'lucide-react';
 import styles from '../../styles/Node.module.css';
 import type { NodeData } from '../../types/scenario';
 
 export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
     const statusClass = data.status === 'success' ? styles.statusSuccess :
         (data.status === 'failure' || data.status === 'error') ? styles.statusError :
-            data.status === 'running' ? styles.statusRunning : '';
+            data.status === 'running' ? styles.statusRunning :
+                data.status === 'skipped' ? styles.statusSkipped : '';
     const selectedClass = selected ? styles.selected : '';
 
     return (
@@ -56,6 +57,18 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                         )}
                         {data.status === 'running' && (
                             <Loader2 size={16} className={styles.spinner} color="var(--accent-primary)" />
+                        )}
+                        {data.status === 'skipped' && (
+                            <div
+                                className={styles.statusButton}
+                                title="Skipped"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    data.onShowResult?.(data.result);
+                                }}
+                            >
+                                <MinusCircle size={16} color="var(--text-tertiary)" />
+                            </div>
                         )}
                     </div>
                 )}

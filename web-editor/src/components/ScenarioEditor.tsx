@@ -322,7 +322,7 @@ const ScenarioEditorContent = () => {
         }
     }, [clearGraph, isDirty]);
 
-    const updateNodesWithResults = useCallback((currentNodes: Node<NodeData>[], results: { id: string; status: 'success' | 'failure' | 'error'; result?: unknown }[]) => {
+    const updateNodesWithResults = useCallback((currentNodes: Node<NodeData>[], results: { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown }[]) => {
         return currentNodes.map(node => {
             const stepResult = results.find((r) => r.id === node.id);
             if (stepResult) {
@@ -395,7 +395,7 @@ const ScenarioEditorContent = () => {
         const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edgesRef.current;
 
         // Pass a callback to update nodes incrementally
-        const onStepComplete = (stepResult: { id: string; status: 'success' | 'failure' | 'error'; result?: unknown }) => {
+        const onStepComplete = (stepResult: { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown }) => {
             setNodes((nds) => {
                 const updatedNodes = updateNodesWithResults(nds, [stepResult]);
 
@@ -654,6 +654,29 @@ const ScenarioEditorContent = () => {
         });
     }, [setNodes]);
 
+    const updateNodeLoop = useCallback((nodeId: string, loopConfig: NodeData['loop']) => {
+        setIsDirty(true);
+        setNodes((nds) => {
+            return nds.map((node) => {
+                if (node.id === nodeId) {
+                    return {
+                        ...node,
+                        data: { ...node.data, loop: loopConfig },
+                    };
+                }
+                return node;
+            });
+        });
+
+        setSelectedNode((prev) => {
+            if (!prev || prev.id !== nodeId) return prev;
+            return {
+                ...prev,
+                data: { ...prev.data, loop: loopConfig },
+            };
+        });
+    }, [setNodes]);
+
     const getConnectedSourceNodes = useCallback((targetNodeId: string) => {
         const sourceNodeIds = new Set(edges
             .filter(edge => edge.target === targetNodeId)
@@ -763,6 +786,7 @@ const ScenarioEditorContent = () => {
                         onUpdateRunInBackground={updateNodeRunInBackground}
                         onUpdateStepId={updateNodeStepId}
                         onUpdateIfCondition={updateNodeIfCondition}
+                        onUpdateLoop={updateNodeLoop}
                     />
                 ) : (
                     <MemoizedScenarioInfoPanel

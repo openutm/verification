@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Link as LinkIcon, Unlink } from 'lucide-react';
 import type { Node } from '@xyflow/react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
@@ -42,6 +42,7 @@ interface PropertiesPanelProps {
     onUpdateRunInBackground: (nodeId: string, value: boolean) => void;
     onUpdateStepId: (nodeId: string, stepId: string) => void;
     onUpdateIfCondition: (nodeId: string, condition: string) => void;
+    onUpdateLoop: (nodeId: string, loopConfig: { count?: number; items?: unknown[]; while?: string } | undefined) => void;
 }
 
 const parseRefString = (value: unknown) => {
@@ -54,9 +55,25 @@ const parseRefString = (value: unknown) => {
     };
 };
 
-export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId, onUpdateIfCondition }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId, onUpdateIfCondition, onUpdateLoop }: PropertiesPanelProps) => {
     const [width, setWidth] = useState(480);
     const [isResizing, setIsResizing] = useState(false);
+
+    // Compute loop type from node data
+    const computedLoopType = useMemo<'none' | 'count' | 'items' | 'while'>(() => {
+        if (!selectedNode.data.loop) return 'none';
+        if (selectedNode.data.loop.count !== undefined) return 'count';
+        if (selectedNode.data.loop.items !== undefined) return 'items';
+        if (selectedNode.data.loop.while !== undefined) return 'while';
+        return 'none';
+    }, [selectedNode.data.loop]);
+
+    const [loopType, setLoopType] = useState<'none' | 'count' | 'items' | 'while'>(computedLoopType);
+
+    // Sync loopType state with computed value when node changes
+    if (loopType !== computedLoopType) {
+        setLoopType(computedLoopType);
+    }
 
     const startResizing = useCallback((mouseDownEvent: React.MouseEvent) => {
         mouseDownEvent.preventDefault();
@@ -190,6 +207,87 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                             • <code style={{ fontSize: '10px' }}>always()</code> - always run<br/>
                             • <code style={{ fontSize: '10px' }}>steps.step1.status == 'pass'</code> - check specific step
                         </div>
+                    </div>
+
+                    <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                        <label>Loop Configuration</label>
+                        <select
+                            className={styles.paramInput}
+                            value={loopType}
+                            onChange={(e) => {
+                                const newType = e.target.value as typeof loopType;
+                                setLoopType(newType);
+                                if (newType === 'none') {
+                                    onUpdateLoop(selectedNode.id, undefined);
+                                } else if (newType === 'count') {
+                                    onUpdateLoop(selectedNode.id, { count: 1 });
+                                } else if (newType === 'items') {
+                                    onUpdateLoop(selectedNode.id, { items: [] });
+                                } else if (newType === 'while') {
+                                    onUpdateLoop(selectedNode.id, { while: '' });
+                                }
+                            }}
+                            style={{ marginBottom: '8px' }}
+                        >
+                            <option value="none">No Loop</option>
+                            <option value="count">Fixed Count</option>
+                            <option value="items">Iterate Items</option>
+                            <option value="while">While Condition</option>
+                        </select>
+
+                        {loopType === 'count' && (
+                            <>
+                                <input
+                                    type="number"
+                                    className={styles.paramInput}
+                                    value={selectedNode.data.loop?.count || 1}
+                                    onChange={(e) => onUpdateLoop(selectedNode.id, { count: parseInt(e.target.value) || 1 })}
+                                    placeholder="Number of iterations"
+                                    min="1"
+                                />
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                    Repeat this step N times. Access iteration with <code style={{ fontSize: '10px' }}>loop.index</code>
+                                </div>
+                            </>
+                        )}
+
+                        {loopType === 'items' && (
+                            <>
+                                <textarea
+                                    className={styles.paramInput}
+                                    value={selectedNode.data.loop?.items ? JSON.stringify(selectedNode.data.loop.items) : '[]'}
+                                    onChange={(e) => {
+                                        try {
+                                            const items = JSON.parse(e.target.value);
+                                            onUpdateLoop(selectedNode.id, { items });
+                                        } catch {
+                                            // Invalid JSON, ignore
+                                        }
+                                    }}
+                                    placeholder='["item1", "item2", "item3"]'
+                                    rows={3}
+                                    style={{ fontFamily: 'monospace', fontSize: '12px' }}
+                                />
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                    JSON array of items. Access current item with <code style={{ fontSize: '10px' }}>loop.item</code>
+                                </div>
+                            </>
+                        )}
+
+                        {loopType === 'while' && (
+                            <>
+                                <input
+                                    type="text"
+                                    className={styles.paramInput}
+                                    value={selectedNode.data.loop?.while || ''}
+                                    onChange={(e) => onUpdateLoop(selectedNode.id, { while: e.target.value })}
+                                    placeholder="loop.index < 10"
+                                />
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                    Continue while condition is true. Max 100 iterations. Use <code style={{ fontSize: '10px' }}>loop.index</code>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <h4>Parameters</h4>

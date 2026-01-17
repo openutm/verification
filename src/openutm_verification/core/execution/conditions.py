@@ -21,13 +21,15 @@ from openutm_verification.core.reporting.reporting_models import Status, StepRes
 class ConditionEvaluator:
     """Evaluates conditional expressions for step execution."""
 
-    def __init__(self, steps: dict[str, StepResult[Any]]):
+    def __init__(self, steps: dict[str, StepResult[Any]], loop_context: dict[str, Any] | None = None):
         """Initialize evaluator with step results.
 
         Args:
             steps: Dictionary mapping step IDs to their results
+            loop_context: Optional loop context with 'index' and 'item' values
         """
         self.steps = steps
+        self.loop_context = loop_context or {}
         self.last_step_status: Status | None = None
 
         # Determine last step status (excluding skipped steps)
@@ -83,7 +85,40 @@ class ConditionEvaluator:
         return condition
 
     def _replace_step_references(self, condition: str) -> str:
-        """Replace step.X.Y references with actual values."""
+        """Replace step.X.Y and loop.X references with actual values."""
+        # Replace loop variables first
+        condition = self._replace_loop_variables(condition)
+
+        # Pattern: steps.<step_id>[<index>].<field> (for loop iterations)
+        bracket_pattern = r"steps\.([a-zA-Z0-9_-]+)\[(\d+)\]\.([a-zA-Z0-9_]+)"
+
+        def replace_bracket_match(match: re.Match) -> str:
+            step_id = match.group(1)
+            index = int(match.group(2))
+            field = match.group(3)
+
+            # For looped steps, results are stored as step_id[index]
+            actual_step_id = f"{step_id}[{index}]"
+
+            if actual_step_id not in self.steps:
+                logger.warning(f"Step iteration '{actual_step_id}' not found in results")
+                return "None"
+
+            step = self.steps[actual_step_id]
+
+            if field == "status":
+                return f"'{step.status.value}'"
+            elif field == "result":
+                if step.details is None:
+                    return "None"
+                return repr(step.details)
+            else:
+                logger.warning(f"Unknown field '{field}' for step '{actual_step_id}'")
+                return "None"
+
+        # Replace bracket notation first
+        condition = re.sub(bracket_pattern, replace_bracket_match, condition)
+
         # Pattern: steps.<step_id>.status or steps.<step_id>.result
         pattern = r"steps\.([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_]+)"
 
@@ -101,13 +136,30 @@ class ConditionEvaluator:
                 # Return status as string for comparison
                 return f"'{step.status.value}'"
             elif field == "result":
-                # Return result value (could be complex, so use repr for safety)
-                return repr(step.result)
+                # Return result/details value as repr'd value
+                # If details is None, return None (without quotes)
+                if step.details is None:
+                    return "None"
+                # Otherwise return the repr which will be a valid Python literal
+                return repr(step.details)
             else:
                 logger.warning(f"Unknown field '{field}' for step '{step_id}'")
                 return "None"
 
         return re.sub(pattern, replace_match, condition)
+
+    def _replace_loop_variables(self, condition: str) -> str:
+        """Replace loop.X references with actual values."""
+        # Replace loop.index
+        if "loop.index" in condition and "index" in self.loop_context:
+            condition = condition.replace("loop.index", str(self.loop_context["index"]))
+
+        # Replace loop.item
+        if "loop.item" in condition and "item" in self.loop_context:
+            item_value = repr(self.loop_context["item"])
+            condition = condition.replace("loop.item", item_value)
+
+        return condition
 
     def _evaluate_expression(self, expr: str) -> bool:
         """Safely evaluate a boolean expression.
@@ -119,7 +171,12 @@ class ConditionEvaluator:
         - String literals: 'value'
         """
         # Replace logical operators with Python equivalents
-        expr = expr.replace("&&", " and ").replace("||", " or ").replace("!", " not ")
+        # Note: Must handle "!" carefully to not replace it in "!="
+        expr = expr.replace("&&", " and ").replace("||", " or ")
+        # Only replace "!" when not followed by "="
+        import re
+
+        expr = re.sub(r"!(?!=)", " not ", expr)
 
         # Only allow safe evaluation
         # Create a restricted namespace

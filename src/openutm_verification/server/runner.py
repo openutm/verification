@@ -110,7 +110,24 @@ class SessionManager:
             self.session_context = None
             _scenario_state.set(None)
 
-    def _resolve_ref(self, ref: str) -> Any:
+    def _resolve_ref(self, ref: str, loop_context: Dict[str, Any] | None = None) -> Any:
+        # Handle loop variables first
+        if ref.startswith("loop."):
+            if not loop_context:
+                raise ValueError(f"Loop variable '{ref}' used outside of loop context")
+            parts = ref.split(".")
+            if len(parts) != 2:
+                raise ValueError(f"Loop reference must be 'loop.index' or 'loop.item', got '{ref}'")
+            field = parts[1]
+            if field == "index":
+                return loop_context.get("index", 0)
+            elif field == "item":
+                if "item" not in loop_context:
+                    raise ValueError("loop.item used but no item in loop context")
+                return loop_context["item"]
+            else:
+                raise ValueError(f"Unknown loop field '{field}', must be 'index' or 'item'")
+
         if ref.startswith("data_files."):
             if not self.data_files:
                 raise ValueError("Data files not initialized")
@@ -169,9 +186,10 @@ class SessionManager:
 
         return current_value
 
-    def resolve_references_in_params(self, params: Dict[str, Any]) -> None:
+    def resolve_references_in_params(self, params: Dict[str, Any], loop_context: Dict[str, Any] | None = None) -> None:
         # Regex to find ${{ ... }} patterns
         pattern = re.compile(r"\$\{\{\s*(.*?)\s*\}\}")
+        loop_context = loop_context or {}
 
         def resolve_value(value: Any) -> Any:
             if isinstance(value, str):
@@ -180,7 +198,7 @@ class SessionManager:
                     # Entire string is a reference
                     ref = match.group(1)
                     try:
-                        resolved = self._resolve_ref(ref)
+                        resolved = self._resolve_ref(ref, loop_context)
                         logger.info(f"Resolved reference {ref} to {resolved}")
                         return resolved
                     except Exception as e:
@@ -251,9 +269,9 @@ class SessionManager:
 
         return flight_declaration, telemetry_states
 
-    def _prepare_params(self, step: StepDefinition) -> Dict[str, Any]:
+    def _prepare_params(self, step: StepDefinition, loop_context: Dict[str, Any] | None = None) -> Dict[str, Any]:
         params = step.arguments.copy() if step.arguments else {}
-        self.resolve_references_in_params(params)
+        self.resolve_references_in_params(params, loop_context)
         return params
 
     def _serialize_result(self, result: Any) -> Any:
@@ -269,7 +287,7 @@ class SessionManager:
                 return "success"
         return "success"
 
-    async def _execute_step(self, step: StepDefinition) -> Dict[str, Any]:
+    async def _execute_step(self, step: StepDefinition, loop_context: Dict[str, Any] | None = None) -> Dict[str, Any]:
         assert self.session_resolver is not None and self.session_context is not None
         if step.step not in STEP_REGISTRY:
             raise ValueError(f"Step '{step.step}' not found in registry")
@@ -280,7 +298,7 @@ class SessionManager:
         method = getattr(client, entry.method_name)
 
         # Prepare parameters (resolve refs, inject context)
-        kwargs = self._prepare_params(step)
+        kwargs = self._prepare_params(step, loop_context)
 
         if step.background:
             step_id = step.id or step.step
@@ -333,7 +351,7 @@ class SessionManager:
 
         return {"id": step.id, "step": step.step, "status": status_str, "result": result_data}
 
-    async def execute_single_step(self, step: StepDefinition) -> Dict[str, Any]:
+    async def execute_single_step(self, step: StepDefinition, loop_context: Dict[str, Any] | None = None) -> Dict[str, Any]:
         if not self.session_resolver or not self.session_context:
             logger.info("Session resolver not found, initializing session")
             await self.initialize_session()
@@ -349,7 +367,7 @@ class SessionManager:
                 # Ensure state is available after entering context
                 if not self.session_context.state:
                     raise ValueError("Scenario state not initialized")
-                return await self._execute_step(step)
+                return await self._execute_step(step, loop_context)
         except Exception as e:
             step_id = step.id or step.step
             logger.error(f"Error executing step {step_id}: {e}")
@@ -372,33 +390,132 @@ class SessionManager:
 
         for step in scenario.steps:
             # Evaluate condition if present
-            if step.if_condition:
+            # If no condition is specified, default to success() - only run if no failures so far
+            condition_to_evaluate = step.if_condition or "success()"
+
+            logger.debug(f"Step '{step.id}': if_condition='{step.if_condition}', evaluating: '{condition_to_evaluate}'")
+
+            step_results_dict = {}
+            if self.session_context and self.session_context.state:
+                step_results_dict = self.session_context.state.step_results
+
+            evaluator = ConditionEvaluator(step_results_dict)
+            should_run = evaluator.evaluate(condition_to_evaluate)
+
+            if not should_run:
+                logger.info(f"Skipping step '{step.id}' due to condition: {condition_to_evaluate}")
+                # Record as skipped
+                skipped_result = StepResult(
+                    id=step.id or step.step,
+                    name=step.step,
+                    status=Status.SKIP,
+                    duration=0.0,
+                    details=None,
+                    message=f"Skipped due to condition: {condition_to_evaluate}",
+                )
+                if self.session_context:
+                    self.session_context.add_result(skipped_result)
+                results.append({"id": step.id, "status": "skipped", "result": None, "message": f"Condition not met: {condition_to_evaluate}"})
+                continue
+
+            # Handle loop execution
+            if step.loop:
+                loop_results = await self._execute_loop(step)
+                results.extend(loop_results)
+                # Check if any loop iteration failed
+                if loop_results and any(r.get("status") == "error" for r in loop_results):
+                    logger.error(f"Loop for step '{step.id}' failed, breaking scenario")
+                    break
+            else:
+                result = await self.execute_single_step(step)
+                results.append(result)
+                # Don't break on error - let conditions handle execution flow
+                # Steps with always() condition will still run after errors
+        return results
+
+    async def _execute_loop(self, step: StepDefinition) -> List[Dict[str, Any]]:
+        """Execute a step multiple times based on loop configuration."""
+        results = []
+        loop_config = step.loop
+
+        if not loop_config:
+            return results
+
+        # Determine loop iterations
+        iterations = []
+        if loop_config.count is not None:
+            # Fixed count loop
+            iterations = list(range(loop_config.count))
+        elif loop_config.items is not None:
+            # Items loop
+            iterations = loop_config.items
+        else:
+            # while loop - we'll handle separately
+            pass
+
+        if iterations:
+            # Execute for each iteration
+            for index, item in enumerate(iterations):
+                loop_context = {"index": index, "item": item if loop_config.items else index}
+
+                # Check if condition for continuing loop
+                if loop_config.while_condition:
+                    step_results_dict = {}
+                    if self.session_context and self.session_context.state:
+                        step_results_dict = self.session_context.state.step_results
+
+                    evaluator = ConditionEvaluator(step_results_dict, loop_context)
+                    should_continue = evaluator.evaluate(loop_config.while_condition)
+                    if not should_continue:
+                        logger.info(f"Breaking loop for step '{step.id}' at iteration {index} due to while condition")
+                        break
+
+                # Create a modified step with loop-aware ID
+                loop_step = step.model_copy(deep=True)
+                loop_step.id = f"{step.id}[{index}]"
+
+                logger.info(f"Executing loop iteration {index} for step '{step.id}'")
+                result = await self.execute_single_step(loop_step, loop_context)
+                results.append(result)
+
+                if result.get("status") == "error":
+                    logger.error(f"Loop iteration {index} failed, breaking loop")
+                    break
+
+        elif loop_config.while_condition:
+            # Pure while loop (no items, no count)
+            index = 0
+            max_iterations = 100  # Safety limit
+
+            while index < max_iterations:
                 step_results_dict = {}
                 if self.session_context and self.session_context.state:
                     step_results_dict = self.session_context.state.step_results
 
-                evaluator = ConditionEvaluator(step_results_dict)
-                should_run = evaluator.evaluate(step.if_condition)
+                loop_context = {"index": index, "item": index}
+                evaluator = ConditionEvaluator(step_results_dict, loop_context)
+                should_continue = evaluator.evaluate(loop_config.while_condition)
 
-                if not should_run:
-                    logger.info(f"Skipping step '{step.id}' due to condition: {step.if_condition}")
-                    # Record as skipped
-                    skipped_result = StepResult(
-                        id=step.id or step.step,
-                        name=step.step,
-                        status=Status.SKIP,
-                        duration=0.0,
-                        result=None,
-                        message=f"Skipped due to condition: {step.if_condition}",
-                    )
-                    ScenarioContext.add_result(skipped_result)
-                    results.append({"id": step.id, "status": "skipped", "result": None, "message": f"Condition not met: {step.if_condition}"})
-                    continue
+                if not should_continue:
+                    logger.info(f"Exiting while loop for step '{step.id}' at iteration {index}")
+                    break
 
-            result = await self.execute_single_step(step)
-            results.append(result)
-            if result.get("status") == "error":
-                break
+                loop_step = step.model_copy(deep=True)
+                loop_step.id = f"{step.id}[{index}]"
+
+                logger.info(f"Executing while loop iteration {index} for step '{step.id}'")
+                result = await self.execute_single_step(loop_step, loop_context)
+                results.append(result)
+
+                if result.get("status") == "error":
+                    logger.error(f"While loop iteration {index} failed, breaking loop")
+                    break
+
+                index += 1
+
+            if index >= max_iterations:
+                logger.warning(f"While loop for step '{step.id}' reached maximum iterations ({max_iterations})")
+
         return results
 
     async def execute_function(self, func: Callable[..., Coroutine[Any, Any, T]]) -> T:

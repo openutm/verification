@@ -51,7 +51,8 @@ export const convertYamlToGraph = (
                 description: step.description || operation.description,
                 parameters: parameters,
                 runInBackground: step.background,
-                ifCondition: step.if
+                ifCondition: step.if,
+                loop: step.loop
             }
         };
 
@@ -206,6 +207,10 @@ export const convertGraphToYaml = (
 
         if (node.data.ifCondition && node.data.ifCondition.trim() !== '') {
             step.if = node.data.ifCondition;
+        }
+
+        if (node.data.loop) {
+            step.loop = node.data.loop;
         }
 
         return step;
