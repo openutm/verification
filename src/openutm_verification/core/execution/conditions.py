@@ -109,9 +109,9 @@ class ConditionEvaluator:
             if field == "status":
                 return f"'{step.status.value}'"
             elif field == "result":
-                if step.details is None:
+                if step.result is None:
                     return "None"
-                return repr(step.details)
+                return repr(step.result)
             else:
                 logger.warning(f"Unknown field '{field}' for step '{actual_step_id}'")
                 return "None"
@@ -136,12 +136,12 @@ class ConditionEvaluator:
                 # Return status as string for comparison
                 return f"'{step.status.value}'"
             elif field == "result":
-                # Return result/details value as repr'd value
-                # If details is None, return None (without quotes)
-                if step.details is None:
+                # Return result value as repr'd value
+                # If result is None, return None (without quotes)
+                if step.result is None:
                     return "None"
                 # Otherwise return the repr which will be a valid Python literal
-                return repr(step.details)
+                return repr(step.result)
             else:
                 logger.warning(f"Unknown field '{field}' for step '{step_id}'")
                 return "None"

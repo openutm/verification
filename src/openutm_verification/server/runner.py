@@ -167,9 +167,9 @@ class SessionManager:
         # Skip "steps" and "step_name"
         remaining_parts = parts[2:]
 
-        # Handle "result" alias for "details"
-        if remaining_parts[0] == "result":
-            remaining_parts[0] = "details"
+        # Handle legacy "details" alias, now standardized to "result"
+        if remaining_parts[0] == "details":
+            remaining_parts[0] = "result"
 
         for part in remaining_parts:
             if not part:
@@ -305,7 +305,7 @@ class SessionManager:
             logger.info(f"Executing step '{step_id}' ({step.step}) in background")
             task = asyncio.create_task(call_with_dependencies(method, resolver=self.session_resolver, **kwargs))
             self.session_tasks[step_id] = task
-            self.session_context.add_result(StepResult(id=step_id, name=step.step, status=Status.RUNNING, details={"task_id": step_id}, duration=0.0))
+            self.session_context.add_result(StepResult(id=step_id, name=step.step, status=Status.RUNNING, result={"task_id": step_id}, duration=0.0))
             return {"id": step_id, "step": step.step, "status": "running", "task_id": step_id}
 
         # Execute with dependencies
@@ -347,7 +347,7 @@ class SessionManager:
             # We can remove the old one (if any) and add the updated one.
             self.session_context.add_result(result)
         else:
-            self.session_context.add_result(StepResult(id=step_id, name=step.step, status=Status.PASS, details=result_data, duration=0.0))
+            self.session_context.add_result(StepResult(id=step_id, name=step.step, status=Status.PASS, result=result_data, duration=0.0))
 
         return {"id": step.id, "step": step.step, "status": status_str, "result": result_data}
 
@@ -410,7 +410,7 @@ class SessionManager:
                     name=step.step,
                     status=Status.SKIP,
                     duration=0.0,
-                    details=None,
+                    result=None,
                     message=f"Skipped due to condition: {condition_to_evaluate}",
                 )
                 if self.session_context:

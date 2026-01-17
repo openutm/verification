@@ -363,7 +363,7 @@ class GeoJSONFlightsSimulator:
             record = FullFlightRecord(
                 reference_time=now_isoformat,
                 states=all_flight_telemetry[m],
-                flight_details=self.generate_flight_details(flight_id=str(m)),
+                flight_result=self.generate_flight_details(flight_id=str(m)),
                 aircraft_type="Helicopter",
             )
             flights.append(record)

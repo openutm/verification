@@ -57,7 +57,7 @@ class TestScenarioWithConditions:
 
             result = {"id": step.id, "status": "success", "result": None}
             # Add result to session context
-            step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, details=None)
+            step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
             session_manager.session_context.add_result(step_result)
             return result
 
@@ -94,11 +94,11 @@ class TestScenarioWithConditions:
             if call_count == 1:
                 # First step fails
                 result = {"id": step.id, "status": "error", "result": None}
-                step_result = StepResult(id=step.id, name=step.step, status=Status.FAIL, duration=0.0, details=None)
+                step_result = StepResult(id=step.id, name=step.step, status=Status.FAIL, duration=0.0, result=None)
             else:
                 # Cleanup succeeds
                 result = {"id": step.id, "status": "success", "result": None}
-                step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, details=None)
+                step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
 
             session_manager.session_context.add_result(step_result)
             return result
@@ -132,7 +132,7 @@ class TestScenarioWithConditions:
                 result = {"id": step.id, "status": "success", "result": None}
                 # Add to session context properly
                 if session_manager.session_context and session_manager.session_context.state:
-                    session_manager.session_context.add_result(StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, details=None))
+                    session_manager.session_context.add_result(StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None))
                 return result
 
             mock_execute.side_effect = mock_execute_step
@@ -228,7 +228,7 @@ class TestScenarioWithLoops:
                 result = {"id": step.id, "status": "success", "result": None}
                 # Add to session context properly with the actual step ID
                 if session_manager.session_context and session_manager.session_context.state:
-                    session_manager.session_context.add_result(StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, details=None))
+                    session_manager.session_context.add_result(StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None))
                 return result
 
             mock_execute.side_effect = mock_execute_step
@@ -270,7 +270,7 @@ class TestComplexScenarios:
                 result = {"id": step.id, "status": "success", "result": None}
                 # Add to session context properly with the actual step ID
                 if session_manager.session_context and session_manager.session_context.state:
-                    session_manager.session_context.add_result(StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, details=None))
+                    session_manager.session_context.add_result(StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None))
                 return result
 
             mock_execute.side_effect = mock_execute_step

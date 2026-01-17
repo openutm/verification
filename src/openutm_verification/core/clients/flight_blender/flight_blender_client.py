@@ -754,7 +754,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return StepResult(
                 name=f"Track message received {expected_track_interval_seconds} seconds",
                 status=Status.FAIL,
-                details=f"Track message not processed {expected_track_interval_seconds} seconds",
+                result=f"Track message not processed {expected_track_interval_seconds} seconds",
                 duration=duration,
             )
         else:
@@ -762,7 +762,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return StepResult(
                 name=f"Track message received {expected_track_interval_seconds} seconds",
                 status=Status.PASS,
-                details=f"Track message processed {expected_track_interval_seconds} seconds",
+                result=f"Track message processed {expected_track_interval_seconds} seconds",
                 duration=duration,
             )
 
@@ -820,7 +820,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return StepResult(
                 name=f"Heartbeat message received {expected_heartbeat_interval_seconds} seconds",
                 status=Status.FAIL,
-                details=f"Heartbeat message not processed {expected_heartbeat_interval_seconds} seconds",
+                result=f"Heartbeat message not processed {expected_heartbeat_interval_seconds} seconds",
                 duration=duration,
             )
         else:
@@ -830,7 +830,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return StepResult(
                 name=f"Heartbeat message received {expected_heartbeat_interval_seconds} seconds",
                 status=Status.PASS,
-                details=f"Heartbeat message processed {expected_heartbeat_interval_seconds} seconds",
+                result=f"Heartbeat message processed {expected_heartbeat_interval_seconds} seconds",
                 duration=duration,
             )
 

@@ -74,7 +74,7 @@ class TestConditionEvaluator:
     def test_step_result_check(self):
         """Test accessing step result values."""
         steps = {
-            "step1": StepResult(id="step1", name="Step 1", status=Status.PASS, duration=1.0, details={"data": "value"}),
+            "step1": StepResult(id="step1", name="Step 1", status=Status.PASS, duration=1.0, result={"data": "value"}),
         }
         evaluator = ConditionEvaluator(steps)
         assert evaluator.evaluate("steps.step1.result != None") is True

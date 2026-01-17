@@ -60,7 +60,7 @@ async def test_upload_geo_fence(fb_client):
     with patch("builtins.open", mock_open(read_data='{"type": "FeatureCollection"}')):
         result = await fb_client.upload_geo_fence(filename="test.geojson")
 
-    assert result.details["id"] == "geo_fence_123"
+    assert result.result["id"] == "geo_fence_123"
     assert fb_client.latest_geo_fence_id == "geo_fence_123"
     fb_client.put.assert_called_once()
 
@@ -73,7 +73,7 @@ async def test_get_geo_fence(fb_client):
 
     result = await fb_client.get_geo_fence()
 
-    assert result.details["id"] == "geo_fence_123"
+    assert result.result["id"] == "geo_fence_123"
     fb_client.get.assert_called_once_with("/geo_fence_ops/geo_fence/geo_fence_123")
 
 
@@ -85,8 +85,8 @@ async def test_delete_geo_fence(fb_client):
 
     result = await fb_client.delete_geo_fence()
 
-    assert result.details["id"] == "geo_fence_123"
-    assert result.details["deleted"] is True
+    assert result.result["id"] == "geo_fence_123"
+    assert result.result["deleted"] is True
     assert fb_client.latest_geo_fence_id is None
     fb_client.delete.assert_called_once_with("/geo_fence_ops/geo_fence/geo_fence_123/delete")
 
@@ -100,7 +100,7 @@ async def test_upload_flight_declaration_file(fb_client):
         mock_now.return_value.shift.return_value.isoformat.return_value = "2023-01-01T00:00:00Z"
         result = await fb_client.upload_flight_declaration(declaration="test.json")
 
-    assert result.details["id"] == "fd_123"
+    assert result.result["id"] == "fd_123"
     assert fb_client.latest_flight_declaration_id == "fd_123"
     fb_client.post.assert_called_once()
 
@@ -158,7 +158,7 @@ async def test_wait_x_seconds(common_client):
     with patch("asyncio.sleep", AsyncMock()) as mock_sleep:
         result = await common_client.wait(duration=2)
 
-    assert "Waited for Flight Blender to process 2 seconds" in result.details
+    assert "Waited for Flight Blender to process 2 seconds" in result.result
     mock_sleep.assert_called_once_with(2)
 
 
@@ -210,7 +210,7 @@ async def test_check_operation_state(fb_client):
     with patch("asyncio.sleep", AsyncMock()) as mock_sleep:
         result = await fb_client.check_operation_state(expected_state=OperationState.ACTIVATED, duration=1)
 
-    assert "Waited for Flight Blender to process OperationState.ACTIVATED state" in result.details
+    assert "Waited for Flight Blender to process OperationState.ACTIVATED state" in result.result
     mock_sleep.assert_called_once_with(1)
 
 
@@ -222,7 +222,7 @@ async def test_check_operation_state_connected(fb_client):
 
     result = await fb_client.check_operation_state_connected(expected_state=OperationState.ACTIVATED, duration=5)
 
-    assert result.details["state"] == OperationState.ACTIVATED.value
+    assert result.result["state"] == OperationState.ACTIVATED.value
     fb_client.get.assert_called()
 
 
@@ -234,8 +234,8 @@ async def test_delete_flight_declaration(fb_client):
 
     result = await fb_client.delete_flight_declaration()
 
-    assert result.details["id"] == "fd_123"
-    assert result.details["deleted"] is True
+    assert result.result["id"] == "fd_123"
+    assert result.result["deleted"] is True
     assert fb_client.latest_flight_declaration_id is None
     fb_client.delete.assert_called_once_with("/flight_declaration_ops/flight_declaration/fd_123/delete")
 
@@ -270,7 +270,7 @@ async def test_start_stop_sdsp_session(fb_client):
 
     result = await fb_client.start_stop_sdsp_session(session_id="sess_123", action=SDSPSessionAction.START)
 
-    assert "start Heartbeat Track message received" in result.details
+    assert "start Heartbeat Track message received" in result.result
     fb_client.put.assert_called_once()
 
 
@@ -439,7 +439,7 @@ async def test_submit_simulated_air_traffic(fb_client):
 
         result = await fb_client.submit_simulated_air_traffic(observations=obs)
 
-        assert result.details is True
+        assert result.result is True
         assert fb_client.post.called
 
 
@@ -518,7 +518,7 @@ async def test_generate_simulated_air_traffic_data(at_client):
 
         result = await at_client.generate_simulated_air_traffic_data()
 
-        assert result.details == [[{"obs": 1}]]
+        assert result.result == [[{"obs": 1}]]
         mock_sim_instance.generate_air_traffic_data.assert_called_once()
 
 
@@ -536,6 +536,6 @@ async def test_fetch_data(os_client):
 
     result = await os_client.fetch_data()
 
-    assert len(result.details) == 1
-    assert result.details[0].icao_address == "icao1"
+    assert len(result.result) == 1
+    assert result.result[0].icao_address == "icao1"
     os_client.get.assert_called_once()

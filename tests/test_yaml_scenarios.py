@@ -33,7 +33,7 @@ def mock_clients():
     fb_client.start_stop_sdsp_session.return_value = "Session Started"
 
     # Mock methods that return objects with attributes accessed in YAML
-    # e.g. ${{ steps.Generate Simulated Air Traffic Data.result.details }}
+    # e.g. ${{ steps.Generate Simulated Air Traffic Data.result.result }}
     # But wait, we changed it to just .result in the previous turn.
     # Let's check if any other steps return complex objects.
 

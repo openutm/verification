@@ -25,7 +25,7 @@ async def sdsp_track(fb_client: FlightBlenderClient, air_traffic_client: AirTraf
         session_id=session_id,
     )
 
-    observations = (await air_traffic_client.generate_simulated_air_traffic_data()).details
+    observations = (await air_traffic_client.generate_simulated_air_traffic_data()).result
     # to start a background parallel task, instead of await, use create_task:
     task = asyncio.create_task(fb_client.submit_simulated_air_traffic(observations=observations))
     # Task is now running, concurrently while any other `async await` calls are done.

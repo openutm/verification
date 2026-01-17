@@ -220,7 +220,7 @@ class ScenarioStepDescriptor:
                     name=step_name,
                     status=Status.PASS,
                     duration=duration,
-                    details=result,
+                    result=result,
                 )
 
             ScenarioContext.add_result(step_result)

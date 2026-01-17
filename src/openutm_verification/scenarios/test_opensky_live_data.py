@@ -24,7 +24,7 @@ async def test_opensky_live_data(fb_client: FlightBlenderClient, opensky_client:
         logger.info(f"OpenSky iteration {i + 1}/{iteration_count}")
 
         step_result = await opensky_client.fetch_data()
-        observations = step_result.details
+        observations = step_result.result
 
         if observations:
             await fb_client.submit_air_traffic(observations=observations)

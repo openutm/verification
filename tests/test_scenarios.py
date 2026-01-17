@@ -103,7 +103,7 @@ async def test_geo_fence_upload_scenario(mock_get_path, fb_client):
 async def test_opensky_live_data_scenario(mock_sleep, fb_client):
     opensky_client = AsyncMock()
     step_result = MagicMock()
-    step_result.details = ["obs1", "obs2"]
+    step_result.result = ["obs1", "obs2"]
     opensky_client.fetch_data.return_value = step_result
 
     await scenario_opensky_live_data(fb_client, opensky_client)
@@ -126,7 +126,7 @@ async def test_sdsp_heartbeat_scenario(fb_client, common_client):
 async def test_sdsp_track_scenario(fb_client, common_client):
     air_traffic_client = AsyncMock()
     step_result = MagicMock()
-    step_result.details = ["obs1"]
+    step_result.result = ["obs1"]
     air_traffic_client.generate_simulated_air_traffic_data.return_value = step_result
     await scenario_sdsp_track(fb_client, air_traffic_client, common_client)
 
@@ -140,7 +140,7 @@ async def test_sdsp_track_scenario(fb_client, common_client):
 async def test_openutm_sim_air_traffic_data_scenario(fb_client):
     air_traffic_client = AsyncMock()
     step_result = MagicMock()
-    step_result.details = ["obs1"]
+    step_result.result = ["obs1"]
     air_traffic_client.generate_simulated_air_traffic_data.return_value = step_result
 
     await scenario_openutm_sim_air_traffic_data(fb_client, air_traffic_client)

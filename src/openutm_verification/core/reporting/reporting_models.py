@@ -38,7 +38,7 @@ class StepResult(BaseModel, Generic[T]):
     name: str
     status: Status
     duration: float
-    details: T = None  # type: ignore
+    result: T = None  # type: ignore
     error_message: str | None = None
     logs: list[str] = []
 

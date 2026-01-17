@@ -17,5 +17,5 @@ async def test_openutm_sim_air_traffic_data(
     The OpenSky client is provided by the caller; this function focuses on orchestration only.
     """
     step_result = await air_traffic_client.generate_simulated_air_traffic_data()
-    observations = step_result.details
+    observations = step_result.result
     await fb_client.submit_simulated_air_traffic(observations=observations)
