@@ -127,24 +127,30 @@ def data_files(scenario_id: ScenarioId) -> Generator[DataFiles, None, None]:
 
     if suite_scenario:
         # Merge suite overrides with base config
-        trajectory = suite_scenario.trajectory or config.data_files.trajectory
+        if suite_scenario.simulation and suite_scenario.trajectory is None:
+            trajectory = None
+        else:
+            trajectory = suite_scenario.trajectory or config.data_files.trajectory
         flight_declaration = suite_scenario.flight_declaration or config.data_files.flight_declaration
         flight_declaration_via_operational_intent = (
             suite_scenario.flight_declaration_via_operational_intent or config.data_files.flight_declaration_via_operational_intent
         )
         geo_fence = suite_scenario.geo_fence or config.data_files.geo_fence
+        simulation = suite_scenario.simulation or config.data_files.simulation
     else:
         # Use base config
         trajectory = config.data_files.trajectory
         flight_declaration = config.data_files.flight_declaration
         geo_fence = config.data_files.geo_fence
         flight_declaration_via_operational_intent = config.data_files.flight_declaration_via_operational_intent
+        simulation = config.data_files.simulation
 
     data = DataFiles(
         trajectory=trajectory,
         flight_declaration=flight_declaration,
         flight_declaration_via_operational_intent=flight_declaration_via_operational_intent,
         geo_fence=geo_fence,
+        simulation=simulation,
     )
     yield data
 
@@ -194,13 +200,11 @@ async def opensky_client(config: AppConfig) -> AsyncGenerator[OpenSkyClient, Non
 
 
 @dependency(AirTrafficClient)
-async def air_traffic_client(
-    config: AppConfig,
-) -> AsyncGenerator[AirTrafficClient, None]:
+async def air_traffic_client() -> AsyncGenerator[AirTrafficClient, None]:
     """Provides an AirTrafficClient instance for dependency injection."""
     settings = create_air_traffic_settings()
-    async with AirTrafficClient(settings) as air_traffic_client:
-        yield air_traffic_client
+    async with AirTrafficClient(settings) as client:
+        yield client
 
 
 @dependency(SessionManager)
@@ -212,11 +216,10 @@ async def session_manager() -> AsyncGenerator[SessionManager, None]:
 async def common_client() -> AsyncGenerator[CommonClient, None]:
     yield CommonClient()
 
+
 @dependency(BlueSkyClient)
-async def bluesky_client(
-    config: AppConfig,
-) -> AsyncGenerator[BlueSkyClient, None]:
+async def bluesky_client() -> AsyncGenerator[BlueSkyClient, None]:
     """Provides a BlueSkyClient instance for dependency injection."""
     settings = create_blue_sky_air_traffic_settings()
-    async with BlueSkyClient(settings) as bluesky_client:
-        yield bluesky_client
+    async with BlueSkyClient(settings) as client:
+        yield client

@@ -15,6 +15,7 @@ from pydantic import BaseModel
 import openutm_verification.core.execution.dependencies  # noqa: F401
 from openutm_verification.core.execution.config_models import (
     AirTrafficSimulatorSettings,
+    ConfigProxy,
     DataFiles,
     FlightBlenderConfig,
 )
@@ -123,11 +124,16 @@ async def reset_session(
         runner.config.flight_blender = config.flight_blender
         logger.info(f"Applied Flight Blender config: {config.flight_blender.url}")
     if config.data_files:
-        runner.config.data_files = config.data_files
-        logger.info("Applied data files config")
+        current_data_files = runner.config.data_files
+        updates = {k: v for k, v in config.data_files.model_dump().items() if v is not None}
+        runner.config.data_files = current_data_files.model_copy(update=updates)
+        logger.info("Applied data files config (merged overrides)")
     if config.air_traffic_simulator_settings:
         runner.config.air_traffic_simulator_settings = config.air_traffic_simulator_settings
         logger.info("Applied air traffic simulator settings")
+
+    # Refresh global config proxy so dependency settings use updated values
+    ConfigProxy.override(runner.config)
 
     await runner.initialize_session()
     return {"status": "session_reset"}

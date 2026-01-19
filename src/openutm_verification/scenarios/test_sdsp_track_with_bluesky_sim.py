@@ -27,9 +27,7 @@ async def sdsp_track_with_bluesky_sim(
         session_id=session_id,
     )
 
-    logger.info("Generating simulated air traffic data using BlueSky client")
     result = await blue_sky_client.generate_bluesky_sim_air_traffic_data()
-    logger.info("Submitting simulated air traffic data to Flight Blender")
 
     observations = result.details
     logger.info(f"Generated {len(observations)} observations from BlueSky simulation")
