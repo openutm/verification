@@ -30,21 +30,13 @@ from openutm_verification.server.runner import SessionManager
 
 T = TypeVar("T")
 
+session_manager = SessionManager()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    session_manager = SessionManager()
     app.state.runner = session_manager
-
-    # Mount reports directory after session manager is ready to avoid import-time side effects
-    try:
-        output_dir = Path(session_manager.config.reporting.output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        app.mount("/reports", StaticFiles(directory=str(output_dir)), name="reports")
-    except Exception as e:
-        logger.warning(f"Could not mount reports directory: {e}")
-
     yield
     # Shutdown
     await session_manager.close_session()
@@ -214,6 +206,15 @@ web_editor_dir = os.environ.get("WEB_EDITOR_PATH", web_editor_dir)
 
 static_dir = os.path.join(web_editor_dir, "dist")
 
+# Mount reports directory BEFORE the catch-all "/" route
+# This ensures /reports requests are handled correctly
+try:
+    output_dir = Path(session_manager.config.reporting.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/reports", StaticFiles(directory=str(output_dir)), name="reports")
+    logger.info(f"Mounted reports directory at /reports -> {output_dir}")
+except Exception as e:
+    logger.warning(f"Could not mount reports directory: {e}")
 
 if os.path.exists(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")

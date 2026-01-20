@@ -54,11 +54,9 @@ def main():
     timestamp_str = get_run_timestamp_str(run_timestamp)
 
     base_output_dir = Path(config.reporting.output_dir)
+    config.reporting.timestamp_subdir = timestamp_str
     output_dir = base_output_dir / timestamp_str
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Update config so downstream components use the new directory
-    config.reporting.output_dir = str(output_dir)
 
     base_filename = "report"
     log_file = setup_logging(output_dir, base_filename, config.reporting.formats, args.debug)

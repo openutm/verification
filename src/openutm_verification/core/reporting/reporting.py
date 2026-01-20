@@ -1,6 +1,6 @@
 import json
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any, TypeVar
@@ -17,6 +17,7 @@ from openutm_verification.core.reporting.reporting_models import (
     Status,
 )
 from openutm_verification.core.reporting.visualize_flight import visualize_flight_path_2d, visualize_flight_path_3d
+from openutm_verification.utils.time_utils import get_run_timestamp_str
 
 T = TypeVar("T")
 
@@ -94,6 +95,8 @@ def generate_reports(
     Generates reports based on the provided configuration.
     """
     output_dir = Path(reporting_config.output_dir)
+    reporting_config.timestamp_subdir = reporting_config.timestamp_subdir or get_run_timestamp_str(datetime.now(timezone.utc))
+    output_dir = output_dir / reporting_config.timestamp_subdir
     output_dir.mkdir(parents=True, exist_ok=True)
 
     _save_scenario_data(report_data, output_dir)

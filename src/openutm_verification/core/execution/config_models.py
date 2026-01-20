@@ -71,6 +71,7 @@ class DeploymentDetails(StrictBaseModel):
 class ReportingConfig(StrictBaseModel):
     """Configuration for generating reports."""
 
+    timestamp_subdir: str = ""
     output_dir: str = "reports"
     formats: list[str] = Field(default_factory=lambda: ["json", "html", "log"])
     deployment_details: DeploymentDetails = Field(default_factory=DeploymentDetails)
