@@ -74,7 +74,8 @@ describe('useScenarioRunner', () => {
                 auth: { type: "none", audience: "test", scopes: [] }
             },
             data_files: {},
-            air_traffic_simulator_settings: {}
+            air_traffic_simulator_settings: {},
+            blue_sky_air_traffic_simulator_settings: {}
         };
 
         await act(async () => {

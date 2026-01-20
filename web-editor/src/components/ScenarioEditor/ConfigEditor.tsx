@@ -66,9 +66,24 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
         });
     };
 
+    const updateBlueSkyAirTrafficSimulator = (field: string, value: string | number | string[]) => {
+        onUpdateConfig({
+            ...config,
+            blue_sky_air_traffic_simulator_settings: {
+                ...(config.blue_sky_air_traffic_simulator_settings || {}),
+                [field]: value
+            }
+        });
+    };
+
     const updateSensorIds = (value: string) => {
         const ids = value.split(',').map(id => id.trim()).filter(id => id.length > 0);
         updateAirTrafficSimulator('sensor_ids', ids);
+    };
+
+    const updateBlueSkySensorIds = (value: string) => {
+        const ids = value.split(',').map(id => id.trim()).filter(id => id.length > 0);
+        updateBlueSkyAirTrafficSimulator('sensor_ids', ids);
     };
 
     return (
@@ -354,6 +369,83 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                                 value={config.air_traffic_simulator_settings.sensor_ids?.join(', ') || ''}
                                 onChange={(e) => updateSensorIds(e.target.value)}
                                 placeholder="a0b7d47e5eac45dc8cbaf47e6fe0e558"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* BlueSky Air Traffic Simulator Section */}
+            <div className={styles.configSection}>
+                <button
+                    onClick={() => toggleSection('blue_sky_air_traffic')}
+                    className={styles.configSectionHeader}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '8px',
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        color: 'var(--text-primary)',
+                        fontSize: '13px',
+                        fontWeight: 500
+                    }}
+                >
+                    {expandedSections.has('blue_sky_air_traffic') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    <Settings size={16} />
+                    BlueSky Air Traffic Simulator
+                </button>
+
+                {expandedSections.has('blue_sky_air_traffic') && (
+                    <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div className={styles.paramItem}>
+                            <label style={{ fontSize: '12px' }}>Number of Aircraft</label>
+                            <input
+                                type="number"
+                                className={styles.paramInput}
+                                value={config.blue_sky_air_traffic_simulator_settings?.number_of_aircraft || 3}
+                                onChange={(e) => updateBlueSkyAirTrafficSimulator('number_of_aircraft', parseInt(e.target.value))}
+                                min="1"
+                                max="100"
+                            />
+                        </div>
+
+                        <div className={styles.paramItem}>
+                            <label style={{ fontSize: '12px' }}>Simulation Duration (seconds)</label>
+                            <input
+                                type="number"
+                                className={styles.paramInput}
+                                value={config.blue_sky_air_traffic_simulator_settings?.simulation_duration_seconds || 30}
+                                onChange={(e) => updateBlueSkyAirTrafficSimulator('simulation_duration_seconds', parseInt(e.target.value))}
+                                min="1"
+                                max="3600"
+                            />
+                        </div>
+
+                        <div className={styles.paramItem}>
+                            <label style={{ fontSize: '12px' }}>Single or Multiple Sensors</label>
+                            <select
+                                className={styles.paramInput}
+                                value={config.blue_sky_air_traffic_simulator_settings?.single_or_multiple_sensors || 'multiple'}
+                                onChange={(e) => updateBlueSkyAirTrafficSimulator('single_or_multiple_sensors', e.target.value)}
+                            >
+                                <option value="single">single</option>
+                                <option value="multiple">multiple</option>
+                            </select>
+                        </div>
+
+                        <div className={styles.paramItem}>
+                            <label style={{ fontSize: '12px' }}>Sensor IDs (comma-separated)</label>
+                            <input
+                                type="text"
+                                className={styles.paramInput}
+                                value={config.blue_sky_air_traffic_simulator_settings?.sensor_ids?.join(', ') || ''}
+                                onChange={(e) => updateBlueSkySensorIds(e.target.value)}
+                                placeholder="562e6297036a4adebb4848afcd1ede90"
                             />
                         </div>
                     </div>
