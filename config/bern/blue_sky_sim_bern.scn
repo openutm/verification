@@ -1,0 +1,48 @@
+# BlueSky Scenario: Air Traffic around Bern, Switzerland
+# Flight box matching the drone geofence area from flight_declaration.json
+# Geofence center: lat ~46.983, lon ~7.479
+
+# Define flight area around Bern (approx bounding box)
+00:00:00.00>POLY BERN_BOX 46.95,7.40  46.95,7.55  47.02,7.55  47.02,7.40
+00:00:00.00>COLOR BERN_BOX 0,255,0
+
+00:00:00.00>TRAILS ON
+00:00:00.00>RESO OFF
+00:00:00.00>RTF 10
+00:00:00.00>PAN 46.983,7.479
+00:00:00.00>-
+
+# Create 5 aircraft in the Bern area (around the drone geofence)
+# Geofence corners: lat 46.9799-46.9865, lon 7.4720-7.4870
+# Aircraft positioned nearby but at higher altitudes (typical commercial flight levels)
+# Format: CRE <acid>,<type>,<lat>,<lon>,<hdg>,<alt>,<spd>
+
+# Aircraft 1: Approaching from west, heading east
+00:00:00.00>CRE SWIS01,A320,46.980,7.420,090,FL050,180
+00:00:00.00>SWIS01 ADDWPT 46.982,7.460
+00:00:00.00>SWIS01 ADDWPT 46.985,7.510
+
+# Aircraft 2: Approaching from north, heading south
+00:00:00.00>CRE SWIS02,A320,47.010,7.480,180,FL055,175
+00:00:00.00>SWIS02 ADDWPT 46.995,7.482
+00:00:00.00>SWIS02 ADDWPT 46.975,7.485
+
+# Aircraft 3: Approaching from east, heading west
+00:00:00.00>CRE SWIS03,B738,46.984,7.530,270,FL048,185
+00:00:00.00>SWIS03 ADDWPT 46.983,7.490
+00:00:00.00>SWIS03 ADDWPT 46.982,7.440
+
+# Aircraft 4: Approaching from south-west, heading north-east
+00:00:00.00>CRE EDEL04,E190,46.960,7.450,045,FL052,170
+00:00:00.00>EDEL04 ADDWPT 46.975,7.470
+00:00:00.00>EDEL04 ADDWPT 46.995,7.495
+
+# Aircraft 5: Circling pattern around the area
+00:00:00.00>CRE HELI05,EC35,46.990,7.475,315,FL020,120
+00:00:00.00>HELI05 ADDWPT 46.988,7.465
+00:00:00.00>HELI05 ADDWPT 46.980,7.470
+00:00:00.00>HELI05 ADDWPT 46.978,7.485
+00:00:00.00>HELI05 ADDWPT 46.985,7.490
+
+# Hold/pause simulation after 30 seconds.
+00:00:30.00>HOLD

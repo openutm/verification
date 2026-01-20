@@ -17,7 +17,6 @@ from openutm_verification.core.reporting.reporting_models import (
     Status,
 )
 from openutm_verification.core.reporting.visualize_flight import visualize_flight_path_2d, visualize_flight_path_3d
-from openutm_verification.utils.time_utils import get_run_timestamp_str
 
 T = TypeVar("T")
 
@@ -94,7 +93,7 @@ def generate_reports(
     """
     Generates reports based on the provided configuration.
     """
-    output_dir = Path(reporting_config.output_dir) / get_run_timestamp_str(report_data.start_time)
+    output_dir = Path(reporting_config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     _save_scenario_data(report_data, output_dir)
@@ -196,16 +195,19 @@ def _generate_scenario_visualizations(result: ScenarioResult, output_dir: Path):
     scenario_dir = output_dir / result.name
     scenario_dir.mkdir(parents=True, exist_ok=True)
 
+    # Get air traffic data if available
+    air_traffic_data = result.air_traffic_data
+
     # Generate 2D visualization
     vis_2d_filename = "visualization_2d.html"
     vis_2d_path = scenario_dir / vis_2d_filename
-    visualize_flight_path_2d(result.telemetry_data, flight_declaration_dict, vis_2d_path)
+    visualize_flight_path_2d(result.telemetry_data, flight_declaration_dict, vis_2d_path, air_traffic_data)
     result.visualization_2d_path = str(vis_2d_path.relative_to(output_dir))
 
     # Generate 3D visualization
     vis_3d_filename = "visualization_3d.html"
     vis_3d_path = scenario_dir / vis_3d_filename
-    visualize_flight_path_3d(result.telemetry_data, flight_declaration_dict, vis_3d_path)
+    visualize_flight_path_3d(result.telemetry_data, flight_declaration_dict, vis_3d_path, air_traffic_data)
     result.visualization_3d_path = str(vis_3d_path.relative_to(output_dir))
 
 
