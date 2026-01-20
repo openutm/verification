@@ -8,6 +8,11 @@ describe('useScenarioRunner', () => {
     beforeEach(() => {
         globalThis.fetch = vi.fn();
         globalThis.alert = vi.fn();
+        globalThis.EventSource = Object.assign(vi.fn(), {
+            CONNECTING: 0,
+            OPEN: 1,
+            CLOSED: 2,
+        }) as unknown as typeof EventSource;
     });
 
     afterEach(() => {
@@ -15,15 +20,56 @@ describe('useScenarioRunner', () => {
     });
 
     it('initializes with isRunning false', () => {
+        const mockEventSource = {
+            onmessage: null as ((event: MessageEvent) => void) | null,
+            onerror: null as ((event: Event) => void) | null,
+            addEventListener: vi.fn(),
+            close: vi.fn(),
+        };
+
+        (globalThis.EventSource as unknown as Mock).mockImplementation(() => {
+            setTimeout(() => {
+                mockEventSource.onmessage?.({
+                    data: JSON.stringify({ id: '1', status: 'success', result: { success: true } })
+                } as MessageEvent);
+                const doneHandler = mockEventSource.addEventListener.mock.calls.find(call => call[0] === 'done')?.[1];
+                if (doneHandler) {
+                    doneHandler({ data: JSON.stringify({ status: 'completed' }) } as MessageEvent);
+                }
+            }, 0);
+            return mockEventSource;
+        });
+
         const { result } = renderHook(() => useScenarioRunner());
         expect(result.current.isRunning).toBe(false);
     });
 
     it('runs scenario successfully', async () => {
-        const mockResult = { success: true, logs: [] };
-        (globalThis.fetch as Mock).mockResolvedValue({
-            ok: true,
-            json: async () => mockResult
+        (globalThis.fetch as Mock)
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({})
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ run_id: '1' })
+            });
+
+        const mockEventSource = {
+            onmessage: null as ((event: MessageEvent) => void) | null,
+            onerror: null as ((event: Event) => void) | null,
+            addEventListener: vi.fn(),
+            close: vi.fn(),
+        };
+
+        (globalThis.EventSource as unknown as Mock).mockImplementation(() => {
+            setTimeout(() => {
+                const doneHandler = mockEventSource.addEventListener.mock.calls.find(call => call[0] === 'done')?.[1];
+                if (doneHandler) {
+                    doneHandler({ data: JSON.stringify({ status: 'completed' }) } as MessageEvent);
+                }
+            }, 0);
+            return mockEventSource;
         });
 
         const { result } = renderHook(() => useScenarioRunner());
@@ -42,7 +88,7 @@ describe('useScenarioRunner', () => {
             results: [{
                 id: '1',
                 status: 'success',
-                result: mockResult,
+                result: { success: true },
                 error: undefined
             }],
             status: 'completed',
@@ -51,16 +97,20 @@ describe('useScenarioRunner', () => {
 
         expect(executionResult).toEqual(expectedResult);
         expect(globalThis.fetch).toHaveBeenCalledWith('/session/reset', expect.any(Object));
-        expect(globalThis.fetch).toHaveBeenCalledWith('/api/step', expect.any(Object));
+        expect(globalThis.fetch).toHaveBeenCalledWith('/run-scenario-async', expect.any(Object));
         expect(result.current.isRunning).toBe(false);
     });
 
     it('runs scenario with config', async () => {
-        const mockResult = { success: true, logs: [] };
-        (globalThis.fetch as Mock).mockResolvedValue({
-            ok: true,
-            json: async () => mockResult
-        });
+        (globalThis.fetch as Mock)
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({})
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ run_id: '1' })
+            });
 
         const { result } = renderHook(() => useScenarioRunner());
 

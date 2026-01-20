@@ -697,9 +697,17 @@ const ScenarioEditorContent = () => {
         }
     }, [clearGraph, isDirty]);
 
-    const updateNodesWithResults = useCallback((currentNodes: Node<NodeData>[], results: { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown }[]) => {
+    const updateNodesWithResults = useCallback((currentNodes: Node<NodeData>[], results: { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown; logs?: string[] }[]) => {
         return currentNodes.map(node => {
-            const stepResult = results.find((r) => r.id === node.id);
+            const stepId = node.data.stepId || node.id;
+            const stepName = node.data.label;
+            const hasCustomStepId = !!node.data.stepId?.trim();
+            const stepResult = results.find((r) =>
+                r.id === stepId ||
+                r.id === node.id ||
+                r.id?.endsWith(`.${stepId}`) ||
+                (!hasCustomStepId && (r.id === stepName || r.id?.endsWith(`.${stepName}`)))
+            );
             if (stepResult) {
                 return {
                     ...node,
@@ -707,6 +715,7 @@ const ScenarioEditorContent = () => {
                         ...node.data,
                         status: stepResult.status,
                         result: stepResult.result,
+                        logs: stepResult.logs,
                     }
                 };
             }
@@ -789,8 +798,28 @@ const ScenarioEditorContent = () => {
             }));
         };
 
-        await runScenario(currentNodes, currentEdges, currentScenarioName || "Interactive Session", onStepComplete, onStepStart, currentScenarioConfig);
-    }, [runScenario, currentScenarioName, currentScenarioConfig, setNodes, updateNodesWithResults, reactFlowInstance]);
+        await runScenario(
+            currentNodes,
+            currentEdges,
+            currentScenarioName || "Interactive Session",
+            onStepComplete,
+            onStepStart,
+            currentScenarioConfig,
+            operations,
+            currentScenarioGroups,
+            currentScenarioDescription
+        );
+    }, [
+        runScenario,
+        currentScenarioName,
+        currentScenarioConfig,
+        currentScenarioGroups,
+        currentScenarioDescription,
+        operations,
+        setNodes,
+        updateNodesWithResults,
+        reactFlowInstance
+    ]);
 
     const updateNodeParameter = useCallback((nodeId: string, paramName: string, value: unknown) => {
         setIsDirty(true);

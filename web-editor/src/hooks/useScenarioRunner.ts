@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { Node, Edge } from '@xyflow/react';
-import type { NodeData, ScenarioConfig } from '../types/scenario';
+import type { GroupDefinition, NodeData, Operation, ScenarioConfig } from '../types/scenario';
+import { convertGraphToYaml } from '../utils/scenarioConversion';
 
 export const useScenarioRunner = () => {
     const [isRunning, setIsRunning] = useState(false);
@@ -11,7 +12,10 @@ export const useScenarioRunner = () => {
         scenarioName: string,
         onStepComplete?: (result: { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown }) => void,
         onStepStart?: (nodeId: string) => void,
-        config?: ScenarioConfig
+        config?: ScenarioConfig,
+        operations: Operation[] = [],
+        groups?: Record<string, GroupDefinition>,
+        description: string = 'Run from Web UI'
     ) => {
         if (nodes.length === 0) return null;
 
@@ -48,7 +52,7 @@ export const useScenarioRunner = () => {
             }
         }
 
-        const steps = sortedNodes.filter(node => node.data.operationId); // Filter out nodes without operationId
+        const runnableNodes = sortedNodes.filter(node => node.data.operationId); // Filter out nodes without operationId
 
         try {
             // 1. Reset Session and apply configuration
@@ -69,70 +73,89 @@ export const useScenarioRunner = () => {
 
             const results: { id: string; status: string; result?: unknown; error?: unknown }[] = [];
 
-            // 2. Execute steps one by one
-            for (const node of steps) {
-                if (onStepStart) {
-                    onStepStart(node.id);
+            if (onStepStart) {
+                runnableNodes.forEach(node => onStepStart(node.id));
+            }
+
+            const scenarioPayload = convertGraphToYaml(
+                nodes,
+                edges,
+                operations,
+                scenarioName,
+                description,
+                undefined,
+                groups
+            );
+
+            const response = await fetch('/run-scenario-async', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(scenarioPayload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Scenario run failed: ${response.status} ${errorText}`);
+            }
+
+            const seenResults = new Map<string, string>();
+
+            const handleStepResult = (result: { id?: string; status?: string; result?: unknown; error?: unknown; error_message?: string; logs?: string[] }) => {
+                if (!result?.id) {
+                    return;
                 }
-
-                const params = (node.data.parameters || []).reduce((acc, param) => {
-                    if (param.default !== undefined && param.default !== null && param.default !== '') {
-                        let value = param.default;
-                        // Transform reference object to string format expected by backend
-                        if (typeof value === 'object' && value !== null && '$ref' in value) {
-                            const ref = (value as { $ref: string }).$ref;
-                            const parts = ref.split('.');
-                            const stepName = parts[0];
-                            const fieldPath = parts.slice(1).join('.');
-                            value = `\${{ steps.${stepName}.result.${fieldPath} }}`;
-                        }
-                        acc[param.name] = value;
-                    }
-                    return acc;
-                }, {} as Record<string, unknown>);
-
-                const stepDefinition = {
-                    id: node.id,
-                    step: node.data.label, // The backend expects 'step', not 'name'
-                    arguments: params,     // The backend expects 'arguments', not 'parameters'
-                    background: !!node.data.runInBackground, // The backend expects 'background', not 'run_in_background'
-                    needs: (node.data.needs || []).filter(Boolean)
-                };
-
-                console.log(`Executing step ${node.id}: ${node.data.label}`, stepDefinition);
-
-                const response = await fetch('/api/step', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(stepDefinition)
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Step ${node.data.label} failed: ${response.status} ${errorText}`);
+                const nextStatus = result.status || 'success';
+                const previousStatus = seenResults.get(result.id);
+                if (previousStatus === nextStatus) {
+                    return;
                 }
-
-                const result = await response.json();
-
-                // Add ID to result to match expected format
+                seenResults.set(result.id, nextStatus);
                 const stepResult = {
-                    id: node.id,
-                    status: result.status || 'success',
+                    id: result.id,
+                    status: nextStatus,
                     result: result.result || result,
-                    error: result.error
+                    error: result.error_message || result.error,
+                    logs: result.logs || []
                 };
                 results.push(stepResult);
-
                 if (onStepComplete) {
-                    onStepComplete(stepResult as { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown });
+                    onStepComplete(stepResult as { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown; logs?: string[] });
                 }
+            };
 
-                // If error, stop execution
-                if (stepResult.status === 'error' || stepResult.status === 'failure') {
-                    console.error(`Step ${node.id} failed`, stepResult);
-                    break;
-                }
-            }
+            await new Promise<void>((resolve, reject) => {
+                const source = new EventSource(`/run-scenario-events`);
+
+                source.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data) as { id?: string; status?: string; result?: unknown; error?: unknown; error_message?: string; logs?: string[] };
+                        handleStepResult(data);
+                    } catch (err) {
+                        source.close();
+                        reject(err);
+                    }
+                };
+
+                source.addEventListener('done', (event) => {
+                    try {
+                        const payload = JSON.parse((event as MessageEvent).data) as { status?: string; error?: string };
+                        source.close();
+                        if (payload.status === 'error') {
+                            reject(new Error(payload.error || 'Scenario run failed'));
+                            return;
+                        }
+                        resolve();
+                    } catch (err) {
+                        source.close();
+                        reject(err);
+                    }
+                });
+
+                source.onerror = () => {
+                    source.close();
+                    reject(new Error('Scenario event stream failed'));
+                };
+            });
 
             // 3. Generate Report
             try {

@@ -2,6 +2,7 @@ import contextvars
 import inspect
 import time
 import uuid
+from asyncio import Queue
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
@@ -55,6 +56,7 @@ class ScenarioState:
     flight_declaration_via_operational_intent_data: FlightDeclarationViaOperationalIntent | None = None
     telemetry_data: list[RIDAircraftState] | None = None
     air_traffic_data: list[list[FlightObservationSchema]] = field(default_factory=list)
+    added_results: Queue[StepResult[Any]] = field(default_factory=Queue)
 
     @property
     def step_results(self) -> dict[str, StepResult[Any]]:
@@ -105,6 +107,7 @@ class ScenarioContext:
             if result.id and state.step_results.get(result.id):
                 state.steps.remove(state.step_results[result.id])
             state.steps.append(result)
+            state.added_results.put_nowait(result)
 
     @classmethod
     def set_flight_declaration_data(cls, data: FlightDeclaration) -> None:

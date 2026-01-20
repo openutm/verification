@@ -5,13 +5,20 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from openutm_verification.core.execution.definitions import LoopConfig, ScenarioDefinition, StepDefinition
+from openutm_verification.core.reporting.reporting_models import Status, StepResult
 from openutm_verification.server.runner import SessionManager
 
 
 @pytest.fixture
 def session_manager():
     """Create a SessionManager instance for testing."""
-    return SessionManager()
+    manager = SessionManager()
+    manager.session_resolver = None
+    manager.session_context = None
+    manager.session_stack = None
+    if manager.session_context and manager.session_context.state:
+        manager.session_context.state.steps.clear()
+    return manager
 
 
 class TestLoopExecution:
@@ -27,7 +34,7 @@ class TestLoopExecution:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "test_loop[0]", "status": "success", "result": None}
+            mock_execute.return_value = StepResult(id="test_loop[0]", name="Setup Flight Declaration", status=Status.PASS, duration=0.0, result=None)
 
             results = await session_manager._execute_loop(scenario.steps[0])
 
@@ -53,7 +60,7 @@ class TestLoopExecution:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "test_loop[0]", "status": "success", "result": None}
+            mock_execute.return_value = StepResult(id="test_loop[0]", name="Update Operation State", status=Status.PASS, duration=0.0, result=None)
 
             results = await session_manager._execute_loop(scenario.steps[0])
 
@@ -75,7 +82,7 @@ class TestLoopExecution:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "test_loop[0]", "status": "success", "result": None}
+            mock_execute.return_value = StepResult(id="test_loop[0]", name="Setup Flight Declaration", status=Status.PASS, duration=0.0, result=None)
 
             results = await session_manager._execute_loop(scenario.steps[0])
 
@@ -98,8 +105,8 @@ class TestLoopExecution:
             nonlocal call_count
             call_count += 1
             if call_count == 2:
-                return {"id": f"test_loop[{call_count - 1}]", "status": "error", "result": None}
-            return {"id": f"test_loop[{call_count - 1}]", "status": "success", "result": None}
+                return StepResult(id=f"test_loop[{call_count - 1}]", name="Setup Flight Declaration", status=Status.FAIL, duration=0.0, result=None)
+            return StepResult(id=f"test_loop[{call_count - 1}]", name="Setup Flight Declaration", status=Status.PASS, duration=0.0, result=None)
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
             mock_execute.side_effect = mock_execute_with_failure
@@ -108,8 +115,8 @@ class TestLoopExecution:
 
             # Should stop after error on iteration 2
             assert len(results) == 2
-            assert results[0]["status"] == "success"
-            assert results[1]["status"] == "error"
+            assert results[0].status == Status.PASS
+            assert results[1].status == Status.FAIL
 
     @pytest.mark.asyncio
     async def test_combined_count_and_while(self, session_manager):
@@ -125,7 +132,7 @@ class TestLoopExecution:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "test_loop[0]", "status": "success", "result": None}
+            mock_execute.return_value = StepResult(id="test_loop[0]", name="Setup Flight Declaration", status=Status.PASS, duration=0.0, result=None)
 
             results = await session_manager._execute_loop(scenario.steps[0])
 
@@ -142,7 +149,7 @@ class TestLoopExecution:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "my_loop[0]", "status": "success", "result": None}
+            mock_execute.return_value = StepResult(id="my_loop[0]", name="Setup Flight Declaration", status=Status.PASS, duration=0.0, result=None)
 
             await session_manager._execute_loop(scenario.steps[0])
 
@@ -168,7 +175,9 @@ class TestLoopExecution:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "infinite_loop[0]", "status": "success", "result": None}
+            mock_execute.return_value = StepResult(
+                id="infinite_loop[0]", name="Setup Flight Declaration", status=Status.PASS, duration=0.0, result=None
+            )
 
             results = await session_manager._execute_loop(scenario.steps[0])
 
@@ -210,7 +219,7 @@ class TestLoopExecution:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "test_loop[0]", "status": "success", "result": None}
+            mock_execute.return_value = StepResult(id="test_loop[0]", name="Update Operation State", status=Status.PASS, duration=0.0, result=None)
 
             results = await session_manager._execute_loop(scenario.steps[0])
 

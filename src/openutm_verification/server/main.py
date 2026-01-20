@@ -1,3 +1,5 @@
+import asyncio
+import json
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -7,6 +9,7 @@ from typing import Optional, TypeVar
 import uvicorn
 from fastapi import Body, Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from pydantic import BaseModel
@@ -194,6 +197,34 @@ async def generate_report_endpoint(request: GenerateReportRequest, runner: Sessi
 @app.post("/run-scenario")
 async def run_scenario(scenario: ScenarioDefinition, runner: SessionManager = Depends(get_session_manager)):
     return await runner.run_scenario(scenario)
+
+
+@app.post("/run-scenario-async")
+async def run_scenario_async(scenario: ScenarioDefinition, runner: SessionManager = Depends(get_session_manager)):
+    run_id = await runner.start_scenario_task(scenario)
+    return {"run_id": run_id}
+
+
+@app.get("/run-scenario-events")
+async def run_scenario_events(runner: SessionManager = Depends(get_session_manager)):
+    async def event_stream():
+        while True:
+            status_payload = runner.get_run_status()
+            while not runner.session_context.state.added_results.empty():
+                result = runner.session_context.state.added_results.get_nowait()
+                yield f"data: {result.model_dump_json()}\n\n"
+
+            if status_payload.get("status") != "running":
+                done_payload = {
+                    "status": status_payload.get("status"),
+                    "error": status_payload.get("error"),
+                }
+                yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
+                break
+
+            await asyncio.sleep(0.3)
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 # Mount static files for web-editor

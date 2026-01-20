@@ -52,8 +52,10 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
     const [logLevel, setLogLevel] = useState<string>('ALL');
 
     const result = selectedNode?.data?.result;
+    const nodeLogs = (selectedNode?.data as { logs?: string[] } | undefined)?.logs;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const logs = (result as any)?.logs as string[] | undefined;
+    const resultLogs = (result as any)?.logs as string[] | undefined;
+    const logs = nodeLogs || resultLogs;
 
     const filteredLogs = useMemo(() => {
         if (!logs) return [];

@@ -7,6 +7,7 @@ import yaml
 
 from openutm_verification.core.execution.config_models import DataFiles
 from openutm_verification.core.execution.definitions import ScenarioDefinition
+from openutm_verification.core.reporting.reporting_models import Status
 from openutm_verification.server.runner import SessionManager
 
 SCENARIOS_DIR = Path(os.getenv("SCENARIOS_PATH", Path(__file__).parent.parent / "scenarios"))
@@ -119,5 +120,5 @@ async def test_yaml_scenario_execution(yaml_file, mock_clients, mock_data_files)
 
                 # Verify results
                 for step_result in results:
-                    if step_result["status"] == "running":
+                    if step_result.status == Status.RUNNING:
                         continue

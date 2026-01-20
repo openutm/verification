@@ -12,7 +12,13 @@ from openutm_verification.server.runner import SessionManager
 @pytest.fixture
 def session_manager():
     """Create a SessionManager instance for testing."""
-    return SessionManager()
+    manager = SessionManager()
+    manager.session_resolver = None
+    manager.session_context = None
+    manager.session_stack = None
+    if manager.session_context and manager.session_context.state:
+        manager.session_context.state.steps.clear()
+    return manager
 
 
 class TestScenarioWithConditions:
@@ -31,12 +37,20 @@ class TestScenarioWithConditions:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "step1", "status": "success", "result": None}
+
+            async def mock_execute_step(step, loop_context=None):
+                step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+                if session_manager.session_context:
+                    with session_manager.session_context:
+                        session_manager.session_context.add_result(step_result)
+                return step_result
+
+            mock_execute.side_effect = mock_execute_step
 
             results = await session_manager.run_scenario(scenario)
 
             # Both steps should execute
-            assert len(results) == 2
+            assert len([r for r in results if r.status != Status.RUNNING]) == 2
             assert mock_execute.call_count == 2
 
     @pytest.mark.asyncio
@@ -53,13 +67,11 @@ class TestScenarioWithConditions:
 
         async def mock_execute_with_context(step, loop_context=None):
             """Mock that adds results to session context."""
-            from openutm_verification.core.reporting.reporting_models import Status, StepResult
-
-            result = {"id": step.id, "status": "success", "result": None}
-            # Add result to session context
             step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
-            session_manager.session_context.add_result(step_result)
-            return result
+            if session_manager.session_context:
+                with session_manager.session_context:
+                    session_manager.session_context.add_result(step_result)
+            return step_result
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
             mock_execute.side_effect = mock_execute_with_context
@@ -67,9 +79,10 @@ class TestScenarioWithConditions:
             results = await session_manager.run_scenario(scenario)
 
             # First step executes, second is skipped
-            assert len(results) == 2
-            assert results[0]["status"] == "success"
-            assert results[1]["status"] == "skipped"
+            completed = [r for r in results if r.status != Status.RUNNING]
+            assert len(completed) == 2
+            assert completed[0].status == Status.PASS
+            assert completed[1].status == Status.SKIP
 
     @pytest.mark.asyncio
     async def test_always_condition_runs_regardless(self, session_manager):
@@ -89,19 +102,14 @@ class TestScenarioWithConditions:
             """Mock that adds results to session context."""
             nonlocal call_count
             call_count += 1
-            from openutm_verification.core.reporting.reporting_models import Status, StepResult
-
             if call_count == 1:
-                # First step fails
-                result = {"id": step.id, "status": "error", "result": None}
                 step_result = StepResult(id=step.id, name=step.step, status=Status.FAIL, duration=0.0, result=None)
             else:
-                # Cleanup succeeds
-                result = {"id": step.id, "status": "success", "result": None}
                 step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
-
-            session_manager.session_context.add_result(step_result)
-            return result
+            if session_manager.session_context:
+                with session_manager.session_context:
+                    session_manager.session_context.add_result(step_result)
+            return step_result
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
             mock_execute.side_effect = mock_execute_with_context
@@ -110,7 +118,7 @@ class TestScenarioWithConditions:
 
             # Cleanup should run despite failure
             assert mock_execute.call_count == 2
-            assert len(results) == 2
+            assert len([r for r in results if r.status != Status.RUNNING]) == 2
 
     @pytest.mark.asyncio
     async def test_step_status_condition(self, session_manager):
@@ -129,18 +137,17 @@ class TestScenarioWithConditions:
         with patch.object(session_manager, "_execute_step", new_callable=AsyncMock) as mock_execute:
 
             async def mock_execute_step(step, loop_context=None):
-                result = {"id": step.id, "status": "success", "result": None}
-                # Add to session context properly
-                if session_manager.session_context and session_manager.session_context.state:
-                    session_manager.session_context.add_result(StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None))
-                return result
+                step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+                if session_manager.session_context:
+                    session_manager.session_context.add_result(step_result)
+                return step_result
 
             mock_execute.side_effect = mock_execute_step
 
             results = await session_manager.run_scenario(scenario)
 
             # Both should execute since validation succeeds
-            assert len(results) == 2
+            assert len([r for r in results if r.status != Status.RUNNING]) == 2
             assert mock_execute.call_count == 2
 
 
@@ -159,12 +166,20 @@ class TestScenarioWithLoops:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "retry[0]", "status": "success", "result": None}
+
+            async def mock_execute_step(step, loop_context=None):
+                step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+                if session_manager.session_context:
+                    with session_manager.session_context:
+                        session_manager.session_context.add_result(step_result)
+                return step_result
+
+            mock_execute.side_effect = mock_execute_step
 
             results = await session_manager.run_scenario(scenario)
 
             # Should execute 3 times
-            assert len(results) == 3
+            assert len([r for r in results if r.status != Status.RUNNING]) == 3
 
     @pytest.mark.asyncio
     async def test_scenario_with_items_loop(self, session_manager):
@@ -180,11 +195,19 @@ class TestScenarioWithLoops:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "deploy[0]", "status": "success", "result": None}
+
+            async def mock_execute_step(step, loop_context=None):
+                step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+                if session_manager.session_context:
+                    with session_manager.session_context:
+                        session_manager.session_context.add_result(step_result)
+                return step_result
+
+            mock_execute.side_effect = mock_execute_step
 
             results = await session_manager.run_scenario(scenario)
 
-            assert len(results) == 2
+            assert len([r for r in results if r.status != Status.RUNNING]) == 2
 
     @pytest.mark.asyncio
     async def test_scenario_with_conditional_loop(self, session_manager):
@@ -201,7 +224,15 @@ class TestScenarioWithLoops:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "step", "status": "success", "result": None}
+
+            async def mock_execute_step(step, loop_context=None):
+                step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+                if session_manager.session_context:
+                    with session_manager.session_context:
+                        session_manager.session_context.add_result(step_result)
+                return step_result
+
+            mock_execute.side_effect = mock_execute_step
 
             await session_manager.run_scenario(scenario)
 
@@ -225,11 +256,10 @@ class TestScenarioWithLoops:
         with patch.object(session_manager, "_execute_step", new_callable=AsyncMock) as mock_execute:
 
             async def mock_execute_step(step, loop_context=None):
-                result = {"id": step.id, "status": "success", "result": None}
-                # Add to session context properly with the actual step ID
-                if session_manager.session_context and session_manager.session_context.state:
-                    session_manager.session_context.add_result(StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None))
-                return result
+                step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+                if session_manager.session_context:
+                    session_manager.session_context.add_result(step_result)
+                return step_result
 
             mock_execute.side_effect = mock_execute_step
 
@@ -267,11 +297,10 @@ class TestComplexScenarios:
         with patch.object(session_manager, "_execute_step", new_callable=AsyncMock) as mock_execute:
 
             async def mock_execute_step(step, loop_context=None):
-                result = {"id": step.id, "status": "success", "result": None}
-                # Add to session context properly with the actual step ID
-                if session_manager.session_context and session_manager.session_context.state:
-                    session_manager.session_context.add_result(StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None))
-                return result
+                step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+                if session_manager.session_context:
+                    session_manager.session_context.add_result(step_result)
+                return step_result
 
             mock_execute.side_effect = mock_execute_step
 
@@ -298,8 +327,15 @@ class TestComplexScenarios:
             nonlocal call_count
             call_count += 1
             if call_count == 2:
-                return {"id": f"retry[{call_count - 1}]", "status": "error", "result": None}
-            return {"id": "step", "status": "success", "result": None}
+                step_result = StepResult(
+                    id=f"retry[{call_count - 1}]", name="Setup Flight Declaration", status=Status.FAIL, duration=0.0, result=None
+                )
+            else:
+                step_result = StepResult(id="step", name="Setup Flight Declaration", status=Status.PASS, duration=0.0, result=None)
+            if session_manager.session_context:
+                with session_manager.session_context:
+                    session_manager.session_context.add_result(step_result)
+            return step_result
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
             mock_execute.side_effect = mock_with_error
@@ -323,10 +359,18 @@ class TestComplexScenarios:
         )
 
         with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = {"id": "step", "status": "success", "result": None}
+
+            async def mock_execute_step(step, loop_context=None):
+                step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+                if session_manager.session_context:
+                    with session_manager.session_context:
+                        session_manager.session_context.add_result(step_result)
+                return step_result
+
+            mock_execute.side_effect = mock_execute_step
 
             results = await session_manager.run_scenario(scenario)
 
             # 2 + 3 = 5 executions
             assert mock_execute.call_count == 5
-            assert len(results) == 5
+            assert len([r for r in results if r.status != Status.RUNNING]) == 5

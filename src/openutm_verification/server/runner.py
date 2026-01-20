@@ -48,7 +48,39 @@ class SessionManager:
         self.session_context: ScenarioContext | None = None
         self.session_tasks: Dict[str, asyncio.Task] = {}
         self.data_files: DataFiles | None = None
+        self.current_run_task: asyncio.Task | None = None
+        self.current_run_error: str | None = None
         self._initialized = True
+
+    async def start_scenario_task(self, scenario: ScenarioDefinition):
+        if not self.session_resolver:
+            await self.initialize_session()
+
+        if self.current_run_task and not self.current_run_task.done():
+            self.current_run_task.cancel()
+
+        self.current_run_error = None
+
+        task = asyncio.create_task(self.run_scenario(scenario))
+        self.current_run_task = task
+
+        def _on_done(t: asyncio.Task) -> None:
+            try:
+                t.result()
+            except Exception as exc:  # noqa: BLE001
+                self.current_run_error = str(exc)
+
+        task.add_done_callback(_on_done)
+
+    def get_run_status(self) -> Dict[str, Any]:
+        status = "running"
+        if self.current_run_task and self.current_run_task.done():
+            status = "error" if self.current_run_error else "completed"
+
+        return {
+            "status": status,
+            "error": self.current_run_error,
+        }
 
     async def initialize_session(self):
         logger.info("Initializing new session")
@@ -112,36 +144,6 @@ class SessionManager:
             else:
                 raise ValueError(f"Unknown loop field '{field}', must be 'index' or 'item'")
 
-        # Handle group.step_id.result references
-        if ref.startswith("group."):
-            if not loop_context or "group_context" not in loop_context:
-                raise ValueError(f"Group variable '{ref}' used outside of group context")
-            parts = ref.split(".")
-            if len(parts) < 3:
-                raise ValueError(f"Group reference must be 'group.step_id.result...', got '{ref}'")
-            step_id = parts[1]
-            # Remaining parts start from index 2 (e.g., 'result', 'result.field', etc.)
-            group_context = loop_context["group_context"]
-            if step_id not in group_context:
-                raise ValueError(f"Step '{step_id}' not found in group context. Available: {list(group_context.keys())}")
-
-            current_value = group_context[step_id]
-            # Traverse remaining parts starting from parts[2]
-            remaining_parts = parts[2:]
-            for part in remaining_parts:
-                if not part:
-                    continue
-                if isinstance(current_value, dict):
-                    current_value = current_value.get(part)
-                elif hasattr(current_value, part):
-                    current_value = getattr(current_value, part)
-                else:
-                    raise ValueError(
-                        f"Could not resolve '{part}' in '{ref}'."
-                        f"Available keys: {list(current_value.keys()) if isinstance(current_value, dict) else dir(current_value)}"
-                    )
-            return current_value
-
         if ref.startswith("data_files."):
             if not self.data_files:
                 raise ValueError("Data files not initialized")
@@ -162,28 +164,33 @@ class SessionManager:
             raise ValueError(f"Invalid reference format: {ref}. Expected 'steps.<step_name>.result...'")
 
         step_name = parts[1]
-        # parts[2] is likely "result" or "details"
 
         if not self.session_context or not self.session_context.state:
             raise ValueError("No active scenario context or state available")
 
         state = self.session_context.state
 
-        if step_name not in state.step_results:
+        step_result: Any | None = None
+        if step_name in state.step_results:
+            step_result = state.step_results[step_name]
+        elif loop_context and "group_context" in loop_context:
+            group_context = loop_context["group_context"]
+            if step_name in group_context:
+                step_result = group_context[step_name]
+        else:
+            matching_ids = [key for key in state.step_results.keys() if key.endswith(f".{step_name}") or key == step_name]
+            if matching_ids:
+                step_result = state.step_results[matching_ids[-1]]
+
+        if step_result is None:
             logger.error(f"Step '{step_name}' not found in results. Available steps: {list(state.step_results.keys())}")
             raise ValueError(f"Referenced step '{step_name}' not found in results")
-
-        step_result = state.step_results[step_name]
 
         # Start traversing from the step result object
         current_value = step_result
 
         # Skip "steps" and "step_name"
         remaining_parts = parts[2:]
-
-        # Handle legacy "details" alias, now standardized to "result"
-        if remaining_parts[0] == "details":
-            remaining_parts[0] = "result"
 
         for part in remaining_parts:
             if not part:
@@ -324,7 +331,19 @@ class SessionManager:
 
         task.add_done_callback(_on_done)
 
-    async def _execute_step(self, step: StepDefinition, loop_context: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    async def _record_step_running(self, step: StepDefinition, task_id: Any = None) -> StepResult:
+        assert self.session_context is not None
+        result = StepResult(
+            id=step.id or step.step,
+            name=step.step,
+            status=Status.RUNNING,
+            duration=0.0,
+            result={"task_id": task_id} if task_id is not None else None,
+        )
+        self.session_context.add_result(result)
+        return result
+
+    async def _execute_step(self, step: StepDefinition, loop_context: Dict[str, Any] | None = None) -> StepResult:
         assert self.session_resolver is not None and self.session_context is not None
         if step.step not in STEP_REGISTRY:
             raise ValueError(f"Step '{step.step}' not found in registry")
@@ -342,9 +361,9 @@ class SessionManager:
             logger.info(f"Executing step '{step_id}' ({step.step}) in background")
             task = asyncio.create_task(call_with_dependencies(method, resolver=self.session_resolver, **kwargs))
             self.session_tasks[step_id] = task
-            self.session_context.add_result(StepResult(id=step_id, name=step.step, status=Status.RUNNING, result={"task_id": step_id}, duration=0.0))
             self._record_background_result(step_id, step.step, task)
-            return {"id": step_id, "step": step.step, "status": "running", "task_id": step_id}
+            return await self._record_step_running(step, task_id=step_id)
+        await self._record_step_running(step)
 
         # Execute with dependencies
         result = await call_with_dependencies(method, resolver=self.session_resolver, **kwargs)
@@ -353,13 +372,6 @@ class SessionManager:
         # This updates the object in state.steps as well since it's the same reference
         if step.id and hasattr(result, "id"):
             result.id = step.id
-
-        # Serialize result if it's an object
-        result_data = self._serialize_result(result)
-
-        # Determine overall status based on result content
-        status_str = self._determine_status(result)
-
         # Add result to context
         step_id = step.id or step.step
         logger.info(f"Adding result for step '{step_id}' (name: {step.step}) to context")
@@ -367,29 +379,14 @@ class SessionManager:
         # If the result is already a StepResult (from scenario_step decorator), use it directly but ensure ID is correct
         if isinstance(result, StepResult):
             result.id = step_id
-            # We don't need to add it again if it was already added by the decorator,
-            # but the decorator adds it with a generated ID or no ID if not running in full scenario context?
-            # Actually, the decorator adds it to ScenarioContext.add_result(step_result).
-            # Let's check if we need to update it or add it.
-
-            # The decorator adds the result to the context.
-            # If we add it again here, we might duplicate it or overwrite it.
-            # However, the decorator doesn't know the 'step.id' from the YAML, it only knows the function execution.
-            # So we should probably update the existing result in the context if possible, or ensure the ID matches.
-
-            # Let's just ensure the result in the context has the correct ID.
-            # The decorator calls ScenarioContext.add_result(step_result).
-            # step_result.id might be None or something else.
-
-            # Since we are in the runner, we want to ensure the result is stored with the step_id we expect.
-            # We can remove the old one (if any) and add the updated one.
             self.session_context.add_result(result)
-        else:
-            self.session_context.add_result(StepResult(id=step_id, name=step.step, status=Status.PASS, result=result_data, duration=0.0))
+            return result
 
-        return {"id": step.id, "step": step.step, "status": status_str, "result": result_data}
+        step_result = StepResult(id=step_id, name=step.step, status=Status.PASS, result=result, duration=0.0)
+        self.session_context.add_result(step_result)
+        return step_result
 
-    async def execute_single_step(self, step: StepDefinition, loop_context: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    async def execute_single_step(self, step: StepDefinition, loop_context: Dict[str, Any] | None = None) -> StepResult:
         if not self.session_resolver or not self.session_context:
             logger.info("Session resolver not found, initializing session")
             await self.initialize_session()
@@ -417,7 +414,7 @@ class SessionManager:
 
     async def _execute_group(
         self, step: StepDefinition, scenario: ScenarioDefinition, loop_context: Dict[str, Any] | None = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[StepResult]:
         """Execute a group of steps."""
         group_name = step.step
         if group_name not in scenario.groups:
@@ -433,21 +430,32 @@ class SessionManager:
 
         logger.info(f"Executing group '{group_name}' with {len(group.steps)} steps")
 
+        for step in group.steps:
+            await self._record_step_running(step)
+
         for group_step in group.steps:
             # Ensure each step has an ID
             if not group_step.id:
                 group_step.id = group_step.step
 
+            original_id = group_step.id
+            exec_step = group_step
+
+            if loop_context and "index" in loop_context:
+                loop_index = loop_context.get("index")
+                exec_step = group_step.model_copy(deep=True)
+                exec_step.id = f"{group_name}[{loop_index}].{original_id}"
+
             # Execute the step with the enhanced context
-            result = await self.execute_single_step(group_step, enhanced_loop_context)
+            result = await self.execute_single_step(exec_step, enhanced_loop_context)
             results.append(result)
 
             # Store result in group context for subsequent steps
             # Store the entire result dict so nested access works (group.step_id.result)
-            group_context[group_step.id] = result
+            group_context[original_id] = result
 
             # If step failed and it's not allowed to fail, break the group
-            if result.get("status") == "error":
+            if result.status == Status.FAIL:
                 logger.error(f"Group step '{group_step.id}' failed, stopping group execution")
                 break
 
@@ -474,8 +482,7 @@ class SessionManager:
                 # Leave the result in context; drop the handle so it doesn't pile up
                 self.session_tasks.pop(dep_id, None)
 
-    async def run_scenario(self, scenario: ScenarioDefinition) -> List[Dict[str, Any]]:
-        results = []
+    async def run_scenario(self, scenario: ScenarioDefinition) -> List[StepResult]:
         if not self.session_resolver:
             await self.initialize_session()
 
@@ -512,11 +519,11 @@ class SessionManager:
                     status=Status.SKIP,
                     duration=0.0,
                     result=None,
-                    message=f"Skipped due to condition: {condition_to_evaluate}",
+                    error_message=f"Skipped due to condition: {condition_to_evaluate}",
                 )
                 if self.session_context:
-                    self.session_context.add_result(skipped_result)
-                results.append({"id": step.id, "status": "skipped", "result": None, "message": f"Condition not met: {condition_to_evaluate}"})
+                    with self.session_context:
+                        self.session_context.add_result(skipped_result)
                 continue
 
             # Wait for declared dependencies (useful for background steps)
@@ -527,14 +534,12 @@ class SessionManager:
                 # Handle loop execution for groups
                 if step.loop:
                     loop_results = await self._execute_loop_for_group(step, scenario)
-                    results.extend(loop_results)
-                    if loop_results and any(r.get("status") == "error" for r in loop_results):
+                    if loop_results and any(r.status == Status.FAIL for r in loop_results):
                         logger.error(f"Loop for group '{step.id}' failed, breaking scenario")
                         break
                 else:
                     group_results = await self._execute_group(step, scenario)
-                    results.extend(group_results)
-                    if any(r.get("status") == "error" for r in group_results):
+                    if any(r.status == Status.FAIL for r in group_results):
                         logger.error(f"Group '{step.id}' failed, breaking scenario")
                         break
             else:
@@ -542,19 +547,15 @@ class SessionManager:
                 # Handle loop execution
                 if step.loop:
                     loop_results = await self._execute_loop(step)
-                    results.extend(loop_results)
                     # Check if any loop iteration failed
-                    if loop_results and any(r.get("status") == "error" for r in loop_results):
+                    if loop_results and any(r.status == Status.FAIL for r in loop_results):
                         logger.error(f"Loop for step '{step.id}' failed, breaking scenario")
                         break
                 else:
-                    result = await self.execute_single_step(step)
-                    results.append(result)
-                    # Don't break on error - let conditions handle execution flow
-                    # Steps with always() condition will still run after errors
-        return results
+                    await self.execute_single_step(step)
+        return self.session_context.state.steps
 
-    async def _execute_loop_for_group(self, step: StepDefinition, scenario: ScenarioDefinition) -> List[Dict[str, Any]]:
+    async def _execute_loop_for_group(self, step: StepDefinition, scenario: ScenarioDefinition) -> List[StepResult]:
         """Execute a group multiple times based on loop configuration."""
         results = []
         loop_config = step.loop
@@ -589,13 +590,13 @@ class SessionManager:
                 group_results = await self._execute_group(step, scenario, loop_context)
                 results.extend(group_results)
 
-                if any(r.get("status") == "error" for r in group_results):
+                if any(r.status == Status.FAIL for r in group_results):
                     logger.error(f"Loop iteration {index} for group failed, breaking loop")
                     break
 
         return results
 
-    async def _execute_loop(self, step: StepDefinition) -> List[Dict[str, Any]]:
+    async def _execute_loop(self, step: StepDefinition) -> List[StepResult]:
         """Execute a step multiple times based on loop configuration."""
         results = []
         loop_config = step.loop
@@ -640,7 +641,7 @@ class SessionManager:
                 result = await self.execute_single_step(loop_step, loop_context)
                 results.append(result)
 
-                if result.get("status") == "error":
+                if result.status == Status.FAIL:
                     logger.error(f"Loop iteration {index} failed, breaking loop")
                     break
 
@@ -669,7 +670,7 @@ class SessionManager:
                 result = await self.execute_single_step(loop_step, loop_context)
                 results.append(result)
 
-                if result.get("status") == "error":
+                if result.status == Status.FAIL:
                     logger.error(f"While loop iteration {index} failed, breaking loop")
                     break
 
