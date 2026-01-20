@@ -256,6 +256,31 @@ docker build \
    docker compose logs verification-dev
    ```
 
+## Web UI (Scenario Editor)
+
+The web-based scenario editor lives in [web-editor](web-editor) and is built with Vite.
+
+### Dependencies
+
+* **Node.js** (LTS recommended)
+* **npm** (bundled with Node.js)
+
+### Build
+
+```bash
+cd web-editor
+npm install
+npm run build
+```
+
+### Run in Development Mode
+
+```bash
+cd web-editor
+npm install
+npm run dev
+```
+
 ### Production Deployment
 
 1. **Build optimized image:**
