@@ -81,7 +81,7 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
     const { sidebarWidth: width, isResizing, startResizing } = useSidebarResize(480, 300, 800);
 
     // Compute loop type from node data
-    const computedLoopType = useMemo<'none' | 'count' | 'items' | 'while'>(() => {
+    const loopType = useMemo<'none' | 'count' | 'items' | 'while'>(() => {
         if (!selectedNode.data.loop) return 'none';
         if (selectedNode.data.loop.count !== undefined) return 'count';
         if (selectedNode.data.loop.items !== undefined) return 'items';
@@ -89,18 +89,28 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
         return 'none';
     }, [selectedNode.data.loop]);
 
-    const [loopType, setLoopType] = useState<'none' | 'count' | 'items' | 'while'>(computedLoopType);
+    // Local state for JSON items textarea to allow invalid JSON while typing
+    const [jsonItemsText, setJsonItemsText] = useState<string | null>(null);
+    const [prevNodeId, setPrevNodeId] = useState(selectedNode.id);
+    const [prevItems, setPrevItems] = useState(selectedNode.data.loop?.items);
 
-    // Sync loopType state with computed value when node changes
-    if (loopType !== computedLoopType) {
-        setLoopType(computedLoopType);
+    // Sync local JSON text when node data changes externally
+    if (selectedNode.id !== prevNodeId || selectedNode.data.loop?.items !== prevItems) {
+        setPrevNodeId(selectedNode.id);
+        setPrevItems(selectedNode.data.loop?.items);
+        setJsonItemsText(null);
     }
+
+    const getItemsText = () => {
+        if (jsonItemsText !== null) return jsonItemsText;
+        return selectedNode.data.loop?.items ? JSON.stringify(selectedNode.data.loop.items) : '[]';
+    };
 
     const formatParamValue = (value: unknown): string => {
         if (value === null || value === undefined) {
             return '';
         }
-        if (typeof value === 'object' && value !== null && '$ref' in value) {
+        if (typeof value === 'object' && '$ref' in value) {
             return (value as { $ref: string }).$ref;
         }
         if (typeof value === 'string') {
@@ -164,7 +174,7 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                             onChange={(e) => onUpdateStepId(selectedNode.id, e.target.value)}
                             placeholder={selectedNode.data.label}
                         />
-                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                             Uniquely identify this step in the YAML. Explicitly set this if you have multiple steps with the same name.
                         </div>
                     </div>
@@ -231,10 +241,10 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                             placeholder="e.g., success() or steps.step1.status == 'pass'"
                         />
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                            Conditional expression (GitHub Actions-style). Examples:<br/>
-                            • <code style={{ fontSize: '10px' }}>success()</code> - run if previous step succeeded<br/>
-                            • <code style={{ fontSize: '10px' }}>failure()</code> - run if previous step failed<br/>
-                            • <code style={{ fontSize: '10px' }}>always()</code> - always run<br/>
+                            Conditional expression (GitHub Actions-style). Examples:<br />
+                            • <code style={{ fontSize: '10px' }}>success()</code> - run if previous step succeeded<br />
+                            • <code style={{ fontSize: '10px' }}>failure()</code> - run if previous step failed<br />
+                            • <code style={{ fontSize: '10px' }}>always()</code> - always run<br />
                             • <code style={{ fontSize: '10px' }}>steps.step1.status == 'pass'</code> - check specific step
                         </div>
                     </div>
@@ -246,7 +256,6 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                             value={loopType}
                             onChange={(e) => {
                                 const newType = e.target.value as typeof loopType;
-                                setLoopType(newType);
                                 if (newType === 'none') {
                                     onUpdateLoop(selectedNode.id, undefined);
                                 } else if (newType === 'count') {
@@ -285,14 +294,19 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                             <>
                                 <textarea
                                     className={styles.paramInput}
-                                    value={selectedNode.data.loop?.items ? JSON.stringify(selectedNode.data.loop.items) : '[]'}
+                                    value={getItemsText()}
                                     onChange={(e) => {
+                                        setJsonItemsText(e.target.value);
                                         try {
                                             const items = JSON.parse(e.target.value);
                                             onUpdateLoop(selectedNode.id, { items });
                                         } catch {
-                                            // Invalid JSON, ignore
+                                            // Invalid JSON, wait for user to fix
                                         }
+                                    }}
+                                    onBlur={() => {
+                                        // Reset local state to formatted JSON from props if valid, otherwise keep as is
+                                        setJsonItemsText(null);
                                     }}
                                     placeholder='["item1", "item2", "item3"]'
                                     rows={3}
@@ -392,15 +406,14 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                                             onClick={() => {
                                                 if (isLinked) {
                                                     onUpdateParameter(selectedNode.id, param.name, '');
+                                                } else if (connectedNodes.length > 0) {
+                                                    const sourceStepId = connectedNodes[0].data.stepId || connectedNodes[0].id;
+                                                    onUpdateParameter(selectedNode.id, param.name, { $ref: `steps.${sourceStepId}.result` });
                                                 } else {
-                                                    if (connectedNodes.length > 0) {
-                                                        const sourceStepId = connectedNodes[0].data.stepId || connectedNodes[0].id;
-                                                        onUpdateParameter(selectedNode.id, param.name, { $ref: `steps.${sourceStepId}.result` });
-                                                    } else {
-                                                        alert("Connect a node to this step first to link parameters.");
-                                                    }
+                                                    alert("Connect a node to this step first to link parameters.");
                                                 }
-                                            }}
+                                            }
+                                            }
                                             title={isLinked ? "Unlink parameter" : "Link to output from previous step"}
                                             type="button"
                                         >
@@ -409,99 +422,107 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                                         <label style={{ flex: 1 }}>{param.name} <span className={styles.paramType}>({param.type})</span></label>
                                     </div>
 
-                                    {isLinked && refData ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            <div className={styles.paramInput} style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>
-                                                Reference from steps
+                                    {
+                                        isLinked && refData ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <div className={styles.paramInput} style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>
+                                                    Reference from steps
+                                                </div>
+                                                <select
+                                                    className={styles.paramInput}
+                                                    value={resolvedStepId}
+                                                    onChange={(e) => {
+                                                        const sourceId = e.target.value;
+                                                        const fieldPath = refData.fieldPath;
+                                                        onUpdateParameter(
+                                                            selectedNode.id,
+                                                            param.name,
+                                                            { $ref: `steps.${sourceId}.result${fieldPath ? '.' + fieldPath : ''}` }
+                                                        );
+                                                    }}
+                                                >
+                                                    {connectedNodes.map(node => (
+                                                        <option key={node.id} value={node.data.stepId || node.id}>
+                                                            {node.data.label} ({node.data.stepId || node.id})
+                                                        </option>
+                                                    ))}
+                                                    {!connectedNodes.find(n => (n.data.stepId || n.id) === resolvedStepId) && resolvedStepId && (
+                                                        <option value={resolvedStepId}>
+                                                            {allNodes.find(n => n.id === resolvedStepId || n.data.stepId === resolvedStepId)?.data.label || resolvedStepId} (Disconnected)
+                                                        </option>
+                                                    )}
+                                                </select>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Field path (e.g. id, result.id)"
+                                                    className={styles.paramInput}
+                                                    value={refData.fieldPath}
+                                                    onChange={(e) => {
+                                                        const fieldPath = e.target.value;
+                                                        const sourceId = resolvedStepId || refData.stepId;
+                                                        onUpdateParameter(
+                                                            selectedNode.id,
+                                                            param.name,
+                                                            { $ref: `steps.${sourceId}.result${fieldPath ? '.' + fieldPath : ''}` }
+                                                        );
+                                                    }}
+                                                />
+                                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                                    {(() => {
+                                                        const refDisplay = '${{ steps.'
+                                                            + refData.stepId
+                                                            + `.result${refData.fieldPath ? '.' + refData.fieldPath : ''} }}`;
+                                                        return `Reference: ${refDisplay}`;
+                                                    })()}
+                                                </div>
                                             </div>
-                                            <select
-                                                className={styles.paramInput}
-                                                value={resolvedStepId}
-                                                onChange={(e) => {
-                                                    const sourceId = e.target.value;
-                                                    const fieldPath = refData.fieldPath;
-                                                    onUpdateParameter(
-                                                        selectedNode.id,
-                                                        param.name,
-                                                        { $ref: `steps.${sourceId}.result${fieldPath ? '.' + fieldPath : ''}` }
-                                                    );
-                                                }}
-                                            >
-                                                {connectedNodes.map(node => (
-                                                    <option key={node.id} value={node.data.stepId || node.id}>
-                                                        {node.data.label} ({node.data.stepId || node.id})
-                                                    </option>
-                                                ))}
-                                                {!connectedNodes.find(n => (n.data.stepId || n.id) === resolvedStepId) && resolvedStepId && (
-                                                    <option value={resolvedStepId}>
-                                                        {allNodes.find(n => n.id === resolvedStepId || n.data.stepId === resolvedStepId)?.data.label || resolvedStepId} (Disconnected)
-                                                    </option>
-                                                )}
-                                            </select>
-                                            <input
-                                                type="text"
-                                                placeholder="Field path (e.g. id, result.id)"
-                                                className={styles.paramInput}
-                                                value={refData.fieldPath}
-                                                onChange={(e) => {
-                                                    const fieldPath = e.target.value;
-                                                    const sourceId = resolvedStepId || refData.stepId;
-                                                    onUpdateParameter(
-                                                        selectedNode.id,
-                                                        param.name,
-                                                        { $ref: `steps.${sourceId}.result${fieldPath ? '.' + fieldPath : ''}` }
-                                                    );
-                                                }}
-                                            />
-                                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                                {(() => {
-                                                    const refDisplay = '${{ steps.'
-                                                        + refData.stepId
-                                                        + `.result${refData.fieldPath ? '.' + refData.fieldPath : ''} }}`;
-                                                    return `Reference: ${refDisplay}`;
-                                                })()}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        param.isEnum && param.options ? (
-                                            <select
-                                                className={styles.paramInput}
-                                                value={formatParamValue(param.default)}
-                                                onChange={(e) => {
-                                                    const inputValue = e.target.value;
-                                                    let value: unknown = undefined;
-                                                    if (inputValue !== '') {
-                                                        const numValue = Number(inputValue);
-                                                        value = Number.isNaN(numValue) ? inputValue : numValue;
-                                                    }
-                                                    onUpdateParameter(selectedNode.id, param.name, value);
-                                                }}
-                                            >
-                                                <option value="">Select...</option>
-                                                {param.options.map(opt => (
-                                                    <option key={String(opt.value)} value={String(opt.value)}>
-                                                        {opt.name} ({String(opt.value)})
-                                                    </option>
-                                                ))}
-                                            </select>
                                         ) : (
-                                            <input
-                                                type="text"
-                                                placeholder="Value..."
-                                                className={styles.paramInput}
-                                                value={formatParamValue(param.default)}
-                                                onChange={(e) => {
-                                                    const inputValue = e.target.value;
-                                                    let value: unknown = undefined;
-                                                    if (inputValue !== '') {
-                                                        const numValue = Number(inputValue);
-                                                        value = Number.isNaN(numValue) ? inputValue : numValue;
-                                                    }
-                                                    onUpdateParameter(selectedNode.id, param.name, value);
-                                                }}
-                                            />
+                                            param.isEnum && param.options ? (
+                                                <select
+                                                    className={styles.paramInput}
+                                                    value={formatParamValue(param.default)}
+                                                    onChange={(e) => {
+                                                        const inputValue = e.target.value;
+                                                        let value: unknown = undefined;
+                                                        if (inputValue !== '') {
+                                                            const numValue = Number(inputValue);
+                                                            value = Number.isNaN(numValue) ? inputValue : numValue;
+                                                        }
+                                                        onUpdateParameter(selectedNode.id, param.name, value);
+                                                    }}
+                                                >
+                                                    <option value="">Select...</option>
+                                                    {param.options.map(opt => (
+                                                        <option key={String(opt.value)} value={String(opt.value)}>
+                                                            {opt.name} ({String(opt.value)})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    placeholder="Value..."
+                                                    className={styles.paramInput}
+                                                    value={formatParamValue(param.default)}
+                                                    onChange={(e) => {
+                                                        const inputValue = e.target.value;
+                                                        let value: unknown = inputValue;
+
+                                                        // Only attempt number conversion if the parameter type expects it
+                                                        // or if it's not explicitly a string type
+                                                        if (inputValue !== '' && param.type !== 'string' && param.type !== 'str') {
+                                                            const numValue = Number(inputValue);
+                                                            if (!Number.isNaN(numValue)) {
+                                                                value = numValue;
+                                                            }
+                                                        }
+
+                                                        onUpdateParameter(selectedNode.id, param.name, value);
+                                                    }}
+                                                />
+                                            )
                                         )
-                                    )}
+                                    }
                                 </div>
                             );
                         })
@@ -510,6 +531,6 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     )}
                 </div>
             </div>
-        </aside>
+        </aside >
     );
 };

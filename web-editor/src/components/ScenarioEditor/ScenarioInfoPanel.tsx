@@ -54,7 +54,7 @@ export const ScenarioInfoPanel = ({ name, description, config, onUpdateName, onU
                         </button>
                     )}
                 </div>
-                <div className={styles.content} style={{ maxHeight: 'calc(100% - 60px)', overflowY: 'auto' }}>
+                <div className={styles.content} style={{ maxHeight: 'calc(100% - 60px)', overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className={styles.paramItem}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <FileText size={16} />

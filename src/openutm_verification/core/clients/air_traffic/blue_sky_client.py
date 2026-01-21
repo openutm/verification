@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tempfile
 import uuid
 from collections.abc import Iterable
@@ -70,7 +71,8 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         # Use a temporary directory for BlueSky working files to avoid polluting ~/bluesky
         # BlueSky's pathfinder.init() auto-creates required subdirs (scenario, plugins, output, cache)
         with tempfile.TemporaryDirectory(prefix="openutm-bluesky-") as tmp_dir:
-            bs.init(mode="sim", detached=True, workdir=tmp_dir)
+            cfg_path = os.path.join(tmp_dir, "settings.cfg")
+            bs.init(mode="sim", detached=True, workdir=tmp_dir, configfile=cfg_path)
 
             # Route console output to stdout (useful for debugging stack commands)
             bs.scr = ScreenDummy()

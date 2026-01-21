@@ -22,7 +22,7 @@ export const convertYamlToGraph = (
 
         // Check if this is a group reference
         const isGroupReference = scenario.groups && step.step in scenario.groups;
-        const operation = !isGroupReference ? operations.find(op => op.name === step.step) : null;
+        const operation = isGroupReference ? null : operations.find(op => op.name === step.step);
 
         if (!isGroupReference && !operation) {
             console.warn(`Operation ${step.step} not found`);
@@ -322,7 +322,7 @@ export const convertGraphToYaml = (
             if (currentValue === undefined) return;
 
             // Transform reference object to string format expected by backend
-            if (typeof currentValue === 'object' && currentValue !== null && '$ref' in currentValue) {
+            if (typeof currentValue === 'object' && '$ref' in currentValue) {
                 const ref = (currentValue as { $ref: string }).$ref;
                 const parts = ref.split('.');
 
@@ -349,7 +349,7 @@ export const convertGraphToYaml = (
             // Skip default values if operation is available
             if (operation) {
                 const originalParam = operation.parameters.find(p => p.name === param.name);
-                if (originalParam && originalParam.default === currentValue) {
+                if (originalParam?.default === currentValue) {
                     return;
                 }
             }

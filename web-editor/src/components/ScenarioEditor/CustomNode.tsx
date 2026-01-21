@@ -6,10 +6,18 @@ import type { NodeData } from '../../types/scenario';
 
 export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
     const isGroupContainer = data.isGroupContainer;
-    const statusClass = data.status === 'success' ? styles.statusSuccess :
-        (data.status === 'failure' || data.status === 'error') ? styles.statusError :
-            data.status === 'running' ? styles.statusRunning :
-                data.status === 'skipped' ? styles.statusSkipped : '';
+
+    let statusClass = '';
+    if (data.status === 'success') {
+        statusClass = styles.statusSuccess;
+    } else if (data.status === 'failure' || data.status === 'error') {
+        statusClass = styles.statusError;
+    } else if (data.status === 'running') {
+        statusClass = styles.statusRunning;
+    } else if (data.status === 'skipped') {
+        statusClass = styles.statusSkipped;
+    }
+
     const selectedClass = selected ? styles.selected : '';
 
     // Render group containers with label and badges overlay

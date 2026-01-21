@@ -127,9 +127,9 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                 </button>
 
                 {expandedSections.has('flight_blender') && (
-                    <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>URL</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>URL</label>
                             <input
                                 type="text"
                                 className={styles.paramInput}
@@ -140,7 +140,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         </div>
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Auth Type</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Auth Type</label>
                             <select
                                 className={styles.paramInput}
                                 value={config.flight_blender.auth.type}
@@ -154,7 +154,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         {config.flight_blender.auth.type === 'passport' && (
                             <>
                                 <div className={styles.paramItem}>
-                                    <label style={{ fontSize: '12px' }}>Client ID</label>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Client ID</label>
                                     <input
                                         type="text"
                                         className={styles.paramInput}
@@ -165,7 +165,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                                 </div>
 
                                 <div className={styles.paramItem}>
-                                    <label style={{ fontSize: '12px' }}>Client Secret</label>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Client Secret</label>
                                     <input
                                         type="password"
                                         className={styles.paramInput}
@@ -176,7 +176,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                                 </div>
 
                                 <div className={styles.paramItem}>
-                                    <label style={{ fontSize: '12px' }}>Token Endpoint</label>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Token Endpoint</label>
                                     <input
                                         type="text"
                                         className={styles.paramInput}
@@ -187,7 +187,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                                 </div>
 
                                 <div className={styles.paramItem}>
-                                    <label style={{ fontSize: '12px' }}>Passport Base URL</label>
+                                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Passport Base URL</label>
                                     <input
                                         type="text"
                                         className={styles.paramInput}
@@ -200,7 +200,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         )}
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Audience</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Audience</label>
                             <input
                                 type="text"
                                 className={styles.paramInput}
@@ -211,7 +211,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         </div>
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Scopes (comma-separated)</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Scopes (comma-separated)</label>
                             <input
                                 type="text"
                                 className={styles.paramInput}
@@ -250,9 +250,9 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                 </button>
 
                 {expandedSections.has('data_files') && (
-                    <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Trajectory</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Trajectory</label>
                             <input
                                 type="text"
                                 className={styles.paramInput}
@@ -263,7 +263,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         </div>
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Flight Declaration</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Flight Declaration</label>
                             <input
                                 type="text"
                                 className={styles.paramInput}
@@ -274,7 +274,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         </div>
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Flight Declaration via Operational Intent</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Flight Declaration via Operational Intent</label>
                             <input
                                 type="text"
                                 className={styles.paramInput}
@@ -285,7 +285,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         </div>
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Geo Fence</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Geo Fence</label>
                             <input
                                 type="text"
                                 className={styles.paramInput}
@@ -324,9 +324,9 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                 </button>
 
                 {expandedSections.has('air_traffic') && (
-                    <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Number of Aircraft</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Number of Aircraft</label>
                             <input
                                 type="number"
                                 className={styles.paramInput}
@@ -338,7 +338,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         </div>
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Simulation Duration (seconds)</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Simulation Duration (seconds)</label>
                             <input
                                 type="number"
                                 className={styles.paramInput}
@@ -350,7 +350,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         </div>
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Single or Multiple Sensors</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Single or Multiple Sensors</label>
                             <select
                                 className={styles.paramInput}
                                 value={config.air_traffic_simulator_settings.single_or_multiple_sensors || 'multiple'}
@@ -362,7 +362,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         </div>
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Sensor IDs (comma-separated)</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Sensor IDs (comma-separated)</label>
                             <input
                                 type="text"
                                 className={styles.paramInput}
@@ -401,9 +401,9 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                 </button>
 
                 {expandedSections.has('blue_sky_air_traffic') && (
-                    <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Number of Aircraft</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Number of Aircraft</label>
                             <input
                                 type="number"
                                 className={styles.paramInput}
@@ -415,7 +415,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         </div>
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Simulation Duration (seconds)</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Simulation Duration (seconds)</label>
                             <input
                                 type="number"
                                 className={styles.paramInput}
@@ -427,7 +427,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         </div>
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Single or Multiple Sensors</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Single or Multiple Sensors</label>
                             <select
                                 className={styles.paramInput}
                                 value={config.blue_sky_air_traffic_simulator_settings?.single_or_multiple_sensors || 'multiple'}
@@ -439,7 +439,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                         </div>
 
                         <div className={styles.paramItem}>
-                            <label style={{ fontSize: '12px' }}>Sensor IDs (comma-separated)</label>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Sensor IDs (comma-separated)</label>
                             <input
                                 type="text"
                                 className={styles.paramInput}

@@ -174,7 +174,6 @@ class ConditionEvaluator:
         # Note: Must handle "!" carefully to not replace it in "!="
         expr = expr.replace("&&", " and ").replace("||", " or ")
         # Only replace "!" when not followed by "="
-        import re
 
         expr = re.sub(r"!(?!=)", " not ", expr)
 
