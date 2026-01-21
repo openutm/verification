@@ -1,8 +1,5 @@
 from typing import (
-    Any,
     AsyncGenerator,
-    Callable,
-    Coroutine,
     Generator,
     Iterable,
     TypeVar,
@@ -22,6 +19,7 @@ from openutm_verification.core.clients.air_traffic.base_client import (
 from openutm_verification.core.clients.air_traffic.blue_sky_client import (
     BlueSkyClient,
 )
+from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
@@ -39,30 +37,30 @@ from openutm_verification.core.execution.dependency_resolution import (
     CONTEXT,
     dependency,
 )
-from openutm_verification.core.reporting.reporting_models import ScenarioResult
-from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
+from openutm_verification.server.runner import SessionManager
+from openutm_verification.utils.paths import get_docs_directory
 
 T = TypeVar("T")
 
 
 def get_scenario_docs(scenario_id: str) -> str | None:
-    docs_path = SCENARIO_REGISTRY[scenario_id].get("docs")
-    if docs_path and docs_path.exists():
-        try:
-            return docs_path.read_text(encoding="utf-8")
-        except Exception as e:
-            logger.warning(f"Failed to read docs file {docs_path}: {e}")
-    else:
-        logger.warning(f"Docs file not found: {docs_path}")
+    docs_dir = get_docs_directory()
+    if not docs_dir:
+        return None
+
+    docs_path = docs_dir / f"{scenario_id}.md"
+    if not docs_path.exists():
+        return None
+
+    try:
+        return docs_path.read_text(encoding="utf-8")
+    except Exception as e:
+        logger.warning(f"Failed to read docs file {docs_path}: {e}")
         return None
 
 
-def scenarios() -> Iterable[tuple[str, Callable[..., Coroutine[Any, Any, ScenarioResult]]]]:
-    """Provides scenarios to run with their functions.
-
-    Returns:
-        An iterable of tuples containing (scenario_id, scenario_function).
-    """
+def scenarios() -> Iterable[str]:
+    """Provides scenario IDs to run (YAML-only)."""
     config = get_settings()
 
     scenarios_to_iterate = []
@@ -88,24 +86,20 @@ def scenarios() -> Iterable[tuple[str, Callable[..., Coroutine[Any, Any, Scenari
         scenario_id = item.name
         suite_scenario = item
 
-        if scenario_id in SCENARIO_REGISTRY:
-            logger.info("=" * 100)
-            logger.info(f"Running scenario: {scenario_id}")
+        logger.info("=" * 100)
+        logger.info(f"Running YAML scenario: {scenario_id}")
 
-            scenario_func = SCENARIO_REGISTRY[scenario_id].get("func")
-            docs_content = get_scenario_docs(scenario_id)
+        docs_content = get_scenario_docs(scenario_id)
 
-            CONTEXT.set(
-                {
-                    "scenario_id": scenario_id,
-                    "suite_scenario": suite_scenario,
-                    "suite_name": suite_name,
-                    "docs": docs_content,
-                }
-            )
-            yield scenario_id, scenario_func
-        else:
-            logger.warning(f"Scenario {scenario_id} not found in registry.")
+        CONTEXT.set(
+            {
+                "scenario_id": scenario_id,
+                "suite_scenario": suite_scenario,
+                "suite_name": suite_name,
+                "docs": docs_content,
+            }
+        )
+        yield scenario_id
     logger.info("=" * 100)
 
 
@@ -133,23 +127,30 @@ def data_files(scenario_id: ScenarioId) -> Generator[DataFiles, None, None]:
 
     if suite_scenario:
         # Merge suite overrides with base config
-        trajectory = suite_scenario.trajectory or config.data_files.trajectory
+        if suite_scenario.simulation and suite_scenario.trajectory is None:
+            trajectory = None
+        else:
+            trajectory = suite_scenario.trajectory or config.data_files.trajectory
         flight_declaration = suite_scenario.flight_declaration or config.data_files.flight_declaration
         flight_declaration_via_operational_intent = (
             suite_scenario.flight_declaration_via_operational_intent or config.data_files.flight_declaration_via_operational_intent
         )
         geo_fence = suite_scenario.geo_fence or config.data_files.geo_fence
+        simulation = suite_scenario.simulation or config.data_files.simulation
     else:
         # Use base config
         trajectory = config.data_files.trajectory
         flight_declaration = config.data_files.flight_declaration
         geo_fence = config.data_files.geo_fence
+        flight_declaration_via_operational_intent = config.data_files.flight_declaration_via_operational_intent
+        simulation = config.data_files.simulation
 
     data = DataFiles(
         trajectory=trajectory,
         flight_declaration=flight_declaration,
         flight_declaration_via_operational_intent=flight_declaration_via_operational_intent,
         geo_fence=geo_fence,
+        simulation=simulation,
     )
     yield data
 
@@ -165,13 +166,12 @@ def app_config() -> Generator[AppConfig, None, None]:
 
 
 @dependency(FlightBlenderClient)
-async def flight_blender_client(
-    config: AppConfig,
-) -> AsyncGenerator[FlightBlenderClient, None]:
+async def flight_blender_client(config: AppConfig, data_files: DataFiles) -> AsyncGenerator[FlightBlenderClient, None]:
     """Provides a FlightBlenderClient instance for dependency injection.
 
     Args:
         config: The application configuration containing Flight Blender settings.
+        data_files: The data files configuration.
     Returns:
         An instance of FlightBlenderClient.
     """
@@ -180,7 +180,14 @@ async def flight_blender_client(
         audience=config.flight_blender.auth.audience or "",
         scopes=config.flight_blender.auth.scopes or [],
     )
-    async with FlightBlenderClient(base_url=config.flight_blender.url, credentials=credentials) as fb_client:
+    async with FlightBlenderClient(
+        base_url=config.flight_blender.url,
+        credentials=credentials,
+        flight_declaration_path=data_files.flight_declaration,
+        flight_declaration_via_operational_intent=data_files.flight_declaration_via_operational_intent,
+        trajectory_path=data_files.trajectory,
+        geo_fence_path=data_files.geo_fence,
+    ) as fb_client:
         yield fb_client
 
 
@@ -193,20 +200,26 @@ async def opensky_client(config: AppConfig) -> AsyncGenerator[OpenSkyClient, Non
 
 
 @dependency(AirTrafficClient)
-async def air_traffic_client(
-    config: AppConfig,
-) -> AsyncGenerator[AirTrafficClient, None]:
+async def air_traffic_client() -> AsyncGenerator[AirTrafficClient, None]:
     """Provides an AirTrafficClient instance for dependency injection."""
     settings = create_air_traffic_settings()
-    async with AirTrafficClient(settings) as air_traffic_client:
-        yield air_traffic_client
+    async with AirTrafficClient(settings) as client:
+        yield client
+
+
+@dependency(SessionManager)
+async def session_manager() -> AsyncGenerator[SessionManager, None]:
+    yield SessionManager()
+
+
+@dependency(CommonClient)
+async def common_client() -> AsyncGenerator[CommonClient, None]:
+    yield CommonClient()
 
 
 @dependency(BlueSkyClient)
-async def bluesky_client(
-    config: AppConfig,
-) -> AsyncGenerator[BlueSkyClient, None]:
+async def bluesky_client() -> AsyncGenerator[BlueSkyClient, None]:
     """Provides a BlueSkyClient instance for dependency injection."""
     settings = create_blue_sky_air_traffic_settings()
-    async with BlueSkyClient(settings) as bluesky_client:
-        yield bluesky_client
+    async with BlueSkyClient(settings) as client:
+        yield client

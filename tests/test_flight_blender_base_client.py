@@ -109,40 +109,45 @@ async def test_http_verbs_delegate_to_request(mock_request: AsyncMock):
     mock_request.assert_any_call("DELETE", "/d", silent_status=None)
 
 
-@patch("openutm_verification.core.clients.flight_blender.base_client.create_connection")
-def test_create_websocket_connection_sends_auth(create_conn: MagicMock):
-    ws = MagicMock()
-    create_conn.return_value = ws
+@pytest.mark.asyncio
+@patch("openutm_verification.core.clients.flight_blender.base_client.connect", new_callable=AsyncMock)
+async def test_create_websocket_connection_sends_auth(mock_connect: AsyncMock):
+    ws = AsyncMock()
+    mock_connect.return_value = ws
 
     client = make_client(with_token=True)
-    conn = client.create_websocket_connection("/ws")
+    conn = await client.create_websocket_connection("/ws")
 
-    create_conn.assert_called_once_with("wss://example.com/ws")
+    mock_connect.assert_called_once_with("wss://example.com/ws")
     ws.send.assert_called_once_with("Bearer token123")
     assert conn is ws
 
 
-@patch("openutm_verification.core.clients.flight_blender.base_client.create_connection")
-def test_create_websocket_connection_no_auth_does_not_send(create_conn: MagicMock):
-    ws = MagicMock()
-    create_conn.return_value = ws
+@pytest.mark.asyncio
+@patch("openutm_verification.core.clients.flight_blender.base_client.connect", new_callable=AsyncMock)
+async def test_create_websocket_connection_no_auth_does_not_send(mock_connect: AsyncMock):
+    ws = AsyncMock()
+    mock_connect.return_value = ws
 
     client = make_client(with_token=False)
-    client.create_websocket_connection("/ws")
+    await client.create_websocket_connection("/ws")
 
-    create_conn.assert_called_once_with("wss://example.com/ws")
+    mock_connect.assert_called_once_with("wss://example.com/ws")
     ws.send.assert_not_called()
 
 
-@patch("openutm_verification.core.clients.flight_blender.base_client.create_connection", side_effect=ConnectionRefusedError)
-def test_create_websocket_connection_refused_raises(_: MagicMock):
+@pytest.mark.asyncio
+@patch("openutm_verification.core.clients.flight_blender.base_client.connect", new_callable=AsyncMock)
+async def test_create_websocket_connection_refused_raises(mock_connect: AsyncMock):
+    mock_connect.side_effect = ConnectionRefusedError
     client = make_client()
     with pytest.raises(FlightBlenderError):
-        client.create_websocket_connection("/ws")
+        await client.create_websocket_connection("/ws")
 
 
-def test_close_websocket_connection_calls_close():
+@pytest.mark.asyncio
+async def test_close_websocket_connection_calls_close():
     client = make_client()
-    ws = MagicMock()
-    client.close_websocket_connection(ws)
+    ws = AsyncMock()
+    await client.close_websocket_connection(ws)
     ws.close.assert_called_once()

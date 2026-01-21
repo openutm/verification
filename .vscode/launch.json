@@ -5,6 +5,23 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Debugger: Start Server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "openutm_verification.server.main:app",
+                "--reload",
+                "--port",
+                "8989"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "jinja": true,
+            "justMyCode": true
+        },
+        {
             "name": "Python Debugger: Verify with --debug",
             "type": "debugpy",
             "request": "launch",

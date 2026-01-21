@@ -1,25 +1,102 @@
 import json
 import shutil
+from datetime import datetime, timezone
+from importlib.metadata import version
 from pathlib import Path
+from typing import Any, TypeVar
 
 import markdown
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 
-from openutm_verification.core.execution.config_models import ReportingConfig
-from openutm_verification.core.reporting.reporting_models import ReportData, ScenarioResult
+from openutm_verification.core.execution.config_models import AppConfig, ReportingConfig
+from openutm_verification.core.reporting.reporting_models import (
+    ReportData,
+    ReportSummary,
+    ScenarioResult,
+    Status,
+)
 from openutm_verification.core.reporting.visualize_flight import visualize_flight_path_2d, visualize_flight_path_3d
+from openutm_verification.utils.time_utils import get_run_timestamp_str
+
+T = TypeVar("T")
+
+
+def _sanitize_config(data: Any) -> Any:
+    """
+    Recursively sanitize sensitive fields in the configuration data.
+    """
+    sensitive_mask = "***MASKED***"
+    sensitive_keys = ["client_id", "client_secret", "audience", "scopes"]
+
+    if isinstance(data, dict):
+        sanitized = {}
+        for key, value in data.items():
+            if key in sensitive_keys:
+                sanitized[key] = sensitive_mask
+            else:
+                sanitized[key] = _sanitize_config(value)
+        return sanitized
+    elif isinstance(data, list):
+        return [_sanitize_config(item) for item in data]
+    else:
+        return data
+
+
+def create_report_data(
+    config: AppConfig,
+    config_path: str,
+    results: list[ScenarioResult],
+    start_time: datetime,
+    end_time: datetime,
+    run_id: str | None = None,
+    docs_dir: str | None = None,
+) -> ReportData:
+    """
+    Creates validation and validation report data from run results.
+    """
+    sanitized_config = _sanitize_config(config.model_dump())
+
+    try:
+        tool_version = version("openutm-verification")
+    except Exception:
+        tool_version = "unknown"
+
+    failed_scenarios = sum(1 for r in results if r.status == Status.FAIL)
+    overall_status = Status.FAIL if failed_scenarios > 0 else Status.PASS
+
+    return ReportData(
+        run_id=run_id or config.run_id,
+        tool_version=tool_version,
+        start_time=start_time,
+        end_time=end_time,
+        total_duration=(end_time - start_time).total_seconds(),
+        overall_status=overall_status,
+        flight_blender_url=config.flight_blender.url,
+        deployment_details=config.reporting.deployment_details,
+        config_file=config_path,
+        config=sanitized_config,
+        results=results,
+        summary=ReportSummary(
+            total_scenarios=len(results),
+            passed=sum(1 for r in results if r.status == Status.PASS),
+            failed=failed_scenarios,
+        ),
+        docs_dir=docs_dir,
+    )
 
 
 def generate_reports(
     report_data: ReportData,
     reporting_config: ReportingConfig,
-    base_filename: str,
+    base_filename: str = "report",
 ):
     """
     Generates reports based on the provided configuration.
     """
     output_dir = Path(reporting_config.output_dir)
+    reporting_config.timestamp_subdir = reporting_config.timestamp_subdir or get_run_timestamp_str(datetime.now(timezone.utc))
+    output_dir = output_dir / reporting_config.timestamp_subdir
     output_dir.mkdir(parents=True, exist_ok=True)
 
     _save_scenario_data(report_data, output_dir)
@@ -121,16 +198,19 @@ def _generate_scenario_visualizations(result: ScenarioResult, output_dir: Path):
     scenario_dir = output_dir / result.name
     scenario_dir.mkdir(parents=True, exist_ok=True)
 
+    # Get air traffic data if available
+    air_traffic_data = result.air_traffic_data
+
     # Generate 2D visualization
     vis_2d_filename = "visualization_2d.html"
     vis_2d_path = scenario_dir / vis_2d_filename
-    visualize_flight_path_2d(result.telemetry_data, flight_declaration_dict, vis_2d_path)
+    visualize_flight_path_2d(result.telemetry_data, flight_declaration_dict, vis_2d_path, air_traffic_data)
     result.visualization_2d_path = str(vis_2d_path.relative_to(output_dir))
 
     # Generate 3D visualization
     vis_3d_filename = "visualization_3d.html"
     vis_3d_path = scenario_dir / vis_3d_filename
-    visualize_flight_path_3d(result.telemetry_data, flight_declaration_dict, vis_3d_path)
+    visualize_flight_path_3d(result.telemetry_data, flight_declaration_dict, vis_3d_path, air_traffic_data)
     result.visualization_3d_path = str(vis_3d_path.relative_to(output_dir))
 
 

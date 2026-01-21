@@ -27,4 +27,9 @@ def create_parser() -> argparse.ArgumentParser:
         action="append",
         help="Name of the test suite to run (overrides individual scenarios). Can be specified multiple times.",
     )
+    parser.add_argument(
+        "--server",
+        action="store_true",
+        help="Run in server mode (starts the API and Web UI).",
+    )
     return parser

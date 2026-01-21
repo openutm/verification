@@ -2,6 +2,7 @@
 Pydantic models for reporting configuration.
 """
 
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
@@ -21,8 +22,10 @@ from openutm_verification.simulator.models.flight_data_types import (
 class Status(StrEnum):
     """Enumeration for status values."""
 
-    PASS = "PASS"
-    FAIL = "FAIL"
+    PASS = "success"
+    FAIL = "failure"
+    RUNNING = "running"
+    SKIP = "skipped"
 
 
 T = TypeVar("T")
@@ -31,11 +34,13 @@ T = TypeVar("T")
 class StepResult(BaseModel, Generic[T]):
     """Data model for a single step within a scenario."""
 
+    id: str | None = None
     name: str
     status: Status
     duration: float
-    details: T = None  # type: ignore
+    result: T = None  # type: ignore
     error_message: str | None = None
+    logs: list[str] = []
 
 
 class ScenarioResult(BaseModel):
@@ -46,7 +51,7 @@ class ScenarioResult(BaseModel):
     name: str
     suite_name: str | None = None
     status: Status
-    duration_seconds: float
+    duration: float
     steps: list[StepResult[Any]]
     error_message: str | None = None
     flight_declaration_filename: str | None = None
@@ -73,9 +78,9 @@ class ReportData(BaseModel):
 
     run_id: str
     tool_version: str
-    start_time_utc: str
-    end_time_utc: str
-    total_duration_seconds: float
+    start_time: datetime
+    end_time: datetime
+    total_duration: float
     overall_status: Status
     flight_blender_url: str
     deployment_details: DeploymentDetails

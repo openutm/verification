@@ -1,8 +1,3 @@
-from loguru import logger
-
-from openutm_verification.core.clients.air_traffic.air_traffic_client import (
-    AirTrafficClient,
-)
 from openutm_verification.core.clients.air_traffic.blue_sky_client import BlueSkyClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
@@ -20,10 +15,6 @@ async def test_bluesky_sim_air_traffic_data(
 
     The OpenSky client is provided by the caller; this function focuses on orchestration only.
     """
-    logger.info("Generating simulated air traffic data using BlueSky client")
     result = await blue_sky_client.generate_bluesky_sim_air_traffic_data()
-    logger.info("Submitting simulated air traffic data to Flight Blender")
 
-    observations = result.details
-
-    await fb_client.submit_simulated_air_traffic(observations=observations)
+    await fb_client.submit_simulated_air_traffic(observations=result.details)

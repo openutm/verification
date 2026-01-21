@@ -16,8 +16,10 @@
         .scenario-summary:hover { background-color: #f1f1f1; }
         .scenario-details { padding: 15px; border-top: 1px solid #ddd; }
         .status { font-weight: bold; padding: 5px 10px; border-radius: 15px; color: white; }
-        .status-PASS { background-color: #28a745; }
-        .status-FAIL { background-color: #dc3545; }
+        .status-success { background-color: #28a745; }
+        .status-failure { background-color: #dc3545; }
+        .status-running { background-color: #007bff; }
+        .status-skipped { background-color: #6c757d; }
         .steps-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .steps-table th, .steps-table td { border: 1px solid #eee; padding: 8px; text-align: left; }
         .steps-table th { background-color: #fafafa; }
@@ -32,7 +34,7 @@
         <tr><th>Tool Version</th><td>{{ report_data.tool_version }}</td></tr>
         <tr><th>Start Time (UTC)</th><td>{{ report_data.start_time_utc }}</td></tr>
         <tr><th>End Time (UTC)</th><td>{{ report_data.end_time_utc }}</td></tr>
-        <tr><th>Duration</th><td>{{ "%.2f"|format(report_data.total_duration_seconds) }} seconds</td></tr>
+        <tr><th>Duration</th><td>{{ "%.2f"|format(report_data.total_duration) }} seconds</td></tr>
         <tr><th>Overall Status</th><td><span class="status status-{{ report_data.overall_status }}">{{ report_data.overall_status }}</span></td></tr>
         <tr><th>Config File</th><td>{{ report_data.config_file }}</td></tr>
     </table>
@@ -73,7 +75,7 @@
                 <span class="status status-{{ result.status }}">{{ result.status }}</span>
             </summary>
             <div class="scenario-details">
-                <p><strong>Duration:</strong> {{ "%.2f"|format(result.duration_seconds) }} seconds</p>
+                <p><strong>Duration:</strong> {{ "%.2f"|format(result.duration) }} seconds</p>
                 {% if result.visualization_2d_path or result.visualization_3d_path %}
                     <p><strong>Flight Visualizations:</strong>
                     {% if result.visualization_2d_path %}
@@ -85,7 +87,7 @@
                     {% endif %}
                     </p>
                 {% endif %}
-                {% if result.status == 'FAIL' and result.error_message %}
+                {% if result.status == 'failure' and result.error_message %}
                     <h4>Error Message:</h4>
                     <pre>{{ result.error_message }}</pre>
                 {% endif %}
@@ -102,7 +104,7 @@
                             <th>Step Name</th>
                             <th>Status</th>
                             <th>Duration (s)</th>
-                            <th>Details</th>
+                            <th>Result</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -111,7 +113,7 @@
                             <td>{{ step.name }}</td>
                             <td><span class="status status-{{ step.status }}">{{ step.status }}</span></td>
                             <td>{{ "%.2f"|format(step.duration) }}</td>
-                            <td><pre>{{ step.details | tojson(indent=2) }}</pre></td>
+                            <td><pre>{{ step.result | tojson(indent=2) }}</pre></td>
                         </tr>
                         {% endfor %}
                     </tbody>

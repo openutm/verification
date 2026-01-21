@@ -9,6 +9,8 @@ from typing import Annotated, Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from openutm_verification.utils.time_utils import parse_duration
+
 
 class StrictBaseModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -35,9 +37,14 @@ class FlightBlenderConfig(StrictBaseModel):
 
 class AirTrafficSimulatorSettings(StrictBaseModel):
     number_of_aircraft: int
-    simulation_duration_seconds: int
+    simulation_duration: int | str
     single_or_multiple_sensors: Literal["single", "multiple"] = "single"
     sensor_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("simulation_duration")
+    @classmethod
+    def validate_duration(cls, v: int | str) -> int:
+        return int(parse_duration(v))
 
 
 class BlueSkyAirTrafficSimulatorSettings(StrictBaseModel):
@@ -64,6 +71,7 @@ class DeploymentDetails(StrictBaseModel):
 class ReportingConfig(StrictBaseModel):
     """Configuration for generating reports."""
 
+    timestamp_subdir: str = ""
     output_dir: str = "reports"
     formats: list[str] = Field(default_factory=lambda: ["json", "html", "log"])
     deployment_details: DeploymentDetails = Field(default_factory=DeploymentDetails)

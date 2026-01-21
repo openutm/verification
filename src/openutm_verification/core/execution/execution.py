@@ -4,9 +4,8 @@ Core execution logic for running verification scenarios.
 
 import json
 from datetime import datetime, timezone
-from importlib.metadata import version
 from pathlib import Path
-from typing import TypeVar
+from typing import TYPE_CHECKING
 
 from loguru import logger
 from pydantic import ValidationError
@@ -19,49 +18,25 @@ from openutm_verification.core.clients.opensky.base_client import (
 )
 from openutm_verification.core.execution.config_models import AppConfig
 from openutm_verification.core.execution.dependencies import scenarios
-from openutm_verification.core.execution.dependency_resolution import CONTEXT, call_with_dependencies
-from openutm_verification.core.reporting.reporting import generate_reports
+from openutm_verification.core.execution.dependency_resolution import CONTEXT
+from openutm_verification.core.execution.scenario_loader import load_yaml_scenario_definition
+from openutm_verification.core.reporting.reporting import _sanitize_config, create_report_data, generate_reports
 from openutm_verification.core.reporting.reporting_models import (
-    ReportData,
-    ReportSummary,
     ScenarioResult,
     Status,
 )
 from openutm_verification.utils.paths import get_docs_directory
 
-T = TypeVar("T")
+if TYPE_CHECKING:
+    from openutm_verification.server.runner import SessionManager
 
 
-def _sanitize_config(data: T) -> T:
-    """
-    Recursively sanitize sensitive fields in the configuration data for logging and reporting.
-
-    Masks client_id, client_secret, audience, and scopes anywhere in the data structure.
-    """
-    sensitive_mask = "***MASKED***"
-    sensitive_keys = ["client_id", "client_secret", "audience", "scopes"]
-
-    if isinstance(data, dict):
-        sanitized = {}
-        for key, value in data.items():
-            if key in sensitive_keys:
-                sanitized[key] = sensitive_mask
-            else:
-                sanitized[key] = _sanitize_config(value)
-        return sanitized  # type: ignore
-    elif isinstance(data, list):
-        return [_sanitize_config(item) for item in data]  # type: ignore
-    else:
-        return data
-
-
-async def run_verification_scenarios(config: AppConfig, config_path: Path):
+async def run_verification_scenarios(config: AppConfig, config_path: Path, session_manager: "SessionManager | None" = None):
     """
     Executes the verification scenarios based on the provided configuration.
     """
-    run_timestamp = datetime.now(timezone.utc)
-    start_time_utc = run_timestamp.isoformat()
-    start_time_obj = run_timestamp
+
+    start_time = datetime.now(timezone.utc)
 
     logger.info("Starting verification run...")
     logger.info(f"Using configuration: {config_path}")
@@ -70,20 +45,47 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path):
     sanitized_config_dict = _sanitize_config(config.model_dump())
     logger.debug(f"Configuration details:\n{json.dumps(sanitized_config_dict, indent=2)}")
 
+    # Initialize SessionManager
+    if session_manager is None:
+        from openutm_verification.server.runner import SessionManager as RunnerSessionManager
+
+        session_manager = RunnerSessionManager(config_path=str(config_path))
+
     scenario_results = []
-    for scenario_id, scenario_func in scenarios():
+    for scenario_id in scenarios():
         try:
-            result = await call_with_dependencies(scenario_func)
+            # Initialize session with the current context
+            await session_manager.initialize_session()
+
+            scenario_def = load_yaml_scenario_definition(scenario_id)
+            await session_manager.run_scenario(scenario_def)
+            state = session_manager.session_context.state if session_manager.session_context else None
+            steps = state.steps if state else []
+            failed = any(s.status == Status.FAIL for s in steps)
+            status = Status.FAIL if failed else Status.PASS
+            result = ScenarioResult(
+                name=scenario_id,
+                status=status,
+                duration=0,
+                steps=steps,
+                flight_declaration_data=state.flight_declaration_data if state else None,
+                flight_declaration_via_operational_intent_data=state.flight_declaration_via_operational_intent_data if state else None,
+                telemetry_data=state.telemetry_data if state else None,
+                air_traffic_data=state.air_traffic_data if state else [],
+            )
         except (AirTrafficError, OpenSkyError, ValidationError) as e:
             logger.error(f"Failed to run scenario '{scenario_id}': {e}")
             result = ScenarioResult(
                 name=scenario_id,
                 status=Status.FAIL,
-                duration_seconds=0,
+                duration=0,
                 steps=[],
                 error_message=str(e),
                 docs=None,
             )
+        finally:
+            # Ensure session is closed after each scenario to clean up resources
+            await session_manager.close_session()
 
         # Enrich result with context data
         context_data = CONTEXT.get()
@@ -94,36 +96,18 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path):
         logger.info(f"Scenario {scenario_id} finished with status: {result.status}")
 
     end_time_obj = datetime.now(timezone.utc)
-    end_time_utc = end_time_obj.isoformat()
-    total_duration_seconds = (end_time_obj - start_time_obj).total_seconds()
-
-    failed_scenarios = sum(1 for r in scenario_results if r.status == Status.FAIL)
-    overall_status = Status.FAIL if failed_scenarios > 0 else Status.PASS
 
     docs_dir = get_docs_directory()
-
-    report_data = ReportData(
-        run_id=config.run_id,
-        tool_version=version("openutm-verification"),
-        start_time_utc=start_time_utc,
-        end_time_utc=end_time_utc,
-        total_duration_seconds=total_duration_seconds,
-        overall_status=overall_status,
-        flight_blender_url=config.flight_blender.url,
-        deployment_details=config.reporting.deployment_details,
-        config_file=str(config_path),
-        config=sanitized_config_dict,  # Use sanitized config in the report
+    report_data = create_report_data(
+        config=config,
+        config_path=str(config_path),
         results=scenario_results,
-        summary=ReportSummary(
-            total_scenarios=len(scenario_results),
-            passed=sum(1 for r in scenario_results if r.status == Status.PASS),
-            failed=failed_scenarios,
-        ),
+        start_time=start_time,
+        end_time=end_time_obj,
         docs_dir=str(docs_dir) if docs_dir else None,
     )
 
-    logger.info(f"Verification run complete with overall status: {overall_status}")
+    logger.info(f"Verification run complete with overall status: {report_data.overall_status}")
 
-    base_filename = "report"
-    generate_reports(report_data, config.reporting, base_filename)
-    return failed_scenarios
+    generate_reports(report_data, config.reporting)
+    return report_data.summary.failed

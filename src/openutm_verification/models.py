@@ -6,7 +6,17 @@ class FlightBlenderError(Exception):
     """Custom exception for Flight Blender API errors."""
 
 
-class OperationState(int, Enum):
+class CaseInsensitiveEnum(Enum):
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            for member in cls:
+                if member.name.lower() == value.lower():
+                    return member
+        return super()._missing_(value)
+
+
+class OperationState(int, CaseInsensitiveEnum):
     """An enumeration for the state of a flight operation."""
 
     PROCESSING = 0
@@ -20,7 +30,7 @@ class OperationState(int, Enum):
     REJECTED = 8
 
 
-class SDSPSessionAction(str, Enum):
+class SDSPSessionAction(str, CaseInsensitiveEnum):
     START = "start"
     STOP = "stop"
 

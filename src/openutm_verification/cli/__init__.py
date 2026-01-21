@@ -10,9 +10,11 @@ from pathlib import Path
 import yaml
 
 from openutm_verification.cli.parser import create_parser
-from openutm_verification.core import run_verification_scenarios
 from openutm_verification.core.execution.config_models import AppConfig, ConfigProxy
+from openutm_verification.core.execution.execution import run_verification_scenarios
+from openutm_verification.server.runner import SessionManager
 from openutm_verification.utils.logging import setup_logging
+from openutm_verification.utils.time_utils import get_run_timestamp_str
 
 
 def main():
@@ -21,6 +23,12 @@ def main():
     """
     parser = create_parser()
     args = parser.parse_args()
+
+    if args.server:
+        from openutm_verification.server.main import start_server_mode
+
+        start_server_mode(config_path=args.config)
+        sys.exit(0)
 
     # Load configuration
     config_path = Path(args.config)
@@ -43,20 +51,23 @@ def main():
 
     # Setup logging
     run_timestamp = datetime.now(timezone.utc)
-    timestamp_str = run_timestamp.strftime("%Y-%m-%dT%H-%M-%SZ")
+    timestamp_str = get_run_timestamp_str(run_timestamp)
 
     base_output_dir = Path(config.reporting.output_dir)
-    output_dir = base_output_dir / f"run_{timestamp_str}"
+    config.reporting.timestamp_subdir = timestamp_str
+    output_dir = base_output_dir / timestamp_str
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Update config so downstream components use the new directory
-    config.reporting.output_dir = str(output_dir)
 
     base_filename = "report"
     log_file = setup_logging(output_dir, base_filename, config.reporting.formats, args.debug)
 
+    # Reuse the same SessionManager object as the server
+    session_manager = SessionManager(config_path=str(config_path))
+    session_manager.config = config
+    session_manager.config_path = config_path
+
     # Run verification scenarios
-    failed = asyncio.run(run_verification_scenarios(config, args.config))
+    failed = asyncio.run(run_verification_scenarios(config, config_path, session_manager=session_manager))
 
     if log_file:
         from loguru import logger

@@ -42,9 +42,11 @@ dependencies = [
     "loguru>=0.7.2",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.10.1",
-    "websocket-client==1.9.0",
+    "websockets>=12.0",
     "markdown>=3.10",
     "uas-standards==4.2.0",
+    "fastapi>=0.121.3",
+    "uvicorn>=0.38.0",
     "bluesky-simulator==1.1.0",
     "rtree==1.4.1",
 ]
@@ -122,14 +124,9 @@ select = [
     "I",
     # "UP",
 ]
-ignore = [
-    "F401",
-]
-fixable = [
-    "I",
-]
-unfixable = [
-]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.format]
@@ -143,7 +140,7 @@ docstring-code-line-length = "dynamic"
 [tool.codespell]
 ignore-words = ".codespellignore"
 quiet-level = 2
-skip = "uv.lock"
+skip = ["uv.lock", "*/package-lock.json"]
 
 [tool.pylint]
 load-plugins = "pylint_pytest"

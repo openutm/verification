@@ -1,0 +1,20 @@
+name: F2_contingent_path
+description: Runs the F2 contingent path scenario.
+steps:
+- step: Setup Flight Declaration
+- step: Update Operation State
+  arguments:
+    state: ACTIVATED
+- step: Submit Telemetry
+  arguments:
+    duration: 10
+- id: update_state_contingent
+  step: Update Operation State
+  arguments:
+    state: CONTINGENT
+    duration: 7
+- id: update_state_ended
+  step: Update Operation State
+  arguments:
+    state: ENDED
+- step: Teardown Flight Declaration
