@@ -1,6 +1,7 @@
-import { type Node, type Edge, MarkerType } from '@xyflow/react';
+import { type Node, type Edge } from '@xyflow/react';
 import { createWaitEdge } from './edgeStyles';
 import type { Operation, ScenarioDefinition, ScenarioStep, NodeData, ScenarioConfig, GroupDefinition } from '../types/scenario';
+import { getVerticalGap, LAYOUT_CONFIG, COMMON_NODE_DEFAULTS, COMMON_EDGE_OPTIONS, CONVERSION_LAYOUT, getGroupHeight, GROUP_CONFIG } from './layoutConfig';
 
 export const convertYamlToGraph = (
     scenario: ScenarioDefinition,
@@ -10,9 +11,8 @@ export const convertYamlToGraph = (
     const edges: Edge[] = [];
 
     let yPos = 0;
-    const xPos = 250;
-    const gap = 150;
-    const groupContainerGap = 200; // Extra space for group containers
+    const xPos = CONVERSION_LAYOUT.startX;
+    const gap = getVerticalGap();
     const usedIds = new Set<string>();
     const groupStepMap = new Map<string, string[]>(); // Maps group container ID to its step IDs
     const stepIdToNodeId = new Map<string, string>();
@@ -63,11 +63,14 @@ export const convertYamlToGraph = (
                 containerBackground = 'rgba(34, 197, 94, 0.05)';
             }
 
+            const containerHeight = getGroupHeight(group.steps.length);
+
             // Add container node
             const containerNode: Node<NodeData> = {
                 id: groupContainerId,
                 type: 'custom',
-                position: { x: xPos - 50, y: yPos },
+                ...COMMON_NODE_DEFAULTS,
+                position: { x: xPos + CONVERSION_LAYOUT.groupContainerOffset, y: yPos },
                 data: {
                     label: `📦 ${step.step}`,
                     stepId: step.id,
@@ -84,15 +87,17 @@ export const convertYamlToGraph = (
                     border: containerBorder,
                     borderRadius: '12px',
                     padding: '20px',
-                    minWidth: '600px',
-                    minHeight: `${Math.max(150, group.steps.length * 120 + 80)}px`
+                    minWidth: `${GROUP_CONFIG.width}px`,
+                    minHeight: `${containerHeight}px`,
+                    width: `${GROUP_CONFIG.width}px`,
+                    height: `${containerHeight}px`
                 }
             };
             nodes.push(containerNode);
 
             stepIdToNodeId.set(stepIdForMap, groupContainerId);
 
-            let groupInternalYPos = yPos + 60;
+            let groupInternalYPos = yPos + GROUP_CONFIG.paddingTop;
             let prevGroupStepNode: Node<NodeData> | null = null;
 
             // Add steps inside the group
@@ -110,8 +115,9 @@ export const convertYamlToGraph = (
                 const groupStepNode: Node<NodeData> = {
                     id: groupStepId,
                     type: 'custom',
+                    ...COMMON_NODE_DEFAULTS,
                     parentId: groupContainerId,
-                    position: { x: 80, y: groupInternalYPos - yPos }, // Relative to parent
+                    position: { x: CONVERSION_LAYOUT.groupChildOffset, y: groupInternalYPos - yPos }, // Relative to parent
                     data: {
                         label: groupStep.step,
                         stepId: groupStep.id || groupStep.step,
@@ -131,10 +137,7 @@ export const convertYamlToGraph = (
                         id: `e_${prevGroupStepNode.id}-${groupStepId}`,
                         source: prevGroupStepNode.id,
                         target: groupStepId,
-                        type: 'smoothstep',
-                        animated: true,
-                        style: { stroke: 'var(--accent-primary)', strokeWidth: 1 },
-                        markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-primary)' }
+                        ...COMMON_EDGE_OPTIONS
                     });
                 }
 
@@ -143,7 +146,7 @@ export const convertYamlToGraph = (
             });
 
             groupStepMap.set(groupContainerId, groupStepIds);
-            yPos += groupContainerGap;
+            yPos += containerHeight + LAYOUT_CONFIG.rankSep;
             // Track for sequence connection
             const currentNodeId = groupContainerId;
             if (lastSequenceNodeId && lastSequenceNodeId !== currentNodeId) {
@@ -151,10 +154,7 @@ export const convertYamlToGraph = (
                     id: `e_${lastSequenceNodeId}-${currentNodeId}`,
                     source: lastSequenceNodeId,
                     target: currentNodeId,
-                    type: 'smoothstep',
-                    animated: true,
-                    style: { stroke: 'var(--accent-primary)', strokeWidth: 1 },
-                    markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-primary)' }
+                    ...COMMON_EDGE_OPTIONS
                 });
             }
             lastSequenceNodeId = currentNodeId;
@@ -173,6 +173,7 @@ export const convertYamlToGraph = (
             const node: Node<NodeData> = {
                 id: nodeId,
                 type: 'custom',
+                ...COMMON_NODE_DEFAULTS,
                 position: { x: xPos, y: yPos },
                 data: {
                     label: step.step,
@@ -197,10 +198,7 @@ export const convertYamlToGraph = (
                     id: `e_${lastSequenceNodeId}-${currentNodeId}`,
                     source: lastSequenceNodeId,
                     target: currentNodeId,
-                    type: 'smoothstep',
-                    animated: true,
-                    style: { stroke: 'var(--accent-primary)', strokeWidth: 1 },
-                    markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-primary)' }
+                    ...COMMON_EDGE_OPTIONS
                 });
             }
             lastSequenceNodeId = currentNodeId;

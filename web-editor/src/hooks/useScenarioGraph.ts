@@ -7,21 +7,28 @@ import {
     type Edge,
     type Node,
     type ReactFlowInstance,
-    MarkerType,
 } from '@xyflow/react';
 import dagre from '@dagrejs/dagre';
 import type { Operation, NodeData } from '../types/scenario';
+import { LAYOUT_CONFIG, COMMON_NODE_DEFAULTS, COMMON_EDGE_OPTIONS, getGroupHeight, GROUP_CONFIG } from '../utils/layoutConfig';
 
-const nodeWidth = 180;
-const nodeHeight = 80;
-
-const getLayoutedElements = (nodes: Node<NodeData>[], edges: Edge[], direction = 'TB') => {
+const getLayoutedElements = (nodes: Node<NodeData>[], edges: Edge[], direction = LAYOUT_CONFIG.direction) => {
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
-    dagreGraph.setGraph({ rankdir: direction, nodesep: 50, ranksep: 100 });
+    dagreGraph.setGraph({ rankdir: direction, nodesep: LAYOUT_CONFIG.nodeSep, ranksep: LAYOUT_CONFIG.rankSep });
 
     for (const node of nodes) {
-        dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+        let width = LAYOUT_CONFIG.nodeWidth;
+        let height = LAYOUT_CONFIG.nodeHeight;
+
+        if (node.data.isGroupContainer) {
+            // Calculate dynamic height based on children
+            const childCount = nodes.filter(n => n.parentId === node.id).length;
+            height = getGroupHeight(childCount);
+            width = GROUP_CONFIG.width;
+        }
+
+        dagreGraph.setNode(node.id, { width, height });
     }
 
     for (const edge of edges) {
@@ -34,14 +41,15 @@ const getLayoutedElements = (nodes: Node<NodeData>[], edges: Edge[], direction =
         const nodeWithPosition = dagreGraph.node(node.id);
         return {
             ...node,
+            ...COMMON_NODE_DEFAULTS,
             position: {
-                x: nodeWithPosition.x - nodeWidth / 2,
-                y: nodeWithPosition.y - nodeHeight / 2,
+                x: nodeWithPosition.x - (node.data.isGroupContainer ? GROUP_CONFIG.width : LAYOUT_CONFIG.nodeWidth) / 2,
+                y: nodeWithPosition.y - (node.data.isGroupContainer ? getGroupHeight(nodes.filter(n => n.parentId === node.id).length) : LAYOUT_CONFIG.nodeHeight) / 2,
             },
         };
     });
 
-    return { nodes: layoutedNodes, edges };
+    return { nodes: layoutedNodes, edges: edges.map(edge => ({ ...edge, type: COMMON_EDGE_OPTIONS.type })) };
 };
 
 export const generateNodeId = (nodes: Node<NodeData>[], baseName: string) => {
@@ -87,9 +95,7 @@ export const useScenarioGraph = (initialNodesParams: Node<NodeData>[] = [], init
 
             setEdges((eds) => addEdge({
                 ...params,
-                animated: true,
-                style: { stroke: 'var(--accent-primary)', strokeWidth: 1 },
-                markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-primary)' }
+                ...COMMON_EDGE_OPTIONS
             }, eds));
         },
         [edges, setEdges],
