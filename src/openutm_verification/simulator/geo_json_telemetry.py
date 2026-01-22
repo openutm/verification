@@ -200,7 +200,7 @@ class GeoJSONFlightsSimulator:
         speed_mts_per_sec = round(adjacent_point_distance_mts / delta_time_secs, 2)
         # Normalize azimuth to [0, 360)
         fwd_azimuth = (fwd_azimuth + 360.0) % 360.0
-        logger.debug(f"Computed speed: {speed_mts_per_sec} m/s, bearing: {fwd_azimuth}°")
+        # logger.debug(f"Computed speed: {speed_mts_per_sec} m/s, bearing: {fwd_azimuth}°")
         return speed_mts_per_sec, fwd_azimuth
 
     def utm_converter(self, shapely_shape: BaseGeometry, inverse: bool = False) -> BaseGeometry:

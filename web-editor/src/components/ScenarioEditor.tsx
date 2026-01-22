@@ -821,6 +821,23 @@ const ScenarioEditorContent = () => {
         reactFlowInstance
     ]);
 
+    const handleStop = useCallback(async () => {
+        await stopScenario();
+        // Clear running/waiting status from all nodes
+        setNodes((nds) => nds.map(node => {
+            if (node.data.status === 'running' || node.data.status === 'waiting') {
+                return {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        status: undefined
+                    }
+                };
+            }
+            return node;
+        }));
+    }, [stopScenario, setNodes]);
+
     const updateNodeParameter = useCallback((nodeId: string, paramName: string, value: unknown) => {
         setIsDirty(true);
         setNodes((nds) => {
@@ -1027,7 +1044,7 @@ const ScenarioEditorContent = () => {
                 onSave={handleSaveToServer}
                 onSaveAs={handleSaveAs}
                 onRun={handleRun}
-                onStop={stopScenario}
+                onStop={handleStop}
                 isRunning={isRunning}
             />
 
