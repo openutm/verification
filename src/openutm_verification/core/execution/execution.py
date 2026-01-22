@@ -2,7 +2,9 @@
 Core execution logic for running verification scenarios.
 """
 
+import importlib
 import json
+import pkgutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -10,6 +12,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 from pydantic import ValidationError
 
+import openutm_verification.scenarios
 from openutm_verification.core.clients.air_traffic.base_client import (
     AirTrafficError,
 )
@@ -18,14 +21,28 @@ from openutm_verification.core.clients.opensky.base_client import (
 )
 from openutm_verification.core.execution.config_models import AppConfig
 from openutm_verification.core.execution.dependencies import scenarios
-from openutm_verification.core.execution.dependency_resolution import CONTEXT
+from openutm_verification.core.execution.dependency_resolution import CONTEXT, call_with_dependencies
 from openutm_verification.core.execution.scenario_loader import load_yaml_scenario_definition
 from openutm_verification.core.reporting.reporting import _sanitize_config, create_report_data, generate_reports
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
     Status,
 )
+from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 from openutm_verification.utils.paths import get_docs_directory
+
+
+def _import_python_scenarios():
+    """Import all python scenarios to populate the registry."""
+    path = list(openutm_verification.scenarios.__path__)
+    prefix = openutm_verification.scenarios.__name__ + "."
+
+    for _, name, _ in pkgutil.iter_modules(path, prefix):
+        try:
+            importlib.import_module(name)
+        except Exception as e:
+            logger.warning(f"Failed to import scenario module {name}: {e}")
+
 
 if TYPE_CHECKING:
     from openutm_verification.server.runner import SessionManager
@@ -51,14 +68,37 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path, sessi
 
         session_manager = RunnerSessionManager(config_path=str(config_path))
 
+    # Import Python scenarios to populate registry
+    _import_python_scenarios()
+
     scenario_results = []
     for scenario_id in scenarios():
         try:
             # Initialize session with the current context
             await session_manager.initialize_session()
 
-            scenario_def = load_yaml_scenario_definition(scenario_id)
-            await session_manager.run_scenario(scenario_def)
+            if scenario_id in SCENARIO_REGISTRY:
+                logger.info(f"Running Python scenario: {scenario_id}")
+                wrapper = SCENARIO_REGISTRY[scenario_id]["func"]
+                # Unwrap to get the original function for dependency injection
+                func_to_call = getattr(wrapper, "__wrapped__", wrapper)
+
+                # Execute within the session context
+                # session_manager.initialize_session() already sets up session_context but doesn't enter it
+                # We need to manually enter the context or use run_scenario logic
+                # session_context is a ScenarioContext.
+                # ScenarioContext.__enter__ sets the thread-local state.
+
+                if not session_manager.session_context:
+                    raise RuntimeError("Session context not initialized")
+
+                with session_manager.session_context:
+                    await call_with_dependencies(func_to_call, resolver=session_manager.session_resolver)
+
+            else:
+                scenario_def = load_yaml_scenario_definition(scenario_id)
+                await session_manager.run_scenario(scenario_def)
+
             state = session_manager.session_context.state if session_manager.session_context else None
             steps = state.steps if state else []
             failed = any(s.status == Status.FAIL for s in steps)

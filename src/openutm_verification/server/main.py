@@ -205,6 +205,13 @@ async def run_scenario_async(scenario: ScenarioDefinition, runner: SessionManage
     return {"run_id": run_id}
 
 
+@app.post("/stop-scenario")
+async def stop_scenario(runner: SessionManager = Depends(get_session_manager)):
+    """Stop the currently running scenario."""
+    stopped = await runner.stop_scenario()
+    return {"stopped": stopped}
+
+
 @app.get("/run-scenario-events")
 async def run_scenario_events(runner: SessionManager = Depends(get_session_manager)):
     async def event_stream():
@@ -214,7 +221,7 @@ async def run_scenario_events(runner: SessionManager = Depends(get_session_manag
                 result = runner.session_context.state.added_results.get_nowait()
                 yield f"data: {result.model_dump_json()}\n\n"
 
-            if status_payload.get("status") != "running":
+            if status_payload.get("status") != "running" and not runner.has_pending_tasks():
                 done_payload = {
                     "status": status_payload.get("status"),
                     "error": status_payload.get("error"),

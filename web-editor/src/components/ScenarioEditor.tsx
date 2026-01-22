@@ -187,7 +187,7 @@ const ScenarioEditorContent = () => {
         edgesRef.current = edges;
     }, [nodes, edges]);
 
-    const { isRunning, runScenario } = useScenarioRunner();
+    const { isRunning, runScenario, stopScenario } = useScenarioRunner();
     const { handleSaveToServer, handleSaveAs } = useScenarioFile(
         nodes,
         edges,
@@ -697,7 +697,7 @@ const ScenarioEditorContent = () => {
         }
     }, [clearGraph, isDirty]);
 
-    const updateNodesWithResults = useCallback((currentNodes: Node<NodeData>[], results: { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown; logs?: string[] }[]) => {
+    const updateNodesWithResults = useCallback((currentNodes: Node<NodeData>[], results: { id: string; status: 'success' | 'failure' | 'error' | 'skipped' | 'running' | 'waiting'; result?: unknown; logs?: string[] }[]) => {
         return currentNodes.map(node => {
             const stepId = node.data.stepId || node.id;
             const stepName = node.data.label;
@@ -779,7 +779,7 @@ const ScenarioEditorContent = () => {
         const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edgesRef.current;
 
         // Pass a callback to update nodes incrementally
-        const onStepComplete = (stepResult: { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown }) => {
+        const onStepComplete = (stepResult: { id: string; status: 'success' | 'failure' | 'error' | 'skipped' | 'running' | 'waiting'; result?: unknown }) => {
             setNodes((nds) => updateNodesWithResults(nds, [stepResult]));
         };
 
@@ -790,7 +790,7 @@ const ScenarioEditorContent = () => {
                         ...node,
                         data: {
                             ...node.data,
-                            status: 'running'
+                            status: 'waiting'
                         }
                     };
                 }
@@ -1027,6 +1027,7 @@ const ScenarioEditorContent = () => {
                 onSave={handleSaveToServer}
                 onSaveAs={handleSaveAs}
                 onRun={handleRun}
+                onStop={stopScenario}
                 isRunning={isRunning}
             />
 

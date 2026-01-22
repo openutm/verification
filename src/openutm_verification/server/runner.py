@@ -67,6 +67,9 @@ class SessionManager:
         def _on_done(t: asyncio.Task) -> None:
             try:
                 t.result()
+            except asyncio.CancelledError:
+                # Task was cancelled (e.g., by stop_scenario), error is already set there
+                pass
             except Exception as exc:  # noqa: BLE001
                 self.current_run_error = str(exc)
 
@@ -81,6 +84,42 @@ class SessionManager:
             "status": status,
             "error": self.current_run_error,
         }
+
+    async def stop_scenario(self) -> bool:
+        """Stop the currently running scenario and all background tasks."""
+        logger.info("Stopping scenario...")
+        stopped = False
+        tasks_to_cancel = []
+
+        # Cancel the main scenario task
+        if self.current_run_task and not self.current_run_task.done():
+            self.current_run_task.cancel()
+            tasks_to_cancel.append(self.current_run_task)
+            stopped = True
+
+        # Cancel all background tasks
+        for task in self.session_tasks.values():
+            if not task.done():
+                task.cancel()
+                tasks_to_cancel.append(task)
+                stopped = True
+
+        # Wait for all tasks to actually be cancelled (with timeout)
+        if tasks_to_cancel:
+            try:
+                await asyncio.wait_for(asyncio.gather(*tasks_to_cancel, return_exceptions=True), timeout=5.0)
+            except asyncio.TimeoutError:
+                logger.warning("Timeout waiting for tasks to cancel")
+
+        if stopped:
+            self.current_run_error = "Scenario stopped by user"
+            logger.info("Scenario stopped by user")
+
+        return stopped
+
+    def has_pending_tasks(self) -> bool:
+        """Check if any background tasks are still running."""
+        return any(not task.done() for task in self.session_tasks.values())
 
     async def initialize_session(self):
         logger.info("Initializing new session")
@@ -319,15 +358,18 @@ class SessionManager:
                 res = t.result()
                 if isinstance(res, StepResult):
                     res.id = step_id
-                    self.session_context.add_result(res)
+                    self.session_context.update_result(res)
                     return
 
                 result_data = self._serialize_result(res)
                 status_str = self._determine_status(res)
                 status = Status.PASS if status_str == "success" else Status.FAIL
-                self.session_context.add_result(StepResult(id=step_id, name=step_name, status=status, result=result_data, duration=0.0))
+                self.session_context.update_result(StepResult(id=step_id, name=step_name, status=status, result=result_data, duration=0.0))
+            except asyncio.CancelledError:
+                # Task was cancelled, possibly due to server shutdown or stop request
+                pass
             except Exception as exc:  # noqa: BLE001
-                self.session_context.add_result(StepResult(id=step_id, name=step_name, status=Status.FAIL, error_message=str(exc), duration=0.0))
+                self.session_context.update_result(StepResult(id=step_id, name=step_name, status=Status.FAIL, error_message=str(exc), duration=0.0))
 
         task.add_done_callback(_on_done)
 
@@ -340,7 +382,7 @@ class SessionManager:
             duration=0.0,
             result={"task_id": task_id} if task_id is not None else None,
         )
-        self.session_context.add_result(result)
+        self.session_context.update_result(result)
         return result
 
     async def _execute_step(self, step: StepDefinition, loop_context: Dict[str, Any] | None = None) -> StepResult:
@@ -354,7 +396,20 @@ class SessionManager:
         method = getattr(client, entry.method_name)
 
         # Prepare parameters (resolve refs, inject context)
-        kwargs = self._prepare_params(step, loop_context)
+        try:
+            kwargs = self._prepare_params(step, loop_context)
+        except Exception as e:
+            step_id = step.id or step.step
+            logger.error(f"Failed to prepare parameters for step '{step_id}': {e}")
+            result = StepResult(
+                id=step_id,
+                name=step.step,
+                status=Status.FAIL,
+                error_message=f"Parameter resolution failed: {e}",
+                duration=0.0,
+            )
+            self.session_context.update_result(result)
+            return result
 
         if step.background:
             step_id = step.id or step.step
@@ -379,11 +434,11 @@ class SessionManager:
         # If the result is already a StepResult (from scenario_step decorator), use it directly but ensure ID is correct
         if isinstance(result, StepResult):
             result.id = step_id
-            self.session_context.add_result(result)
+            self.session_context.update_result(result)
             return result
 
         step_result = StepResult(id=step_id, name=step.step, status=Status.PASS, result=result, duration=0.0)
-        self.session_context.add_result(step_result)
+        self.session_context.update_result(step_result)
         return step_result
 
     async def execute_single_step(self, step: StepDefinition, loop_context: Dict[str, Any] | None = None) -> StepResult:
@@ -467,9 +522,11 @@ class SessionManager:
             return
 
         for dep_id in step.needs:
-            # If dependency already completed and recorded, continue
+            # If dependency already completed and recorded, continue ONLY if not RUNNING
             if self.session_context and self.session_context.state and dep_id in self.session_context.state.step_results:
-                continue
+                # Check status
+                if self.session_context.state.step_results[dep_id].status != Status.RUNNING:
+                    continue
 
             if dep_id not in self.session_tasks:
                 raise ValueError(f"Dependency '{dep_id}' not found or not running")
@@ -523,7 +580,7 @@ class SessionManager:
                 )
                 if self.session_context:
                     with self.session_context:
-                        self.session_context.add_result(skipped_result)
+                        self.session_context.update_result(skipped_result)
                 continue
 
             # Wait for declared dependencies (useful for background steps)

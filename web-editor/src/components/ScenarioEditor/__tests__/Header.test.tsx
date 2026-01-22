@@ -11,6 +11,7 @@ describe('Header', () => {
         onSave: vi.fn(),
         onSaveAs: vi.fn(),
         onRun: vi.fn(),
+        onStop: vi.fn(),
         isRunning: false,
     };
 

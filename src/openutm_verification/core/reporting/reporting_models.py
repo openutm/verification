@@ -25,6 +25,7 @@ class Status(StrEnum):
     PASS = "success"
     FAIL = "failure"
     RUNNING = "running"
+    WAITING = "waiting"
     SKIP = "skipped"
 
 

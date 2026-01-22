@@ -1,16 +1,39 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import type { GroupDefinition, NodeData, Operation, ScenarioConfig } from '../types/scenario';
 import { convertGraphToYaml } from '../utils/scenarioConversion';
 
 export const useScenarioRunner = () => {
     const [isRunning, setIsRunning] = useState(false);
+    const eventSourceRef = useRef<EventSource | null>(null);
+
+    const stopScenario = useCallback(async () => {
+        try {
+            // Close the EventSource connection first
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                eventSourceRef.current = null;
+            }
+
+            const response = await fetch('/stop-scenario', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (!response.ok) {
+                console.error('Failed to stop scenario:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error stopping scenario:', error);
+        } finally {
+            setIsRunning(false);
+        }
+    }, []);
 
     const runScenario = useCallback(async (
         nodes: Node<NodeData>[],
         edges: Edge[],
         scenarioName: string,
-        onStepComplete?: (result: { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown }) => void,
+        onStepComplete?: (result: { id: string; status: 'success' | 'failure' | 'error' | 'skipped' | 'running' | 'waiting'; result?: unknown }) => void,
         onStepStart?: (nodeId: string) => void,
         config?: ScenarioConfig,
         operations: Operation[] = [],
@@ -119,12 +142,13 @@ export const useScenarioRunner = () => {
                 };
                 results.push(stepResult);
                 if (onStepComplete) {
-                    onStepComplete(stepResult as { id: string; status: 'success' | 'failure' | 'error' | 'skipped'; result?: unknown; logs?: string[] });
+                    onStepComplete(stepResult as { id: string; status: 'success' | 'failure' | 'error' | 'skipped' | 'running' | 'waiting'; result?: unknown; logs?: string[] });
                 }
             };
 
             await new Promise<void>((resolve, reject) => {
                 const source = new EventSource(`/run-scenario-events`);
+                eventSourceRef.current = source;
 
                 source.onmessage = (event) => {
                     try {
@@ -132,6 +156,7 @@ export const useScenarioRunner = () => {
                         handleStepResult(data);
                     } catch (err) {
                         source.close();
+                        eventSourceRef.current = null;
                         reject(err);
                     }
                 };
@@ -140,6 +165,7 @@ export const useScenarioRunner = () => {
                     try {
                         const payload = JSON.parse((event as MessageEvent).data) as { status?: string; error?: string };
                         source.close();
+                        eventSourceRef.current = null;
                         if (payload.status === 'error') {
                             reject(new Error(payload.error || 'Scenario run failed'));
                             return;
@@ -147,12 +173,14 @@ export const useScenarioRunner = () => {
                         resolve();
                     } catch (err) {
                         source.close();
+                        eventSourceRef.current = null;
                         reject(err);
                     }
                 });
 
                 source.onerror = () => {
                     source.close();
+                    eventSourceRef.current = null;
                     reject(new Error('Scenario event stream failed'));
                 };
             });
@@ -185,5 +213,5 @@ export const useScenarioRunner = () => {
         }
     }, []);
 
-    return { isRunning, runScenario };
+    return { isRunning, runScenario, stopScenario };
 };

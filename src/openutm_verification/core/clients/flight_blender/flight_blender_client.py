@@ -244,20 +244,13 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.debug("Uploading flight declaration from model")
             flight_declaration = declaration.model_dump(mode="json")
 
-        # Adjust datetimes to current time + offsets
-        now = arrow.now()
-        few_seconds_from_now = now.shift(seconds=5)
-        four_minutes_from_now = now.shift(minutes=4)
-
-        flight_declaration["start_datetime"] = few_seconds_from_now.isoformat()
-        flight_declaration["end_datetime"] = four_minutes_from_now.isoformat()
-
         response = await self.post(endpoint, json=flight_declaration)
         logger.info(f"Flight declaration upload response: {response.status_code}")
 
         response_json = response.json()
 
         if not response_json.get("is_approved"):
+            logger.error(f"Flight declaration not approved. Full Response: {json.dumps(response_json, indent=2)}")
             logger.error(f"Flight declaration not approved. State: {OperationState(response_json.get('state')).name}")
             raise FlightBlenderError(f"Flight declaration not approved. State: {OperationState(response_json.get('state')).name}")
         # Store latest declaration id for later use
@@ -303,13 +296,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.debug("Uploading flight declaration from model")
             flight_declaration = declaration.model_dump(mode="json")
 
-        # Adjust datetimes to current time + offsets
-        now = arrow.now()
-        few_seconds_from_now = now.shift(seconds=5)
-        four_minutes_from_now = now.shift(minutes=4)
-
-        flight_declaration["start_datetime"] = few_seconds_from_now.isoformat()
-        flight_declaration["end_datetime"] = four_minutes_from_now.isoformat()
+        # Use provided datetimes from the declaration
 
         response = await self.post(endpoint, json=flight_declaration)
         logger.info(f"Flight declaration upload response: {response.status_code}")
@@ -398,6 +385,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         Raises:
             FlightBlenderError: If maximum waiting time is exceeded due to rate limits.
+            asyncio.CancelledError: If the task is cancelled (propagated, not caught).
         """
         duration_seconds = parse_duration(duration)
         endpoint = "/flight_stream/set_telemetry"
@@ -412,32 +400,36 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         billable_time_elapsed = 0.0
         sleep_interval = 1.0
         logger.info(f"Starting telemetry submission for {len(states)} states")
-        for i, state in enumerate(states):
-            if duration_seconds and billable_time_elapsed >= duration_seconds:
-                logger.info(f"Telemetry submission duration of {duration_seconds} seconds has passed.")
-                break
+        try:
+            for i, state in enumerate(states):
+                if duration_seconds and billable_time_elapsed >= duration_seconds:
+                    logger.info(f"Telemetry submission duration of {duration_seconds} seconds has passed.")
+                    break
 
-            payload = {
-                "observations": [
-                    {
-                        "current_states": [state],
-                        "flight_details": asdict(rid_operator_details),
-                    }
-                ]
-            }
-            response = await self.put(endpoint, json=payload, silent_status=[400])
-            request_duration = response.elapsed.total_seconds()
-            if response.status_code == 201:
-                logger.info(f"Telemetry point {i + 1} submitted, sleeping {sleep_interval} seconds... {billable_time_elapsed:.2f}s elapsed")
-                billable_time_elapsed += request_duration + sleep_interval
-            else:
-                logger.warning(f"{response.status_code} {response.json()}")
-                waiting_time_elapsed += request_duration + sleep_interval
-                if waiting_time_elapsed >= maximum_waiting_time + sleep_interval:
-                    logger.error(f"Maximum waiting time of {maximum_waiting_time} seconds exceeded.")
-                    raise FlightBlenderError(f"Maximum waiting time of {maximum_waiting_time} seconds exceeded.")
-            last_response = response.json()
-            await asyncio.sleep(sleep_interval)
+                payload = {
+                    "observations": [
+                        {
+                            "current_states": [state],
+                            "flight_details": asdict(rid_operator_details),
+                        }
+                    ]
+                }
+                response = await self.put(endpoint, json=payload, silent_status=[400])
+                request_duration = response.elapsed.total_seconds()
+                if response.status_code == 201:
+                    logger.info(f"Telemetry point {i + 1} submitted, sleeping {sleep_interval} seconds... {billable_time_elapsed:.2f}s elapsed")
+                    billable_time_elapsed += request_duration + sleep_interval
+                else:
+                    logger.warning(f"{response.status_code} {response.json()}")
+                    waiting_time_elapsed += request_duration + sleep_interval
+                    if waiting_time_elapsed >= maximum_waiting_time + sleep_interval:
+                        logger.error(f"Maximum waiting time of {maximum_waiting_time} seconds exceeded.")
+                        raise FlightBlenderError(f"Maximum waiting time of {maximum_waiting_time} seconds exceeded.")
+                last_response = response.json()
+                await asyncio.sleep(sleep_interval)
+        except asyncio.CancelledError:
+            logger.info("Telemetry submission cancelled")
+            raise
         logger.info("Telemetry submission completed")
         return last_response
 
@@ -552,14 +544,69 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             f"Operation {self.latest_flight_declaration_id} did not reach expected state {expected_state.name} within {duration_seconds} seconds"
         )
 
+    @scenario_step("Cleanup Flight Declarations")
+    async def cleanup_flight_declarations(self) -> dict[str, Any]:
+        """Specific cleanup for flight declarations in the active volume.
+
+        This method lists all existing flight declarations and deletes them one by one.
+        This is useful for cleaning up 'zombie' declarations from previous failed runs.
+        """
+        endpoint = "/flight_declaration_ops/flight_declaration"
+        logger.info("Cleaning up existing flight declarations...")
+
+        try:
+            response = await self.get(endpoint)
+            if response.status_code != 200:
+                logger.warning(f"Failed to list flight declarations: {response.status_code}")
+                return {"cleaned": False, "reason": "List failed"}
+
+            data = response.json()
+            # Handle pagination
+            if isinstance(data, dict) and "results" in data:
+                declarations = data["results"]
+            elif isinstance(data, list):
+                declarations = data
+            else:
+                logger.warning("Unexpected response format for flight declaration list")
+                return {"cleaned": False, "reason": "Invalid format"}
+
+            logger.info(f"Found {len(declarations)} existing flight declarations")
+            deleted_count = 0
+
+            for declaration in declarations:
+                dec_id = declaration.get("id")
+                if dec_id:
+                    logger.debug(f"Deleting cleanup target: {dec_id}")
+                    # Direct delete to avoid nested steps and cluttering reports
+                    cleanup_endpoint = f"/flight_declaration_ops/flight_declaration/{dec_id}/delete"
+                    delete_response = await self.delete(cleanup_endpoint)
+                    if delete_response.status_code == 204:
+                        deleted_count += 1
+                    else:
+                        logger.warning(f"Failed to delete {dec_id}: {delete_response.status_code}")
+
+            logger.info(f"Cleanup complete. Deleted {deleted_count} declarations.")
+            # Yield for backend consistency
+            if deleted_count > 0:
+                await asyncio.sleep(2)
+            return {"cleaned": True, "count": deleted_count}
+
+        except Exception as e:
+            logger.error(f"Error during flight declaration cleanup: {e}")
+            return {"cleaned": False, "error": str(e)}
+
     @scenario_step("Delete Flight Declaration")
-    async def delete_flight_declaration(self) -> dict[str, Any]:
+    async def delete_flight_declaration(self, flight_declaration_id: str | None = None) -> dict[str, Any]:
         """Delete a flight declaration by ID.
+
+        Args:
+            flight_declaration_id: Optional ID of the flight declaration to delete. If not provided,
+                uses the latest uploaded flight declaration ID.
 
         Returns:
             A dictionary with deletion status, including whether it was successful.
         """
-        op_id = self.latest_flight_declaration_id
+        op_id = flight_declaration_id or self.latest_flight_declaration_id
         if not op_id:
             logger.warning("No flight declaration ID available for deletion")
             return {
@@ -588,6 +635,10 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         observations: list[list[FlightObservationSchema]],
         single_or_multiple_sensors: str = "single",
     ) -> bool:
+        if not observations:
+            logger.warning("No air traffic observations to submit.")
+            return True
+
         now = arrow.now()
         number_of_aircraft = len(observations)
         logger.debug(f"Submitting simulated air traffic for {number_of_aircraft} aircraft")
@@ -603,6 +654,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 continue
             start_times.append(arrow.get(aircraft_obs[0].timestamp))
             end_times.append(arrow.get(aircraft_obs[-1].timestamp))
+
+        if not start_times:
+            logger.warning("No valid start/end times found in observations.")
+            return True
+
         simulation_start = min(start_times)
         simulation_end = max(end_times)
 
@@ -857,9 +913,18 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             generate_telemetry,
         )
 
+        # Synchronize start times
+        now = arrow.now()
+        start_time = now.shift(seconds=2)
+        end_time = now.shift(minutes=60)
+
         flight_declaration = generate_flight_declaration_via_operational_intent(flight_declaration_via_operational_intent_path)
 
-        telemetry_states = generate_telemetry(trajectory_path)
+        # Update flight declaration times to match synchronized start time
+        flight_declaration.start_datetime = start_time.isoformat()
+        flight_declaration.end_datetime = end_time.isoformat()
+
+        telemetry_states = generate_telemetry(trajectory_path, reference_time=start_time.isoformat())
 
         self.telemetry_states = telemetry_states
 
@@ -896,8 +961,17 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         if not trajectory_path:
             raise ValueError("trajectory_path not provided and not found in config")
 
+        # Synchronize start times
+        now = arrow.now()
+        start_time = now.shift(seconds=2)
+        end_time = now.shift(minutes=60)
+
         flight_declaration = generate_flight_declaration(flight_declaration_path)
-        telemetry_states = generate_telemetry(trajectory_path)
+        # Update flight declaration times to match synchronized start time
+        flight_declaration.start_datetime = start_time.isoformat()
+        flight_declaration.end_datetime = end_time.isoformat()
+
+        telemetry_states = generate_telemetry(trajectory_path, reference_time=start_time.isoformat())
 
         self.telemetry_states = telemetry_states
 
@@ -916,11 +990,14 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         """Context manager to setup and teardown a flight operation based on scenario config."""
         assert self.flight_declaration_path is not None, "Flight declaration file path must be provided"
         assert self.trajectory_path is not None, "Trajectory file path must be provided"
-        await self.setup_flight_declaration(self.flight_declaration_path, self.trajectory_path)
+        result = await self.setup_flight_declaration(self.flight_declaration_path, self.trajectory_path)
+        if result.status == Status.FAIL:
+            raise FlightBlenderError(f"Setup Flight Declaration failed: {result.error_message}")
         try:
             yield
         finally:
             logger.info("All test steps complete..")
+            await self.teardown_flight_declaration()
 
     @asynccontextmanager
     async def create_flight_declaration_via_operational_intent(self):
@@ -935,3 +1012,4 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             yield
         finally:
             logger.info("All test steps complete..")
+            await self.teardown_flight_declaration()

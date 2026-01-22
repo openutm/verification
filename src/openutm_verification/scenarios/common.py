@@ -2,6 +2,7 @@ import json
 import uuid
 from pathlib import Path
 
+from implicitdict import StringBasedDateTime
 from loguru import logger
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
@@ -36,14 +37,18 @@ def generate_flight_declaration_via_operational_intent(config_path: str) -> Flig
         raise
 
 
-def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION) -> list[RIDAircraftState]:
+def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION, reference_time: str | None = None) -> list[RIDAircraftState]:
     """Generate telemetry states from the GeoJSON config file at the given path."""
     try:
         logger.debug(f"Generating telemetry states from {config_path} for duration {duration} seconds")
         with open(config_path, "r", encoding="utf-8") as f:
             geojson_data = json.load(f)
 
-        simulator_config = GeoJSONFlightsSimulatorConfiguration(geojson=geojson_data)
+        config_args = {"geojson": geojson_data}
+        if reference_time:
+            config_args["reference_time"] = StringBasedDateTime(reference_time)
+
+        simulator_config = GeoJSONFlightsSimulatorConfiguration(**config_args)
         simulator = GeoJSONFlightsSimulator(simulator_config)
 
         simulator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=120)

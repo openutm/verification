@@ -20,7 +20,7 @@ export interface NodeData extends Record<string, unknown> {
     operationId?: string;
     description?: string;
     parameters?: OperationParam[];
-    status?: 'success' | 'failure' | 'error' | 'running' | 'skipped';
+    status?: 'success' | 'failure' | 'error' | 'running' | 'waiting' | 'skipped';
     result?: unknown;
     runInBackground?: boolean;
     ifCondition?: string;

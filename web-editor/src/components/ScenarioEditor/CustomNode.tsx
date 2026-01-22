@@ -1,6 +1,6 @@
 
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer } from 'lucide-react';
+import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass } from 'lucide-react';
 import styles from '../../styles/Node.module.css';
 import type { NodeData } from '../../types/scenario';
 
@@ -14,6 +14,8 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
         statusClass = styles.statusError;
     } else if (data.status === 'running') {
         statusClass = styles.statusRunning;
+    } else if (data.status === 'waiting') {
+        statusClass = styles.statusWaiting;
     } else if (data.status === 'skipped') {
         statusClass = styles.statusSkipped;
     }
@@ -117,6 +119,9 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                         )}
                         {data.status === 'running' && (
                             <Loader2 size={16} className={styles.spinner} color="var(--accent-primary)" />
+                        )}
+                        {data.status === 'waiting' && (
+                            <Hourglass size={16} color="var(--warning)" />
                         )}
                         {data.status === 'skipped' && (
                             <div
