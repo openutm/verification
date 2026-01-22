@@ -1,9 +1,8 @@
-import asyncio
 import contextvars
 import inspect
 import time
 import uuid
-from asyncio import Queue
+from asyncio import CancelledError, Queue
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
@@ -287,7 +286,7 @@ class ScenarioStepDescriptor:
                     try:
                         result = await func(*args, **kwargs)
                         step_result = handle_result(result, start_time)
-                    except asyncio.CancelledError:
+                    except CancelledError:
                         logger.info(f"Step '{step_name}' was cancelled")
                         raise
                     except Exception as e:

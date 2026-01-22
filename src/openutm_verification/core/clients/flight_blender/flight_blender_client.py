@@ -997,7 +997,6 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             yield
         finally:
             logger.info("All test steps complete..")
-            await self.teardown_flight_declaration()
 
     @asynccontextmanager
     async def create_flight_declaration_via_operational_intent(self):
@@ -1012,4 +1011,3 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             yield
         finally:
             logger.info("All test steps complete..")
-            await self.teardown_flight_declaration()
