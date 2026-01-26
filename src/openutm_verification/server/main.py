@@ -164,10 +164,12 @@ async def generate_report_endpoint(request: GenerateReportRequest, runner: Sessi
     )
 
     # Construct ReportData
-    run_timestamp = datetime.now(timezone.utc)
+    end_timestamp = datetime.now(timezone.utc)
+    # Use stored start time from scenario run, or fall back to end time
+    start_timestamp = runner.current_start_time or end_timestamp
     # Sanitize scenario name for filename: keep only alphanumerics and underscores
     safe_name = "".join(c if c.isalnum() else "_" for c in request.scenario_name)
-    run_id = f"{safe_name}_{run_timestamp.strftime('%Y%m%d_%H%M%S')}"
+    run_id = f"{safe_name}_{end_timestamp.strftime('%Y%m%d_%H%M%S')}"
 
     # Get config
     config = runner.config
@@ -176,19 +178,28 @@ async def generate_report_endpoint(request: GenerateReportRequest, runner: Sessi
         config=config,
         config_path=str(runner.config_path),
         results=[scenario_result],
-        start_time=run_timestamp,
-        end_time=run_timestamp,
+        start_time=start_timestamp,
+        end_time=end_timestamp,
         run_id=run_id,
         docs_dir=None,
     )
 
     try:
-        # Save report to a specifically named run subdirectory
+        # Use the output directory from the scenario run if available
+        # This ensures reports are saved in the same directory as the log file
+        if runner.current_timestamp_str:
+            config.reporting.timestamp_subdir = runner.current_timestamp_str
+        else:
+            # Fallback: create a new timestamp directory
+            config.reporting.timestamp_subdir = ""
         generate_reports(
             report_data,
             config.reporting,
         )
-        return {"status": "success", "report_id": run_id}
+
+        # Get the actual report directory for the response
+        report_id = runner.current_timestamp_str or run_id
+        return {"status": "success", "report_id": report_id}
     except Exception as e:
         print(f"Error generating report: {e}")
         return {"status": "error", "message": str(e)}

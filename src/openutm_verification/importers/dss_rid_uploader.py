@@ -37,6 +37,8 @@ if __name__ == "__main__":
 
     for flight_state in flight_states:
         time_stamp = arrow.now().int_timestamp
+        # RID position.alt is in meters, convert to millimeters for altitude_mm
+        altitude_m = flight_state["position"]["alt"]
         payload = {
             "observations": [
                 {
@@ -46,7 +48,7 @@ if __name__ == "__main__":
                     "lat_dd": flight_state["position"]["lat"],
                     "lon_dd": flight_state["position"]["lng"],
                     "time_stamp": time_stamp,
-                    "altitude_mm": flight_state["position"]["alt"],
+                    "altitude_mm": altitude_m * 1000,  # Convert m -> mm
                     "metadata": metadata,
                 }
             ]

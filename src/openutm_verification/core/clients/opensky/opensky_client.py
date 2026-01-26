@@ -76,7 +76,8 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
         """Process flight DataFrame into observation format."""
         observations = []
         for _, row in flight_df.iterrows():
-            altitude = 0.0 if row["baro_altitude"] == "No Data" else row["baro_altitude"]
+            # OpenSky baro_altitude is in meters, convert to millimeters
+            altitude_m = 0.0 if row["baro_altitude"] == "No Data" else float(row["baro_altitude"])
 
             # Create observation using Pydantic model
             observation = FlightObservationSchema(
@@ -86,7 +87,7 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
                 source_type=1,  # Aircraft
                 lat_dd=float(row["lat"]),
                 lon_dd=float(row["long"]),
-                altitude_mm=float(altitude),
+                altitude_mm=altitude_m * 1000,  # Convert m -> mm
                 metadata={"velocity": row["velocity"]},
             )
             observations.append(observation)

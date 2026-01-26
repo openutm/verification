@@ -439,7 +439,10 @@ async def test_submit_simulated_air_traffic(fb_client):
 
         result = await fb_client.submit_simulated_air_traffic(observations=obs)
 
-        assert result.result is True
+        # Result now returns detailed dict with submission stats
+        assert isinstance(result.result, dict)
+        assert result.result["aircraft_count"] == 2
+        assert result.result["observations_submitted"] == 2
         assert fb_client.post.called
 
 

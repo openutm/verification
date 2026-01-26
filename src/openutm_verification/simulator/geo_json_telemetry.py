@@ -114,11 +114,13 @@ class GeoJSONAirtrafficSimulator:
                 timestamp = self.reference_time.shift(seconds=i)
                 for point in coordinates:
                     metadata = {"session_id": session_id} if session_id else {}
+                    # Convert altitude from meters to millimeters for altitude_mm field
+                    altitude_m = self.config.altitude_of_ground_level_wgs_84
                     airtraffic.append(
                         FlightObservationSchema(
                             lat_dd=point[1],
                             lon_dd=point[0],
-                            altitude_mm=self.config.altitude_of_ground_level_wgs_84,
+                            altitude_mm=altitude_m * 1000,  # Convert m -> mm
                             traffic_source=1,
                             source_type=2,
                             icao_address=icao_address,

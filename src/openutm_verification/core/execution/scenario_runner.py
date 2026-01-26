@@ -104,8 +104,9 @@ class ScenarioContext:
     def add_result(cls, result: StepResult[Any]) -> None:
         state = _scenario_state.get()
         if state and state.active:
-            if result.id and state.step_results.get(result.id):
-                state.steps.remove(state.step_results[result.id])
+            # Remove all existing entries with same ID (handles duplicates from multiple sources)
+            if result.id:
+                state.steps = [s for s in state.steps if s.id != result.id]
             state.steps.append(result)
             state.added_results.put_nowait(result)
 
@@ -117,8 +118,9 @@ class ScenarioContext:
         may complete after the scenario context has exited.
         """
         if self._state:
-            if result.id and self._state.step_results.get(result.id):
-                self._state.steps.remove(self._state.step_results[result.id])
+            # Remove all existing entries with same ID (handles duplicates from multiple sources)
+            if result.id:
+                self._state.steps = [s for s in self._state.steps if s.id != result.id]
             self._state.steps.append(result)
             self._state.added_results.put_nowait(result)
 

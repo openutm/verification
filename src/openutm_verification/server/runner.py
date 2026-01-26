@@ -2,6 +2,7 @@ import asyncio
 import os
 import re
 from contextlib import AsyncExitStack
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Coroutine, Dict, List, Type, TypeVar, cast
 
@@ -14,9 +15,11 @@ from openutm_verification.core.execution.config_models import AppConfig, ConfigP
 from openutm_verification.core.execution.definitions import ScenarioDefinition, StepDefinition
 from openutm_verification.core.execution.dependency_resolution import CONTEXT, DEPENDENCIES, DependencyResolver, call_with_dependencies
 from openutm_verification.core.execution.scenario_runner import STEP_REGISTRY, ScenarioContext, _scenario_state
+from openutm_verification.core.reporting.reporting import get_run_timestamp_str
 from openutm_verification.core.reporting.reporting_models import Status, StepResult
 from openutm_verification.scenarios.common import generate_flight_declaration, generate_telemetry
 from openutm_verification.server.introspection import process_method
+from openutm_verification.utils.logging import setup_logging
 
 T = TypeVar("T")
 
@@ -50,6 +53,9 @@ class SessionManager:
         self.data_files: DataFiles | None = None
         self.current_run_task: asyncio.Task | None = None
         self.current_run_error: str | None = None
+        self.current_output_dir: Path | None = None
+        self.current_timestamp_str: str | None = None
+        self.current_start_time: datetime | None = None
         self._initialized = True
 
     async def start_scenario_task(self, scenario: ScenarioDefinition):
@@ -210,16 +216,22 @@ class SessionManager:
         state = self.session_context.state
 
         step_result: Any | None = None
-        if step_name in state.step_results:
-            step_result = state.step_results[step_name]
-        elif loop_context and "group_context" in loop_context:
+
+        # When inside a group context, check group_context FIRST for the most recent results
+        # This is important because state.step_results may have stale RUNNING entries
+        if loop_context and "group_context" in loop_context:
             group_context = loop_context["group_context"]
             if step_name in group_context:
                 step_result = group_context[step_name]
-        else:
-            matching_ids = [key for key in state.step_results.keys() if key.endswith(f".{step_name}") or key == step_name]
-            if matching_ids:
-                step_result = state.step_results[matching_ids[-1]]
+        # Fall back to state.step_results if not found in group_context
+        if step_result is None:
+            if step_name in state.step_results:
+                step_result = state.step_results[step_name]
+            else:
+                # Try matching by suffix (for looped step IDs like "group[0].step_name")
+                matching_ids = [key for key in state.step_results.keys() if key.endswith(f".{step_name}") or key == step_name]
+                if matching_ids:
+                    step_result = state.step_results[matching_ids[-1]]
 
         if step_result is None:
             logger.error(f"Step '{step_name}' not found in results. Available steps: {list(state.step_results.keys())}")
@@ -419,16 +431,28 @@ class SessionManager:
             self._record_background_result(step_id, step.step, task)
             return await self._record_step_running(step, task_id=step_id)
         await self._record_step_running(step)
+        step_id = step.id or step.step
 
         # Execute with dependencies
-        result = await call_with_dependencies(method, resolver=self.session_resolver, **kwargs)
+        try:
+            result = await call_with_dependencies(method, resolver=self.session_resolver, **kwargs)
+        except Exception as e:
+            logger.error(f"Step '{step_id}' execution failed: {e}")
+            failed_result = StepResult(
+                id=step_id,
+                name=step.step,
+                status=Status.FAIL,
+                error_message=str(e),
+                duration=0.0,
+            )
+            self.session_context.update_result(failed_result)
+            return failed_result
 
         # If result is a StepResult and we have a step ID, update the ID in the result object
         # This updates the object in state.steps as well since it's the same reference
         if step.id and hasattr(result, "id"):
             result.id = step.id
         # Add result to context
-        step_id = step.id or step.step
         logger.info(f"Adding result for step '{step_id}' (name: {step.step}) to context")
 
         # If the result is already a StepResult (from scenario_step decorator), use it directly but ensure ID is correct
@@ -461,6 +485,17 @@ class SessionManager:
         except Exception as e:
             step_id = step.id or step.step
             logger.error(f"Error executing step {step_id}: {e}")
+            # Update step status to FAIL before re-raising
+            if self.session_context:
+                with self.session_context:
+                    failed_result = StepResult(
+                        id=step_id,
+                        name=step.step,
+                        status=Status.FAIL,
+                        error_message=str(e),
+                        duration=0.0,
+                    )
+                    self.session_context.update_result(failed_result)
             raise
 
     def _is_group_reference(self, step_name: str, scenario: ScenarioDefinition) -> bool:
@@ -485,25 +520,61 @@ class SessionManager:
 
         logger.info(f"Executing group '{group_name}' with {len(group.steps)} steps")
 
-        for step in group.steps:
-            await self._record_step_running(step)
+        # Pre-compute step IDs with loop index
+        # Note: We don't pre-record as RUNNING here because _execute_step will do it
+        step_id_map: Dict[int, str] = {}
+        for idx, grp_step in enumerate(group.steps):
+            original_id = grp_step.id or grp_step.step
+            if loop_context and "index" in loop_context:
+                loop_index = loop_context.get("index")
+                step_id_map[idx] = f"{group_name}[{loop_index}].{original_id}"
+            else:
+                step_id_map[idx] = original_id
 
-        for group_step in group.steps:
+        executed_step_indices: set[int] = set()
+
+        for idx, group_step in enumerate(group.steps):
             # Ensure each step has an ID
             if not group_step.id:
                 group_step.id = group_step.step
 
             original_id = group_step.id
-            exec_step = group_step
+            exec_step = group_step.model_copy(deep=True)
+            exec_step.id = step_id_map[idx]
 
-            if loop_context and "index" in loop_context:
-                loop_index = loop_context.get("index")
-                exec_step = group_step.model_copy(deep=True)
-                exec_step.id = f"{group_name}[{loop_index}].{original_id}"
+            # Evaluate condition if present for group step
+            if group_step.if_condition:
+                step_results_dict = {}
+                if self.session_context and self.session_context.state:
+                    step_results_dict = self.session_context.state.step_results.copy()
+                # Add group context results for condition evaluation
+                for gid, gresult in group_context.items():
+                    step_results_dict[gid] = gresult
+
+                evaluator = ConditionEvaluator(step_results_dict, enhanced_loop_context)
+                should_run = evaluator.evaluate(group_step.if_condition)
+
+                if not should_run:
+                    logger.info(f"Skipping group step '{exec_step.id}' due to condition: {group_step.if_condition}")
+                    skipped_result = StepResult(
+                        id=exec_step.id,
+                        name=exec_step.step,
+                        status=Status.SKIP,
+                        duration=0.0,
+                        error_message=f"Skipped due to condition: {group_step.if_condition}",
+                    )
+                    results.append(skipped_result)
+                    executed_step_indices.add(idx)
+                    if self.session_context:
+                        with self.session_context:
+                            self.session_context.update_result(skipped_result)
+                    group_context[original_id] = skipped_result
+                    continue
 
             # Execute the step with the enhanced context
             result = await self.execute_single_step(exec_step, enhanced_loop_context)
             results.append(result)
+            executed_step_indices.add(idx)
 
             # Store result in group context for subsequent steps
             # Store the entire result dict so nested access works (group.step_id.result)
@@ -512,9 +583,41 @@ class SessionManager:
             # If step failed and it's not allowed to fail, break the group
             if result.status == Status.FAIL:
                 logger.error(f"Group step '{group_step.id}' failed, stopping group execution")
+                # Mark remaining steps as SKIP
+                self._mark_remaining_group_steps_skipped(group, group_name, loop_context, executed_step_indices)
                 break
 
         return results
+
+    def _mark_remaining_group_steps_skipped(
+        self,
+        group: Any,
+        group_name: str,
+        loop_context: Dict[str, Any] | None,
+        executed_step_indices: set[int],
+    ) -> None:
+        """Mark remaining group steps as SKIP after a failure."""
+        if not self.session_context:
+            return
+
+        for idx, remaining_step in enumerate(group.steps):
+            if idx in executed_step_indices:
+                continue  # Already executed
+
+            step_id = remaining_step.id or remaining_step.step
+            if loop_context and "index" in loop_context:
+                loop_index = loop_context.get("index")
+                step_id = f"{group_name}[{loop_index}].{step_id}"
+
+            skipped_result = StepResult(
+                id=step_id,
+                name=remaining_step.step,
+                status=Status.SKIP,
+                duration=0.0,
+                error_message="Skipped due to previous step failure",
+            )
+            with self.session_context:
+                self.session_context.update_result(skipped_result)
 
     async def _wait_for_dependencies(self, step: StepDefinition) -> None:
         """Wait for any declared dependencies (by step ID) before executing a step."""
@@ -542,6 +645,23 @@ class SessionManager:
     async def run_scenario(self, scenario: ScenarioDefinition) -> List[StepResult]:
         if not self.session_resolver:
             await self.initialize_session()
+
+        # Set up logging to file for this run
+        run_timestamp = datetime.now(timezone.utc)
+        self.current_start_time = run_timestamp
+        self.current_timestamp_str = get_run_timestamp_str(run_timestamp)
+        base_output_dir = Path(self.config.reporting.output_dir)
+        self.current_output_dir = base_output_dir / self.current_timestamp_str
+        self.current_output_dir.mkdir(parents=True, exist_ok=True)
+
+        log_file = setup_logging(
+            self.current_output_dir,
+            "report",
+            self.config.reporting.formats,
+            debug=False,
+        )
+        if log_file:
+            logger.info(f"Logging to file: {log_file}")
 
         # Validate and prepare steps
         seen_ids = set()

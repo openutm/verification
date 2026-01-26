@@ -634,12 +634,27 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self,
         observations: list[list[FlightObservationSchema]],
         single_or_multiple_sensors: str = "single",
-    ) -> bool:
+    ) -> dict[str, Any]:
+        """Submit simulated air traffic observations to the Flight Blender API.
+
+        Plays back observations in real-time, submitting one observation per aircraft per second.
+
+        Args:
+            observations: List of observation lists, one per aircraft.
+            single_or_multiple_sensors: Whether to use single or multiple sensor IDs.
+
+        Returns:
+            Dictionary with submission statistics.
+        """
         if not observations:
             logger.warning("No air traffic observations to submit.")
-            return True
+            return {
+                "success": True,
+                "aircraft_count": 0,
+                "observations_submitted": 0,
+                "duration_seconds": 0,
+            }
 
-        now = arrow.now()
         number_of_aircraft = len(observations)
         logger.debug(f"Submitting simulated air traffic for {number_of_aircraft} aircraft")
 
@@ -657,13 +672,21 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         if not start_times:
             logger.warning("No valid start/end times found in observations.")
-            return True
+            return {
+                "success": True,
+                "aircraft_count": number_of_aircraft,
+                "observations_submitted": 0,
+                "duration_seconds": 0,
+                "warning": "No valid start/end times found in observations",
+            }
 
         simulation_start = min(start_times)
         simulation_end = max(end_times)
 
         now = arrow.now()
         start_time = now
+        observations_submitted = 0
+        submission_errors = 0
 
         current_simulation_time = simulation_start
         # Loop through the simulation time from start to end, advancing by 1 second each iteration
@@ -691,12 +714,26 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 payload = {"observations": [obs.model_dump(mode="json") for obs in filtered_observation]}
 
                 ScenarioContext.add_air_traffic_data(filtered_observation)
-                response = await self.post(endpoint, json=payload)
-                logger.debug(f"Air traffic submission response: {response.text}")
-                logger.info(f"Observations submitted for aircraft {filtered_observation[0].icao_address} at time {current_simulation_time}")
+                try:
+                    response = await self.post(endpoint, json=payload)
+                    logger.debug(f"Air traffic submission response: {response.text}")
+                    logger.info(f"Observations submitted for aircraft {filtered_observation[0].icao_address} at time {current_simulation_time}")
+                    observations_submitted += 1
+                except Exception as e:
+                    logger.error(f"Failed to submit observation: {e}")
+                    submission_errors += 1
             # Advance the simulation time by 1 second
             current_simulation_time = current_simulation_time.shift(seconds=1)
-        return True
+
+        duration_seconds = (arrow.now() - start_time).total_seconds()
+        return {
+            "success": submission_errors == 0,
+            "aircraft_count": number_of_aircraft,
+            "observations_submitted": observations_submitted,
+            "submission_errors": submission_errors,
+            "duration_seconds": round(duration_seconds, 2),
+            "simulation_duration_seconds": (simulation_end - simulation_start).total_seconds(),
+        }
 
     @scenario_step("Submit Air Traffic")
     async def submit_air_traffic(self, observations: list[FlightObservationSchema]) -> dict[str, Any]:
@@ -906,8 +943,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self,
         flight_declaration_via_operational_intent_path: str,
         trajectory_path: str,
-    ) -> None:
-        """Generates data and uploads flight declaration via Operational Intent."""
+    ) -> dict[str, Any]:
+        """Generates data and uploads flight declaration via Operational Intent.
+
+        Returns:
+            Dictionary with flight declaration info including 'id'.
+        """
         from openutm_verification.scenarios.common import (
             generate_flight_declaration_via_operational_intent,
             generate_telemetry,
@@ -938,13 +979,24 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.error(f"Flight declaration upload failed: {upload_result}")
             raise FlightBlenderError("Failed to upload flight declaration during setup_flight_declaration_via_operational_intent")
 
+        # Return flight declaration info for use in subsequent steps
+        return {
+            "id": self.latest_flight_declaration_id,
+            "start_datetime": flight_declaration.start_datetime,
+            "end_datetime": flight_declaration.end_datetime,
+        }
+
     @scenario_step("Setup Flight Declaration")
     async def setup_flight_declaration(
         self,
         flight_declaration_path: str | None = None,
         trajectory_path: str | None = None,
-    ) -> None:
-        """Generates data and uploads flight declaration."""
+    ) -> dict[str, Any]:
+        """Generates data and uploads flight declaration.
+
+        Returns:
+            Dictionary with flight declaration info including 'id'.
+        """
 
         from openutm_verification.scenarios.common import (
             generate_flight_declaration,
@@ -984,6 +1036,13 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         if upload_result.status == Status.FAIL:
             logger.error(f"Flight declaration upload failed: {upload_result}")
             raise FlightBlenderError("Failed to upload flight declaration during setup_flight_declaration")
+
+        # Return flight declaration info for use in subsequent steps
+        return {
+            "id": self.latest_flight_declaration_id,
+            "start_datetime": flight_declaration.start_datetime,
+            "end_datetime": flight_declaration.end_datetime,
+        }
 
     @asynccontextmanager
     async def create_flight_declaration(self):

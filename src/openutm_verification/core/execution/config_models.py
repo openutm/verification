@@ -54,6 +54,16 @@ class BlueSkyAirTrafficSimulatorSettings(StrictBaseModel):
     sensor_ids: list[str] = Field(default_factory=list)
 
 
+class AMQPConfig(StrictBaseModel):
+    """AMQP/RabbitMQ connection configuration."""
+
+    url: str = ""  # AMQP URL, e.g., amqp://guest:guest@localhost:5672/
+    exchange_name: str = "operational_events"
+    exchange_type: str = "direct"
+    routing_key: str = "#"  # '#' matches all routing keys
+    queue_name: str = ""  # Empty means auto-generate exclusive queue
+
+
 class OpenSkyConfig(StrictBaseModel):
     """OpenSky Network connection details."""
 
@@ -159,6 +169,7 @@ class AppConfig(StrictBaseModel):
     opensky: OpenSkyConfig
     air_traffic_simulator_settings: AirTrafficSimulatorSettings
     blue_sky_air_traffic_simulator_settings: BlueSkyAirTrafficSimulatorSettings
+    amqp: AMQPConfig | None = None  # Optional AMQP/RabbitMQ configuration
     data_files: DataFiles
     suites: dict[str, SuiteConfig] = Field(default_factory=dict)
     reporting: ReportingConfig

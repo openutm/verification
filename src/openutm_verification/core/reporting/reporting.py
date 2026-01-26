@@ -22,23 +22,43 @@ from openutm_verification.utils.time_utils import get_run_timestamp_str
 T = TypeVar("T")
 
 
+def _mask_url_password(url: str) -> str:
+    """Mask password in URL if present (e.g., amqp://user:password@host)."""
+    import re
+
+    # Match URLs with credentials: scheme://user:password@host
+    pattern = r"((?:amqp|amqps|http|https|rabbitmq)://[^:]+:)([^@]+)(@.+)"
+    match = re.match(pattern, url, re.IGNORECASE)
+    if match:
+        return f"{match.group(1)}***MASKED***{match.group(3)}"
+    return url
+
+
 def _sanitize_config(data: Any) -> Any:
     """
     Recursively sanitize sensitive fields in the configuration data.
     """
     sensitive_mask = "***MASKED***"
-    sensitive_keys = ["client_id", "client_secret", "audience", "scopes"]
+    sensitive_keys = ["client_id", "client_secret", "audience", "scopes", "password", "token"]
+    # Keys that may contain URLs with embedded passwords
+    url_keys = ["url", "amqp_url", "connection_string", "broker_url"]
 
     if isinstance(data, dict):
         sanitized = {}
         for key, value in data.items():
             if key in sensitive_keys:
                 sanitized[key] = sensitive_mask
+            elif key.lower() in url_keys and isinstance(value, str) and "@" in value:
+                # URL with potential embedded credentials
+                sanitized[key] = _mask_url_password(value)
             else:
                 sanitized[key] = _sanitize_config(value)
         return sanitized
     elif isinstance(data, list):
         return [_sanitize_config(item) for item in data]
+    elif isinstance(data, str) and "://" in data and "@" in data:
+        # Standalone URL string with potential credentials
+        return _mask_url_password(data)
     else:
         return data
 
