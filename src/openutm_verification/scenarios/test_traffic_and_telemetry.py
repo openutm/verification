@@ -3,6 +3,7 @@ import asyncio
 from loguru import logger
 
 from openutm_verification.core.clients.air_traffic.blue_sky_client import BlueSkyClient
+from openutm_verification.core.clients.amqp import AMQPClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
@@ -14,15 +15,37 @@ from openutm_verification.scenarios.registry import register_scenario
 async def traffic_and_telemetry_sim(
     fb_client: FlightBlenderClient,
     blue_sky_client: BlueSkyClient,
+    amqp_client: AMQPClient,
 ) -> None:
-    """Runs a scenario with simulated air traffic and drone telemetry concurrently."""
+    """Runs a scenario with simulated air traffic and drone telemetry concurrently.
+
+    This scenario also monitors AMQP events for operational messages
+    related to the flight declaration.
+    """
     logger.info("Starting Traffic and Telemetry simulation scenario")
+
+    # Check AMQP connection (optional, will log warning if not configured)
+    connection_result = await amqp_client.check_connection()
+    connection_status = connection_result.result or {}
+    if connection_status.get("connected"):
+        logger.info(f"AMQP connected to {connection_status.get('url_host')}")
+    else:
+        logger.warning(f"AMQP not available: {connection_status.get('error')}")
 
     # Explicit cleanup before starting
     await fb_client.cleanup_flight_declarations()
 
     # Setup Flight Declaration
     async with fb_client.create_flight_declaration():
+        # Get the flight declaration ID for AMQP routing key
+        flight_declaration_id = fb_client.latest_flight_declaration_id
+
+        # Start AMQP monitoring for flight events (background)
+        amqp_task = None
+        if connection_status.get("connected") and flight_declaration_id:
+            amqp_task = asyncio.create_task(amqp_client.start_queue_monitor(routing_key=flight_declaration_id, duration=60))
+            logger.info(f"AMQP queue monitor started for flight declaration {flight_declaration_id}")
+
         # Activate Operation
         await fb_client.update_operation_state(OperationState.ACTIVATED)
 
@@ -49,5 +72,14 @@ async def traffic_and_telemetry_sim(
 
         # End Operation
         await fb_client.update_operation_state(OperationState.ENDED)
+
+        # Stop AMQP monitoring and get collected messages
+        if amqp_task:
+            await amqp_client.stop_queue_monitor()
+            messages_result = await amqp_client.get_received_messages(routing_key_filter=flight_declaration_id)
+            messages = messages_result.result or []
+            logger.info(f"Collected {len(messages)} AMQP messages for flight declaration")
+            for msg in messages:
+                logger.debug(f"AMQP message: {msg}")
 
     await fb_client.teardown_flight_declaration()
