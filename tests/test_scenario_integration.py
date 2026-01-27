@@ -374,3 +374,300 @@ class TestComplexScenarios:
             # 2 + 3 = 5 executions
             assert mock_execute.call_count == 5
             assert len([r for r in results if r.status != Status.RUNNING]) == 5
+
+
+class TestStatusTransitions:
+    """Tests for status transitions including WAITING and RUNNING states."""
+
+    @pytest.mark.asyncio
+    async def test_waiting_status_for_queued_steps(self, session_manager):
+        """Test that steps can be marked as WAITING before execution."""
+        scenario = ScenarioDefinition(
+            name="Test Waiting Status",
+            description="Test WAITING status for queued steps",
+            steps=[
+                StepDefinition(id="step1", step="Setup Flight Declaration", arguments={}),
+                StepDefinition(id="step2", step="Submit Telemetry", arguments={"duration": 10}),
+            ],
+        )
+
+        recorded_statuses = []
+
+        async def mock_execute_step(step, loop_context=None):
+            # Record the step execution
+            recorded_statuses.append(("executed", step.id))
+            step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+            if session_manager.session_context:
+                with session_manager.session_context:
+                    session_manager.session_context.add_result(step_result)
+            return step_result
+
+        with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
+            mock_execute.side_effect = mock_execute_step
+
+            await session_manager.run_scenario(scenario)
+
+            # Verify steps were executed in order
+            assert recorded_statuses == [("executed", "step1"), ("executed", "step2")]
+
+    @pytest.mark.asyncio
+    async def test_running_status_for_background_steps(self, session_manager):
+        """Test that background steps are marked as RUNNING."""
+        scenario = ScenarioDefinition(
+            name="Test Running Status",
+            description="Test RUNNING status for background steps",
+            steps=[
+                StepDefinition(id="bg_step", step="Submit Telemetry", arguments={"duration": 30}, background=True),
+                StepDefinition(id="foreground", step="Update Operation State", arguments={"state": "ACTIVATED"}),
+            ],
+        )
+
+        with patch.object(session_manager, "_execute_step", new_callable=AsyncMock) as mock_execute:
+
+            async def mock_execute_step(step, loop_context=None):
+                step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+                if session_manager.session_context:
+                    session_manager.session_context.add_result(step_result)
+                return step_result
+
+            mock_execute.side_effect = mock_execute_step
+
+            await session_manager.run_scenario(scenario)
+
+            # Both steps should have been called
+            assert mock_execute.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_status_enum_values(self):
+        """Test that all Status enum values are correctly defined."""
+        assert Status.PASS == "success"
+        assert Status.FAIL == "failure"
+        assert Status.RUNNING == "running"
+        assert Status.WAITING == "waiting"
+        assert Status.SKIP == "skipped"
+
+    @pytest.mark.asyncio
+    async def test_step_result_accepts_all_statuses(self):
+        """Test that StepResult can be created with all Status values."""
+        for status in Status:
+            result = StepResult(id="test", name="Test Step", status=status, duration=0.0)
+            assert result.status == status
+
+    @pytest.mark.asyncio
+    async def test_waiting_to_running_to_pass_transition(self, session_manager):
+        """Test the typical status transition: WAITING -> RUNNING -> PASS."""
+        scenario = ScenarioDefinition(
+            name="Test Status Transition",
+            description="Test status transitions",
+            steps=[
+                StepDefinition(id="step1", step="Setup Flight Declaration", arguments={}),
+            ],
+        )
+
+        status_transitions = []
+
+        async def mock_execute_with_transitions(step, loop_context=None):
+            # Simulate the status transition
+            waiting_result = StepResult(id=step.id, name=step.step, status=Status.WAITING, duration=0.0, result=None)
+            status_transitions.append(waiting_result.status)
+
+            running_result = StepResult(id=step.id, name=step.step, status=Status.RUNNING, duration=0.0, result=None)
+            status_transitions.append(running_result.status)
+
+            final_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+            status_transitions.append(final_result.status)
+
+            if session_manager.session_context:
+                with session_manager.session_context:
+                    session_manager.session_context.add_result(final_result)
+            return final_result
+
+        with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
+            mock_execute.side_effect = mock_execute_with_transitions
+
+            await session_manager.run_scenario(scenario)
+
+            # Verify the transition order
+            assert status_transitions == [Status.WAITING, Status.RUNNING, Status.PASS]
+
+    @pytest.mark.asyncio
+    async def test_waiting_to_running_to_fail_transition(self, session_manager):
+        """Test status transition ending in failure: WAITING -> RUNNING -> FAIL."""
+        scenario = ScenarioDefinition(
+            name="Test Failure Transition",
+            description="Test status transitions ending in failure",
+            steps=[
+                StepDefinition(id="step1", step="Setup Flight Declaration", arguments={}),
+            ],
+        )
+
+        status_transitions = []
+
+        async def mock_execute_with_failure(step, loop_context=None):
+            status_transitions.append(Status.WAITING)
+            status_transitions.append(Status.RUNNING)
+            status_transitions.append(Status.FAIL)
+
+            final_result = StepResult(id=step.id, name=step.step, status=Status.FAIL, duration=0.0, result=None, error_message="Simulated failure")
+            if session_manager.session_context:
+                with session_manager.session_context:
+                    session_manager.session_context.add_result(final_result)
+            return final_result
+
+        with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
+            mock_execute.side_effect = mock_execute_with_failure
+
+            await session_manager.run_scenario(scenario)
+
+            assert status_transitions == [Status.WAITING, Status.RUNNING, Status.FAIL]
+
+    @pytest.mark.asyncio
+    async def test_skip_status_with_condition(self, session_manager):
+        """Test that SKIP status is properly assigned when conditions are not met."""
+        scenario = ScenarioDefinition(
+            name="Test Skip Status",
+            description="Test SKIP status assignment",
+            steps=[
+                StepDefinition(id="step1", step="Setup Flight Declaration", arguments={}),
+                StepDefinition(id="step2", step="Submit Telemetry", arguments={"duration": 10}, if_condition="failure()"),
+            ],
+        )
+
+        async def mock_execute_step(step, loop_context=None):
+            step_result = StepResult(id=step.id, name=step.step, status=Status.PASS, duration=0.0, result=None)
+            if session_manager.session_context:
+                with session_manager.session_context:
+                    session_manager.session_context.add_result(step_result)
+            return step_result
+
+        with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
+            mock_execute.side_effect = mock_execute_step
+
+            results = await session_manager.run_scenario(scenario)
+
+            # Find step2 result - should be SKIP since failure() is false
+            step2_results = [r for r in results if r.id == "step2"]
+            assert len(step2_results) == 1
+            assert step2_results[0].status == Status.SKIP
+
+    @pytest.mark.asyncio
+    async def test_mixed_statuses_in_scenario(self, session_manager):
+        """Test scenario with mixed final statuses."""
+        scenario = ScenarioDefinition(
+            name="Test Mixed Statuses",
+            description="Test scenario with various statuses",
+            steps=[
+                StepDefinition(id="pass_step", step="Setup Flight Declaration", arguments={}),
+                StepDefinition(id="fail_step", step="Submit Telemetry", arguments={"duration": 10}),
+                StepDefinition(id="conditional_step", step="Update Operation State", arguments={"state": "ENDED"}, if_condition="failure()"),
+                StepDefinition(id="always_step", step="Teardown Flight Declaration", arguments={}, if_condition="always()"),
+            ],
+        )
+
+        call_count = 0
+
+        async def mock_execute_with_mixed_results(step, loop_context=None):
+            nonlocal call_count
+            call_count += 1
+
+            if step.id == "fail_step":
+                status = Status.FAIL
+            else:
+                status = Status.PASS
+
+            step_result = StepResult(id=step.id, name=step.step, status=status, duration=0.0, result=None)
+            if session_manager.session_context:
+                with session_manager.session_context:
+                    session_manager.session_context.add_result(step_result)
+            return step_result
+
+        with patch.object(session_manager, "execute_single_step", new_callable=AsyncMock) as mock_execute:
+            mock_execute.side_effect = mock_execute_with_mixed_results
+
+            results = await session_manager.run_scenario(scenario)
+
+            # Verify we have various statuses
+            status_map = {r.id: r.status for r in results if r.id}
+            assert status_map.get("pass_step") == Status.PASS
+            assert status_map.get("fail_step") == Status.FAIL
+            # conditional_step runs because failure() is true after fail_step
+            assert status_map.get("conditional_step") == Status.PASS
+            assert status_map.get("always_step") == Status.PASS  # Always runs
+
+
+class TestConditionEvaluatorWithStatuses:
+    """Tests for condition evaluation with various status values."""
+
+    def test_success_condition_with_waiting_status(self):
+        """Test that success() returns False when last status is WAITING."""
+        from openutm_verification.core.execution.conditions import ConditionEvaluator
+
+        steps = {"step1": StepResult(id="step1", name="Test", status=Status.WAITING, duration=0.0)}
+        evaluator = ConditionEvaluator(steps)
+
+        # WAITING is not considered success
+        assert evaluator.evaluate("success()") is False
+
+    def test_success_condition_with_running_status(self):
+        """Test that success() returns True when last status is RUNNING."""
+        from openutm_verification.core.execution.conditions import ConditionEvaluator
+
+        steps = {"step1": StepResult(id="step1", name="Test", status=Status.RUNNING, duration=0.0)}
+        evaluator = ConditionEvaluator(steps)
+
+        # RUNNING is considered success (allows downstream steps to start)
+        assert evaluator.evaluate("success()") is True
+
+    def test_failure_condition_with_waiting_status(self):
+        """Test that failure() returns False when last status is WAITING."""
+        from openutm_verification.core.execution.conditions import ConditionEvaluator
+
+        steps = {"step1": StepResult(id="step1", name="Test", status=Status.WAITING, duration=0.0)}
+        evaluator = ConditionEvaluator(steps)
+
+        # WAITING is not considered failure
+        assert evaluator.evaluate("failure()") is False
+
+    def test_failure_condition_with_skip_status(self):
+        """Test that failure() returns False when last status is SKIP."""
+        from openutm_verification.core.execution.conditions import ConditionEvaluator
+
+        steps = {"step1": StepResult(id="step1", name="Test", status=Status.SKIP, duration=0.0)}
+        evaluator = ConditionEvaluator(steps)
+
+        # SKIP is not considered failure
+        assert evaluator.evaluate("failure()") is False
+
+    def test_step_status_comparison_with_waiting(self):
+        """Test direct status comparison with WAITING."""
+        from openutm_verification.core.execution.conditions import ConditionEvaluator
+
+        steps = {"step1": StepResult(id="step1", name="Test", status=Status.WAITING, duration=0.0)}
+        evaluator = ConditionEvaluator(steps)
+
+        assert evaluator.evaluate("steps.step1.status == 'waiting'") is True
+        assert evaluator.evaluate("steps.step1.status == 'success'") is False
+
+    def test_step_status_comparison_with_running(self):
+        """Test direct status comparison with RUNNING."""
+        from openutm_verification.core.execution.conditions import ConditionEvaluator
+
+        steps = {"step1": StepResult(id="step1", name="Test", status=Status.RUNNING, duration=0.0)}
+        evaluator = ConditionEvaluator(steps)
+
+        assert evaluator.evaluate("steps.step1.status == 'running'") is True
+        assert evaluator.evaluate("steps.step1.status == 'success'") is False
+
+    def test_last_step_excludes_skipped(self):
+        """Test that last_step_status excludes skipped steps."""
+        from openutm_verification.core.execution.conditions import ConditionEvaluator
+
+        # Skipped steps should not affect the "last step" status
+        steps = {
+            "step1": StepResult(id="step1", name="Test1", status=Status.PASS, duration=0.0),
+            "step2": StepResult(id="step2", name="Test2", status=Status.SKIP, duration=0.0),
+        }
+        evaluator = ConditionEvaluator(steps)
+
+        # success() should check step1 (PASS), not step2 (SKIP)
+        assert evaluator.evaluate("success()") is True

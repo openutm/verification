@@ -1,4 +1,4 @@
-import { Activity, Moon, Sun, Layout, FilePlus, Save, Play, Loader2, Copy } from 'lucide-react';
+import { Activity, Moon, Sun, Layout, FilePlus, Save, Play, Loader2, Copy, Square } from 'lucide-react';
 import styles from '../../styles/Header.module.css';
 import btnStyles from '../../styles/Button.module.css';
 
@@ -10,6 +10,7 @@ interface HeaderProps {
     onSave: () => void;
     onSaveAs: () => void;
     onRun: () => void;
+    onStop: () => void;
     isRunning: boolean;
 }
 
@@ -21,6 +22,7 @@ export const Header = ({
     onSave,
     onSaveAs,
     onRun,
+    onStop,
     isRunning,
 }: HeaderProps) => {
     return (
@@ -53,6 +55,12 @@ export const Header = ({
                     {isRunning ? <Loader2 size={16} className={styles.spin} /> : <Play size={16} />}
                     Run Scenario
                 </button>
+                {isRunning && (
+                    <button className={`${btnStyles.button} ${btnStyles.danger}`} onClick={onStop} title="Stop scenario" type="button">
+                        <Square size={16} />
+                        Stop
+                    </button>
+                )}
             </div>
         </header>
     );

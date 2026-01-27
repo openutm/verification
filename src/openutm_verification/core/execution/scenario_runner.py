@@ -2,7 +2,7 @@ import contextvars
 import inspect
 import time
 import uuid
-from asyncio import Queue
+from asyncio import CancelledError, Queue
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
@@ -104,10 +104,25 @@ class ScenarioContext:
     def add_result(cls, result: StepResult[Any]) -> None:
         state = _scenario_state.get()
         if state and state.active:
-            if result.id and state.step_results.get(result.id):
-                state.steps.remove(state.step_results[result.id])
+            # Remove all existing entries with same ID (handles duplicates from multiple sources)
+            if result.id:
+                state.steps = [s for s in state.steps if s.id != result.id]
             state.steps.append(result)
             state.added_results.put_nowait(result)
+
+    def update_result(self, result: StepResult[Any]) -> None:
+        """
+        Instance method to update result in the bound state.
+        This is useful for background tasks where context vars might not be available.
+        Note: This method does not check if state is active, since background tasks
+        may complete after the scenario context has exited.
+        """
+        if self._state:
+            # Remove all existing entries with same ID (handles duplicates from multiple sources)
+            if result.id:
+                self._state.steps = [s for s in self._state.steps if s.id != result.id]
+            self._state.steps.append(result)
+            self._state.added_results.put_nowait(result)
 
     @classmethod
     def set_flight_declaration_data(cls, data: FlightDeclaration) -> None:
@@ -264,7 +279,7 @@ class ScenarioStepDescriptor:
 
             handler_id = logger.add(lambda msg: captured_logs.append(msg), filter=log_filter, format="{time:HH:mm:ss} | {level} | {message}")
 
-            step_result: StepResult[Any]
+            step_result: StepResult[Any] | None = None
             try:
                 with logger.contextualize(step_execution_id=step_execution_id):
                     logger.info("-" * 50)
@@ -273,6 +288,9 @@ class ScenarioStepDescriptor:
                     try:
                         result = await func(*args, **kwargs)
                         step_result = handle_result(result, start_time)
+                    except CancelledError:
+                        logger.info(f"Step '{step_name}' was cancelled")
+                        raise
                     except Exception as e:
                         step_result = handle_exception(e, start_time)
             finally:

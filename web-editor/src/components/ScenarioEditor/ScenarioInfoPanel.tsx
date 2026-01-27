@@ -55,40 +55,6 @@ export const ScenarioInfoPanel = ({ name, description, config, onUpdateName, onU
                     )}
                 </div>
                 <div className={styles.content} style={{ maxHeight: 'calc(100% - 60px)', overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div className={styles.paramItem}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <FileText size={16} />
-                            Scenario Name
-                        </label>
-                        <input
-                            type="text"
-                            className={styles.paramInput}
-                            value={name || ''}
-                            onChange={(e) => onUpdateName(e.target.value)}
-                            placeholder="e.g. valid_flight_auth"
-                        />
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                            Currently saving as: <strong>{name || "new_scenario"}.yaml</strong>
-                        </div>
-                    </div>
-
-                    <div className={styles.paramItem}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Info size={16} />
-                            Description
-                        </label>
-                        <textarea
-                            className={styles.paramInput}
-                            value={description}
-                            onChange={(e) => onUpdateDescription(e.target.value)}
-                            rows={6}
-                            style={{ resize: 'vertical', minHeight: '80px', fontFamily: 'inherit' }}
-                            placeholder="Describe what this scenario tests..."
-                        />
-                    </div>
-
-                    <ConfigEditor config={config} onUpdateConfig={onUpdateConfig} />
-
                     {name && (
                         <div className={styles.paramItem} style={{ display: 'flex', gap: '8px' }}>
                             <button
@@ -133,6 +99,40 @@ export const ScenarioInfoPanel = ({ name, description, config, onUpdateName, onU
                             </button>
                         </div>
                     )}
+
+                    <div className={styles.paramItem}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <FileText size={16} />
+                            Scenario Name
+                        </label>
+                        <input
+                            type="text"
+                            className={styles.paramInput}
+                            value={name || ''}
+                            onChange={(e) => onUpdateName(e.target.value)}
+                            placeholder="e.g. valid_flight_auth"
+                        />
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                            Currently saving as: <strong>{name || "new_scenario"}.yaml</strong>
+                        </div>
+                    </div>
+
+                    <div className={styles.paramItem}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Info size={16} />
+                            Description
+                        </label>
+                        <textarea
+                            className={styles.paramInput}
+                            value={description}
+                            onChange={(e) => onUpdateDescription(e.target.value)}
+                            rows={6}
+                            style={{ resize: 'vertical', minHeight: '80px', fontFamily: 'inherit' }}
+                            placeholder="Describe what this scenario tests..."
+                        />
+                    </div>
+
+                    <ConfigEditor config={config} onUpdateConfig={onUpdateConfig} />
                 </div>
             </div>
 

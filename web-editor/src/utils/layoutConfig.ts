@@ -3,7 +3,7 @@ import { MarkerType, Position } from '@xyflow/react';
 export const LAYOUT_CONFIG = {
     nodeWidth: 180,
     nodeHeight: 80,
-    rankSep: 80,
+    rankSep: 40,
     nodeSep: 250,
     direction: 'TB',
 };

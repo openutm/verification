@@ -57,3 +57,37 @@ def test_reset_session():
         mock_runner.initialize_session.assert_called_once()
     finally:
         app.dependency_overrides = {}
+
+
+def test_stop_scenario_when_running():
+    """Test that /stop-scenario correctly calls runner.stop_scenario() and returns expected format."""
+    mock_runner = MagicMock()
+    mock_runner.stop_scenario = AsyncMock(return_value=True)
+
+    app.dependency_overrides[get_session_manager] = lambda: mock_runner
+
+    try:
+        response = client.post("/stop-scenario")
+        assert response.status_code == 200
+        assert response.json() == {"stopped": True}
+
+        mock_runner.stop_scenario.assert_called_once()
+    finally:
+        app.dependency_overrides = {}
+
+
+def test_stop_scenario_when_not_running():
+    """Test that /stop-scenario returns stopped=False when no scenario is running."""
+    mock_runner = MagicMock()
+    mock_runner.stop_scenario = AsyncMock(return_value=False)
+
+    app.dependency_overrides[get_session_manager] = lambda: mock_runner
+
+    try:
+        response = client.post("/stop-scenario")
+        assert response.status_code == 200
+        assert response.json() == {"stopped": False}
+
+        mock_runner.stop_scenario.assert_called_once()
+    finally:
+        app.dependency_overrides = {}

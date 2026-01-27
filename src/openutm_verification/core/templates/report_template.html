@@ -24,6 +24,32 @@
         .steps-table th, .steps-table td { border: 1px solid #eee; padding: 8px; text-align: left; }
         .steps-table th { background-color: #fafafa; }
         pre { background-color: #f1f1f1; padding: 10px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+        .result-wrapper { position: relative; }
+        .result-collapsed { max-height: 200px; overflow: hidden; }
+        .result-collapsed::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(transparent, #f1f1f1);
+            pointer-events: none;
+        }
+        .toggle-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            z-index: 10;
+            padding: 4px 12px;
+            font-size: 12px;
+            background-color: rgba(233, 236, 239, 0.95);
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #495057;
+        }
+        .toggle-btn:hover { background-color: rgba(222, 226, 230, 0.95); }
     </style>
 </head>
 <body>
@@ -63,7 +89,8 @@
 
     <h2>Scenario Results ({{ report_data.results|length }} executed)</h2>
     {% for result in report_data.results %}
-    <div class="scenario" id="scenario-{{ loop.index }}">
+    {% set scenario_index = loop.index %}
+    <div class="scenario" id="scenario-{{ scenario_index }}">
         <details>
             <summary class="scenario-summary">
                 <span>
@@ -109,11 +136,22 @@
                     </thead>
                     <tbody>
                         {% for step in result.steps %}
+                        {% set result_json = step.result | tojson(indent=2) %}
+                        {% set line_count = result_json.split('\n') | length %}
                         <tr>
                             <td>{{ step.name }}</td>
                             <td><span class="status status-{{ step.status }}">{{ step.status }}</span></td>
                             <td>{{ "%.2f"|format(step.duration) }}</td>
-                            <td><pre>{{ step.result | tojson(indent=2) }}</pre></td>
+                            <td>
+                                {% if line_count > 10 %}
+                                <div class="result-wrapper">
+                                    <pre class="result-collapsed" id="result-{{ scenario_index }}-{{ loop.index }}">{{ result_json }}</pre>
+                                    <button class="toggle-btn" onclick="toggleResult('result-{{ scenario_index }}-{{ loop.index }}', this)">Show more</button>
+                                </div>
+                                {% else %}
+                                <pre>{{ result_json }}</pre>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -132,6 +170,19 @@
             <pre>{{ report_data.config | tojson(indent=2) }}</pre>
         </div>
     </details>
+
+    <script>
+        function toggleResult(elementId, button) {
+            const element = document.getElementById(elementId);
+            if (element.classList.contains('result-collapsed')) {
+                element.classList.remove('result-collapsed');
+                button.textContent = 'Show less';
+            } else {
+                element.classList.add('result-collapsed');
+                button.textContent = 'Show more';
+            }
+        }
+    </script>
 
 </body>
 </html>

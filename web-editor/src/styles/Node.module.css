@@ -80,6 +80,12 @@
   background-color: rgba(59, 130, 246, 0.05);
 }
 
+.statusWaiting {
+  --node-color: var(--warning);
+  border-color: var(--node-color);
+  background-color: rgba(245, 158, 11, 0.05);
+}
+
 .statusSkipped {
   --node-color: var(--text-tertiary);
   border-color: var(--border-secondary);

@@ -9,7 +9,7 @@ interface ConfigEditorProps {
 }
 
 export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConfig }) => {
-    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['flight_blender']));
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
     const toggleSection = (section: string) => {
         setExpandedSections(prev => {

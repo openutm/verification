@@ -19,6 +19,10 @@ from openutm_verification.core.clients.air_traffic.base_client import (
 from openutm_verification.core.clients.air_traffic.blue_sky_client import (
     BlueSkyClient,
 )
+from openutm_verification.core.clients.amqp import (
+    AMQPClient,
+    create_amqp_settings,
+)
 from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
@@ -222,4 +226,12 @@ async def bluesky_client() -> AsyncGenerator[BlueSkyClient, None]:
     """Provides a BlueSkyClient instance for dependency injection."""
     settings = create_blue_sky_air_traffic_settings()
     async with BlueSkyClient(settings) as client:
+        yield client
+
+
+@dependency(AMQPClient)
+async def amqp_client() -> AsyncGenerator[AMQPClient, None]:
+    """Provides an AMQPClient instance for dependency injection."""
+    settings = create_amqp_settings()
+    async with AMQPClient(settings) as client:
         yield client

@@ -44,7 +44,7 @@ const ToolboxGroup = ({ title, ops }: { title: string, ops: Operation[] }) => {
 };
 
 export const Toolbox = ({ operations, children }: { operations: Operation[], children?: React.ReactNode }) => {
-    const [activeTab, setActiveTab] = useState<'toolbox' | 'scenarios'>('toolbox');
+    const [activeTab, setActiveTab] = useState<'toolbox' | 'scenarios'>('scenarios');
 
     const groupedOperations = useMemo(() => {
         const grouped = operations.reduce((acc, op) => {
@@ -67,16 +67,16 @@ export const Toolbox = ({ operations, children }: { operations: Operation[], chi
         <aside className={layoutStyles.sidebar}>
             <div className={styles.tabContainer}>
                 <button
-                    className={`${styles.tabButton} ${activeTab === 'toolbox' ? styles.activeTab : ''}`}
-                    onClick={() => setActiveTab('toolbox')}
-                >
-                    Toolbox
-                </button>
-                <button
                     className={`${styles.tabButton} ${activeTab === 'scenarios' ? styles.activeTab : ''}`}
                     onClick={() => setActiveTab('scenarios')}
                 >
                     Scenarios
+                </button>
+                <button
+                    className={`${styles.tabButton} ${activeTab === 'toolbox' ? styles.activeTab : ''}`}
+                    onClick={() => setActiveTab('toolbox')}
+                >
+                    Toolbox
                 </button>
             </div>
 

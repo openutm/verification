@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 
@@ -439,7 +439,10 @@ async def test_submit_simulated_air_traffic(fb_client):
 
         result = await fb_client.submit_simulated_air_traffic(observations=obs)
 
-        assert result.result is True
+        # Result now returns detailed dict with submission stats
+        assert isinstance(result.result, dict)
+        assert result.result["aircraft_count"] == 2
+        assert result.result["observations_submitted"] == 2
         assert fb_client.post.called
 
 
@@ -488,7 +491,9 @@ async def test_setup_flight_declaration(fb_client):
         patch("openutm_verification.scenarios.common.generate_telemetry") as mock_gen_tel,
         patch("openutm_verification.core.clients.flight_blender.flight_blender_client.ScenarioContext") as mock_context,
     ):
-        mock_gen_fd.return_value = {"fd": "data"}
+        # Create a mock for flight declaration that allows attribute assignment
+        mock_fd = MagicMock()
+        mock_gen_fd.return_value = mock_fd
         mock_gen_tel.return_value = [{"tel": "data"}]
 
         # Mock upload_flight_declaration to return success
@@ -499,10 +504,10 @@ async def test_setup_flight_declaration(fb_client):
         await fb_client.setup_flight_declaration("fd_path", "traj_path")
 
         mock_gen_fd.assert_called_with("fd_path")
-        mock_gen_tel.assert_called_with("traj_path")
-        mock_context.set_flight_declaration_data.assert_called_with({"fd": "data"})
+        mock_gen_tel.assert_called_with("traj_path", reference_time=ANY)
+        mock_context.set_flight_declaration_data.assert_called_with(mock_fd)
         mock_context.set_telemetry_data.assert_called_with([{"tel": "data"}])
-        fb_client.upload_flight_declaration.assert_called_with({"fd": "data"})
+        fb_client.upload_flight_declaration.assert_called_with(mock_fd)
 
 
 # AirTrafficClient Tests

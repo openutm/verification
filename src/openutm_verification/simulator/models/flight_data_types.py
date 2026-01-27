@@ -6,14 +6,25 @@ DEFAULT_REFERENCE_TIME = "2022-01-01T00:00:00Z"
 
 
 class FlightObservationSchema(BaseModel):
-    lat_dd: float
-    lon_dd: float
-    altitude_mm: float
-    traffic_source: int
-    source_type: int
-    icao_address: str
-    timestamp: int
-    metadata: dict = Field(default_factory=dict)
+    """Schema for flight observation data submitted to Flight Blender.
+
+    This schema represents air traffic observations compatible with the
+    Flight Blender /flight_stream/set_air_traffic endpoint.
+    """
+
+    lat_dd: float = Field(..., description="Latitude in decimal degrees")
+    lon_dd: float = Field(..., description="Longitude in decimal degrees")
+    altitude_mm: float = Field(
+        ...,
+        description="Altitude in millimeters above WGS84 ellipsoid. "
+        "Note: Despite Flight Blender API docs saying 'Meters', the field name "
+        "indicates millimeters. Values passed here should be in millimeters.",
+    )
+    traffic_source: int = Field(..., description="Traffic source type (0-11, see API docs)")
+    source_type: int = Field(..., description="Source type (0=True, 1=Fused)")
+    icao_address: str = Field(..., max_length=24, description="ICAO aircraft address")
+    timestamp: int = Field(..., description="Unix timestamp of observation")
+    metadata: dict = Field(default_factory=dict, description="Additional metadata")
 
 
 class FullFlightRecord(ImplicitDict):

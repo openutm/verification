@@ -70,7 +70,7 @@ class ConditionEvaluator:
         """Replace GitHub Actions-style functions."""
         # success() - previous step succeeded
         if "success()" in condition:
-            result = self.last_step_status == Status.PASS if self.last_step_status else True
+            result = self.last_step_status in (Status.PASS, Status.RUNNING) if self.last_step_status else True
             condition = condition.replace("success()", str(result))
 
         # failure() - previous step failed
