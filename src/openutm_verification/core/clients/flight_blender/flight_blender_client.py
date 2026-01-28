@@ -646,6 +646,8 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         Returns:
             Dictionary with submission statistics.
         """
+        # Generate a random session ID for this submission
+        session_id = uuid.uuid4()
         if not observations:
             logger.warning("No air traffic observations to submit.")
             return {
@@ -709,7 +711,6 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             # Submit the filtered observations for each aircraft to the API
             logger.debug(f"Submitting {len(filtered_observations)} air traffic observations")
             for filtered_observation in filtered_observations:
-                session_id = filtered_observation[0].metadata["session_id"]
                 endpoint = f"/flight_stream/set_air_traffic/{session_id}"
                 payload = {"observations": [obs.model_dump(mode="json") for obs in filtered_observation]}
 

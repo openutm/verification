@@ -53,15 +53,15 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         scn_path = config_path or self.settings.simulation_config_path
         duration_s = int(duration or self.settings.simulation_duration_seconds or 30)
 
-        session_ids = self.settings.sensor_ids
+        sensor_ids = self.settings.sensor_ids
 
         try:
             # create a list of UUIDs with at least one UUID if session_ids is empty
-            session_ids = [UUID(x) for x in session_ids] if session_ids else [uuid.uuid4()]
+            sensor_ids = [UUID(x) for x in sensor_ids] if sensor_ids else [uuid.uuid4()]
         except ValueError as exc:
             logger.error(f"Invalid sensor ID in configuration, it should be a valid UUID: {exc}")
             raise
-        current_session_id = session_ids[0]
+        current_sensor_id = sensor_ids[0]
 
         if not scn_path:
             raise ValueError("No scenario path provided. Provide config_path or set settings.simulation_config_path.")
@@ -113,7 +113,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
                     # We store altitude_mm as "millimeters"; keep it consistent with your schema.
                     # If alt is actually feet, you can convert here: alt_m = alt_ft * 0.3048
                     altitude_mm = alt_m_or_ft * 1000.0
-                    metadata = {"session_id": current_session_id} if current_session_id else {}
+                    metadata = {"sensor_id": current_sensor_id} if current_sensor_id else {}
 
                     obs = FlightObservationSchema(
                         lat_dd=lat,

@@ -104,10 +104,10 @@ class TestGeoJSONAirtrafficSimulator:
         )
 
         simulator = GeoJSONAirtrafficSimulator(config)
-        session_ids = [uuid4()]
+        sensor_ids = [uuid4()]
         result = simulator.generate_air_traffic_data(
             duration=2,
-            session_ids=session_ids,
+            sensor_ids=sensor_ids,
             number_of_aircraft=1,
         )
 

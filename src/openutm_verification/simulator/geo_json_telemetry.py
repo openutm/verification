@@ -78,7 +78,7 @@ class GeoJSONAirtrafficSimulator:
     def generate_air_traffic_data(
         self,
         duration: int,
-        session_ids: list[UUID],
+        sensor_ids: list[UUID],
         number_of_aircraft: int = 1,
     ) -> list[list[FlightObservationSchema]]:
         """Generate simulated air traffic observations for the specified duration.
@@ -94,9 +94,8 @@ class GeoJSONAirtrafficSimulator:
             List of flight observation dictionaries containing position, altitude,
             and metadata for each generated data point.
         """
-
-        session_id = str(session_ids[0])
-        logger.info(f"Generating air traffic data for {duration} seconds with session ID {session_id}")
+        sensor_id = str(sensor_ids[0])
+        logger.info(f"Generating air traffic data for {duration} seconds with sensor ID {sensor_id}")
         all_trajectories = []
         # Generate a random trajectory
         # Improve to generate a trajectory where the speed of the aircraft can be controlled
@@ -113,7 +112,7 @@ class GeoJSONAirtrafficSimulator:
             for i in range(duration):
                 timestamp = self.reference_time.shift(seconds=i)
                 for point in coordinates:
-                    metadata = {"session_id": session_id} if session_id else {}
+                    metadata = {"sensor_id": sensor_id} if sensor_id else {}
                     # Convert altitude from meters to millimeters for altitude_mm field
                     altitude_m = self.config.altitude_of_ground_level_wgs_84
                     airtraffic.append(

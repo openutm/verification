@@ -52,11 +52,11 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         config_path = config_path or self.settings.simulation_config_path
         duration = duration or self.settings.simulation_duration
         number_of_aircraft = self.settings.number_of_aircraft
-        session_ids = self.settings.sensor_ids
+        sensor_ids = self.settings.sensor_ids
 
         try:
             # create a list of UUIDs with at least one UUID if session_ids is empty
-            session_ids = [UUID(x) for x in session_ids] if session_ids else [uuid.uuid4()]
+            sensor_ids = [UUID(x) for x in sensor_ids] if sensor_ids else [uuid.uuid4()]
         except ValueError as exc:
             logger.error(f"Invalid sensor ID in configuration, it should be a valid UUID: {exc}")
             raise
@@ -72,7 +72,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
             return simulator.generate_air_traffic_data(
                 duration=duration,
                 number_of_aircraft=number_of_aircraft,
-                session_ids=session_ids,
+                sensor_ids=sensor_ids,
             )
 
         except Exception as exc:  # noqa: BLE001
