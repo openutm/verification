@@ -7,6 +7,7 @@ from openutm_verification.core.clients.air_traffic.blue_sky_client import BlueSk
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
+from openutm_verification.core.reporting.reporting_models import StepResult
 from openutm_verification.models import SDSPSessionAction
 from openutm_verification.scenarios.registry import register_scenario
 
@@ -27,15 +28,16 @@ async def sdsp_track_with_bluesky_sim(
         session_id=session_id,
     )
 
-    result = await blue_sky_client.generate_bluesky_sim_air_traffic_data()
+    result: StepResult = await blue_sky_client.generate_bluesky_sim_air_traffic_data()
 
-    observations = result.details
+    observations = result.result
     logger.info(f"Generated {len(observations)} observations from BlueSky simulation")
     # to start a background parallel task, instead of await, use create_task:
     task = asyncio.create_task(fb_client.submit_simulated_air_traffic(observations=observations))
     # Task is now running, concurrently while any other `async await` calls are done.
     # Wait for some time to simulate track period
-    await fb_client.wait_x_seconds(wait_time_seconds=2)
+
+    await asyncio.sleep(2)
 
     await fb_client.initialize_verify_sdsp_track(
         session_id=session_id,
@@ -43,7 +45,7 @@ async def sdsp_track_with_bluesky_sim(
         expected_track_count=3,
     )
 
-    await fb_client.wait_x_seconds(wait_time_seconds=5)
+    await asyncio.sleep(5)
 
     await fb_client.start_stop_sdsp_session(
         action=SDSPSessionAction.STOP,
