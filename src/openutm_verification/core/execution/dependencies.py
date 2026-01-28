@@ -13,22 +13,22 @@ from openutm_verification.core.clients.air_traffic.air_traffic_client import (
     AirTrafficClient,
 )
 from openutm_verification.core.clients.air_traffic.base_client import (
-    create_air_traffic_settings,
-    create_blue_sky_air_traffic_settings,
+    AirTrafficSettings,
+    BlueSkyAirTrafficSettings,
 )
 from openutm_verification.core.clients.air_traffic.blue_sky_client import (
     BlueSkyClient,
 )
 from openutm_verification.core.clients.amqp import (
     AMQPClient,
-    create_amqp_settings,
+    AMQPSettings,
 )
 from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
 from openutm_verification.core.clients.opensky.base_client import (
-    create_opensky_settings,
+    OpenSkySettings,
 )
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
 from openutm_verification.core.execution.config_models import (
@@ -118,45 +118,19 @@ def scenario_id() -> Generator[ScenarioId, None, None]:
 
 
 @dependency(DataFiles)
-def data_files(scenario_id: ScenarioId) -> Generator[DataFiles, None, None]:
+def data_files() -> Generator[DataFiles, None, None]:
     """Provides data files configuration for dependency injection.
 
-    Returns:
-        An instance of DataFiles.
+    Returns the SuiteScenario from context (which already has defaults merged at config load time),
+    or falls back to AppConfig.data_files for interactive sessions.
     """
-    config = get_settings()
-
-    # Check for suite override
-    suite_scenario = CONTEXT.get().get("suite_scenario")
+    context = CONTEXT.get()
+    suite_scenario = context.get("suite_scenario") if context else None
 
     if suite_scenario:
-        # Merge suite overrides with base config
-        if suite_scenario.simulation and suite_scenario.trajectory is None:
-            trajectory = None
-        else:
-            trajectory = suite_scenario.trajectory or config.data_files.trajectory
-        flight_declaration = suite_scenario.flight_declaration or config.data_files.flight_declaration
-        flight_declaration_via_operational_intent = (
-            suite_scenario.flight_declaration_via_operational_intent or config.data_files.flight_declaration_via_operational_intent
-        )
-        geo_fence = suite_scenario.geo_fence or config.data_files.geo_fence
-        simulation = suite_scenario.simulation or config.data_files.simulation
+        yield suite_scenario
     else:
-        # Use base config
-        trajectory = config.data_files.trajectory
-        flight_declaration = config.data_files.flight_declaration
-        geo_fence = config.data_files.geo_fence
-        flight_declaration_via_operational_intent = config.data_files.flight_declaration_via_operational_intent
-        simulation = config.data_files.simulation
-
-    data = DataFiles(
-        trajectory=trajectory,
-        flight_declaration=flight_declaration,
-        flight_declaration_via_operational_intent=flight_declaration_via_operational_intent,
-        geo_fence=geo_fence,
-        simulation=simulation,
-    )
-    yield data
+        yield get_settings().data_files
 
 
 @dependency(AppConfig)
@@ -181,8 +155,8 @@ async def flight_blender_client(config: AppConfig, data_files: DataFiles) -> Asy
     """
     auth_provider = get_auth_provider(config.flight_blender.auth)
     credentials = auth_provider.get_cached_credentials(
-        audience=config.flight_blender.auth.audience or "",
-        scopes=config.flight_blender.auth.scopes or [],
+        audience=config.flight_blender.auth.audience,
+        scopes=config.flight_blender.auth.scopes,
     )
     async with FlightBlenderClient(
         base_url=config.flight_blender.url,
@@ -198,15 +172,18 @@ async def flight_blender_client(config: AppConfig, data_files: DataFiles) -> Asy
 @dependency(OpenSkyClient)
 async def opensky_client(config: AppConfig) -> AsyncGenerator[OpenSkyClient, None]:
     """Provides an OpenSkyClient instance for dependency injection."""
-    settings = create_opensky_settings()
-    async with OpenSkyClient(settings) as opensky_client:
-        yield opensky_client
+    settings = OpenSkySettings.from_config(config.opensky)
+    async with OpenSkyClient(settings) as client:
+        yield client
 
 
 @dependency(AirTrafficClient)
-async def air_traffic_client() -> AsyncGenerator[AirTrafficClient, None]:
+async def air_traffic_client(config: AppConfig, data_files: DataFiles) -> AsyncGenerator[AirTrafficClient, None]:
     """Provides an AirTrafficClient instance for dependency injection."""
-    settings = create_air_traffic_settings()
+    settings = AirTrafficSettings.from_config(
+        config.air_traffic_simulator_settings,
+        trajectory_path=data_files.trajectory,
+    )
     async with AirTrafficClient(settings) as client:
         yield client
 
@@ -222,16 +199,19 @@ async def common_client() -> AsyncGenerator[CommonClient, None]:
 
 
 @dependency(BlueSkyClient)
-async def bluesky_client() -> AsyncGenerator[BlueSkyClient, None]:
+async def bluesky_client(config: AppConfig, data_files: DataFiles) -> AsyncGenerator[BlueSkyClient, None]:
     """Provides a BlueSkyClient instance for dependency injection."""
-    settings = create_blue_sky_air_traffic_settings()
+    settings = BlueSkyAirTrafficSettings.from_config(
+        config.blue_sky_air_traffic_simulator_settings,
+        simulation_path=data_files.simulation,
+    )
     async with BlueSkyClient(settings) as client:
         yield client
 
 
 @dependency(AMQPClient)
-async def amqp_client() -> AsyncGenerator[AMQPClient, None]:
+async def amqp_client(config: AppConfig) -> AsyncGenerator[AMQPClient, None]:
     """Provides an AMQPClient instance for dependency injection."""
-    settings = create_amqp_settings()
+    settings = AMQPSettings.from_config(config.amqp) if config.amqp else AMQPSettings()
     async with AMQPClient(settings) as client:
         yield client

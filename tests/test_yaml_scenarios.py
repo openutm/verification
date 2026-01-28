@@ -7,6 +7,7 @@ import yaml
 
 from openutm_verification.core.execution.config_models import DataFiles
 from openutm_verification.core.execution.definitions import ScenarioDefinition
+from openutm_verification.core.execution.scenario_runner import ScenarioContext
 from openutm_verification.core.reporting.reporting_models import Status
 from openutm_verification.server.runner import SessionManager
 
@@ -83,42 +84,52 @@ async def test_yaml_scenario_execution(yaml_file, mock_clients, mock_data_files)
         patch("openutm_verification.server.runner.SessionManager._load_config") as mock_load_config,
         patch("openutm_verification.server.runner.SessionManager._generate_data") as mock_gen_data,
     ):
-        mock_load_config.return_value = MagicMock()
-        mock_load_config.return_value.suites = {"default": {}}
+        mock_config = MagicMock()
+        # Create a mock suite config that has scenarios attribute as None (empty)
+        mock_suite_config = MagicMock()
+        mock_suite_config.scenarios = None
+        mock_config.suites = {"default": mock_suite_config}
+        mock_load_config.return_value = mock_config
 
         # Mock _generate_data to return None, None (we don't need real data for this test)
         mock_gen_data.return_value = (None, None)
 
         manager = SessionManager()
 
-        # Initialize session (creates resolver)
-        # We need to patch DependencyResolver.resolve to return our mocks
-        with patch("openutm_verification.core.execution.dependency_resolution.DependencyResolver.resolve", new_callable=AsyncMock) as mock_resolve:
+        # Create the async resolve function
+        async def resolve_side_effect(dependency_type):
+            if dependency_type == DataFiles:
+                return mock_data_files
 
-            async def resolve_side_effect(dependency_type):
-                if dependency_type == DataFiles:
-                    return mock_data_files
+            client_name = dependency_type.__name__
+            if client_name in mock_clients:
+                return mock_clients[client_name]
 
-                client_name = dependency_type.__name__
-                if client_name in mock_clients:
-                    return mock_clients[client_name]
+            return AsyncMock()
 
-                return AsyncMock()
+        # Mock DependencyResolver class
+        with patch("openutm_verification.server.runner.DependencyResolver") as MockResolverCls:
+            mock_resolver_instance = MagicMock()
+            mock_resolver_instance.resolve = AsyncMock(side_effect=resolve_side_effect)
+            MockResolverCls.return_value = mock_resolver_instance
 
-            mock_resolve.side_effect = resolve_side_effect
+            await manager.initialize_session()
 
-            # We need to manually set session_resolver because initialize_session creates a new one
-            # Alternatively, we can mock DependencyResolver class
-            with patch("openutm_verification.server.runner.DependencyResolver") as MockResolverCls:
-                mock_resolver_instance = MockResolverCls.return_value
-                mock_resolver_instance.resolve = mock_resolve
+            # Mock close_session to not actually close
+            manager.close_session = AsyncMock()
 
-                await manager.initialize_session()
+            # Mock initialize_session to restore the session state
+            # (run_scenario may reinitialize when context changes)
+            async def mock_initialize():
+                manager.session_resolver = mock_resolver_instance
+                manager.session_context = ScenarioContext()
 
-                # Run scenario
-                results = await manager.run_scenario(scenario)
+            manager.initialize_session = mock_initialize
 
-                # Verify results
-                for step_result in results:
-                    if step_result.status == Status.RUNNING:
-                        continue
+            # Run scenario
+            results = await manager.run_scenario(scenario)
+
+            # Verify results
+            for step_result in results:
+                if step_result.status == Status.RUNNING:
+                    continue

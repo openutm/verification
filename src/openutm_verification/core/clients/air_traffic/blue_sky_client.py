@@ -22,6 +22,7 @@ from openutm_verification.core.execution.scenario_runner import scenario_step
 from openutm_verification.simulator.models.flight_data_types import (
     FlightObservationSchema,
 )
+from openutm_verification.utils.paths import relative_path
 
 
 class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
@@ -77,7 +78,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
             # Route console output to stdout (useful for debugging stack commands)
             bs.scr = ScreenDummy()
             now = arrow.now()
-            logger.info(f"Initializing BlueSky (headless) and loading scenario: {scn_path} with duration {duration_s}s")
+            logger.info(f"Initializing BlueSky (headless) and loading scenario: {relative_path(scn_path)} with duration {duration_s}s")
 
             # ---- Load scenario ----
             # BlueSky scenario files (like scenario/DEMO/bluesky_flight.scn) are typically loaded with IC.

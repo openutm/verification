@@ -1,23 +1,30 @@
 """Integration tests for conditional execution and loops in scenarios."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from openutm_verification.core.execution.definitions import LoopConfig, ScenarioDefinition, StepDefinition
+from openutm_verification.core.execution.scenario_runner import ScenarioContext, ScenarioState
 from openutm_verification.core.reporting.reporting_models import Status, StepResult
 from openutm_verification.server.runner import SessionManager
 
 
 @pytest.fixture
 def session_manager():
-    """Create a SessionManager instance for testing."""
+    """Create a SessionManager instance for testing with mocked session context."""
     manager = SessionManager()
-    manager.session_resolver = None
-    manager.session_context = None
-    manager.session_stack = None
-    if manager.session_context and manager.session_context.state:
-        manager.session_context.state.steps.clear()
+    # Create a real ScenarioContext with state for testing
+    state = ScenarioState(active=True)
+    manager.session_context = ScenarioContext(state=state)
+    # Mark resolver as initialized to skip initialize_session call
+    manager.session_resolver = MagicMock()
+    # Mock session_stack with async aclose method
+    manager.session_stack = MagicMock()
+    manager.session_stack.aclose = AsyncMock()
+    # Mock initialize_session and close_session to avoid actual session management
+    manager.initialize_session = AsyncMock()
+    manager.close_session = AsyncMock()
     return manager
 
 

@@ -58,9 +58,7 @@ class ConditionEvaluator:
             condition = self._replace_step_references(condition)
 
             # Evaluate the expression
-            result = self._evaluate_expression(condition)
-            logger.debug(f"Condition '{condition}' evaluated to {result}")
-            return result
+            return self._evaluate_expression(condition)
 
         except Exception as e:
             logger.warning(f"Error evaluating condition '{condition}': {e}")

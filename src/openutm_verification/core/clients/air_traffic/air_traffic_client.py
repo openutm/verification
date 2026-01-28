@@ -19,6 +19,7 @@ from openutm_verification.simulator.models.flight_data_types import (
     AirTrafficGeneratorConfiguration,
     FlightObservationSchema,
 )
+from openutm_verification.utils.paths import relative_path
 
 
 class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
@@ -83,7 +84,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
             raise
 
         try:
-            logger.debug(f"Generating telemetry states from {config_path} for duration {duration} seconds")
+            logger.debug(f"Generating telemetry states from {relative_path(config_path)} for duration {duration} seconds")
             with open(config_path, "r", encoding="utf-8") as file_handle:
                 geojson_data = json.load(file_handle)
 

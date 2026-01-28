@@ -13,6 +13,7 @@ from openutm_verification.simulator.models.declaration_models import FlightDecla
 from openutm_verification.simulator.models.flight_data_types import (
     GeoJSONFlightsSimulatorConfiguration,
 )
+from openutm_verification.utils.paths import relative_path
 
 DEFAULT_TELEMETRY_DURATION = 30  # seconds
 
@@ -40,7 +41,7 @@ def generate_flight_declaration_via_operational_intent(config_path: str) -> Flig
 def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION, reference_time: str | None = None) -> list[RIDAircraftState]:
     """Generate telemetry states from the GeoJSON config file at the given path."""
     try:
-        logger.debug(f"Generating telemetry states from {config_path} for duration {duration} seconds")
+        logger.debug(f"Generating telemetry states from {relative_path(config_path)} for duration {duration} seconds")
         with open(config_path, "r", encoding="utf-8") as f:
             geojson_data = json.load(f)
 

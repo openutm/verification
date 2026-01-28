@@ -1,9 +1,16 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import httpx
 from loguru import logger
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel
 
 from openutm_verification.auth.oauth2 import OAuth2Client
 from openutm_verification.core.execution.config_models import get_settings
+
+if TYPE_CHECKING:
+    from openutm_verification.core.execution.config_models import OpenSkyConfig
 
 config = get_settings()
 
@@ -12,34 +19,23 @@ class OpenSkyError(Exception):
     """Custom exception for OpenSky API errors."""
 
 
-class OpenSkySettings(BaseSettings):
-    """Pydantic settings for OpenSky Network API with automatic .env loading."""
+class OpenSkySettings(BaseModel):
+    """Settings for OpenSky Network API."""
 
-    # OAuth2 credentials (required)
-    opensky_client_id: str
-    opensky_client_secret: str
-
-    # OAuth2 endpoints
+    client_id: str = ""
+    client_secret: str = ""
     auth_url: str = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
-
-    # Optional configuration with defaults
     base_url: str = "https://opensky-network.org/api"
     request_timeout: int = 10
     viewport: tuple[float, float, float, float] = (45.8389, 47.8229, 5.9962, 10.5226)
 
-    # Simulation settings
-    simulation_config_path: str
-    simulation_duration: int = 30
-
-
-def create_opensky_settings() -> OpenSkySettings:
-    """Factory function to create OpenSkySettings from config after initialization."""
-    return OpenSkySettings(
-        opensky_client_id=config.opensky.auth.client_id or "",
-        opensky_client_secret=config.opensky.auth.client_secret or "",
-        simulation_config_path=config.data_files.trajectory or "",
-        simulation_duration=30,
-    )
+    @classmethod
+    def from_config(cls, opensky_config: "OpenSkyConfig") -> "OpenSkySettings":
+        """Create settings from OpenSkyConfig."""
+        return cls(
+            client_id=opensky_config.auth.client_id,
+            client_secret=opensky_config.auth.client_secret,
+        )
 
 
 class BaseOpenSkyAPIClient:
@@ -49,8 +45,8 @@ class BaseOpenSkyAPIClient:
         self.settings = settings
         self.oauth_client = OAuth2Client(
             token_url=settings.auth_url,
-            client_id=settings.opensky_client_id,
-            client_secret=settings.opensky_client_secret,
+            client_id=settings.client_id,
+            client_secret=settings.client_secret,
             timeout=settings.request_timeout,
         )
         # Create our own HTTP client for API requests

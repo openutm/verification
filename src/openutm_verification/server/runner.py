@@ -11,7 +11,7 @@ from loguru import logger
 from pydantic import BaseModel
 
 from openutm_verification.core.execution.conditions import ConditionEvaluator
-from openutm_verification.core.execution.config_models import AppConfig, ConfigProxy, DataFiles
+from openutm_verification.core.execution.config_models import AppConfig, ConfigProxy, DataFiles, SuiteScenario
 from openutm_verification.core.execution.definitions import ScenarioDefinition, StepDefinition
 from openutm_verification.core.execution.dependency_resolution import CONTEXT, DEPENDENCIES, DependencyResolver, call_with_dependencies
 from openutm_verification.core.execution.scenario_runner import STEP_REGISTRY, ScenarioContext, _scenario_state
@@ -128,24 +128,24 @@ class SessionManager:
         return any(not task.done() for task in self.session_tasks.values())
 
     async def initialize_session(self):
-        logger.info("Initializing new session")
+        """Initialize a new session with dependency resolver and pre-generated data."""
         if self.session_stack:
             await self.close_session()
 
         self.session_stack = AsyncExitStack()
         self.session_resolver = DependencyResolver(self.session_stack)
 
-        # We use a default context so dependencies like DataFiles can be resolved
-        suite_name = next(iter(self.config.suites.keys()), "default")
-
-        CONTEXT.set(
-            {
-                "scenario_id": "interactive_session",
-                "suite_scenario": None,
-                "suite_name": suite_name,
-                "docs": None,
-            }
-        )
+        # Use existing context or set default for interactive sessions
+        existing_context = CONTEXT.get()
+        if not existing_context or not existing_context.get("scenario_id"):
+            CONTEXT.set(
+                {
+                    "scenario_id": "interactive_session",
+                    "suite_scenario": None,
+                    "suite_name": next(iter(self.config.suites.keys()), "default"),
+                    "docs": None,
+                }
+            )
 
         # Pre-generate data using resolved DataFiles
         try:
@@ -271,7 +271,11 @@ class SessionManager:
                     ref = match.group(1)
                     try:
                         resolved = self._resolve_ref(ref, loop_context)
-                        logger.info(f"Resolved reference {ref} to {resolved}")
+                        # Truncate large resolved values for logging
+                        resolved_str = str(resolved)
+                        if len(resolved_str) > 100:
+                            resolved_str = f"{resolved_str[:100]}... ({len(resolved_str)} chars)"
+                        logger.info(f"Resolved reference {ref} to {resolved_str}")
                         return resolved
                     except Exception as e:
                         logger.error(f"Failed to resolve reference {ref}: {e}")
@@ -452,8 +456,6 @@ class SessionManager:
         # This updates the object in state.steps as well since it's the same reference
         if step.id and hasattr(result, "id"):
             result.id = step.id
-        # Add result to context
-        logger.info(f"Adding result for step '{step_id}' (name: {step.step}) to context")
 
         # If the result is already a StepResult (from scenario_step decorator), use it directly but ensure ID is correct
         if isinstance(result, StepResult):
@@ -642,9 +644,34 @@ class SessionManager:
                 # Leave the result in context; drop the handle so it doesn't pile up
                 self.session_tasks.pop(dep_id, None)
 
+    def _find_suite_scenario(self, scenario_name: str) -> tuple[str | None, SuiteScenario | None]:
+        """Find the SuiteScenario config for a given scenario name.
+
+        Returns:
+            Tuple of (suite_name, SuiteScenario) if found, (None, None) otherwise.
+        """
+        for suite_name, suite_config in self.config.suites.items():
+            if suite_config.scenarios:
+                for suite_scenario in suite_config.scenarios:
+                    if suite_scenario.name == scenario_name:
+                        return suite_name, suite_scenario
+        return None, None
+
     async def run_scenario(self, scenario: ScenarioDefinition) -> List[StepResult]:
-        if not self.session_resolver:
-            await self.initialize_session()
+        """Run a scenario, initializing a fresh session with the appropriate context."""
+        suite_name, suite_scenario = self._find_suite_scenario(scenario.name)
+        logger.info(f"Running scenario: {scenario.name}")
+
+        # Set context before session initialization so DataFiles resolves correctly
+        CONTEXT.set(
+            {
+                "scenario_id": scenario.name,
+                "suite_scenario": suite_scenario,
+                "suite_name": suite_name or "default",
+                "docs": None,
+            }
+        )
+        await self.initialize_session()
 
         # Set up logging to file for this run
         run_timestamp = datetime.now(timezone.utc)
@@ -678,7 +705,8 @@ class SessionManager:
             # If no condition is specified, default to success() - only run if no failures so far
             condition_to_evaluate = step.if_condition or "success()"
 
-            logger.debug(f"Step '{step.id}': if_condition='{step.if_condition}', evaluating: '{condition_to_evaluate}'")
+            if step.if_condition:
+                logger.debug(f"Step '{step.id}': evaluating condition '{condition_to_evaluate}'")
 
             step_results_dict = {}
             if self.session_context and self.session_context.state:

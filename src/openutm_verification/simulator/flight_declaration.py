@@ -28,6 +28,7 @@ from openutm_verification.simulator.models.declaration_models import (
     FlightDeclarationViaOperationalIntentOverrides,
     PolygonGeometry,
 )
+from openutm_verification.utils.paths import relative_path
 
 START_TIME_OFFSET_S = 5  # Seconds from now for flight start
 END_TIME_OFFSET_S = 4 * 60  # Seconds from now for flight end
@@ -72,20 +73,20 @@ class FlightDeclarationGenerator:
     def _load_flight_declaration_via_operational_intent_template(self, template_path: Path) -> dict[str, Any]:
         """Load template as raw dict."""
         path = self._validate_flight_declaration_via_operational_intent_template_path(template_path)
-        logger.debug(f"Loading flight declaration template from {path}")
+        logger.debug(f"Loading flight declaration template from {relative_path(path)}")
         with path.open("r", encoding="utf-8") as f:
             return json.load(f)
 
     def _load_template(self, template_path: Path) -> dict[str, Any]:
         """Load template as raw dict."""
         path = self._validate_template_path(template_path)
-        logger.debug(f"Loading flight declaration template from {path}")
+        logger.debug(f"Loading flight declaration template from {relative_path(path)}")
         with path.open("r", encoding="utf-8") as f:
             return json.load(f)
 
     def _load_bounds(self, bounds_path: Path) -> FlightDeclarationBounds:
         """Load bounds from sample file."""
-        logger.debug(f"Loading flight declaration bounds from {bounds_path}")
+        logger.debug(f"Loading flight declaration bounds from {relative_path(bounds_path)}")
         with bounds_path.open("r", encoding="utf-8") as f:
             data = json.load(f)
         return FlightDeclarationBounds(

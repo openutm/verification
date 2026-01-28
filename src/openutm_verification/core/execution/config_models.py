@@ -20,12 +20,12 @@ class AuthConfig(StrictBaseModel):
     """Authentication configuration for Flight Blender."""
 
     type: Literal["none", "passport", "oauth2"] = "none"
-    client_id: str | None = None
-    client_secret: str | None = None
-    audience: str | None = None
-    scopes: list[str] | None = None
-    token_endpoint: str | None = None
-    passport_base_url: str | None = None
+    client_id: str = ""
+    client_secret: str = ""
+    audience: str = ""
+    scopes: list[str] = Field(default_factory=list)
+    token_endpoint: str = ""
+    passport_base_url: str = ""
 
 
 class FlightBlenderConfig(StrictBaseModel):
@@ -146,9 +146,29 @@ class DataFiles(StrictBaseModel):
 
 
 class SuiteScenario(DataFiles):
-    """A scenario within a suite, allowing overrides."""
+    """A scenario within a suite, with data file overrides.
+
+    Fields that are None will be filled from AppConfig.data_files during config loading.
+    """
 
     name: str
+
+    def merge_defaults(self, defaults: DataFiles) -> None:
+        """Fill in None fields from the provided defaults.
+
+        This is called during config loading to ensure each scenario has
+        complete data file paths without needing runtime override logic.
+        """
+        if self.trajectory is None:
+            self.trajectory = defaults.trajectory
+        if self.simulation is None:
+            self.simulation = defaults.simulation
+        if self.flight_declaration is None:
+            self.flight_declaration = defaults.flight_declaration
+        if self.flight_declaration_via_operational_intent is None:
+            self.flight_declaration_via_operational_intent = defaults.flight_declaration_via_operational_intent
+        if self.geo_fence is None:
+            self.geo_fence = defaults.geo_fence
 
 
 class SuiteConfig(StrictBaseModel):
@@ -180,10 +200,19 @@ class AppConfig(StrictBaseModel):
     target_suites: list[str] = Field(default_factory=list)
 
     def resolve_paths(self, config_file_path: Path) -> None:
-        """Resolve all relative paths in the configuration to absolute paths."""
+        """Resolve all relative paths in the configuration to absolute paths.
+
+        Also merges default data_files into each scenario's SuiteScenario,
+        so scenarios have complete paths without needing runtime override logic.
+        """
         base_path = config_file_path.parent
         self.data_files.resolve_paths(base_path)
+
+        # Merge defaults into each scenario BEFORE resolving their paths
         for suite in self.suites.values():
+            if suite.scenarios:
+                for scenario in suite.scenarios:
+                    scenario.merge_defaults(self.data_files)
             suite.resolve_paths(base_path)
 
 

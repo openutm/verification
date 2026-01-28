@@ -4,36 +4,46 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import pika
-import requests
 from loguru import logger
 from pika.adapters.blocking_connection import BlockingChannel, BlockingConnection
 from pika.exceptions import AMQPConnectionError, ChannelClosedByBroker
+from pydantic import BaseModel
 
-from openutm_verification.core.execution.config_models import get_settings
 from openutm_verification.core.execution.scenario_runner import scenario_step
 
+if TYPE_CHECKING:
+    from openutm_verification.core.execution.config_models import AMQPConfig
 
-@dataclass
-class AMQPSettings:
+
+class AMQPSettings(BaseModel):
     """Settings for AMQP connection."""
 
     url: str = ""
     exchange_name: str = "operational_events"
     exchange_type: str = "direct"
-    routing_key: str = "#"  # Flight declaration ID or '#' for all
+    routing_key: str = "#"
     queue_name: str = ""
     heartbeat: int = 600
     blocked_connection_timeout: int = 300
-    auto_discover: bool = False
+
+    @classmethod
+    def from_config(cls, amqp_config: "AMQPConfig") -> "AMQPSettings":
+        """Create settings from AMQPConfig."""
+        return cls(
+            url=amqp_config.url,
+            exchange_name=amqp_config.exchange_name,
+            exchange_type=amqp_config.exchange_type,
+            routing_key=amqp_config.routing_key,
+            queue_name=amqp_config.queue_name,
+        )
 
 
 @dataclass
@@ -93,39 +103,6 @@ class AMQPConsumerState:
     stop_event: threading.Event = field(default_factory=threading.Event)
 
 
-def create_amqp_settings() -> AMQPSettings:
-    """Create AMQP settings from configuration or environment.
-
-    Priority: config file > environment variables > defaults.
-    """
-    settings = AMQPSettings()
-
-    # Try to get from config first
-    try:
-        config = get_settings()
-        if hasattr(config, "amqp") and config.amqp:
-            amqp_config = config.amqp
-            settings.url = amqp_config.url or settings.url
-            settings.exchange_name = amqp_config.exchange_name or settings.exchange_name
-            settings.exchange_type = amqp_config.exchange_type or settings.exchange_type
-            settings.routing_key = amqp_config.routing_key or settings.routing_key
-            settings.queue_name = amqp_config.queue_name or settings.queue_name
-    except Exception:
-        pass  # Config not available, use env vars
-
-    # Environment overrides
-    settings.url = os.environ.get("AMQP_URL", settings.url)
-    settings.routing_key = os.environ.get("AMQP_ROUTING_KEY", settings.routing_key)
-    settings.queue_name = os.environ.get("AMQP_QUEUE", settings.queue_name)
-    settings.auto_discover = os.environ.get("AMQP_AUTO_DISCOVER", "").lower() in (
-        "1",
-        "true",
-        "yes",
-    )
-
-    return settings
-
-
 class AMQPClient:
     """AMQP client for monitoring RabbitMQ queues in verification scenarios.
 
@@ -168,36 +145,6 @@ class AMQPClient:
         parameters.heartbeat = self.settings.heartbeat
         parameters.blocked_connection_timeout = self.settings.blocked_connection_timeout
         return parameters
-
-    def _discover_queues_with_messages(self) -> list[str]:
-        """Use RabbitMQ Management API to find queues with messages."""
-        if not self.settings.url:
-            return []
-
-        parsed = urlparse(self.settings.url)
-        username = parsed.username or "guest"
-        password = parsed.password or "guest"
-        host = parsed.hostname or "localhost"
-        vhost = parsed.path.lstrip("/") or "%2f"
-
-        mgmt_ports = [15672, 443, 15671]
-
-        for port in mgmt_ports:
-            try:
-                scheme = "https" if port == 443 else "http"
-                api_url = f"{scheme}://{host}:{port}/api/queues/{vhost}"
-
-                response = requests.get(api_url, auth=(username, password), timeout=5)
-
-                if response.status_code == 200:
-                    queues = response.json()
-                    queues_with_msgs = [q for q in queues if q.get("messages", 0) > 0 and not q.get("name", "").startswith("amq.gen-")]
-                    queues_with_msgs.sort(key=lambda q: q.get("messages", 0), reverse=True)
-                    return [q["name"] for q in queues_with_msgs]
-            except requests.RequestException:
-                continue
-
-        return []
 
     def _on_message(
         self,
@@ -245,13 +192,6 @@ class AMQPClient:
                 self._state.channel = channel
 
             target_queue = queue_name or self.settings.queue_name
-
-            # Auto-discover if enabled
-            if self.settings.auto_discover and not target_queue:
-                discovered = self._discover_queues_with_messages()
-                if discovered:
-                    target_queue = discovered[0]
-                    logger.info(f"Auto-discovered queue: {target_queue}")
 
             if target_queue:
                 self._state.queue_name = target_queue
