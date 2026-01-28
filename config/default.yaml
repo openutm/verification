@@ -30,6 +30,7 @@ air_traffic_simulator_settings:
   simulation_duration: 10
   single_or_multiple_sensors: "multiple" # this setting specifiies if the traffic data is submitted from a single sensor or multiple sensors
   sensor_ids: ["a0b7d47e5eac45dc8cbaf47e6fe0e558"] # List of sensor IDs to use when 'multiple' is selected
+  session_ids: ["ee9405e564ea4373823e37d950858e6a"] # List of session IDs to use when 'multiple' is selected, a session id is needed in Flight Blender to depict a period of time these observations were made (this assumes the observations may not be continuous); if empty, random UUIDs will be generated
 
 # Bluesky Air traffic data configuration
 blue_sky_air_traffic_simulator_settings:
@@ -37,6 +38,7 @@ blue_sky_air_traffic_simulator_settings:
   simulation_duration_seconds: 30
   single_or_multiple_sensors: "multiple" # this setting specifiies if the traffic data is submitted from a single sensor or multiple sensors
   sensor_ids: ["562e6297036a4adebb4848afcd1ede90"] # List of sensor IDs to use when 'multiple' is selected
+  session_ids: ["ee9405e564ea4373823e37d950858e6a"] # List of session IDs to use when 'multiple' is selected, a session id is needed in Flight Blender to depict a period of time these observations were made (this assumes the observations may not be continuous); if empty, random UUIDs will be generated
 
 # AMQP/RabbitMQ configuration for event monitoring
 # Set AMQP_URL environment variable or configure here

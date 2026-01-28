@@ -633,6 +633,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
     async def submit_simulated_air_traffic(
         self,
         observations: list[list[FlightObservationSchema]],
+        session_ids: list[uuid.UUID] | None = None,
         single_or_multiple_sensors: str = "single",
     ) -> dict[str, Any]:
         """Submit simulated air traffic observations to the Flight Blender API.
@@ -647,7 +648,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             Dictionary with submission statistics.
         """
         # Generate a random session ID for this submission
-        session_id = uuid.uuid4()
+        session_ids = session_ids or [uuid.uuid4()]
         if not observations:
             logger.warning("No air traffic observations to submit.")
             return {
@@ -662,7 +663,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         # TODO: When single_or_multiple_sensors is "single", we need to aggregate all observations under one sensor ID
         # and when it's "multiple", we need to submit them separately as different session_ids, one for each track
-
+        session_id = str(session_ids[0])
         # get the start and end point of the simulation
         start_times = []
         end_times = []
@@ -737,7 +738,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         }
 
     @scenario_step("Submit Air Traffic")
-    async def submit_air_traffic(self, observations: list[FlightObservationSchema]) -> dict[str, Any]:
+    async def submit_air_traffic(self, observations: list[FlightObservationSchema], session_id: uuid.UUID = uuid.uuid4()) -> dict[str, Any]:
         """Submit air traffic observations to the Flight Blender API.
 
         Args:
@@ -750,7 +751,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             FlightBlenderError: If the submission request fails.
         """
         ScenarioContext.add_air_traffic_data(observations)
-        session_id = uuid.uuid4()
+
         endpoint = f"/flight_stream/set_air_traffic/{session_id}"
         logger.debug(f"Submitting {len(observations)} air traffic observations")
         payload = {"observations": [obs.model_dump(mode="json") for obs in observations]}

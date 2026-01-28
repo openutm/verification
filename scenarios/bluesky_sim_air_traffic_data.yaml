@@ -3,6 +3,8 @@ description: Blue Sky test
 steps:
 - id: generate_bluesky_simulation_air_traffic_data
   step: Generate BlueSky Simulation Air Traffic Data
+- step: Fetch Session IDs
 - step: Submit Simulated Air Traffic
   arguments:
     observations: ${{ steps.generate_bluesky_simulation_air_traffic_data.result }}
+    session_ids: ${{ steps.Fetch Session IDs.result }}

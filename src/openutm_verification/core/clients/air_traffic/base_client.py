@@ -18,6 +18,7 @@ class AirTrafficSettings(BaseSettings):
     number_of_aircraft: int = 2
     single_or_multiple_sensors: str = "single"
     sensor_ids: list[str] = []
+    session_ids: list[str] = []
 
 
 class BlueSkyAirTrafficSettings(BaseSettings):
@@ -29,6 +30,7 @@ class BlueSkyAirTrafficSettings(BaseSettings):
     number_of_aircraft: int = 2
     single_or_multiple_sensors: str = "single"
     sensor_ids: list[str] = []
+    session_ids: list[str] = []
 
 
 def create_air_traffic_settings() -> AirTrafficSettings:
@@ -39,6 +41,7 @@ def create_air_traffic_settings() -> AirTrafficSettings:
         number_of_aircraft=config.air_traffic_simulator_settings.number_of_aircraft or 2,
         single_or_multiple_sensors=config.air_traffic_simulator_settings.single_or_multiple_sensors or "single",
         sensor_ids=config.air_traffic_simulator_settings.sensor_ids or [],
+        session_ids=config.air_traffic_simulator_settings.session_ids or [],
     )
 
 
@@ -50,6 +53,7 @@ def create_blue_sky_air_traffic_settings() -> BlueSkyAirTrafficSettings:
         number_of_aircraft=config.blue_sky_air_traffic_simulator_settings.number_of_aircraft or 2,
         single_or_multiple_sensors=config.blue_sky_air_traffic_simulator_settings.single_or_multiple_sensors or "single",
         sensor_ids=config.blue_sky_air_traffic_simulator_settings.sensor_ids or [],
+        session_ids=config.air_traffic_simulator_settings.session_ids or [],
     )
 
 

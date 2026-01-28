@@ -40,6 +40,7 @@ class AirTrafficSimulatorSettings(StrictBaseModel):
     simulation_duration: int | str
     single_or_multiple_sensors: Literal["single", "multiple"] = "single"
     sensor_ids: list[str] = Field(default_factory=list)
+    session_ids: list[str] = Field(default_factory=list)
 
     @field_validator("simulation_duration")
     @classmethod
@@ -52,6 +53,7 @@ class BlueSkyAirTrafficSimulatorSettings(StrictBaseModel):
     simulation_duration_seconds: int
     single_or_multiple_sensors: Literal["single", "multiple"] = "single"
     sensor_ids: list[str] = Field(default_factory=list)
+    session_ids: list[str] = Field(default_factory=list)
 
 
 class AMQPConfig(StrictBaseModel):
