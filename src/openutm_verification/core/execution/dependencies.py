@@ -204,9 +204,13 @@ async def opensky_client(config: AppConfig) -> AsyncGenerator[OpenSkyClient, Non
 
 
 @dependency(AirTrafficClient)
-async def air_traffic_client() -> AsyncGenerator[AirTrafficClient, None]:
-    """Provides an AirTrafficClient instance for dependency injection."""
-    settings = create_air_traffic_settings()
+async def air_traffic_client(data_files: DataFiles) -> AsyncGenerator[AirTrafficClient, None]:
+    """Provides an AirTrafficClient instance for dependency injection.
+
+    Args:
+        data_files: Injected DataFiles with scenario-specific overrides applied.
+    """
+    settings = create_air_traffic_settings(data_files)
     async with AirTrafficClient(settings) as client:
         yield client
 
@@ -222,9 +226,13 @@ async def common_client() -> AsyncGenerator[CommonClient, None]:
 
 
 @dependency(BlueSkyClient)
-async def bluesky_client() -> AsyncGenerator[BlueSkyClient, None]:
-    """Provides a BlueSkyClient instance for dependency injection."""
-    settings = create_blue_sky_air_traffic_settings()
+async def bluesky_client(data_files: DataFiles) -> AsyncGenerator[BlueSkyClient, None]:
+    """Provides a BlueSkyClient instance for dependency injection.
+
+    Args:
+        data_files: Injected DataFiles with scenario-specific overrides applied.
+    """
+    settings = create_blue_sky_air_traffic_settings(data_files)
     async with BlueSkyClient(settings) as client:
         yield client
 

@@ -135,17 +135,19 @@ class SessionManager:
         self.session_stack = AsyncExitStack()
         self.session_resolver = DependencyResolver(self.session_stack)
 
-        # We use a default context so dependencies like DataFiles can be resolved
-        suite_name = next(iter(self.config.suites.keys()), "default")
-
-        CONTEXT.set(
-            {
-                "scenario_id": "interactive_session",
-                "suite_scenario": None,
-                "suite_name": suite_name,
-                "docs": None,
-            }
-        )
+        # Preserve existing CONTEXT if it exists (e.g., from scenarios() generator)
+        # Otherwise use a default context so dependencies like DataFiles can be resolved
+        existing_context = CONTEXT.get()
+        if not existing_context or existing_context.get("scenario_id") == "interactive_session":
+            suite_name = next(iter(self.config.suites.keys()), "default")
+            CONTEXT.set(
+                {
+                    "scenario_id": "interactive_session",
+                    "suite_scenario": None,
+                    "suite_name": suite_name,
+                    "docs": None,
+                }
+            )
 
         # Pre-generate data using resolved DataFiles
         try:
