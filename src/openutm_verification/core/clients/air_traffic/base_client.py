@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 
-from openutm_verification.core.execution.config_models import get_settings
+from openutm_verification.core.execution.config_models import DataFiles, get_settings
 
 config = get_settings()
 
@@ -33,10 +33,16 @@ class BlueSkyAirTrafficSettings(BaseSettings):
     session_ids: list[str] = []
 
 
-def create_air_traffic_settings() -> AirTrafficSettings:
-    """Factory function to create AirTrafficSettings from config after initialization."""
+def create_air_traffic_settings(data_files: DataFiles | None = None) -> AirTrafficSettings:
+    """Factory function to create AirTrafficSettings from config after initialization.
+
+    Args:
+        data_files: Optional DataFiles instance with scenario-specific overrides.
+                   If None, uses global config.data_files.
+    """
+    files = data_files or config.data_files
     return AirTrafficSettings(
-        simulation_config_path=config.data_files.trajectory or "",
+        simulation_config_path=files.trajectory or "",
         simulation_duration=config.air_traffic_simulator_settings.simulation_duration or 30,
         number_of_aircraft=config.air_traffic_simulator_settings.number_of_aircraft or 2,
         single_or_multiple_sensors=config.air_traffic_simulator_settings.single_or_multiple_sensors or "single",
@@ -45,10 +51,17 @@ def create_air_traffic_settings() -> AirTrafficSettings:
     )
 
 
-def create_blue_sky_air_traffic_settings() -> BlueSkyAirTrafficSettings:
-    """Factory function to create BlueSkyAirTrafficSettings from config after initialization."""
+def create_blue_sky_air_traffic_settings(data_files: DataFiles | None = None) -> BlueSkyAirTrafficSettings:
+    """Factory function to create BlueSkyAirTrafficSettings from config after initialization.
+
+    Args:
+        data_files: Optional DataFiles instance with scenario-specific overrides.
+                   If None, uses global config.data_files.
+    """
+    files = data_files or config.data_files
+    sim_path = files.simulation or ""
     return BlueSkyAirTrafficSettings(
-        simulation_config_path=config.data_files.simulation or "",
+        simulation_config_path=sim_path,
         simulation_duration_seconds=config.blue_sky_air_traffic_simulator_settings.simulation_duration_seconds or 30,
         number_of_aircraft=config.blue_sky_air_traffic_simulator_settings.number_of_aircraft or 2,
         single_or_multiple_sensors=config.blue_sky_air_traffic_simulator_settings.single_or_multiple_sensors or "single",

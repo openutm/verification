@@ -150,6 +150,33 @@ class SuiteScenario(DataFiles):
 
     name: str
 
+    def resolve_paths(self, base_path: Path) -> None:
+        """Resolve paths for suite scenario, with strict validation since these are explicit overrides."""
+
+        def resolve_and_validate_path(path_str: str, field_name: str) -> str:
+            """Helper to resolve and validate a single path."""
+            resolved = (base_path / path_str).resolve()
+            if not resolved.exists():
+                raise FileNotFoundError(f"{field_name} configuration file not found: {resolved}")
+            if not resolved.is_file():
+                raise ValueError(f"{field_name} path is not a file: {resolved}")
+            return str(resolved)
+
+        # For scenario overrides, validate all paths strictly since they're explicitly specified
+        if self.trajectory:
+            self.trajectory = resolve_and_validate_path(self.trajectory, "Trajectory")
+        if self.simulation:
+            self.simulation = resolve_and_validate_path(self.simulation, "Simulation")
+        if self.flight_declaration:
+            self.flight_declaration = resolve_and_validate_path(self.flight_declaration, "Flight declaration")
+        if self.flight_declaration_via_operational_intent:
+            self.flight_declaration_via_operational_intent = resolve_and_validate_path(
+                self.flight_declaration_via_operational_intent,
+                "Flight declaration via operational intent",
+            )
+        if self.geo_fence:
+            self.geo_fence = resolve_and_validate_path(self.geo_fence, "Geo-fence")
+
 
 class SuiteConfig(StrictBaseModel):
     """Configuration for a test suite."""
