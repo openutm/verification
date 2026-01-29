@@ -74,12 +74,41 @@ class SessionResetRequest(BaseModel):
 def start_server_mode(config_path: str | None = None, reload: bool = False):
     if config_path:
         os.environ["OPENUTM_CONFIG_PATH"] = str(config_path)
-    uvicorn.run(
-        "openutm_verification.server.main:app",
-        host="0.0.0.0",
-        port=8989,
-        reload=reload,
-    )
+
+    # Allow environment variable to override reload setting
+    reload = os.environ.get("UVICORN_RELOAD", str(reload)).lower() in ("true", "1", "yes")
+
+    if reload:
+        # Reload configuration to prevent high CPU from watching node_modules, .venv, etc.
+        uvicorn.run(
+            "openutm_verification.server.main:app",
+            host="0.0.0.0",
+            port=8989,
+            reload=True,
+            # Only watch the src directory for changes - dramatically reduces CPU usage
+            reload_dirs=["src"],
+            # Explicitly exclude heavy directories
+            reload_excludes=[
+                "node_modules",
+                ".venv",
+                "__pycache__",
+                ".git",
+                "*.pyc",
+                "reports",
+                "htmlcov",
+                "dist",
+                ".pytest_cache",
+                ".mypy_cache",
+                ".ruff_cache",
+                "web-editor",
+            ],
+        )
+    else:
+        uvicorn.run(
+            "openutm_verification.server.main:app",
+            host="0.0.0.0",
+            port=8989,
+        )
 
 
 @app.get("/api/info")
@@ -226,11 +255,20 @@ async def stop_scenario(runner: SessionManager = Depends(get_session_manager)):
 @app.get("/run-scenario-events")
 async def run_scenario_events(runner: SessionManager = Depends(get_session_manager)):
     async def event_stream():
+        # Track consecutive idle iterations for adaptive sleep
+        idle_iterations = 0
+
         while True:
             status_payload = runner.get_run_status()
-            while not runner.session_context.state.added_results.empty():
-                result = runner.session_context.state.added_results.get_nowait()
-                yield f"data: {result.model_dump_json()}\n\n"
+
+            # Safely check for results - handle None session_context or state
+            had_results = False
+            if runner.session_context and runner.session_context.state:
+                while not runner.session_context.state.added_results.empty():
+                    result = runner.session_context.state.added_results.get_nowait()
+                    yield f"data: {result.model_dump_json()}\n\n"
+                    had_results = True
+                    idle_iterations = 0
 
             if status_payload.get("status") != "running" and not runner.has_pending_tasks():
                 done_payload = {
@@ -240,7 +278,14 @@ async def run_scenario_events(runner: SessionManager = Depends(get_session_manag
                 yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
                 break
 
-            await asyncio.sleep(0.3)
+            # Adaptive sleep: longer when idle, shorter when active
+            if had_results:
+                await asyncio.sleep(0.1)  # Fast polling when receiving results
+            else:
+                idle_iterations += 1
+                # Gradually increase sleep time when idle (max 1 second)
+                sleep_time = min(0.3 + (idle_iterations * 0.1), 1.0)
+                await asyncio.sleep(sleep_time)
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
@@ -253,6 +298,7 @@ web_editor_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../
 # Allow override via environment variable (e.g. for Docker production builds)
 web_editor_dir = os.environ.get("WEB_EDITOR_PATH", web_editor_dir)
 
+# Use dist directory - check_dir=False avoids repeated filesystem checks
 static_dir = os.path.join(web_editor_dir, "dist")
 
 # Mount reports directory BEFORE the catch-all "/" route
@@ -260,13 +306,15 @@ static_dir = os.path.join(web_editor_dir, "dist")
 try:
     output_dir = Path(session_manager.config.reporting.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/reports", StaticFiles(directory=str(output_dir)), name="reports")
+    # check_dir=False prevents repeated directory existence checks
+    app.mount("/reports", StaticFiles(directory=str(output_dir), check_dir=False), name="reports")
     logger.info(f"Mounted reports directory at /reports -> {output_dir}")
 except Exception as e:
     logger.warning(f"Could not mount reports directory: {e}")
 
 if os.path.exists(static_dir):
-    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+    # check_dir=False - we already verified the directory exists above
+    app.mount("/", StaticFiles(directory=static_dir, html=True, check_dir=False), name="static")
 else:
 
     @app.get("/")

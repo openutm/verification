@@ -46,7 +46,7 @@ dependencies = [
     "markdown>=3.10",
     "uas-standards==4.2.0",
     "fastapi>=0.121.3",
-    "uvicorn>=0.38.0",
+    "uvicorn[standard]>=0.38.0",  # includes watchfiles for efficient reload
     "bluesky-simulator==1.1.0",
     "rtree==1.4.1",
 ]
@@ -62,6 +62,8 @@ dev = [
     "ty>=0.0.1a14",
     "pylint>=3.3.2",
     "pytest>=8.4.1",
+    "pytest-asyncio>=0.24.0",
+    "psutil>=6.0.0",
     "mypy>=1.11.2",
     "types-pyyaml",
     "types-redis",
