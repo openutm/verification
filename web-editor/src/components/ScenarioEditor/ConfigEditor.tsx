@@ -1,7 +1,30 @@
 import React, { useState } from 'react';
-import { Settings, Database, Server, ChevronDown, ChevronRight } from 'lucide-react';
+import { Settings, Database, Server, ChevronDown, ChevronRight, HelpCircle } from 'lucide-react';
 import styles from '../../styles/SidebarPanel.module.css';
 import type { ScenarioConfig } from '../../types/scenario';
+
+const sectionTooltips: Record<string, string> = {
+    flight_blender: 'Configure connection to Flight Blender, the UTM integration server. Set the URL, authentication method, and OAuth scopes.',
+    data_files: 'Specify paths to data files used in the scenario: trajectories, flight declarations, operational intents, and geo-fences.',
+    air_traffic: 'Settings for the default air traffic simulator including number of aircraft, simulation duration, and sensor configuration.',
+    blue_sky_air_traffic: 'Settings for the BlueSky air traffic simulator, an alternative simulator with its own aircraft count, duration, and sensor IDs.',
+};
+
+const Tooltip: React.FC<{ text: string }> = ({ text }) => (
+    <div style={{
+        padding: '6px 10px',
+        background: 'var(--bg-tertiary, #1e1e2e)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '4px',
+        fontSize: '11px',
+        lineHeight: '1.4',
+        color: 'var(--text-secondary)',
+        marginBottom: '4px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+    }}>
+        {text}
+    </div>
+);
 
 interface ConfigEditorProps {
     config: ScenarioConfig;
@@ -10,6 +33,7 @@ interface ConfigEditorProps {
 
 export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConfig }) => {
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+    const [showHelp, setShowHelp] = useState(false);
 
     const toggleSection = (section: string) => {
         setExpandedSections(prev => {
@@ -99,10 +123,31 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
             }}>
                 <Settings size={14} />
                 CONFIGURATION
+                <button
+                    onClick={() => setShowHelp(prev => !prev)}
+                    title={showHelp ? 'Hide help tooltips' : 'Show help tooltips'}
+                    style={{
+                        marginLeft: 'auto',
+                        background: showHelp ? 'var(--accent-color, #007acc)' : 'transparent',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        padding: '2px 4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        color: showHelp ? '#fff' : 'var(--text-secondary)',
+                    }}
+                >
+                    <HelpCircle size={14} />
+                </button>
             </div>
+            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '0 0 8px 0' }}>
+                Configure settings and sources for Flight Blender, data files, and air traffic simulators to customize your scenario.
+            </p>
 
             {/* Flight Blender Section */}
             <div className={styles.configSection}>
+                {showHelp && <Tooltip text={sectionTooltips.flight_blender} />}
                 <button
                     onClick={() => toggleSection('flight_blender')}
                     className={styles.configSectionHeader}
@@ -226,6 +271,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
 
             {/* Data Files Section */}
             <div className={styles.configSection}>
+                {showHelp && <Tooltip text={sectionTooltips.data_files} />}
                 <button
                     onClick={() => toggleSection('data_files')}
                     className={styles.configSectionHeader}
@@ -300,6 +346,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
 
             {/* Air Traffic Simulator Section */}
             <div className={styles.configSection}>
+                {showHelp && <Tooltip text={sectionTooltips.air_traffic} />}
                 <button
                     onClick={() => toggleSection('air_traffic')}
                     className={styles.configSectionHeader}
@@ -377,6 +424,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
 
             {/* BlueSky Air Traffic Simulator Section */}
             <div className={styles.configSection}>
+                {showHelp && <Tooltip text={sectionTooltips.blue_sky_air_traffic} />}
                 <button
                     onClick={() => toggleSection('blue_sky_air_traffic')}
                     className={styles.configSectionHeader}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText } from 'lucide-react';
+import { FileText, MessageCircleQuestionMark } from 'lucide-react';
 import styles from '../../styles/Toolbox.module.css';
 import type { Operation, ScenarioDefinition, NodeData, ScenarioConfig } from '../../types/scenario';
 import type { Node, Edge } from '@xyflow/react';
@@ -48,6 +48,11 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
         <div>
 
             <div className={styles.groupContent}>
+
+                <div style={{ padding: '8px', color: '#666', fontSize: '12px', marginBottom: '8px' }}>
+                    <MessageCircleQuestionMark size={16} style={{ marginRight: '8px', color: '#666' }} />
+                    Pre-built scenarios you can load to get started
+                </div>
                 {scenarios.map(name => (
                     <div
                         key={name}
