@@ -8,6 +8,7 @@ const sectionTooltips: Record<string, string> = {
     data_files: 'Specify paths to data files used in the scenario: trajectories, flight declarations, operational intents, and geo-fences.',
     air_traffic: 'Settings for the default air traffic simulator including number of aircraft, simulation duration, and sensor configuration.',
     blue_sky_air_traffic: 'Settings for the BlueSky air traffic simulator, an alternative simulator with its own aircraft count, duration, and sensor IDs.',
+    bayesian_air_traffic: 'Settings for the Bayesian air traffic simulator, including number of aircraft, simulation duration, and sensor configuration.',
 };
 
 const Tooltip: React.FC<{ text: string }> = ({ text }) => (
@@ -108,6 +109,21 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
     const updateBlueSkySensorIds = (value: string) => {
         const ids = value.split(',').map(id => id.trim()).filter(id => id.length > 0);
         updateBlueSkyAirTrafficSimulator('sensor_ids', ids);
+    };
+
+    const updateBayesianAirTrafficSimulator = (field: string, value: string | number | string[]) => {
+        onUpdateConfig({
+            ...config,
+            bayesian_air_traffic_simulator_settings: {
+                ...(config.bayesian_air_traffic_simulator_settings || {}),
+                [field]: value
+            }
+        });
+    };
+
+    const updateBayesianSensorIds = (value: string) => {
+        const ids = value.split(',').map(id => id.trim()).filter(id => id.length > 0);
+        updateBayesianAirTrafficSimulator('sensor_ids', ids);
     };
 
     return (
@@ -493,6 +509,84 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                                 className={styles.paramInput}
                                 value={config.blue_sky_air_traffic_simulator_settings?.sensor_ids?.join(', ') || ''}
                                 onChange={(e) => updateBlueSkySensorIds(e.target.value)}
+                                placeholder="562e6297036a4adebb4848afcd1ede90"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Bayesian Air Traffic Simulator Section */}
+            <div className={styles.configSection}>
+                {showHelp && <Tooltip text={sectionTooltips.bayesian_air_traffic} />}
+                <button
+                    onClick={() => toggleSection('bayesian_air_traffic')}
+                    className={styles.configSectionHeader}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '8px',
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        color: 'var(--text-primary)',
+                        fontSize: '13px',
+                        fontWeight: 500
+                    }}
+                >
+                    {expandedSections.has('bayesian_air_traffic') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    <Settings size={16} />
+                    Bayesian Air Traffic Simulator
+                </button>
+
+                {expandedSections.has('bayesian_air_traffic') && (
+                    <div style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div className={styles.paramItem}>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Number of Aircraft</label>
+                            <input
+                                type="number"
+                                className={styles.paramInput}
+                                value={config.bayesian_air_traffic_simulator_settings?.number_of_aircraft || 3}
+                                onChange={(e) => updateBayesianAirTrafficSimulator('number_of_aircraft', parseInt(e.target.value))}
+                                min="1"
+                                max="100"
+                            />
+                        </div>
+
+                        <div className={styles.paramItem}>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Simulation Duration (seconds)</label>
+                            <input
+                                type="number"
+                                className={styles.paramInput}
+                                value={config.bayesian_air_traffic_simulator_settings?.simulation_duration_seconds || 30}
+                                onChange={(e) => updateBayesianAirTrafficSimulator('simulation_duration_seconds', parseInt(e.target.value))}
+                                min="1"
+                                max="3600"
+                            />
+                        </div>
+
+                        <div className={styles.paramItem}>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Single or Multiple Sensors</label>
+                            <select
+                                className={styles.paramInput}
+                                value={config.bayesian_air_traffic_simulator_settings?.single_or_multiple_sensors || 'multiple'}
+                                onChange={(e) => updateBayesianAirTrafficSimulator('single_or_multiple_sensors', e.target.value)}
+                            >
+                                <option value="single">single</option>
+                                <option value="multiple">multiple</option>
+                            </select>
+                        </div>
+
+                        <div className={styles.paramItem}>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Sensor IDs (comma-separated)</label>
+                            <input
+                                type="text"
+                                className={styles.paramInput}
+                                value={config.bayesian_air_traffic_simulator_settings?.sensor_ids?.join(', ') || ''}
+                                onChange={(e) => updateBayesianSensorIds(e.target.value)}
                                 placeholder="562e6297036a4adebb4848afcd1ede90"
                             />
                         </div>

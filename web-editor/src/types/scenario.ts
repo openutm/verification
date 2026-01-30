@@ -116,9 +116,17 @@ export interface BlueSkyAirTrafficSimulatorSettings {
     sensor_ids?: string[];
 }
 
+export interface BayesianAirTrafficSimulatorSettings {
+    number_of_aircraft?: number;
+    simulation_duration_seconds?: number;
+    single_or_multiple_sensors?: string;
+    sensor_ids?: string[];
+}
+
 export interface ScenarioConfig {
     flight_blender: FlightBlenderConfig;
     data_files: DataFilesConfig;
     air_traffic_simulator_settings: AirTrafficSimulatorSettings;
     blue_sky_air_traffic_simulator_settings?: BlueSkyAirTrafficSimulatorSettings;
+    bayesian_air_traffic_simulator_settings?: BayesianAirTrafficSimulatorSettings;
 }

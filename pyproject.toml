@@ -70,6 +70,9 @@ dev = [
     "types-requests",
     "pytest-cov>=7.0.0",
 ]
+bayesian-track-generation = [
+    "cam-track-gen @ git+https://github.com/openutm-labs/Canadian-Airspace-Models.git",
+]
 
 [build-system]
 requires = ["hatchling"]

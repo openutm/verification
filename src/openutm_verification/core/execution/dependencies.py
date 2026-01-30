@@ -12,9 +12,9 @@ from openutm_verification.auth.providers import get_auth_provider
 from openutm_verification.core.clients.air_traffic.air_traffic_client import (
     AirTrafficClient,
 )
-from openutm_verification.core.clients.air_traffic.base_client import (
-    AirTrafficSettings,
-    BlueSkyAirTrafficSettings,
+from openutm_verification.core.clients.air_traffic.base_client import AirTrafficSettings, BayesianAirTrafficSettings, BlueSkyAirTrafficSettings
+from openutm_verification.core.clients.air_traffic.bayesian_air_traffic_client import (
+    BayesianTrafficClient,
 )
 from openutm_verification.core.clients.air_traffic.blue_sky_client import (
     BlueSkyClient,
@@ -206,6 +206,17 @@ async def bluesky_client(config: AppConfig, data_files: DataFiles) -> AsyncGener
         simulation_path=data_files.simulation,
     )
     async with BlueSkyClient(settings) as client:
+        yield client
+
+
+@dependency(BayesianTrafficClient)
+async def bayesian_air_traffic_client(config: AppConfig, data_files: DataFiles) -> AsyncGenerator[BayesianTrafficClient, None]:
+    """Provides a BayesianTrafficClient instance for dependency injection."""
+    settings = BayesianAirTrafficSettings.from_config(
+        config.bayesian_air_traffic_simulator_settings,
+        simulation_path=data_files.simulation,
+    )
+    async with BayesianTrafficClient(settings) as client:
         yield client
 
 
