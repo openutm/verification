@@ -1406,6 +1406,7 @@ source = { editable = "." }
 dependencies = [
     { name = "arrow" },
     { name = "bluesky-simulator" },
+    { name = "cam-track-gen" },
     { name = "cryptography" },
     { name = "dacite" },
     { name = "earcut" },
@@ -1444,9 +1445,6 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
-bayesian-track-generation = [
-    { name = "cam-track-gen" },
-]
 dev = [
     { name = "mypy" },
     { name = "pre-commit" },
@@ -1467,6 +1465,7 @@ dev = [
 requires-dist = [
     { name = "arrow", specifier = "==1.3.0" },
     { name = "bluesky-simulator", specifier = "==1.1.0" },
+    { name = "cam-track-gen", git = "https://github.com/openutm-labs/Canadian-Airspace-Models.git" },
     { name = "cryptography", specifier = "==44.0.3" },
     { name = "dacite", specifier = ">=1.9.2" },
     { name = "earcut", specifier = ">=1.1.5" },
@@ -1505,7 +1504,6 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-bayesian-track-generation = [{ name = "cam-track-gen", git = "https://github.com/openutm-labs/Canadian-Airspace-Models.git" }]
 dev = [
     { name = "mypy", specifier = ">=1.11.2" },
     { name = "pre-commit", specifier = ">=4.3.0" },

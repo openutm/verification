@@ -49,6 +49,7 @@ dependencies = [
     "uvicorn[standard]>=0.38.0",  # includes watchfiles for efficient reload
     "bluesky-simulator==1.1.0",
     "rtree==1.4.1",
+    "cam-track-gen @ git+https://github.com/openutm-labs/Canadian-Airspace-Models.git"
 ]
 
 [project.scripts]
@@ -70,9 +71,6 @@ dev = [
     "types-requests",
     "pytest-cov>=7.0.0",
 ]
-bayesian-track-generation = [
-    "cam-track-gen @ git+https://github.com/openutm-labs/Canadian-Airspace-Models.git",
-]
 
 [build-system]
 requires = ["hatchling"]
@@ -84,6 +82,9 @@ packages = ["src/openutm_verification"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "docs/scenarios" = "openutm_verification/docs/scenarios"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.pytest.ini_options]
 pythonpath = [".", "src/openutm_verification"]

@@ -32,6 +32,14 @@ blue_sky_air_traffic_simulator_settings:
   single_or_multiple_sensors: "multiple" # this setting specifiies if the traffic data is submitted from a single sensor or multiple sensors
   sensor_ids: ["562e6297036a4adebb4848afcd1ede90"] # List of sensor IDs to use when 'multiple' is selected
 
+# Bayesian Air traffic data configuration
+bayesian_air_traffic_simulator_settings:
+  number_of_aircraft: 3
+  simulation_duration_seconds: 30
+  single_or_multiple_sensors: "multiple" # this setting specifies if the traffic data is submitted from a single sensor or multiple sensors
+  sensor_ids: ["562e6297036a4adebb4848afcd1ede90"] # List of sensor IDs to use when 'multiple' is selected
+  session_ids: ["ee9405e564ea4373823e37d950858e6a"] # List of session IDs to use when 'multiple' is selected, a session id is needed in Flight Blender to depict a period of time these observations were made (this assumes the observations may not be continuous); if empty, random UUIDs will be generated
+
 data_files:
   trajectory: "config/bern/trajectory_f1.json" # Path to flight declarations JSON file
   flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file
