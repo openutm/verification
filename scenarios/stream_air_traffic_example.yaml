@@ -1,0 +1,53 @@
+name: stream_air_traffic_example
+version: "1.0"
+description: |
+  Example scenario demonstrating the unified "Stream Air Traffic" step.
+
+  This step replaces the provider-specific steps:
+  - "Generate Simulated Air Traffic Data" (geojson)
+  - "Generate BlueSky Simulation Air Traffic Data" (bluesky)
+  - "Generate Bayesian Simulation Air Traffic Data" (bayesian)
+  - "Fetch OpenSky Data" (opensky)
+
+  All providers can now be used with a single consistent interface.
+
+steps:
+  # Example 1: GeoJSON provider with data generation only (no delivery)
+  - step: Stream Air Traffic
+    id: geojson_only
+    arguments:
+      provider: geojson
+      duration: 10
+      target: none  # Don't send anywhere, just return data
+      config_path: config/bern/trajectory_f1.json
+      number_of_aircraft: 2
+
+  # Example 2: GeoJSON with delivery to Flight Blender
+  - step: Stream Air Traffic
+    id: geojson_stream
+    arguments:
+      provider: geojson
+      duration: 30
+      target: flight_blender
+      config_path: config/bern/trajectory_f1.json
+      number_of_aircraft: 2
+      session_ids:
+        - "550e8400-e29b-41d4-a716-446655440001"
+
+  # Example 3: BlueSky simulator (requires bluesky-simulator package)
+  # - step: Stream Air Traffic
+  #   id: bluesky_stream
+  #   arguments:
+  #     provider: bluesky
+  #     duration: 30
+  #     target: flight_blender
+  #     config_path: config/bern/blue_sky_sim_bern.scn
+
+  # Example 4: Live OpenSky data for Switzerland region
+  # - step: Stream Air Traffic
+  #   id: opensky_live
+  #   arguments:
+  #     provider: opensky
+  #     duration: 30
+  #     target: flight_blender
+  #     viewport: [45.8389, 47.8229, 5.9962, 10.5226]
