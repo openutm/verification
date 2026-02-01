@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 import uuid
 from uuid import UUID
 
@@ -17,6 +18,12 @@ from openutm_verification.core.clients.flight_blender.base_client import (
 )
 from openutm_verification.core.execution.scenario_runner import scenario_step
 from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
+
+
+def random_icao():
+    n = random.randrange(1, 0xFFFFFF)  # excludes 0x000000 and 0xFFFFFF
+    return f"{n:06X}"
+
 
 FEET_TO_METERS = 0.3048
 FEET_TO_MM = FEET_TO_METERS * 1000
@@ -96,7 +103,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         all_observations: list[list[FlightObservationSchema]] = []
 
         for track_idx, track in enumerate(tracks):
-            icao_address = f"BAY{track_idx:03d}"
+            icao_address = random_icao()
 
             observations = self._convert_track_to_observations(
                 track=track,
@@ -108,6 +115,8 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         logger.info(
             f"Generated observations for {len(all_observations)} tracks, with {sum(len(obs) for obs in all_observations)} total observations."
         )
+        logger.info(f"First observation altitude: {all_observations[0][0].icao_address}")
+
         return all_observations
 
     @staticmethod
