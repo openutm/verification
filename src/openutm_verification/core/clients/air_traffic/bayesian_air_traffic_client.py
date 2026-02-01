@@ -3,8 +3,10 @@ from __future__ import annotations
 import uuid
 from uuid import UUID
 
-from cam_track_gen import TrackGenerationSession, get_available_model_files
+import arrow
+from cam_track_gen import TrackGenerationSession, TrackResultData, get_available_model_files
 from loguru import logger
+from pyproj import Transformer
 
 from openutm_verification.core.clients.air_traffic.base_client import (
     BayesianAirTrafficClient,
@@ -15,6 +17,12 @@ from openutm_verification.core.clients.flight_blender.base_client import (
 )
 from openutm_verification.core.execution.scenario_runner import scenario_step
 from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
+
+FEET_TO_METERS = 0.3048
+FEET_TO_MM = FEET_TO_METERS * 1000
+
+# EPSG 3347 (NAD83 / Statistics Canada Lambert) -> EPSG 4326 (WGS84)
+_transformer = Transformer.from_crs("EPSG:3347", "EPSG:4326", always_xy=True)
 
 
 class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
@@ -43,8 +51,8 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         """
 
         # scn_path = config_path or self.settings.simulation_config_path
-        # duration_s = int(duration or self.settings.simulation_duration_seconds or 30)
-
+        duration_in_seconds = int(duration or self.settings.simulation_duration_seconds or 30)
+        number_of_aircraft = self.settings.number_of_aircraft or 3
         sensor_ids = self.settings.sensor_ids
 
         try:
@@ -76,14 +84,85 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
 
         # Generate a few tracks
         logger.info("Generating tracks...")
-        tracks = session.generate_tracks(number_of_tracks=3, simulation_duration_seconds=100)
+        tracks = session.generate_tracks(number_of_tracks=number_of_aircraft, simulation_duration_seconds=duration_in_seconds)
 
-        if tracks:
-            logger.info(f"Successfully generated {len(tracks)} tracks.")
-            # You can now work with the generated track data
-            first_track = tracks[0]
-            logger.info(f"First track has {len(first_track['time'])} data points.")
-        else:
+        if not tracks:
             logger.info("Track generation failed.")
+            return []
 
-        return []  # Placeholder return
+        logger.info(f"Successfully generated {len(tracks)} tracks.")
+
+        base_timestamp = int(arrow.utcnow().timestamp())
+        all_observations: list[list[FlightObservationSchema]] = []
+
+        for track_idx, track in enumerate(tracks):
+            icao_address = f"BAY{track_idx:03d}"
+
+            observations = self._convert_track_to_observations(
+                track=track,
+                icao_address=icao_address,
+                base_timestamp=base_timestamp,
+            )
+            all_observations.append(observations)
+            logger.info(f"Track {track_idx} ({icao_address}): {len(observations)} observations")
+        logger.info(
+            f"Generated observations for {len(all_observations)} tracks, with {sum(len(obs) for obs in all_observations)} total observations."
+        )
+        return all_observations
+
+    @staticmethod
+    def _convert_track_to_observations(
+        track: TrackResultData,
+        icao_address: str,
+        base_timestamp: int,
+    ) -> list[FlightObservationSchema]:
+        """Convert a raw track dict from cam-track-gen to FlightObservationSchema list.
+
+        The track contains positions in EPSG 3347 (NAD83 / Statistics Canada Lambert)
+        with values in feet. This method converts to WGS84 lat/lon and altitude in mm.
+        """
+        times = track["time"]
+        north_ft = track["north_position_feet"]
+        east_ft = track["east_position_feet"]
+        alt_ft = track["altitude_feet"]
+        speed_ft_s = track["speed_feet_per_second"]
+        bank_rad = track["bank_angle_radians"]
+        pitch_rad = track["pitch_angle_radians"]
+        heading_rad = track["heading_angle_radians"]
+
+        # Convert feet to meters for coordinate transformation
+        east_m = east_ft * FEET_TO_METERS
+        north_m = north_ft * FEET_TO_METERS
+
+        # Transform from EPSG 3347 (easting, northing) to WGS84 (lon, lat)
+        longitudes, latitudes = _transformer.transform(east_m, north_m)
+
+        observations: list[FlightObservationSchema] = []
+        for i, (t, lat, lon, alt_ft_val, speed_ft_s_val, bank_val, pitch_val, heading_val) in enumerate(
+            zip(times, latitudes, longitudes, alt_ft, speed_ft_s, bank_rad, pitch_rad, heading_rad)
+        ):
+            altitude_mm = float(alt_ft_val) * FEET_TO_MM
+            timestamp = base_timestamp + int(round(float(t)))
+
+            metadata = {
+                "speed_feet_per_second": float(speed_ft_s_val),
+                "bank_angle_radians": float(bank_val),
+                "pitch_angle_radians": float(pitch_val),
+                "heading_angle_radians": float(heading_val),
+            }
+
+            observations.append(
+                FlightObservationSchema(
+                    lat_dd=float(lat),
+                    lon_dd=float(lon),
+                    altitude_mm=altitude_mm,
+                    traffic_source=0,
+                    source_type=0,
+                    icao_address=icao_address,
+                    timestamp=timestamp,
+                    metadata=metadata,
+                )
+            )
+        logger.info(f"Converted track to observations. Generated {len(observations)} observations.")
+
+        return observations
