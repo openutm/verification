@@ -12,7 +12,11 @@ from openutm_verification.auth.providers import get_auth_provider
 from openutm_verification.core.clients.air_traffic.air_traffic_client import (
     AirTrafficClient,
 )
-from openutm_verification.core.clients.air_traffic.base_client import AirTrafficSettings, BayesianAirTrafficSettings, BlueSkyAirTrafficSettings
+from openutm_verification.core.clients.air_traffic.base_client import (
+    AirTrafficSettings,
+    BayesianAirTrafficSettings,
+    BlueSkyAirTrafficSettings,
+)
 from openutm_verification.core.clients.air_traffic.bayesian_air_traffic_client import (
     BayesianTrafficClient,
 )
@@ -41,6 +45,7 @@ from openutm_verification.core.execution.dependency_resolution import (
     CONTEXT,
     dependency,
 )
+from openutm_verification.core.steps.air_traffic_step import AirTrafficStepClient
 from openutm_verification.server.runner import SessionManager
 from openutm_verification.utils.paths import get_docs_directory
 
@@ -225,4 +230,11 @@ async def amqp_client(config: AppConfig) -> AsyncGenerator[AMQPClient, None]:
     """Provides an AMQPClient instance for dependency injection."""
     settings = AMQPSettings.from_config(config.amqp) if config.amqp else AMQPSettings()
     async with AMQPClient(settings) as client:
+        yield client
+
+
+@dependency(AirTrafficStepClient)
+async def air_traffic_step_client() -> AsyncGenerator[AirTrafficStepClient, None]:
+    """Provides an AirTrafficStepClient instance for the unified Stream Air Traffic step."""
+    async with AirTrafficStepClient() as client:
         yield client
