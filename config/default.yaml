@@ -75,6 +75,11 @@ suites:
         trajectory: "config/bern/trajectory_f1.json"
       - name: F2_contingent_path
         trajectory: "config/bern/trajectory_f2.json"
+  astm_f3623_conformance:
+    scenarios:
+    - name: openutm_sim_air_traffic_data
+    - name: sdsp_track
+    - name: sdsp_heartbeat
   extra:
     scenarios:
     - name: F3_non_conforming_path
@@ -84,9 +89,6 @@ suites:
     - name: opensky_live_data
     - name: add_flight_declaration
     - name: geo_fence_upload
-    - name: openutm_sim_air_traffic_data
-#     - name: sdsp_track
-#     - name: sdsp_heartbeat
 
 # Reporting configuration
 reporting:
