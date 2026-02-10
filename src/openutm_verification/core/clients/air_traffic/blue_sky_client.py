@@ -142,6 +142,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
     ) -> list[list[FlightObservationSchema]]:
         """This method generates"""
 
+
         scn_path = config_path or self.settings.simulation_config_path
         duration_s = int(duration or self.settings.simulation_duration_seconds or 30)
 
@@ -224,6 +225,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
 
             # Convert dict -> list[list[FlightObservationSchema]] with stable ordering
             flight_observations = [results_by_acid[acid] for acid in sorted(results_by_acid.keys())]
+
 
         # This method modifies the retrieved simulation data by changing the timestamp and adding latency to the observed dataset
         LATENCY_PROBABILITY = 0.1  # 10% chance to have latency issues
