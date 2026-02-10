@@ -133,6 +133,18 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
             # Convert dict -> list[list[FlightObservationSchema]] with stable ordering
             return [results_by_acid[acid] for acid in sorted(results_by_acid.keys())]
 
+    @scenario_step("Generate BlueSky Simulation Air Traffic Data with latency issues")
+    async def generate_bluesky_sim_air_traffic_data_with_sensor_latency_issues(
+        self,
+        config_path: str | None = None,
+        duration: int | None = None,
+    ) -> list[list[FlightObservationSchema]]:
+        """ This method generates """
+        flight_observations = self.generate_bluesky_sim_air_traffic_data(config_path = config_path, duration = duration)
+
+        # This method modifies the retrieved simulation data by changing the timestamp and adding latency to the observed dataset
+
+        return flight_observations
 
 def _tolist(x: Iterable[float] | object) -> list[float]:
     """Convert numpy arrays / array-likes to a Python list."""

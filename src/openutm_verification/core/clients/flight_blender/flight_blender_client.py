@@ -737,6 +737,16 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             "simulation_duration_seconds": (simulation_end - simulation_start).total_seconds(),
         }
 
+    @scenario_step("Submit Simulated Air Traffic at varying refresh rates")
+    async def submit_simulated_air_traffic_at_random_refresh_rates(#
+        self,
+        observations: list[list[FlightObservationSchema]],
+        session_ids: list[uuid.UUID] | None = None,
+        single_or_multiple_sensors: str = "single"):
+        # This method mimics submission of air-traffic at different refresh / scan rates. This is to mimic air traffic systems which do not perform nominally. 
+
+        pass 
+
     @scenario_step("Submit Air Traffic")
     async def submit_air_traffic(self, observations: list[FlightObservationSchema], session_id: uuid.UUID = uuid.uuid4()) -> dict[str, Any]:
         """Submit air traffic observations to the Flight Blender API.

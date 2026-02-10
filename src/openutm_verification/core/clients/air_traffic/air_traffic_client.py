@@ -100,3 +100,17 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         except Exception as exc:  # noqa: BLE001
             logger.error(f"Failed to generate telemetry states from {config_path}: {exc}")
             raise
+
+    
+    @scenario_step("Generate Simulated Air Traffic Data with Latency")
+    async def generate_simulated_air_traffic_data_with_latency(
+        self,
+        config_path: str | None = None,
+        duration: int | None = None,
+    ) -> list[list[FlightObservationSchema]]:
+        """ This method, simulates a adding latency to the flight observations list"""
+        flight_observations = self.generate_simulated_air_traffic_data(config_path = config_path, duration = duration)
+
+        #TODO: Add observation latency to the simulated air traffic data 
+
+        return flight_observations
