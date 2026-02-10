@@ -175,3 +175,35 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         logger.info(f"Converted track to observations. Generated {len(observations)} observations.")
 
         return observations
+
+    @scenario_step("Generate Bayesian Simulation Air Traffic Data with latency issues")
+    async def generate_bayesian_sim_air_traffic_data_with_sensor_latency_issues(
+        self,
+        config_path: str | None = None,
+        duration: int | None = None,
+    ) -> list[list[FlightObservationSchema]]:
+        """
+        This method modifies the retrieved simulation data by changing the timestamp and adding latency to the observed dataset.
+        Latency is simulated by randomly removing some observations and randomly shifting the timestamps of some observations
+        to be earlier or later than the actual timestamp, mimicking real-world sensor latency issues.
+        """
+        flight_observations = self.generate_bayesian_sim_air_traffic_data(config_path=config_path, duration=duration)
+
+        LATENCY_PROBABILITY = 0.1  # 10% chance to have latency issues
+        TIMESTAMP_SHIFT_RANGE_SECONDS = (-1, 2.5)  # Shift timestamps by -5 to +5 seconds
+
+        modified_flight_observations = []
+        for track_observations in flight_observations:
+            modified_track_observations = []
+            for obs in track_observations:
+                if random.random() < LATENCY_PROBABILITY:
+                    # Simulate latency by removing some observations
+                    if random.random() < 0.5:  # 50% chance to remove observation
+                        continue
+                    # Simulate timestamp shift
+                    shift_seconds = random.uniform(*TIMESTAMP_SHIFT_RANGE_SECONDS)
+                    obs.timestamp += int(shift_seconds * 1000)  # Convert seconds to milliseconds
+                modified_track_observations.append(obs)
+            modified_flight_observations.append(modified_track_observations)
+
+        return modified_flight_observations

@@ -1,0 +1,10 @@
+name: bayesian_sim_air_traffic_data
+description: Bayesian simulation air traffic data test
+steps:
+- id: generate_bayesian_simulation_air_traffic_data
+  step: Generate Bayesian Simulation Air Traffic Data
+- step: Fetch Session IDs
+- step: Submit Simulated Air Traffic
+  arguments:
+    observations: ${{ steps.generate_bayesian_simulation_air_traffic_data.result }}
+    session_ids: ${{ steps.Fetch Session IDs.result }}

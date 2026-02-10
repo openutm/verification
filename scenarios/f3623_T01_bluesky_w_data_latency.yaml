@@ -1,0 +1,10 @@
+name: bluesky_sim_air_traffic_data_latency_issues
+description: F3623 Blue Sky dataset with latency issues test
+steps:
+- id: generate_bluesky_sim_air_traffic_data_with_sensor_latency_issues
+  step: Generate BlueSky Simulation Air Traffic Data with latency issues
+- step: Fetch Session IDs
+- step: Submit Simulated Air Traffic
+  arguments:
+    observations: ${{ steps.generate_bluesky_sim_air_traffic_data_with_sensor_latency_issues.result }}
+    session_ids: ${{ steps.Fetch Session IDs.result }}
