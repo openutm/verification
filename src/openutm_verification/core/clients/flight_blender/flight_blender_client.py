@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -728,6 +729,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             current_simulation_time = current_simulation_time.shift(seconds=1)
 
         duration_seconds = (arrow.now() - start_time).total_seconds()
+
         return {
             "success": submission_errors == 0,
             "aircraft_count": number_of_aircraft,
@@ -738,14 +740,140 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         }
 
     @scenario_step("Submit Simulated Air Traffic at varying refresh rates")
-    async def submit_simulated_air_traffic_at_random_refresh_rates(#
+    async def submit_simulated_air_traffic_at_random_refresh_rates(
         self,
         observations: list[list[FlightObservationSchema]],
         session_ids: list[uuid.UUID] | None = None,
-        single_or_multiple_sensors: str = "single"):
-        # This method mimics submission of air-traffic at different refresh / scan rates. This is to mimic air traffic systems which do not perform nominally. 
+        single_or_multiple_sensors: str = "single",
+    ) -> StepResult:
+        """Submit simulated air traffic observations with corrupted timestamps to mimic a malfunctioning source.
 
-        pass 
+        Iterates through observations and randomly applies timestamp anomalies:
+        - Stale timestamps (repeating a previous timestamp instead of advancing)
+        - Large backward jumps (timestamp shifted into the past)
+        - Large forward jumps (timestamp shifted into the future)
+
+        Args:
+            observations: List of observation lists, one per aircraft.
+            session_ids: Optional list of session UUIDs.
+            single_or_multiple_sensors: Whether to use single or multiple sensor IDs.
+
+        Returns:
+            StepResult with submission statistics.
+        """
+        session_ids = session_ids or [uuid.uuid4()]
+        if not observations:
+            logger.warning("No air traffic observations to submit.")
+            return StepResult(
+                name="Submit Simulated Air Traffic at varying refresh rates",
+                status=Status.FAIL,
+                duration=0,
+                error_message="No air traffic observations provided",
+            )
+
+        number_of_aircraft = len(observations)
+        logger.debug(f"Submitting simulated air traffic (off-nominal timestamps) for {number_of_aircraft} aircraft")
+
+        session_id = str(session_ids[0])
+
+        # Determine simulation time range
+        start_times = []
+        end_times = []
+        for aircraft_obs in observations:
+            if not aircraft_obs:
+                continue
+            start_times.append(arrow.get(aircraft_obs[0].timestamp))
+            end_times.append(arrow.get(aircraft_obs[-1].timestamp))
+
+        if not start_times:
+            logger.warning("No valid start/end times found in observations.")
+            return StepResult(
+                name="Submit Simulated Air Traffic at varying refresh rates",
+                status=Status.FAIL,
+                duration=0,
+                error_message="No valid start/end times found in observations",
+            )
+
+        simulation_start = min(start_times)
+        simulation_end = max(end_times)
+
+        now = arrow.now()
+        start_time = now
+        observations_submitted = 0
+        submission_errors = 0
+
+        # Build a flat list of observations with corrupted timestamps per aircraft
+        corrupted_observations: list[list[FlightObservationSchema]] = []
+        for aircraft_obs in observations:
+            corrupted_aircraft_obs: list[FlightObservationSchema] = []
+            last_used_timestamp: int | None = None
+            for obs in aircraft_obs:
+                original_timestamp = obs.timestamp
+                anomaly_roll = random.random()
+
+                if anomaly_roll < 0.3 and last_used_timestamp is not None:
+                    # 30% chance: stale timestamp — repeat the previous timestamp
+                    new_timestamp = last_used_timestamp
+                    logger.debug(f"[off-nominal] Stale timestamp for {obs.icao_address}: kept {new_timestamp} instead of {original_timestamp}")
+                elif anomaly_roll < 0.5:
+                    # 20% chance: backward jump — shift timestamp 10-60s into the past
+                    offset = random.randint(10, 60)
+                    new_timestamp = original_timestamp - offset
+                    logger.debug(f"[off-nominal] Backward jump for {obs.icao_address}: {original_timestamp} -> {new_timestamp} (−{offset}s)")
+                elif anomaly_roll < 0.65:
+                    # 15% chance: forward jump — shift timestamp 10-60s into the future
+                    offset = random.randint(10, 60)
+                    new_timestamp = original_timestamp + offset
+                    logger.debug(f"[off-nominal] Forward jump for {obs.icao_address}: {original_timestamp} -> {new_timestamp} (+{offset}s)")
+                else:
+                    # 35% chance: keep the original timestamp (normal)
+                    new_timestamp = original_timestamp
+
+                corrupted_obs = obs.model_copy(update={"timestamp": new_timestamp})
+                corrupted_aircraft_obs.append(corrupted_obs)
+                last_used_timestamp = new_timestamp
+
+            corrupted_observations.append(corrupted_aircraft_obs)
+
+        # Play back observations in real-time using the original simulation timeline
+        current_simulation_time = simulation_start
+        while current_simulation_time < simulation_end:
+            target_real_time = start_time + (current_simulation_time - simulation_start)
+            while arrow.now() < target_real_time:
+                await asyncio.sleep(0.1)
+
+            for aircraft_obs in corrupted_observations:
+                if not aircraft_obs:
+                    continue
+                # Find observation closest to current simulation time using original positions
+                closest_obs = min(
+                    aircraft_obs,
+                    key=lambda obs: abs(arrow.get(obs.timestamp) - current_simulation_time),
+                )
+                endpoint = f"/flight_stream/set_air_traffic/{session_id}"
+                payload = {"observations": [closest_obs.model_dump(mode="json")]}
+                ScenarioContext.add_air_traffic_data([closest_obs])
+                try:
+                    response = await self.post(endpoint, json=payload)
+                    logger.debug(f"Air traffic submission response: {response.text}")
+                    logger.info(
+                        f"Off-nominal observation submitted for {closest_obs.icao_address} "
+                        f"at sim time {current_simulation_time} with timestamp {closest_obs.timestamp}"
+                    )
+                    observations_submitted += 1
+                except Exception as e:
+                    logger.error(f"Failed to submit off-nominal observation: {e}")
+                    submission_errors += 1
+
+            current_simulation_time = current_simulation_time.shift(seconds=1)
+
+        duration_seconds = (arrow.now() - start_time).total_seconds()
+        return StepResult(
+            name="Submit Simulated Air Traffic at varying refresh rates",
+            status=Status.PASS if submission_errors == 0 else Status.FAIL,
+            duration=round(duration_seconds, 2),
+            error_message=None if submission_errors == 0 else f"{submission_errors} submission errors occurred",
+        )
 
     @scenario_step("Submit Air Traffic")
     async def submit_air_traffic(self, observations: list[FlightObservationSchema], session_id: uuid.UUID = uuid.uuid4()) -> dict[str, Any]:

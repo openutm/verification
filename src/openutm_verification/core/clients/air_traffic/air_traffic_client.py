@@ -1,4 +1,5 @@
 import json
+import random
 import uuid
 from uuid import UUID
 
@@ -101,16 +102,28 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
             logger.error(f"Failed to generate telemetry states from {config_path}: {exc}")
             raise
 
-    
     @scenario_step("Generate Simulated Air Traffic Data with Latency")
     async def generate_simulated_air_traffic_data_with_latency(
         self,
         config_path: str | None = None,
         duration: int | None = None,
     ) -> list[list[FlightObservationSchema]]:
-        """ This method, simulates a adding latency to the flight observations list"""
-        flight_observations = self.generate_simulated_air_traffic_data(config_path = config_path, duration = duration)
+        """This method, simulates a adding latency to the flight observations list"""
+        flight_observations = self.generate_simulated_air_traffic_data(config_path=config_path, duration=duration)
+        LATENCY_PROBABILITY = 0.1  # 10% chance to have latency issues
+        TIMESTAMP_SHIFT_RANGE_SECONDS = (-1, 2.5)  # Shift timestamps by -5 to +5 seconds
 
-        #TODO: Add observation latency to the simulated air traffic data 
-
-        return flight_observations
+        modified_flight_observations = []
+        for track_observations in flight_observations:
+            modified_track_observations = []
+            for obs in track_observations:
+                if random.random() < LATENCY_PROBABILITY:
+                    # Simulate latency by removing some observations
+                    if random.random() < 0.5:  # 50% chance to remove observation
+                        continue
+                    # Simulate timestamp shift
+                    shift_seconds = random.uniform(*TIMESTAMP_SHIFT_RANGE_SECONDS)
+                    obs.timestamp += int(shift_seconds * 1000)  # Convert seconds to milliseconds
+                modified_track_observations.append(obs)
+            modified_flight_observations.append(modified_track_observations)
+        return modified_flight_observations
