@@ -97,15 +97,47 @@ class TestStreamResult:
 class TestAirTrafficStepClient:
     """Tests for the AirTrafficStepClient."""
 
-    def test_client_context_manager(self):
-        """Test that client can be used as async context manager."""
-        import asyncio
+    @pytest.mark.asyncio
+    async def test_client_context_manager_returns_self(self):
+        """Test that __aenter__ returns the client instance."""
+        client = AirTrafficStepClient()
+        async with client as entered_client:
+            assert entered_client is client
 
-        async def test():
-            async with AirTrafficStepClient() as client:
-                assert client is not None
+    @pytest.mark.asyncio
+    async def test_client_context_manager_calls_aexit(self):
+        """Test that __aexit__ is called when exiting the context."""
+        aexit_called = False
+        original_aexit = AirTrafficStepClient.__aexit__
 
-        asyncio.run(test())
+        async def tracking_aexit(self, *args):
+            nonlocal aexit_called
+            aexit_called = True
+            return await original_aexit(self, *args)
+
+        with patch.object(AirTrafficStepClient, "__aexit__", tracking_aexit):
+            async with AirTrafficStepClient():
+                pass
+
+        assert aexit_called, "__aexit__ should be called when exiting context"
+
+    @pytest.mark.asyncio
+    async def test_client_context_manager_calls_aexit_on_exception(self):
+        """Test that __aexit__ is called even when an exception occurs."""
+        aexit_called = False
+        original_aexit = AirTrafficStepClient.__aexit__
+
+        async def tracking_aexit(self, *args):
+            nonlocal aexit_called
+            aexit_called = True
+            return await original_aexit(self, *args)
+
+        with patch.object(AirTrafficStepClient, "__aexit__", tracking_aexit):
+            with pytest.raises(ValueError):
+                async with AirTrafficStepClient():
+                    raise ValueError("Test exception")
+
+        assert aexit_called, "__aexit__ should be called even when exception occurs"
 
     def test_step_registration(self):
         """Test that the step is registered in STEP_REGISTRY."""
