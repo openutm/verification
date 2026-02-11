@@ -13,6 +13,9 @@ if TYPE_CHECKING:
         FlightObservationSchema,
     )
 
+# Default viewport covering Switzerland (lat_min, lat_max, lon_min, lon_max)
+DEFAULT_SWITZERLAND_VIEWPORT: tuple[float, float, float, float] = (45.8389, 47.8229, 5.9962, 10.5226)
+
 
 class OpenSkyProvider:
     """Provider that fetches live air traffic from OpenSky Network.
@@ -33,7 +36,7 @@ class OpenSkyProvider:
             viewport: Geographic bounds (lat_min, lat_max, lon_min, lon_max).
             duration: Poll duration in seconds (how long to fetch data).
         """
-        self._viewport = viewport or (45.8389, 47.8229, 5.9962, 10.5226)
+        self._viewport = viewport or DEFAULT_SWITZERLAND_VIEWPORT
         self._duration = duration or 30
 
     @property
