@@ -43,7 +43,7 @@ class FlightBlenderStreamer:
         return "flight_blender"
 
     @classmethod
-    def from_config(
+    def from_kwargs(
         cls,
         session_ids: list[str] | None = None,
         **_kwargs,

@@ -30,8 +30,8 @@ class AMQPStreamer:
         return "amqp"
 
     @classmethod
-    def from_config(cls, **_kwargs) -> "AMQPStreamer":
-        """Factory method to create streamer from configuration."""
+    def from_kwargs(cls, **_kwargs) -> "AMQPStreamer":
+        """Factory method to create streamer from keyword arguments."""
         return cls()
 
     async def stream_from_provider(

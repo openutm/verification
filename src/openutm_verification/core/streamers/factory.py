@@ -38,4 +38,4 @@ def create_streamer(
     if name not in streamers:
         raise ValueError(f"Unknown streamer: {name}. Available: {list(streamers.keys())}")
 
-    return streamers[name].from_config(session_ids=session_ids, **kwargs)
+    return streamers[name].from_kwargs(session_ids=session_ids, **kwargs)
