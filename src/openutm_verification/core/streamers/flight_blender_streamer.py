@@ -61,6 +61,29 @@ class FlightBlenderStreamer:
                 logger.warning(f"Invalid session ID format, will auto-generate: {e}")
         return cls(session_ids=parsed_ids)
 
+    def _make_result(
+        self,
+        *,
+        success: bool,
+        provider_name: str,
+        duration_seconds: int,
+        total_observations: int = 0,
+        total_batches: int = 0,
+        errors: list[str] | None = None,
+        observations: list | None = None,
+    ) -> StreamResult:
+        """Helper to construct StreamResult with common fields."""
+        return StreamResult(
+            success=success,
+            provider=provider_name,
+            target=self.name,
+            duration_seconds=duration_seconds,
+            total_observations=total_observations,
+            total_batches=total_batches,
+            errors=errors or [],
+            observations=observations or [],
+        )
+
     async def stream_from_provider(
         self,
         provider: "AirTrafficProvider",
@@ -82,57 +105,69 @@ class FlightBlenderStreamer:
         observations = await provider.get_observations(duration=duration_seconds)
 
         if not observations:
-            return StreamResult(
+            return self._make_result(
                 success=True,
-                provider=provider.name,
-                target=self.name,
+                provider_name=provider.name,
                 duration_seconds=duration_seconds,
-                total_observations=0,
-                total_batches=0,
-                errors=[],
-                observations=[],
             )
 
-        # Get Flight Blender configuration
+        # Get and validate Flight Blender configuration
         config = get_settings()
-        credentials = {"username": config.flight_blender.auth.username, "password": config.flight_blender.auth.password}
 
-        errors: list[str] = []
+        if not config.flight_blender.url:
+            error_msg = "Flight Blender URL is not configured. Please set 'flight_blender.url' in your configuration."
+            logger.error(error_msg)
+            return self._make_result(
+                success=False,
+                provider_name=provider.name,
+                duration_seconds=duration_seconds,
+                errors=[error_msg],
+                observations=observations,
+            )
+
+        username = config.flight_blender.auth.username
+        password = config.flight_blender.auth.password
+
+        if not username or not password:
+            error_msg = (
+                "Flight Blender credentials are not configured. "
+                "Please set 'flight_blender.auth.username' and "
+                "'flight_blender.auth.password' in your configuration."
+            )
+            logger.error(error_msg)
+            return self._make_result(
+                success=False,
+                provider_name=provider.name,
+                duration_seconds=duration_seconds,
+                errors=[error_msg],
+                observations=observations,
+            )
 
         try:
             async with FlightBlenderClient(
                 base_url=config.flight_blender.url,
-                credentials=credentials,
+                credentials={"username": username, "password": password},
             ) as client:
-                # Use existing submit method which handles real-time playback
                 result = await client.submit_simulated_air_traffic(
                     observations=observations,
                     session_ids=self._session_ids,
                 )
 
-                total_observations = sum(len(batch) for batch in observations)
-
-                return StreamResult(
+                return self._make_result(
                     success=result.get("success", False),
-                    provider=provider.name,
-                    target=self.name,
+                    provider_name=provider.name,
                     duration_seconds=duration_seconds,
-                    total_observations=total_observations,
+                    total_observations=sum(len(batch) for batch in observations),
                     total_batches=len(observations),
-                    errors=errors,
                     observations=observations,
                 )
 
         except Exception as e:
             logger.error(f"Flight Blender streaming failed: {e}")
-            errors.append(str(e))
-            return StreamResult(
+            return self._make_result(
                 success=False,
-                provider=provider.name,
-                target=self.name,
+                provider_name=provider.name,
                 duration_seconds=duration_seconds,
-                total_observations=0,
-                total_batches=0,
-                errors=errors,
+                errors=[str(e)],
                 observations=observations,
             )
