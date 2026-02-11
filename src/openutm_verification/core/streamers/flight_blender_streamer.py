@@ -57,8 +57,8 @@ class FlightBlenderStreamer:
         if session_ids:
             try:
                 parsed_ids = [uuid.UUID(sid) for sid in session_ids]
-            except ValueError as e:
-                logger.warning(f"Invalid session ID format, will auto-generate: {e}")
+            except ValueError:
+                logger.warning("Invalid session ID format detected, will auto-generate. Ensure session IDs are valid UUIDs.")
         return cls(session_ids=parsed_ids)
 
     def _make_result(
