@@ -17,4 +17,4 @@ async def test_bluesky_sim_air_traffic_data(
     """
     result = await blue_sky_client.generate_bluesky_sim_air_traffic_data()
 
-    await fb_client.submit_simulated_air_traffic(observations=result.details)
+    await fb_client.submit_simulated_air_traffic(observations=result.result)
