@@ -42,6 +42,19 @@ async def list_scenarios():
     return [f.stem for f in path.glob("*.yaml")]
 
 
+@scenario_router.get("/api/suites")
+async def list_suites(runner: Any = Depends(get_runner)):
+    """Return suite-to-scenario mapping from the loaded configuration."""
+    config = runner.config
+    result: dict[str, list[str]] = {}
+    for suite_name, suite_config in config.suites.items():
+        if suite_config.scenarios:
+            result[suite_name] = [s.name for s in suite_config.scenarios]
+        else:
+            result[suite_name] = []
+    return result
+
+
 @scenario_router.get("/api/scenarios/{scenario}")
 async def get_scenario(scenario: str):
     """Get the content of a specific scenario."""

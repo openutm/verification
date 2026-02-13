@@ -59,22 +59,10 @@ describe('PropertiesPanel', () => {
         expect(defaultProps.onUpdateParameter).toHaveBeenCalledWith('1', 'arg1', 'newValue');
     });
 
-    it('resolves group step references correctly', () => {
-        const groupContainerNode: Node<NodeData> = {
-            id: 'group_container_1',
+    it('resolves step references correctly', () => {
+        const fetchNode: Node<NodeData> = {
+            id: 'fetch_node',
             type: 'custom',
-            position: { x: 0, y: 0 },
-            data: {
-                label: '📦 group_1',
-                isGroupContainer: true,
-                parameters: []
-            }
-        };
-
-        const groupStep1: Node<NodeData> = {
-            id: 'group_container_1_step_0',
-            type: 'custom',
-            parentId: 'group_container_1',
             position: { x: 0, y: 0 },
             data: {
                 label: 'Fetch Data',
@@ -83,10 +71,9 @@ describe('PropertiesPanel', () => {
             }
         };
 
-        const groupStep2: Node<NodeData> = {
-            id: 'group_container_1_step_1',
+        const submitNode: Node<NodeData> = {
+            id: 'submit_node',
             type: 'custom',
-            parentId: 'group_container_1',
             position: { x: 0, y: 100 },
             data: {
                 label: 'Submit Data',
@@ -95,7 +82,7 @@ describe('PropertiesPanel', () => {
                     {
                         name: 'data',
                         type: 'object',
-                        default: '${{ group.fetch.result }}'
+                        default: { $ref: 'steps.fetch.result' }
                     }
                 ]
             }
@@ -103,8 +90,9 @@ describe('PropertiesPanel', () => {
 
         const props = {
             ...defaultProps,
-            selectedNode: groupStep2,
-            allNodes: [groupContainerNode, groupStep1, groupStep2]
+            selectedNode: submitNode,
+            connectedNodes: [fetchNode],
+            allNodes: [fetchNode, submitNode]
         };
 
         render(<PropertiesPanel {...props} />);

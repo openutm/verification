@@ -28,14 +28,20 @@ const mockOperations: Operation[] = [
 ];
 
 describe('Toolbox', () => {
+    const switchToToolboxTab = () => {
+        fireEvent.click(screen.getByText('Toolbox'));
+    };
+
     it('renders correctly', () => {
         render(<Toolbox operations={mockOperations} />);
+        switchToToolboxTab();
         expect(screen.getByText('ClassA')).toBeInTheDocument();
         expect(screen.getByText('ClassB')).toBeInTheDocument();
     });
 
     it('displays operations under groups', () => {
         render(<Toolbox operations={mockOperations} />);
+        switchToToolboxTab();
         expect(screen.getByText('Operation 1')).toBeInTheDocument();
         expect(screen.getByText('Operation 2')).toBeInTheDocument();
         expect(screen.getByText('Operation 3')).toBeInTheDocument();
@@ -43,6 +49,7 @@ describe('Toolbox', () => {
 
     it('collapses and expands groups', () => {
         render(<Toolbox operations={mockOperations} />);
+        switchToToolboxTab();
         const groupHeader = screen.getByText('ClassA');
 
         // Initially expanded
@@ -59,6 +66,7 @@ describe('Toolbox', () => {
 
     it('sets data transfer on drag start', () => {
         render(<Toolbox operations={mockOperations} />);
+        switchToToolboxTab();
         const operationItem = screen.getByText('Operation 1');
 
         const dataTransfer = {
