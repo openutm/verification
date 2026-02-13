@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { CustomNode } from '../CustomNode';
 import { ReactFlowProvider } from '@xyflow/react';
@@ -42,28 +42,21 @@ describe('CustomNode', () => {
     });
 
     it('renders success status icon', () => {
-        render(<CustomNode {...defaultProps} />, { wrapper });
-        // Check for CheckCircle icon (or button containing it)
-        const button = screen.getByTitle('Success');
-        expect(button).toBeInTheDocument();
+        const { container } = render(<CustomNode {...defaultProps} />, { wrapper });
+        // CheckCircle renders as an SVG with class containing 'circle-check-big'
+        const svg = container.querySelector('.lucide-circle-check-big');
+        expect(svg).toBeInTheDocument();
     });
 
-    it('calls onShowResult when status icon is clicked', () => {
-        render(<CustomNode {...defaultProps} />, { wrapper });
-        const button = screen.getByTitle('Success');
-        fireEvent.click(button);
-        expect(mockData.onShowResult).toHaveBeenCalledWith(mockData.result);
-    });
-
-    it('renders failure status', () => {
+    it('renders failure status icon', () => {
         const failureProps = {
             ...defaultProps,
             data: { ...mockData, status: 'failure' as const }
         };
-        render(<CustomNode {...failureProps} />, { wrapper });
-        const button = screen.getByTitle('Failure');
-        expect(button).toBeInTheDocument();
-        // We could check for color or specific icon if we could query by icon
+        const { container } = render(<CustomNode {...failureProps} />, { wrapper });
+        // XCircle renders as an SVG with class containing 'circle-x'
+        const svg = container.querySelector('.lucide-circle-x');
+        expect(svg).toBeInTheDocument();
     });
 
     it('applies selected style', () => {

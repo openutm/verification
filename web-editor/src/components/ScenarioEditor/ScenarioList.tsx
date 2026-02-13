@@ -31,14 +31,20 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
         }).catch(err => console.error('Failed to load scenarios:', err));
     }, [refreshKey]);
 
+    const hasSuites = Object.keys(suites).length > 0;
+
     const groupedScenarios = useMemo(() => {
-        const suiteNames = Object.keys(suites);
+        const suiteNames = Object.keys(suites).sort((a, b) => a.localeCompare(b));
+        const scenarioSet = new Set(scenarios);
         const assigned = new Set(suiteNames.flatMap(s => suites[s]));
         const ungrouped = scenarios.filter(s => !assigned.has(s));
 
         const groups: { suite: string; label: string; items: string[] }[] = [];
         for (const suite of suiteNames) {
-            const items = suites[suite].filter(name => scenarios.includes(name));
+            const items = suites[suite]
+                .filter(name => scenarioSet.has(name))
+                .slice()
+                .sort((a, b) => a.localeCompare(b));
             if (items.length > 0) {
                 groups.push({
                     suite,
@@ -110,15 +116,17 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
                     Pre-built scenarios grouped by test suite
                 </div>
 
-                {groupedScenarios.length > 0 ? (
+                {hasSuites ? (
                     groupedScenarios.map(({ suite, label, items }) => {
                         const isCollapsed = collapsedSuites.has(suite);
                         return (
                             <div key={suite} style={{ marginBottom: '4px' }}>
-                                <div
+                                <button
+                                    type="button"
                                     className={styles.groupHeader}
                                     onClick={() => toggleSuite(suite)}
-                                    style={{ padding: '6px 4px', marginTop: 4, marginBottom: 4 }}
+                                    aria-expanded={!isCollapsed}
+                                    style={{ padding: '6px 4px', marginTop: 4, marginBottom: 4, background: 'none', border: 'none', width: '100%' }}
                                 >
                                     {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                                     <FolderOpen size={14} />
@@ -126,7 +134,7 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
                                     <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 400, opacity: 0.7 }}>
                                         {items.length}
                                     </span>
-                                </div>
+                                </button>
                                 {!isCollapsed && (
                                     <div style={{ paddingLeft: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                         {items.map(renderScenarioItem)}

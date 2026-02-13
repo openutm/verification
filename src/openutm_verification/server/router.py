@@ -43,9 +43,8 @@ async def list_scenarios():
 
 
 @scenario_router.get("/api/suites")
-async def list_suites(request: Request):
+async def list_suites(runner: Any = Depends(get_runner)):
     """Return suite-to-scenario mapping from the loaded configuration."""
-    runner = request.app.state.runner
     config = runner.config
     result: dict[str, list[str]] = {}
     for suite_name, suite_config in config.suites.items():

@@ -53,6 +53,11 @@ describe('useScenarioRunner', () => {
             .mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({ run_id: '1' })
+            })
+            // generate-report call
+            .mockResolvedValueOnce({
+                ok: true,
+                text: async () => 'ok'
             });
 
         const mockEventSource = {
@@ -62,14 +67,20 @@ describe('useScenarioRunner', () => {
             close: vi.fn(),
         };
 
-        (globalThis.EventSource as unknown as Mock).mockImplementation(() => {
+        (globalThis.EventSource as unknown as Mock).mockImplementation(function (this: typeof mockEventSource) {
+            Object.assign(this, mockEventSource);
             setTimeout(() => {
-                const doneHandler = mockEventSource.addEventListener.mock.calls.find(call => call[0] === 'done')?.[1];
+                // Fire onmessage with step result data first
+                this.onmessage?.({
+                    data: JSON.stringify({ id: '1', status: 'success', result: { success: true } })
+                } as MessageEvent);
+                // Then fire the done event
+                const doneHandler = mockEventSource.addEventListener.mock.calls.find((call: unknown[]) => call[0] === 'done')?.[1];
                 if (doneHandler) {
                     doneHandler({ data: JSON.stringify({ status: 'completed' }) } as MessageEvent);
                 }
             }, 0);
-            return mockEventSource;
+            return this;
         });
 
         const { result } = renderHook(() => useScenarioRunner());
@@ -89,7 +100,8 @@ describe('useScenarioRunner', () => {
                 id: '1',
                 status: 'success',
                 result: { success: true },
-                error: undefined
+                error: undefined,
+                logs: []
             }],
             status: 'completed',
             duration: 0
@@ -102,6 +114,24 @@ describe('useScenarioRunner', () => {
     });
 
     it('runs scenario with config', async () => {
+        const mockEventSource = {
+            onmessage: null as ((event: MessageEvent) => void) | null,
+            onerror: null as ((event: Event) => void) | null,
+            addEventListener: vi.fn(),
+            close: vi.fn(),
+        };
+
+        (globalThis.EventSource as unknown as Mock).mockImplementation(function (this: typeof mockEventSource) {
+            Object.assign(this, mockEventSource);
+            setTimeout(() => {
+                const doneHandler = mockEventSource.addEventListener.mock.calls.find((call: unknown[]) => call[0] === 'done')?.[1];
+                if (doneHandler) {
+                    doneHandler({ data: JSON.stringify({ status: 'completed' }) } as MessageEvent);
+                }
+            }, 0);
+            return this;
+        });
+
         (globalThis.fetch as Mock)
             .mockResolvedValueOnce({
                 ok: true,
@@ -110,6 +140,10 @@ describe('useScenarioRunner', () => {
             .mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({ run_id: '1' })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                text: async () => 'ok'
             });
 
         const { result } = renderHook(() => useScenarioRunner());
