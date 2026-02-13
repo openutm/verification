@@ -111,26 +111,28 @@ class GeoJSONAirtrafficSimulator:
             coordinates = trajectory_geojson["coordinates"]
             airtraffic: list[FlightObservationSchema] = []
             icao_address = "".join(random.choices("0123456789ABCDEF", k=6))
-            for i in range(duration):
+            # Each coordinate corresponds to one second of flight time
+            for i, point in enumerate(coordinates):
+                if i >= duration:
+                    break
                 timestamp = self.reference_time.shift(seconds=i)
-                for point in coordinates:
-                    # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
-                    selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
-                    metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
-                    # Convert altitude from meters to millimeters for altitude_mm field
-                    altitude_m = self.config.altitude_of_ground_level_wgs_84
-                    airtraffic.append(
-                        FlightObservationSchema(
-                            lat_dd=point[1],
-                            lon_dd=point[0],
-                            altitude_mm=altitude_m * 1000,  # Convert m -> mm
-                            traffic_source=1,
-                            source_type=2,
-                            icao_address=icao_address,
-                            timestamp=timestamp.int_timestamp,
-                            metadata=metadata,
-                        )
+                # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
+                selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
+                metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
+                # Convert altitude from meters to millimeters for altitude_mm field
+                altitude_m = self.config.altitude_of_ground_level_wgs_84
+                airtraffic.append(
+                    FlightObservationSchema(
+                        lat_dd=point[1],
+                        lon_dd=point[0],
+                        altitude_mm=altitude_m * 1000,  # Convert m -> mm
+                        traffic_source=1,
+                        source_type=2,
+                        icao_address=icao_address,
+                        timestamp=timestamp.int_timestamp,
+                        metadata=metadata,
                     )
+                )
             all_air_traffic.append(airtraffic)
         logger.info(f"Generated observations for {len(all_air_traffic)} aircraft")
         return all_air_traffic
