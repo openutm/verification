@@ -120,6 +120,70 @@ class TestGeoJSONAirtrafficSimulator:
         expected_mm = altitude_meters * 1000
         assert first_obs.altitude_mm == expected_mm, f"Expected altitude_mm={expected_mm} (from {altitude_meters}m), got {first_obs.altitude_mm}"
 
+    def test_single_sensor_mode_uses_one_sensor_id(self, sample_geojson):
+        """Verify all observations use the same sensor_id in single-sensor mode."""
+        from uuid import uuid4
+
+        from openutm_verification.simulator.geo_json_telemetry import (
+            GeoJSONAirtrafficSimulator,
+        )
+
+        config = AirTrafficGeneratorConfiguration(
+            geojson=sample_geojson,
+            reference_time=arrow.utcnow(),
+        )
+        sensor_ids = [uuid4(), uuid4(), uuid4()]
+        simulator = GeoJSONAirtrafficSimulator(config)
+        result = simulator.generate_air_traffic_data(
+            duration=2,
+            sensor_ids=sensor_ids,
+            number_of_aircraft=1,
+            use_multiple_sensors=False,
+        )
+
+        unique_sensor_ids = {obs.metadata["sensor_id"] for flight in result for obs in flight}
+        assert len(unique_sensor_ids) == 1, f"Expected 1 sensor ID in single mode, got {len(unique_sensor_ids)}: {unique_sensor_ids}"
+        assert unique_sensor_ids == {str(sensor_ids[0])}
+
+    def test_multiple_sensor_mode_assigns_varied_sensor_ids(self, sample_geojson):
+        """Verify observations contain more than one distinct sensor_id in multiple-sensor mode."""
+        from uuid import uuid4
+
+        from openutm_verification.simulator.geo_json_telemetry import (
+            GeoJSONAirtrafficSimulator,
+        )
+
+        # Use a longer GeoJSON path so we get enough observations for randomness
+        coords = [[7.47 + i * 0.001, 46.97 + i * 0.001] for i in range(50)]
+        geojson = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": coords},
+                    "properties": {},
+                }
+            ],
+        }
+
+        config = AirTrafficGeneratorConfiguration(
+            geojson=geojson,
+            reference_time=arrow.utcnow(),
+        )
+        sensor_ids = [uuid4(), uuid4(), uuid4()]
+        simulator = GeoJSONAirtrafficSimulator(config)
+        result = simulator.generate_air_traffic_data(
+            duration=50,
+            sensor_ids=sensor_ids,
+            number_of_aircraft=1,
+            use_multiple_sensors=True,
+        )
+
+        unique_sensor_ids = {obs.metadata["sensor_id"] for flight in result for obs in flight}
+        assert len(unique_sensor_ids) > 1, (
+            f"Expected multiple distinct sensor IDs in multiple mode, got {len(unique_sensor_ids)}: {unique_sensor_ids}"
+        )
+
 
 class TestOpenSkyClientAltitudeConversion:
     """Tests for OpenSky client altitude conversion."""
