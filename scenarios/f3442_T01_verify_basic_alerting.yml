@@ -1,0 +1,33 @@
+name: verify_basic_alerting
+description: >
+  This scenario verifies that basic alerting functionality is working as expected. It checks that alerts are triggered correctly based on predefined conditions and that notifications are sent to the AMQP channel.
+steps:
+- id: generate_bayesian_simulation_air_traffic_data
+  step: Generate Bayesian Simulation Air Traffic Data
+- step: Fetch Session IDs
+- step: Submit Simulated Air Traffic
+  arguments:
+    observations: ${{ steps.generate_bayesian_simulation_air_traffic_data.result }}
+    session_ids: ${{ steps.Fetch Session IDs.result }}
+
+- step: Cleanup Flight Declarations
+- step: Setup Flight Declaration
+  description: Creates a fresh flight declaration in the DSS.
+- step: Update Operation State
+  arguments:
+    state: ACTIVATED
+  description: Activates the flight operation, transitioning it to the active state.
+- step: Submit Telemetry
+  arguments:
+    duration: 30
+  description: Simulates the broadcast of telemetry data for 30 seconds.
+- id: update_state_ended
+  step: Update Operation State
+  arguments:
+    state: ENDED
+  description: Marks the operation as ended after the flight is complete.
+- step: Verify Alerting
+  description: >
+    Verifies that the alerting mechanism is functioning correctly by checking for the expected alerts in the AMQP channel based on the submitted telemetry and operation state.
+- step: Teardown Flight Declaration
+  description: Cleans up the flight declaration and any associated resources.
