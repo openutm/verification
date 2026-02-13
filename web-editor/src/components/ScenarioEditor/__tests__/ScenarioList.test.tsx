@@ -22,6 +22,7 @@ function mockFetchResponses(scenarios: string[], suites: Record<string, string[]
         const urlStr = typeof url === 'string' ? url : url.toString();
         if (urlStr === '/api/scenarios') {
             return Promise.resolve({
+                ok: true,
                 json: () => Promise.resolve(scenarios),
             } as Response);
         }
@@ -30,11 +31,13 @@ function mockFetchResponses(scenarios: string[], suites: Record<string, string[]
                 return Promise.reject(new Error('Network error'));
             }
             return Promise.resolve({
+                ok: true,
                 json: () => Promise.resolve(suites),
             } as Response);
         }
         // For individual scenario loads
         return Promise.resolve({
+            ok: true,
             json: () => Promise.resolve({ name: 'test', steps: [] }),
         } as Response);
     });

@@ -22,10 +22,31 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
     const [collapsedSuites, setCollapsedSuites] = useState<Set<string>>(new Set());
 
     useEffect(() => {
+        const fetchScenarios = async (): Promise<string[]> => {
+            const res = await fetch('/api/scenarios');
+            if (!res.ok) return [];
+            const data: unknown = await res.json();
+            return Array.isArray(data) && data.every(item => typeof item === 'string') ? data : [];
+        };
+
+        const fetchSuites = async (): Promise<SuiteMap> => {
+            const res = await fetch('/api/suites');
+            if (!res.ok) return {};
+            const data: unknown = await res.json();
+            if (typeof data !== 'object' || data === null || Array.isArray(data)) return {};
+            const result: SuiteMap = {};
+            for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+                if (Array.isArray(value) && value.every(item => typeof item === 'string')) {
+                    result[key] = value;
+                }
+            }
+            return result;
+        };
+
         Promise.all([
-            fetch('/api/scenarios').then(res => res.json()),
-            fetch('/api/suites').then(res => res.json()).catch(() => ({})),
-        ]).then(([scenarioList, suiteMap]: [string[], SuiteMap]) => {
+            fetchScenarios(),
+            fetchSuites().catch(() => ({} as SuiteMap)),
+        ]).then(([scenarioList, suiteMap]) => {
             setScenarios(scenarioList.sort());
             setSuites(suiteMap);
         }).catch(err => console.error('Failed to load scenarios:', err));

@@ -42,10 +42,8 @@ describe('CustomNode', () => {
     });
 
     it('renders success status icon', () => {
-        const { container } = render(<CustomNode {...defaultProps} />, { wrapper });
-        // CheckCircle renders as an SVG with class containing 'circle-check-big'
-        const svg = container.querySelector('.lucide-circle-check-big');
-        expect(svg).toBeInTheDocument();
+        render(<CustomNode {...defaultProps} />, { wrapper });
+        expect(screen.getByTestId('status-success')).toBeInTheDocument();
     });
 
     it('renders failure status icon', () => {
@@ -53,10 +51,8 @@ describe('CustomNode', () => {
             ...defaultProps,
             data: { ...mockData, status: 'failure' as const }
         };
-        const { container } = render(<CustomNode {...failureProps} />, { wrapper });
-        // XCircle renders as an SVG with class containing 'circle-x'
-        const svg = container.querySelector('.lucide-circle-x');
-        expect(svg).toBeInTheDocument();
+        render(<CustomNode {...failureProps} />, { wrapper });
+        expect(screen.getByTestId('status-failure')).toBeInTheDocument();
     });
 
     it('applies selected style', () => {
