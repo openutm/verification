@@ -113,7 +113,7 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
             <div className={styles.groupContent}>
                 <div style={{ padding: '8px', color: '#666', fontSize: '12px', marginBottom: '8px' }}>
                     <MessageCircleQuestionMark size={16} style={{ marginRight: '8px', color: '#666' }} />
-                    Pre-built scenarios grouped by test suite
+                    {hasSuites ? 'Pre-built scenarios grouped by test suite' : 'Pre-built scenarios'}
                 </div>
 
                 {hasSuites ? (
