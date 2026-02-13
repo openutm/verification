@@ -94,8 +94,9 @@ class GeoJSONAirtrafficSimulator:
             use_multiple_sensors: If True, randomly assign sensor IDs from the list.
 
         Returns:
-            List of flight observation dictionaries containing position, altitude,
-            and metadata for each generated data point.
+            A list of flights, where each flight is a list of ``FlightObservationSchema``
+            instances containing position, altitude, and metadata for each generated
+            data point.
         """
         logger.info(f"Generating air traffic data for {duration} seconds with {'multiple' if use_multiple_sensors else 'single'} sensor(s)")
         all_trajectories = []
