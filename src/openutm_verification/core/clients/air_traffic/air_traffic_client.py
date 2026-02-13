@@ -6,6 +6,7 @@ from uuid import UUID
 from loguru import logger
 
 from openutm_verification.core.clients.air_traffic.base_client import (
+    SENSOR_MODE_MULTIPLE,
     AirTrafficSettings,
     BaseAirTrafficAPIClient,
 )
@@ -76,6 +77,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         duration = duration or self.settings.simulation_duration
         number_of_aircraft = self.settings.number_of_aircraft
         sensor_ids = self.settings.sensor_ids
+        use_multiple_sensors = self.settings.single_or_multiple_sensors == SENSOR_MODE_MULTIPLE
 
         try:
             # create a list of UUIDs with at least one UUID if session_ids is empty
@@ -96,6 +98,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
                 duration=duration,
                 number_of_aircraft=number_of_aircraft,
                 sensor_ids=sensor_ids,
+                use_multiple_sensors=use_multiple_sensors,
             )
 
         except Exception as exc:  # noqa: BLE001

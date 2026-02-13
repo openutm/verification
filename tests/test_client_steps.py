@@ -4,6 +4,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, mock_open, patch
 import pytest
 
 from openutm_verification.core.clients.air_traffic.air_traffic_client import AirTrafficClient
+from openutm_verification.core.clients.air_traffic.base_client import SENSOR_MODE_MULTIPLE, SENSOR_MODE_SINGLE
 from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
@@ -525,6 +526,52 @@ async def test_generate_simulated_air_traffic_data(at_client):
 
         assert result.result == [[{"obs": 1}]]
         mock_sim_instance.generate_air_traffic_data.assert_called_once()
+
+
+async def test_generate_simulated_air_traffic_data_single_sensor():
+    """Verify use_multiple_sensors=False is passed when sensor mode is single."""
+    settings = MagicMock()
+    settings.simulation_config_path = "test_config.json"
+    settings.simulation_duration = 60
+    settings.number_of_aircraft = 1
+    settings.sensor_ids = []
+    settings.single_or_multiple_sensors = SENSOR_MODE_SINGLE
+    client = AirTrafficClient(settings)
+
+    with (
+        patch("builtins.open", mock_open(read_data='{"type": "FeatureCollection"}')),
+        patch("openutm_verification.core.clients.air_traffic.air_traffic_client.GeoJSONAirtrafficSimulator") as MockSim,
+    ):
+        mock_sim_instance = MockSim.return_value
+        mock_sim_instance.generate_air_traffic_data.return_value = [[{"obs": 1}]]
+
+        await client.generate_simulated_air_traffic_data()
+
+        call_kwargs = mock_sim_instance.generate_air_traffic_data.call_args
+        assert call_kwargs[1]["use_multiple_sensors"] is False
+
+
+async def test_generate_simulated_air_traffic_data_multiple_sensors():
+    """Verify use_multiple_sensors=True is passed when sensor mode is multiple."""
+    settings = MagicMock()
+    settings.simulation_config_path = "test_config.json"
+    settings.simulation_duration = 60
+    settings.number_of_aircraft = 1
+    settings.sensor_ids = ["a0b7d47e5eac45dc8cbaf47e6fe0e558", "b1c8e58f6fbd56ed9dcb058f70f1f669"]
+    settings.single_or_multiple_sensors = SENSOR_MODE_MULTIPLE
+    client = AirTrafficClient(settings)
+
+    with (
+        patch("builtins.open", mock_open(read_data='{"type": "FeatureCollection"}')),
+        patch("openutm_verification.core.clients.air_traffic.air_traffic_client.GeoJSONAirtrafficSimulator") as MockSim,
+    ):
+        mock_sim_instance = MockSim.return_value
+        mock_sim_instance.generate_air_traffic_data.return_value = [[{"obs": 1}]]
+
+        await client.generate_simulated_air_traffic_data()
+
+        call_kwargs = mock_sim_instance.generate_air_traffic_data.call_args
+        assert call_kwargs[1]["use_multiple_sensors"] is True
 
 
 # OpenSkyClient Tests

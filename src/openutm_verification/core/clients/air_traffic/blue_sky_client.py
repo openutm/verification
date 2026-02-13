@@ -13,6 +13,7 @@ from bluesky.simulation.screenio import ScreenIO
 from loguru import logger
 
 from openutm_verification.core.clients.air_traffic.base_client import (
+    SENSOR_MODE_MULTIPLE,
     BaseBlueSkyAirTrafficClient,
     BlueSkyAirTrafficSettings,
 )
@@ -56,6 +57,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         duration_s = int(duration or self.settings.simulation_duration_seconds or 30)
 
         sensor_ids = self.settings.sensor_ids
+        use_multiple_sensors = self.settings.single_or_multiple_sensors == SENSOR_MODE_MULTIPLE
 
         try:
             # create a list of UUIDs with at least one UUID if session_ids is empty
@@ -63,7 +65,6 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         except ValueError as exc:
             logger.error(f"Invalid sensor ID in configuration, it should be a valid UUID: {exc}")
             raise
-        current_sensor_id = sensor_ids[0]
 
         if not scn_path:
             raise ValueError("No scenario path provided. Provide config_path or set settings.simulation_config_path.")
@@ -115,7 +116,10 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
                     # We store altitude_mm as "millimeters"; keep it consistent with your schema.
                     # If alt is actually feet, you can convert here: alt_m = alt_ft * 0.3048
                     altitude_mm = alt_m_or_ft * 1000.0
-                    metadata = {"sensor_id": current_sensor_id} if current_sensor_id else {}
+
+                    # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
+                    selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
+                    metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
 
                     obs = FlightObservationSchema(
                         lat_dd=lat,
@@ -142,11 +146,11 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
     ) -> list[list[FlightObservationSchema]]:
         """This method generates"""
 
-
         scn_path = config_path or self.settings.simulation_config_path
         duration_s = int(duration or self.settings.simulation_duration_seconds or 30)
 
         sensor_ids = self.settings.sensor_ids
+        use_multiple_sensors = self.settings.single_or_multiple_sensors == SENSOR_MODE_MULTIPLE
 
         try:
             # create a list of UUIDs with at least one UUID if session_ids is empty
@@ -154,7 +158,6 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         except ValueError as exc:
             logger.error(f"Invalid sensor ID in configuration, it should be a valid UUID: {exc}")
             raise
-        current_sensor_id = sensor_ids[0]
 
         if not scn_path:
             raise ValueError("No scenario path provided. Provide config_path or set settings.simulation_config_path.")
@@ -207,7 +210,10 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
                     # We store altitude_mm as "millimeters"; keep it consistent with your schema.
                     # If alt is actually feet, you can convert here: alt_m = alt_ft * 0.3048
                     altitude_mm = alt_m_or_ft * 1000.0
-                    metadata = {"sensor_id": current_sensor_id} if current_sensor_id else {}
+
+                    # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
+                    selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
+                    metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
 
                     obs = FlightObservationSchema(
                         lat_dd=lat,
@@ -225,7 +231,6 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
 
             # Convert dict -> list[list[FlightObservationSchema]] with stable ordering
             flight_observations = [results_by_acid[acid] for acid in sorted(results_by_acid.keys())]
-
 
         # This method modifies the retrieved simulation data by changing the timestamp and adding latency to the observed dataset
         LATENCY_PROBABILITY = 0.1  # 10% chance to have latency issues

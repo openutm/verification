@@ -80,6 +80,7 @@ class GeoJSONAirtrafficSimulator:
         duration: int,
         sensor_ids: list[UUID],
         number_of_aircraft: int = 1,
+        use_multiple_sensors: bool = False,
     ) -> list[list[FlightObservationSchema]]:
         """Generate simulated air traffic observations for the specified duration.
 
@@ -88,14 +89,16 @@ class GeoJSONAirtrafficSimulator:
 
         Args:
             duration: Number of seconds to generate data for.
-            session_id: Unique identifier for the simulation session.
+            sensor_ids: List of sensor IDs to use for observations.
+            number_of_aircraft: Number of aircraft to simulate.
+            use_multiple_sensors: If True, randomly assign sensor IDs from the list.
 
         Returns:
-            List of flight observation dictionaries containing position, altitude,
-            and metadata for each generated data point.
+            A list of flights, where each flight is a list of ``FlightObservationSchema``
+            instances containing position, altitude, and metadata for each generated
+            data point.
         """
-        sensor_id = str(sensor_ids[0])
-        logger.info(f"Generating air traffic data for {duration} seconds with sensor ID {sensor_id}")
+        logger.info(f"Generating air traffic data for {duration} seconds with {'multiple' if use_multiple_sensors else 'single'} sensor(s)")
         all_trajectories = []
         # Generate a random trajectory
         # Improve to generate a trajectory where the speed of the aircraft can be controlled
@@ -109,24 +112,28 @@ class GeoJSONAirtrafficSimulator:
             coordinates = trajectory_geojson["coordinates"]
             airtraffic: list[FlightObservationSchema] = []
             icao_address = "".join(random.choices("0123456789ABCDEF", k=6))
-            for i in range(duration):
+            # Each coordinate corresponds to one second of flight time
+            for i, point in enumerate(coordinates):
+                if i >= duration:
+                    break
                 timestamp = self.reference_time.shift(seconds=i)
-                for point in coordinates:
-                    metadata = {"sensor_id": sensor_id} if sensor_id else {}
-                    # Convert altitude from meters to millimeters for altitude_mm field
-                    altitude_m = self.config.altitude_of_ground_level_wgs_84
-                    airtraffic.append(
-                        FlightObservationSchema(
-                            lat_dd=point[1],
-                            lon_dd=point[0],
-                            altitude_mm=altitude_m * 1000,  # Convert m -> mm
-                            traffic_source=1,
-                            source_type=2,
-                            icao_address=icao_address,
-                            timestamp=timestamp.int_timestamp,
-                            metadata=metadata,
-                        )
+                # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
+                selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
+                metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
+                # Convert altitude from meters to millimeters for altitude_mm field
+                altitude_m = self.config.altitude_of_ground_level_wgs_84
+                airtraffic.append(
+                    FlightObservationSchema(
+                        lat_dd=point[1],
+                        lon_dd=point[0],
+                        altitude_mm=altitude_m * 1000,  # Convert m -> mm
+                        traffic_source=1,
+                        source_type=2,
+                        icao_address=icao_address,
+                        timestamp=timestamp.int_timestamp,
+                        metadata=metadata,
                     )
+                )
             all_air_traffic.append(airtraffic)
         logger.info(f"Generated observations for {len(all_air_traffic)} aircraft")
         return all_air_traffic
