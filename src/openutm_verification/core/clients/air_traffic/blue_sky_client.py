@@ -213,7 +213,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
 
                     # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
                     selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
-                    metadata = {"sensor_id": selected_sensor_id} if selected_sensor_id else {}
+                    metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
 
                     obs = FlightObservationSchema(
                         lat_dd=lat,
