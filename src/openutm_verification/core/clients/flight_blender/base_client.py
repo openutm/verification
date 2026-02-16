@@ -29,7 +29,7 @@ class BaseBlenderAPIClient:
         self,
         method: str,
         endpoint: str,
-        json: dict | None = None,
+        json: dict | list | None = None,
         silent_status: list[int] | None = None,
     ) -> httpx.Response:
         url = f"{self.base_url}{endpoint}"
@@ -48,7 +48,7 @@ class BaseBlenderAPIClient:
     async def get(self, endpoint: str, silent_status: list[int] | None = None) -> httpx.Response:
         return await self._request("GET", endpoint, silent_status=silent_status)
 
-    async def post(self, endpoint: str, json: dict, silent_status: list[int] | None = None) -> httpx.Response:
+    async def post(self, endpoint: str, json: list | dict, silent_status: list[int] | None = None) -> httpx.Response:
         return await self._request("POST", endpoint, json=json, silent_status=silent_status)
 
     async def put(self, endpoint: str, json: dict, silent_status: list[int] | None = None) -> httpx.Response:
