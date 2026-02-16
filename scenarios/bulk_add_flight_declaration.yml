@@ -1,0 +1,23 @@
+name: bulk_add_flight_declaration
+description: Runs the bulk add flight declaration scenario.
+steps:
+- step: Setup Flight Declarations
+- step: Update Operation State of first declaration
+  arguments:
+    state: ACTIVATED
+    duration: 10
+- step: Update Operation State of second declaration
+  arguments:
+    state: ACTIVATED
+    duration: 10
+- id: update_state_ended_fist_declaration
+  step: Update Operation State
+  arguments:
+    state: ENDED
+
+- id: update_state_ended_second_declaration
+  step: Update Operation State
+  arguments:
+    state: ENDED
+- step: Teardown First Flight Declaration
+- step: Teardown Second Flight Declaration
