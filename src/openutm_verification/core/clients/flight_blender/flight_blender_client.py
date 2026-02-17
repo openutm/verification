@@ -365,6 +365,30 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         return response_json
 
+    @scenario_step("Upload two Flight Declarations Via Operational Intent")
+    async def upload_multiple_flight_declarations_via_operational_intents(self, declarations: list[BaseModel]) -> dict[str, Any]:
+        endpoint = "/flight_declaration_ops/set_operational_intents_bulk"
+
+        all_declarations = []
+        for declaration in declarations:
+            all_declarations.append(declaration.model_dump(mode="json"))
+        logger.debug(f"Uploading multiple flight operational intents: {len(all_declarations)} operational intents")
+        logger.info(f"Uploading multiple flight declarations to {endpoint}")
+        response = await self.post(endpoint, json=all_declarations)
+        logger.info(f"Bulk Flight declaration upload response: {response.status_code}")
+
+        response_json = response.json()
+        logger.info(f"Bulk upload response: {json.dumps(response_json, indent=2)}")
+        if response_json["submitted"] != len(all_declarations):
+            logger.error(f"Submitted count {response_json['submitted']} does not match expected count {len(all_declarations)}")
+            raise FlightBlenderError(f"Submitted count {response_json['submitted']} does not match expected count {len(all_declarations)}")
+        try:
+            all_flight_declaration_ids = [declaration_response.get("id") for declaration_response in response_json["results"]]
+            self.all_flight_declaration_ids.extend(all_flight_declaration_ids)
+        except AttributeError:
+            logger.warning("Failed to extract flight declaration IDs from response")
+        return response_json
+
     @scenario_step("Wait for User Input")
     async def wait_for_user_input(self, prompt: str = "Press Enter to continue...") -> str:
         """Wait for user input to proceed.
@@ -1323,6 +1347,71 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         )
         # Return flight declaration info for use in subsequent steps
 
+        return asdict(all_declaration_details)
+
+    @scenario_step("Setup Two Operational Intents")
+    async def setup_two_flight_declarations_via_operational_intents(
+        self,
+        flight_declaration_via_operational_intent_path: str | None = None,
+        trajectory_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Generates data and uploads flight declaration via Operational Intent.
+
+        Returns:
+            Dictionary with flight declaration info including 'id'.
+        """
+        from openutm_verification.scenarios.common import (
+            generate_flight_declaration_via_operational_intent,
+        )
+
+        # Use instance attributes if arguments are not provided
+        flight_declaration_via_operational_intent_path = (
+            flight_declaration_via_operational_intent_path or self.flight_declaration_via_operational_intent
+        )
+        trajectory_path = trajectory_path or self.trajectory_path
+
+        if not flight_declaration_via_operational_intent_path:
+            raise ValueError("flight_declaration_via_operational_intent_path not provided and not found in config")
+
+        if not trajectory_path:
+            raise ValueError("trajectory_path not provided and not found in config")
+
+        # Synchronize start times
+        now = arrow.now()
+        start_time = now.shift(seconds=2)
+        end_time = now.shift(minutes=60)
+
+        second_start_time = now.shift(seconds=20)
+        second_end_time = now.shift(minutes=10)
+
+        first_flight_declaration = generate_flight_declaration_via_operational_intent(flight_declaration_via_operational_intent_path)
+        second_flight_declaration = generate_flight_declaration_via_operational_intent(flight_declaration_via_operational_intent_path)
+        # Update flight declaration times to match synchronized start time
+        first_flight_declaration.start_datetime = start_time.isoformat()
+        first_flight_declaration.end_datetime = end_time.isoformat()
+        second_flight_declaration.start_datetime = second_start_time.isoformat()
+        second_flight_declaration.end_datetime = second_end_time.isoformat()
+
+        upload_step_result = await self.upload_multiple_flight_declarations_via_operational_intents(
+            declarations=[first_flight_declaration, second_flight_declaration]
+        )
+        if upload_step_result.status == Status.FAIL:
+            raise FlightBlenderError("Failed to upload one or more flight declarations during setup_two_flight_declarations")
+
+        all_declaration_details = BulkFlightDeclarationCreationResult(
+            declarations=[
+                FlightDeclarationCreationResult(
+                    id=self.all_flight_declaration_ids[0],
+                    start_datetime=first_flight_declaration.start_datetime,
+                    end_datetime=first_flight_declaration.end_datetime,
+                ),
+                FlightDeclarationCreationResult(
+                    id=self.all_flight_declaration_ids[1],
+                    start_datetime=second_flight_declaration.start_datetime,
+                    end_datetime=second_flight_declaration.end_datetime,
+                ),
+            ]
+        )
         return asdict(all_declaration_details)
 
     @asynccontextmanager

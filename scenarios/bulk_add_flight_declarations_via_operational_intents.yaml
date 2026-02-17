@@ -1,0 +1,12 @@
+name: bulk_add_flight_declarations_via_operational_intents
+description: Runs the bulk add flight declaration scenario by adding operational intents.
+steps:
+- step: Setup Two Operational Intents
+- id: teardown_first_declaration
+  step: Teardown Flight Declaration
+  arguments:
+    flight_declaration_id: ${{ steps.Setup Two Operational Intents.result.declarations[0].id }}
+- id: teardown_second_declaration
+  step: Teardown Flight Declaration
+  arguments:
+    flight_declaration_id: ${{ steps.Setup Two Operational Intents.result.declarations[1].id }}
