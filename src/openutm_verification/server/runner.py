@@ -246,7 +246,29 @@ class SessionManager:
         for part in remaining_parts:
             if not part:
                 continue
-            if isinstance(current_value, dict):
+
+            # Handle array indexing, e.g. "result[0]" or "declarations[1]"
+            index_match = re.match(r"^(\w+)\[(\d+)\]$", part)
+            if index_match:
+                attr_name = index_match.group(1)
+                index = int(index_match.group(2))
+                # First resolve the attribute
+                if isinstance(current_value, dict):
+                    current_value = current_value.get(attr_name)
+                elif hasattr(current_value, attr_name):
+                    current_value = getattr(current_value, attr_name)
+                else:
+                    raise ValueError(
+                        f"Could not resolve '{attr_name}' in '{ref}'."
+                        f"Available keys: {list(current_value.keys()) if isinstance(current_value, dict) else dir(current_value)}"
+                    )
+                # Then index into it
+                if not isinstance(current_value, (list, tuple)):
+                    raise ValueError(f"Cannot index into '{attr_name}' in '{ref}': expected a list, got {type(current_value).__name__}")
+                if index >= len(current_value):
+                    raise ValueError(f"Index {index} out of range for '{attr_name}' in '{ref}' (length {len(current_value)})")
+                current_value = current_value[index]
+            elif isinstance(current_value, dict):
                 current_value = current_value.get(part)
             elif hasattr(current_value, part):
                 current_value = getattr(current_value, part)

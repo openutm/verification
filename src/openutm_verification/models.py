@@ -94,3 +94,15 @@ class HeartbeatMessage:
 class SDSPHeartbeatMessage:
     message: HeartbeatMessage
     timestamp: str
+
+
+@dataclass
+class FlightDeclarationCreationResult:
+    id: str
+    start_datetime: str
+    end_datetime: str
+
+
+@dataclass
+class BulkFlightDeclarationCreationResult:
+    declarations: list[FlightDeclarationCreationResult]
