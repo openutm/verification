@@ -80,7 +80,7 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                     )}
                 </div>
                 {data.status && (
-                    <div className={styles.statusIndicator}>
+                    <div className={styles.statusIndicator} data-testid={`status-${data.status}`}>
                         {data.status === 'success' && (
                             <CheckCircle size={16} color="var(--success)" />
                         )}
