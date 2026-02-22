@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel
+
+# Constants for sensor mode configuration
+SENSOR_MODE_SINGLE = "single"
+SENSOR_MODE_MULTIPLE = "multiple"
 
 if TYPE_CHECKING:
     from openutm_verification.core.execution.config_models import (
@@ -26,7 +30,7 @@ class AirTrafficSettings(BaseModel):
     simulation_config_path: str = ""
     simulation_duration: int = 30
     number_of_aircraft: int = 2
-    single_or_multiple_sensors: str = "single"
+    single_or_multiple_sensors: Literal["single", "multiple"] = SENSOR_MODE_SINGLE
     sensor_ids: list[str] = []
     session_ids: list[str] = []
 
@@ -35,7 +39,7 @@ class AirTrafficSettings(BaseModel):
         """Create settings from config."""
         return cls(
             simulation_config_path=trajectory_path or "",
-            simulation_duration=sim_config.simulation_duration,
+            simulation_duration=int(sim_config.simulation_duration),
             number_of_aircraft=sim_config.number_of_aircraft,
             single_or_multiple_sensors=sim_config.single_or_multiple_sensors,
             sensor_ids=sim_config.sensor_ids,
@@ -49,7 +53,7 @@ class BlueSkyAirTrafficSettings(BaseModel):
     simulation_config_path: str = ""
     simulation_duration_seconds: int = 30
     number_of_aircraft: int = 2
-    single_or_multiple_sensors: str = "single"
+    single_or_multiple_sensors: Literal["single", "multiple"] = SENSOR_MODE_SINGLE
     sensor_ids: list[str] = []
     session_ids: list[str] = []
 
@@ -73,7 +77,7 @@ class BayesianAirTrafficSettings(BaseModel):
     simulation_duration_seconds: int = 30
     number_of_aircraft: int = 2
 
-    single_or_multiple_sensors: str = "single"
+    single_or_multiple_sensors: Literal["single", "multiple"] = SENSOR_MODE_SINGLE
     sensor_ids: list[str] = []
     session_ids: list[str] = []
 

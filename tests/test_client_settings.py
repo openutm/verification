@@ -5,6 +5,8 @@ the dependency injection system and Settings.from_config() methods.
 """
 
 from openutm_verification.core.clients.air_traffic.base_client import (
+    SENSOR_MODE_MULTIPLE,
+    SENSOR_MODE_SINGLE,
     AirTrafficSettings,
     BlueSkyAirTrafficSettings,
 )
@@ -132,7 +134,7 @@ class TestAirTrafficSettingsFromConfig:
         assert settings.simulation_config_path == "/path/to/trajectory.json"
         assert settings.simulation_duration == 60
         assert settings.number_of_aircraft == 5
-        assert settings.single_or_multiple_sensors == "multiple"
+        assert settings.single_or_multiple_sensors == SENSOR_MODE_MULTIPLE
         assert settings.sensor_ids == ["sensor1", "sensor2"]
         assert settings.session_ids == ["session1"]
 
@@ -182,7 +184,7 @@ class TestBlueSkyAirTrafficSettingsFromConfig:
         assert settings.simulation_config_path == "/path/to/simulation.scn"
         assert settings.simulation_duration_seconds == 120
         assert settings.number_of_aircraft == 10
-        assert settings.single_or_multiple_sensors == "single"
+        assert settings.single_or_multiple_sensors == SENSOR_MODE_SINGLE
         assert settings.sensor_ids == ["bluesky_sensor"]
         assert settings.session_ids == ["bluesky_session"]
 
@@ -207,7 +209,7 @@ class TestBlueSkyAirTrafficSettingsFromConfig:
 
         settings = BlueSkyAirTrafficSettings.from_config(sim_config)
 
-        assert settings.single_or_multiple_sensors == "single"
+        assert settings.single_or_multiple_sensors == SENSOR_MODE_SINGLE
         assert settings.sensor_ids == []
         assert settings.session_ids == []
 

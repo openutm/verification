@@ -10,6 +10,7 @@ from loguru import logger
 from pyproj import Transformer
 
 from openutm_verification.core.clients.air_traffic.base_client import (
+    SENSOR_MODE_MULTIPLE,
     BayesianAirTrafficClient,
     BayesianAirTrafficSettings,
 )
@@ -61,6 +62,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         duration_in_seconds = int(duration or self.settings.simulation_duration_seconds or 30)
         number_of_aircraft = self.settings.number_of_aircraft or 3
         sensor_ids = self.settings.sensor_ids
+        use_multiple_sensors = self.settings.single_or_multiple_sensors == SENSOR_MODE_MULTIPLE
 
         try:
             # create a list of UUIDs with at least one UUID if session_ids is empty
@@ -68,7 +70,6 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         except ValueError as exc:
             logger.error(f"Invalid sensor ID in configuration, it should be a valid UUID: {exc}")
             raise
-        # current_sensor_id = sensor_ids[0]
 
         # List the models bundled with the library
         available_models = get_available_model_files()
@@ -76,7 +77,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
 
         if not available_models:
             logger.info("No models found.")
-            return
+            return []
 
         # Use one of the models
         model_filename = "Light_Aircraft_Below_10000_ft_Data.mat"
@@ -87,7 +88,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
 
         if session is None:
             logger.info("Failed to create a session.")
-            return
+            return []
 
         # Generate a few tracks
         logger.info("Generating tracks...")
@@ -109,6 +110,8 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
                 track=track,
                 icao_address=icao_address,
                 base_timestamp=base_timestamp,
+                sensor_ids=sensor_ids,
+                use_multiple_sensors=use_multiple_sensors,
             )
             all_observations.append(observations)
             logger.info(f"Track {track_idx} ({icao_address}): {len(observations)} observations")
@@ -124,6 +127,8 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         track: TrackResultData,
         icao_address: str,
         base_timestamp: int,
+        sensor_ids: list[UUID],
+        use_multiple_sensors: bool,
     ) -> list[FlightObservationSchema]:
         """Convert a raw track dict from cam-track-gen to FlightObservationSchema list.
 
@@ -153,7 +158,11 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
             altitude_mm = float(alt_ft_val) * FEET_TO_MM
             timestamp = base_timestamp + int(round(float(t)))
 
+            # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
+            selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
+
             metadata = {
+                "sensor_id": str(selected_sensor_id),
                 "speed_feet_per_second": float(speed_ft_s_val),
                 "bank_angle_radians": float(bank_val),
                 "pitch_angle_radians": float(pitch_val),
