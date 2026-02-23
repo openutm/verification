@@ -42,6 +42,29 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         # but we inherit from it. Ideally, we should refactor to composition over inheritance.
         BaseBlenderAPIClient.__init__(self, base_url="", credentials={})
 
+    @scenario_step("Fetch Session IDs for Bayesian Simulation")
+    async def get_configured_bayesian_session_ids(
+        self,
+    ) -> list[UUID]:
+        """Generate a new session ID for simulated air traffic data submission.
+
+        Args:
+            config_path: Path to the GeoJSON configuration file. Defaults to settings value.
+        Returns:
+            A new session ID as a string.
+        """
+
+        session_ids = self.settings.session_ids
+        logger.debug(f"Using session IDs: {session_ids} from settings for Bayesian simulation.")
+        try:
+            # create a list of UUIDs with at least one UUID if session_ids is empty
+            session_ids = [UUID(x) for x in session_ids] if session_ids else [uuid.uuid4()]
+
+        except ValueError as exc:
+            logger.error(f"Invalid session ID in configuration, it should be a valid UUID: {exc}")
+            raise
+        return session_ids
+
     @scenario_step("Generate Bayesian Simulation Air Traffic Data")
     async def generate_bayesian_sim_air_traffic_data(
         self,

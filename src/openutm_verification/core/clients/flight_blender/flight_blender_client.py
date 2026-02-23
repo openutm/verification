@@ -977,6 +977,49 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             error_message=None if submission_errors == 0 else f"{submission_errors} submission errors occurred",
         )
 
+    @scenario_step("Verify Reported Metrics in Flight Blender")
+    async def verify_reported_metrics_in_flight_blender(
+        self, observations: list[list[FlightObservationSchema]], session_id: uuid.UUID = uuid.uuid4()
+    ):
+        """
+        This method takes the flight observations queries metrics and reporting outputs of the SDSP.
+        In a Bayesian simulation all every flight generated has a list of Flight Observation.
+        """
+        # Determine simulation time range
+        start_times = []
+        end_times = []
+        for aircraft_obs in observations:
+            if not aircraft_obs:
+                continue
+            start_times.append(arrow.get(aircraft_obs[0].timestamp))
+            end_times.append(arrow.get(aircraft_obs[-1].timestamp))
+
+        if not start_times:
+            logger.warning("No valid start/end times found in observations.")
+            return StepResult(
+                name="Verify Reported Metrics in Flight Blender",
+                status=Status.FAIL,
+                duration=0,
+                error_message="No valid start/end times found in observations",
+            )
+
+        simulation_start = min(start_times)
+        simulation_end = max(end_times)
+        simulation_duration_seconds = (simulation_end - simulation_start).total_seconds()
+        metrics_endpoint = (
+            f"/surveillance_monitoring_ops/service_metrics/?session_id={session_id}&start_time={simulation_start}&end_time={simulation_end}"
+        )
+        logger.info(f"Querying metrics from Flight Blender for session: {metrics_endpoint}")
+        metrics_response = await self.get(metrics_endpoint)
+        logger.info(metrics_response.json())
+        submission_errors = 1
+        return StepResult(
+            name="Verify Reported Metrics in Flight Blender",
+            status=Status.PASS if submission_errors == 0 else Status.FAIL,
+            duration=round(simulation_duration_seconds, 2),
+            error_message=None if submission_errors == 0 else f"{submission_errors} submission errors occurred",
+        )
+
     @scenario_step("Submit Air Traffic")
     async def submit_air_traffic(self, observations: list[FlightObservationSchema], session_id: uuid.UUID = uuid.uuid4()) -> dict[str, Any]:
         """Submit air traffic observations to the Flight Blender API.

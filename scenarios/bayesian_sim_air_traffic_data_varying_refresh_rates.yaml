@@ -1,4 +1,4 @@
-name: bayesian_sim_air_traffic_data
+name: bayesian_sim_air_traffic_data_varying_refresh_rates
 description: Bayesian simulation air traffic data test with varying refresh rates
 steps:
 - id: generate_bayesian_simulation_air_traffic_data

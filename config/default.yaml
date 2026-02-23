@@ -28,7 +28,7 @@ opensky:
 air_traffic_simulator_settings:
   number_of_aircraft: 3
   simulation_duration: 10
-  single_or_multiple_sensors: "multiple" # this setting specifiies if the traffic data is submitted from a single sensor or multiple sensors
+  single_or_multiple_sensors: "single" # this setting specifies if the traffic data is submitted from a single sensor or multiple sensors
   sensor_ids: ["a0b7d47e5eac45dc8cbaf47e6fe0e558"] # List of sensor IDs to use when 'multiple' is selected
   session_ids: ["ee9405e564ea4373823e37d950858e6a"] # List of session IDs to use when 'multiple' is selected, a session id is needed in Flight Blender to depict a period of time these observations were made (this assumes the observations may not be continuous); if empty, random UUIDs will be generated
 
@@ -36,7 +36,7 @@ air_traffic_simulator_settings:
 blue_sky_air_traffic_simulator_settings:
   number_of_aircraft: 3
   simulation_duration_seconds: 30
-  single_or_multiple_sensors: "multiple" # this setting specifiies if the traffic data is submitted from a single sensor or multiple sensors
+  single_or_multiple_sensors: "single" # this setting specifies if the traffic data is submitted from a single sensor or multiple sensors
   sensor_ids: ["562e6297036a4adebb4848afcd1ede90"] # List of sensor IDs to use when 'multiple' is selected
   session_ids: ["ee9405e564ea4373823e37d950858e6a"] # List of session IDs to use when 'multiple' is selected, a session id is needed in Flight Blender to depict a period of time these observations were made (this assumes the observations may not be continuous); if empty, random UUIDs will be generated
 
@@ -44,7 +44,7 @@ blue_sky_air_traffic_simulator_settings:
 bayesian_air_traffic_simulator_settings:
   number_of_aircraft: 3
   simulation_duration_seconds: 30
-  single_or_multiple_sensors: "multiple" # this setting specifies if the traffic data is submitted from a single sensor or multiple sensors
+  single_or_multiple_sensors: "single" # this setting specifies if the traffic data is submitted from a single sensor or multiple sensors
   sensor_ids: ["562e6297036a4adebb4848afcd1ede90"] # List of sensor IDs to use when 'multiple' is selected
   session_ids: ["ee9405e564ea4373823e37d950858e6a"] # List of session IDs to use when 'multiple' is selected, a session id is needed in Flight Blender to depict a period of time these observations were made (this assumes the observations may not be continuous); if empty, random UUIDs will be generated
 
@@ -68,25 +68,30 @@ data_files:
 suites:
   basic_conformance:
     scenarios:
-      - name: bluesky_sim_air_traffic_data
-        simulation: "config/bern/blue_sky_sim_example.scn"
       - name: F1_flow_no_telemetry_with_user_input
       - name: F1_happy_path
         trajectory: "config/bern/trajectory_f1.json"
       - name: F2_contingent_path
         trajectory: "config/bern/trajectory_f2.json"
-  astm_f3623_conformance:
+  astm_f3623:
     scenarios:
-    - name: openutm_sim_air_traffic_data
-    - name: sdsp_track
-    - name: sdsp_heartbeat
+      - name: sdsp_track
+      - name: sdsp_heartbeat
+      - name: bluesky_sim_air_traffic_data_latency_issues
+      - name: bayesian_sim_air_traffic_data_varying_refresh_rates
+      - name: verify_sdsp_metrics
+  air_traffic_simulations:
+    scenarios:
+      - name: openutm_sim_air_traffic_data
+      - name: stream_air_traffic_example
+      - name: opensky_live_data
+      - name: bayesian_sim_air_traffic_data
+      - name: bluesky_sim_air_traffic_data
+        simulation: "config/bern/blue_sky_sim_example.scn"
   extra:
     scenarios:
     - name: F3_non_conforming_path
       trajectory: "config/bern/trajectory_f3.json"
-#     - name: F5_non_conforming_path
-#       trajectory: "config/bern/trajectory_f5.json"
-    - name: opensky_live_data
     - name: add_flight_declaration
     - name: geo_fence_upload
 
