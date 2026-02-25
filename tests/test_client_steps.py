@@ -1,4 +1,7 @@
 import json
+
+# verify_reported_metrics_in_flight_blender Tests
+import time as _time
 from unittest.mock import ANY, AsyncMock, MagicMock, mock_open, patch
 
 import pytest
@@ -591,3 +594,152 @@ async def test_fetch_data(os_client):
     assert len(result.result) == 1
     assert result.result[0].icao_address == "icao1"
     os_client.get.assert_called_once()
+
+
+def _make_observations(num_aircraft: int = 2, duration_seconds: int = 30) -> list[list[FlightObservationSchema]]:
+    """Build a minimal observations list: num_aircraft aircraft, each with duration_seconds 1-Hz observations."""
+    base_ts = int(_time.time()) - duration_seconds
+    result = []
+    for i in range(num_aircraft):
+        aircraft_obs = [
+            FlightObservationSchema(
+                lat_dd=46.97 + i * 0.001,
+                lon_dd=7.47,
+                altitude_mm=100000.0,
+                traffic_source=0,
+                source_type=0,
+                icao_address=f"AABBCC{i:02d}",
+                timestamp=base_ts + t,
+                metadata={},
+            )
+            for t in range(duration_seconds)
+        ]
+        result.append(aircraft_obs)
+    return result
+
+
+def _valid_metrics_payload(observations: list[list[FlightObservationSchema]]) -> dict:
+    num_aircraft = sum(1 for a in observations if a)
+    total_obs = sum(len(a) for a in observations if a)
+    start_ts = min(a[0].timestamp for a in observations if a)
+    end_ts = max(a[-1].timestamp for a in observations if a)
+    duration = end_ts - start_ts
+    prob = total_obs / (num_aircraft * duration)
+    window_start = "2024-01-01T00:00:00Z"
+    window_end = "2024-01-01T00:00:30Z"
+    return {
+        "heartbeat_rate": {
+            "measured_rate_hz": prob,
+            "target_rate_hz": prob,
+            "session_id": "sess_123",
+            "window_start": window_start,
+            "window_end": window_end,
+            "total_heartbeats_in_window": total_obs,
+        },
+        "heartbeat_delivery_probability": {
+            "probability": 1.0,
+            "delivered_on_time": total_obs,
+            "total_expected": total_obs,
+            "session_id": "sess_123",
+            "window_start": window_start,
+            "window_end": window_end,
+        },
+        "track_update_probability": {
+            "probability": prob,
+            "ticks_with_active_tracks": total_obs,
+            "total_ticks": total_obs,
+            "session_id": "sess_123",
+            "window_start": window_start,
+            "window_end": window_end,
+        },
+        "per_sensor_health": [
+            {
+                "sensor_id": "sensor_1",
+                "sensor_identifier": "sensor_1",
+                "mttr_seconds": None,
+                "auto_recovery_time_seconds": None,
+                "mtbf_with_auto_recovery_seconds": None,
+                "mtbf_without_auto_recovery_seconds": None,
+                "failure_count": 0,
+                "auto_recovery_count": 0,
+                "manual_recovery_count": 0,
+                "window_start": window_start,
+                "window_end": window_end,
+            }
+        ],
+        "aggregate_health": {
+            "avg_mttr_seconds": None,
+            "avg_auto_recovery_time_seconds": None,
+            "avg_mtbf_with_auto_recovery_seconds": None,
+            "avg_mtbf_without_auto_recovery_seconds": None,
+            "total_sensors": 1,
+            "window_start": window_start,
+            "window_end": window_end,
+        },
+        "active_sessions": 1,
+        "window_start": window_start,
+        "window_end": window_end,
+    }
+
+
+async def test_verify_reported_metrics_success(fb_client):
+    observations = _make_observations()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = _valid_metrics_payload(observations)
+    fb_client.get.return_value = mock_response
+
+    result = await fb_client.verify_reported_metrics_in_flight_blender(observations)
+
+    assert result.status == Status.PASS
+    assert result.error_message is None
+
+
+async def test_verify_reported_metrics_http_error(fb_client):
+    observations = _make_observations()
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+    mock_response.json.return_value = {"error": "internal server error"}
+    fb_client.get.return_value = mock_response
+
+    result = await fb_client.verify_reported_metrics_in_flight_blender(observations)
+
+    assert result.status == Status.FAIL
+    assert "HTTP 500" in result.error_message
+
+
+async def test_verify_reported_metrics_missing_field(fb_client):
+    observations = _make_observations()
+    payload = _valid_metrics_payload(observations)
+    del payload["active_sessions"]
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = payload
+    fb_client.get.return_value = mock_response
+
+    result = await fb_client.verify_reported_metrics_in_flight_blender(observations)
+
+    assert result.status == Status.FAIL
+    assert "Invalid metrics" in result.error_message
+
+
+async def test_verify_reported_metrics_wrong_track_probability(fb_client):
+    observations = _make_observations()
+    payload = _valid_metrics_payload(observations)
+    payload["track_update_probability"]["probability"] = 0.8
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = payload
+    fb_client.get.return_value = mock_response
+
+    result = await fb_client.verify_reported_metrics_in_flight_blender(observations)
+
+    assert result.status == Status.FAIL
+    assert "track_update_probability" in result.error_message
+
+
+async def test_verify_reported_metrics_no_observations(fb_client):
+    result = await fb_client.verify_reported_metrics_in_flight_blender([])
+
+    assert result.status == Status.FAIL
+    assert "No valid start/end times" in result.error_message

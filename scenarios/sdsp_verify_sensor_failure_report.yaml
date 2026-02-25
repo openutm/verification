@@ -1,0 +1,22 @@
+name: verify_sdsp_sensor_failure_reporting
+description: This scenario verifies that the SDSP correctly reports metrics to Flight Blender when there is a sensor failure. The scenario simulates air traffic data with a sensor failure and checks the reported metrics in Flight Blender to ensure they reflect the expected impact of the sensor failure.
+steps:
+- id: list_active_sensors
+  step: Get Active Sensors from SDSP
+- id: wait_1_seconds
+  step: Wait X seconds
+  arguments:
+    duration: 1
+- id: set_sensor_failure
+  step: Set Sensor Failure in SDSP
+  arguments:
+    sensor_id: ${{ steps.list_active_sensors.result.active_sensors[0].id }}
+    failure_type: "complete_failure"
+- id: wait_1_seconds_b
+  step: Wait X seconds
+  arguments:
+    duration: 1
+- id : list_sensor_failure_notifications
+  step: List Sensor Failure Notifications from SDSP
+  arguments:
+    sensor_id: ${{ steps.list_active_sensors.result.active_sensors[0].id }}

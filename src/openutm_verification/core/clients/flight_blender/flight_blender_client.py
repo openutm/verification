@@ -1,5 +1,6 @@
 import asyncio
 import json
+import math
 import random
 import time
 import uuid
@@ -9,7 +10,7 @@ from typing import Any
 
 import arrow
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 from websockets.asyncio.client import ClientConnection
 
@@ -47,6 +48,68 @@ from openutm_verification.simulator.models.flight_data_types import (
 )
 from openutm_verification.utils.time_utils import parse_duration
 from openutm_verification.utils.websocket_utils import receive_messages_for_duration
+
+
+class HeartbeatRateDetail(BaseModel):
+    measured_rate_hz: float
+    target_rate_hz: float
+    session_id: str
+    window_start: str
+    window_end: str
+    total_heartbeats_in_window: int
+
+
+class HeartbeatDeliveryProbabilityDetail(BaseModel):
+    probability: float
+    delivered_on_time: int
+    total_expected: int
+    session_id: str
+    window_start: str
+    window_end: str
+
+
+class TrackUpdateProbabilityDetail(BaseModel):
+    probability: float
+    ticks_with_active_tracks: int
+    total_ticks: int
+    session_id: str
+    window_start: str
+    window_end: str
+
+
+class SensorHealthDetail(BaseModel):
+    sensor_id: str
+    sensor_identifier: str
+    mttr_seconds: float | None
+    auto_recovery_time_seconds: float | None
+    mtbf_with_auto_recovery_seconds: float | None
+    mtbf_without_auto_recovery_seconds: float | None
+    failure_count: int
+    auto_recovery_count: int
+    manual_recovery_count: int
+    window_start: str
+    window_end: str
+
+
+class AggregateHealthDetail(BaseModel):
+    avg_mttr_seconds: float | None
+    avg_auto_recovery_time_seconds: float | None
+    avg_mtbf_with_auto_recovery_seconds: float | None
+    avg_mtbf_without_auto_recovery_seconds: float | None
+    total_sensors: int
+    window_start: str
+    window_end: str
+
+
+class SurveillanceMetricsDetail(BaseModel):
+    heartbeat_rate: HeartbeatRateDetail
+    heartbeat_delivery_probability: HeartbeatDeliveryProbabilityDetail
+    track_update_probability: TrackUpdateProbabilityDetail
+    per_sensor_health: list[SensorHealthDetail]
+    aggregate_health: AggregateHealthDetail
+    active_sessions: int
+    window_start: str
+    window_end: str
 
 
 def _create_rid_operator_details(operation_id: str) -> RIDOperatorDetails:
@@ -1012,12 +1075,53 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.info(f"Querying metrics from Flight Blender for session: {metrics_endpoint}")
         metrics_response = await self.get(metrics_endpoint)
         logger.info(metrics_response.json())
-        submission_errors = 1
+        errors: list[str] = []
+        logger.info(metrics_response.json)
+        if metrics_response.status_code != 200:
+            return StepResult(
+                name="Verify Reported Metrics in Flight Blender",
+                status=Status.FAIL,
+                duration=round(simulation_duration_seconds, 2),
+                error_message=f"Metrics endpoint returned HTTP {metrics_response.status_code}",
+            )
+
+        try:
+            metrics = SurveillanceMetricsDetail.model_validate(metrics_response.json())
+        except ValidationError as e:
+            return StepResult(
+                name="Verify Reported Metrics in Flight Blender",
+                status=Status.FAIL,
+                duration=round(simulation_duration_seconds, 2),
+                error_message=f"Invalid metrics response structure: {e}",
+            )
+
+        num_aircraft = sum(1 for a in observations if a)
+        total_observations = sum(len(a) for a in observations if a)
+        expected_track_update_probability = total_observations / (num_aircraft * simulation_duration_seconds)
+        expected_heartbeat_rate = total_observations / (num_aircraft * simulation_duration_seconds)
+        expected_heartbeat_delivery_probability = 1.0
+        expected_active_sessions = 1
+
+        if not math.isclose(metrics.track_update_probability.probability, expected_track_update_probability, rel_tol=1e-6):
+            errors.append(
+                f"track_update_probability: expected {expected_track_update_probability}, got {metrics.track_update_probability.probability}"
+            )
+        if not math.isclose(metrics.heartbeat_delivery_probability.probability, expected_heartbeat_delivery_probability, rel_tol=1e-6):
+            errors.append(
+                f"heartbeat_delivery_probability: expected {expected_heartbeat_delivery_probability}, got {metrics.heartbeat_delivery_probability}"
+            )
+        if not math.isclose(metrics.heartbeat_rate.measured_rate_hz, expected_heartbeat_rate, rel_tol=1e-6):
+            errors.append(f"heartbeat_rate: expected {expected_heartbeat_rate}, got {metrics.heartbeat_rate.measured_rate_hz}")
+        if metrics.active_sessions != expected_active_sessions:
+            errors.append(f"active_sessions: expected {expected_active_sessions}, got {metrics.active_sessions}")
+        if not metrics.aggregate_health:
+            errors.append("aggregate_health is empty")
+
         return StepResult(
             name="Verify Reported Metrics in Flight Blender",
-            status=Status.PASS if submission_errors == 0 else Status.FAIL,
+            status=Status.PASS if not errors else Status.FAIL,
             duration=round(simulation_duration_seconds, 2),
-            error_message=None if submission_errors == 0 else f"{submission_errors} submission errors occurred",
+            error_message=None if not errors else "; ".join(errors),
         )
 
     @scenario_step("Submit Air Traffic")
@@ -1043,6 +1147,49 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.debug(f"Air traffic submission response: {response.text}")
         logger.info(f"Air traffic observations submitted successfully for session {session_id}")
         return response.json()
+
+    @scenario_step("Get Active Sensors from SDSP")
+    async def get_active_sensors(self):
+        endpoint = "/surveillance_monitoring_ops/list_surveillance_sensors"
+        response = await self.get(endpoint)
+        if response.status_code == 200:
+            sensors = response.json()
+            logger.info(f"Active sensors retrieved successfully: {sensors}")
+            return sensors
+        else:
+            logger.error(f"Failed to retrieve active sensors. Response: {response.text}")
+            raise FlightBlenderError("Failed to retrieve active sensors from SDSP")
+
+    @scenario_step("Set Sensor Failure in SDSP")
+    async def set_sensor_failure(self, sensor_id: str):
+        endpoint = f"/surveillance_monitoring_ops/update_sensor_health/{sensor_id}"
+        new_status_payload = {"status": "outage"}
+        response = await self.put(endpoint, json=new_status_payload)
+        if response.status_code == 200:
+            logger.info(f"Sensor {sensor_id} status updated to outage successfully.")
+            return f"Sensor {sensor_id} status updated to outage successfully."
+        else:
+            logger.error(f"Failed to update sensor {sensor_id} status. Response: {response.text}")
+            raise FlightBlenderError(f"Failed to update sensor {sensor_id} status to outage")
+
+    @scenario_step("List Sensor Failure Notifications from SDSP")
+    async def list_sensor_failure_notifications(self) -> StepResult:
+        endpoint = "/surveillance_monitoring_ops/list_sensor_health_notifications"
+        response = await self.get(endpoint)
+        if response.status_code == 200:
+            notifications = response.json()
+            logger.info(f"Sensor failure notifications retrieved successfully: {notifications}")
+
+        else:
+            logger.error(f"Failed to retrieve sensor failure notifications. Response: {response.text}")
+            raise FlightBlenderError("Failed to retrieve sensor failure notifications from SDSP")
+
+        return StepResult(
+            duration=0,
+            name="List Sensor Failure Notifications from SDSP",
+            status=Status.PASS if notifications else Status.FAIL,
+            result=f"Retrieved {len(notifications)} sensor failure notifications",
+        )
 
     @scenario_step("Start / Stop SDSP Session")
     async def start_stop_sdsp_session(self, session_id: str, action: SDSPSessionAction) -> str:

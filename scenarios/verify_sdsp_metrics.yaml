@@ -10,6 +10,10 @@ steps:
     observations: ${{ steps.generate_bayesian_simulation_air_traffic_data.result }}
     session_ids: ${{ steps.Fetch Session IDs for Bayesian Simulation.result }}
   background: true
+- id: wait_1_seconds
+  step: Wait X seconds
+  arguments:
+    duration: 1
 - id: generated_sdsp_session_id
   description: Generate a unique session ID for this test run, this is used to create a SDSP session, the default.yaml config
   step: Generate UUID

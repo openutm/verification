@@ -80,6 +80,7 @@ suites:
       - name: bluesky_sim_air_traffic_data_latency_issues
       - name: bayesian_sim_air_traffic_data_varying_refresh_rates
       - name: verify_sdsp_metrics
+      - name: sdsp_verify_sensor_failure_report
   air_traffic_simulations:
     scenarios:
       - name: openutm_sim_air_traffic_data
