@@ -901,7 +901,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             "observations_submitted": observations_submitted,
             "submission_errors": submission_errors,
             "duration_seconds": round(duration_seconds, 2),
-            "simulation_duration_seconds": (simulation_end - simulation_start).total_seconds(),
+            "simulation_duration": (simulation_end - simulation_start).total_seconds(),
         }
 
     @scenario_step("Submit Simulated Air Traffic at varying refresh rates")
@@ -1068,7 +1068,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         simulation_start = min(start_times)
         simulation_end = max(end_times)
-        simulation_duration_seconds = (simulation_end - simulation_start).total_seconds()
+        simulation_duration = (simulation_end - simulation_start).total_seconds()
         metrics_endpoint = (
             f"/surveillance_monitoring_ops/service_metrics/?session_id={session_id}&start_time={simulation_start}&end_time={simulation_end}"
         )
@@ -1081,7 +1081,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return StepResult(
                 name="Verify Reported Metrics in Flight Blender",
                 status=Status.FAIL,
-                duration=round(simulation_duration_seconds, 2),
+                duration=round(simulation_duration, 2),
                 error_message=f"Metrics endpoint returned HTTP {metrics_response.status_code}",
             )
 
@@ -1091,14 +1091,14 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return StepResult(
                 name="Verify Reported Metrics in Flight Blender",
                 status=Status.FAIL,
-                duration=round(simulation_duration_seconds, 2),
+                duration=round(simulation_duration, 2),
                 error_message=f"Invalid metrics response structure: {e}",
             )
 
         num_aircraft = sum(1 for a in observations if a)
         total_observations = sum(len(a) for a in observations if a)
-        expected_track_update_probability = total_observations / (num_aircraft * simulation_duration_seconds)
-        expected_heartbeat_rate = total_observations / (num_aircraft * simulation_duration_seconds)
+        expected_track_update_probability = total_observations / (num_aircraft * simulation_duration)
+        expected_heartbeat_rate = total_observations / (num_aircraft * simulation_duration)
         expected_heartbeat_delivery_probability = 1.0
         expected_active_sessions = 1
 
@@ -1120,7 +1120,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return StepResult(
             name="Verify Reported Metrics in Flight Blender",
             status=Status.PASS if not errors else Status.FAIL,
-            duration=round(simulation_duration_seconds, 2),
+            duration=round(simulation_duration, 2),
             error_message=None if not errors else "; ".join(errors),
         )
 

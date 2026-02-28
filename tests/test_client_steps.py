@@ -31,7 +31,7 @@ def fb_client():
 def at_client():
     settings = MagicMock()
     settings.simulation_config_path = "test_config.json"
-    settings.simulation_duration_seconds = 60
+    settings.simulation_duration = 60
     settings.number_of_aircraft = 1
     settings.sensor_ids = []
     client = AirTrafficClient(settings)

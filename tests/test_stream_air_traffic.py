@@ -407,7 +407,7 @@ class TestBlueSkyProviderIntegration:
         settings = mock_client_class.call_args[0][0]
 
         assert settings.simulation_config_path == "/path/to/scenario.scn"
-        assert settings.simulation_duration_seconds == 25
+        assert settings.simulation_duration == 25
         assert settings.number_of_aircraft == 2
         assert settings.sensor_ids == ["sensor-1"]
         assert settings.session_ids == ["session-1"]
@@ -466,7 +466,7 @@ class TestBayesianProviderIntegration:
         settings = mock_client_class.call_args[0][0]
 
         assert settings.simulation_config_path == "/path/to/model.mat"
-        assert settings.simulation_duration_seconds == 80
+        assert settings.simulation_duration == 80
         assert settings.number_of_aircraft == 5
         assert settings.sensor_ids == ["sensor-bayesian"]
         assert settings.session_ids == ["session-bayesian"]

@@ -29,10 +29,10 @@ def test_report_outputs_use_result(tmp_path: Path):
             number_of_aircraft=1, simulation_duration=1, single_or_multiple_sensors="single", sensor_ids=[]
         ),
         blue_sky_air_traffic_simulator_settings=BlueSkyAirTrafficSimulatorSettings(
-            number_of_aircraft=1, simulation_duration_seconds=1, single_or_multiple_sensors="single", sensor_ids=[]
+            number_of_aircraft=1, simulation_duration=1, single_or_multiple_sensors="single", sensor_ids=[]
         ),
         bayesian_air_traffic_simulator_settings=BayesianAirTrafficSimulatorSettings(
-            number_of_aircraft=1, simulation_duration_seconds=1, single_or_multiple_sensors="single", sensor_ids=[]
+            number_of_aircraft=1, simulation_duration=1, single_or_multiple_sensors="single", sensor_ids=[]
         ),
         data_files=DataFiles(),
         suites={},

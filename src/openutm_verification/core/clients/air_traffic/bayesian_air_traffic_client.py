@@ -75,14 +75,14 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
 
         Args:
             config_path: Path to .scn scenario file. Defaults to settings.simulation_config_path.
-            duration: Simulation duration in seconds. Defaults to settings.simulation_duration_seconds (expected 30).
+            duration: Simulation duration in seconds. Defaults to settings.simulation_duration (expected 30).
         Returns:
             list[list[FlightObservationSchema]]: outer list per aircraft (icao_address),
             inner list is time-series sampled at 1 Hz.
         """
 
         # scn_path = config_path or self.settings.simulation_config_path
-        duration_in_seconds = int(duration or self.settings.simulation_duration_seconds or 30)
+        duration_in_seconds = int(duration or self.settings.simulation_duration or 30)
         number_of_aircraft = self.settings.number_of_aircraft or 3
         sensor_ids = self.settings.sensor_ids
         use_multiple_sensors = self.settings.single_or_multiple_sensors == SENSOR_MODE_MULTIPLE

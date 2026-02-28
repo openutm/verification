@@ -37,31 +37,20 @@ class FlightBlenderConfig(StrictBaseModel):
 
 class AirTrafficSimulatorSettings(StrictBaseModel):
     number_of_aircraft: int
-    simulation_duration: int | str
+    simulation_duration: int
     single_or_multiple_sensors: Literal["single", "multiple"] = "single"
     sensor_ids: list[str] = Field(default_factory=list)
     session_ids: list[str] = Field(default_factory=list)
 
-    @field_validator("simulation_duration")
+    @field_validator("simulation_duration", mode="before")
     @classmethod
     def validate_duration(cls, v: int | str) -> int:
         return int(parse_duration(v))
 
-    @property
-    def simulation_duration_seconds(self) -> int:
-        """Standardized accessor — returns duration in seconds.
-
-        The ``simulation_duration`` field already validates to an ``int``
-        of seconds via :meth:`validate_duration`.  This property provides
-        the same name used by the BlueSky / Bayesian config models so
-        callers can access duration uniformly.
-        """
-        return int(self.simulation_duration)
-
 
 class BlueSkyAirTrafficSimulatorSettings(StrictBaseModel):
     number_of_aircraft: int
-    simulation_duration_seconds: int
+    simulation_duration: int
     single_or_multiple_sensors: Literal["single", "multiple"] = "single"
     sensor_ids: list[str] = Field(default_factory=list)
     session_ids: list[str] = Field(default_factory=list)
@@ -69,7 +58,7 @@ class BlueSkyAirTrafficSimulatorSettings(StrictBaseModel):
 
 class BayesianAirTrafficSimulatorSettings(StrictBaseModel):
     number_of_aircraft: int
-    simulation_duration_seconds: int
+    simulation_duration: int
     single_or_multiple_sensors: Literal["single", "multiple"] = "single"
     sensor_ids: list[str] = Field(default_factory=list)
     session_ids: list[str] = Field(default_factory=list)

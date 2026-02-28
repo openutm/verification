@@ -46,7 +46,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
 
         Args:
             config_path: Path to .scn scenario file. Defaults to settings.simulation_config_path.
-            duration: Simulation duration in seconds. Defaults to settings.simulation_duration_seconds (expected 30).
+            duration: Simulation duration in seconds. Defaults to settings.simulation_duration (expected 30).
 
         Returns:
             list[list[FlightObservationSchema]]: outer list per aircraft (icao_address),
@@ -54,7 +54,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         """
 
         scn_path = config_path or self.settings.simulation_config_path
-        duration_s = int(duration or self.settings.simulation_duration_seconds or 30)
+        duration_s = int(duration or self.settings.simulation_duration or 30)
 
         sensor_ids = self.settings.sensor_ids
         use_multiple_sensors = self.settings.single_or_multiple_sensors == SENSOR_MODE_MULTIPLE
@@ -147,7 +147,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         """This method generates"""
 
         scn_path = config_path or self.settings.simulation_config_path
-        duration_s = int(duration or self.settings.simulation_duration_seconds or 30)
+        duration_s = int(duration or self.settings.simulation_duration or 30)
 
         sensor_ids = self.settings.sensor_ids
         use_multiple_sensors = self.settings.single_or_multiple_sensors == SENSOR_MODE_MULTIPLE

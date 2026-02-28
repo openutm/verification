@@ -72,7 +72,7 @@ const ScenarioEditorContent = () => {
         },
         blue_sky_air_traffic_simulator_settings: {
             number_of_aircraft: 3,
-            simulation_duration_seconds: 30,
+            simulation_duration: 30,
             single_or_multiple_sensors: "multiple",
             sensor_ids: ["562e6297036a4adebb4848afcd1ede90"]
         }

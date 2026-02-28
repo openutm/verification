@@ -170,7 +170,7 @@ class TestBlueSkyAirTrafficSettingsFromConfig:
         """All config fields are correctly mapped."""
         sim_config = BlueSkyAirTrafficSimulatorSettings(
             number_of_aircraft=10,
-            simulation_duration_seconds=120,
+            simulation_duration=120,
             single_or_multiple_sensors="single",
             sensor_ids=["bluesky_sensor"],
             session_ids=["bluesky_session"],
@@ -182,7 +182,7 @@ class TestBlueSkyAirTrafficSettingsFromConfig:
         )
 
         assert settings.simulation_config_path == "/path/to/simulation.scn"
-        assert settings.simulation_duration_seconds == 120
+        assert settings.simulation_duration == 120
         assert settings.number_of_aircraft == 10
         assert settings.single_or_multiple_sensors == SENSOR_MODE_SINGLE
         assert settings.sensor_ids == ["bluesky_sensor"]
@@ -192,7 +192,7 @@ class TestBlueSkyAirTrafficSettingsFromConfig:
         """Settings work without simulation path."""
         sim_config = BlueSkyAirTrafficSimulatorSettings(
             number_of_aircraft=3,
-            simulation_duration_seconds=30,
+            simulation_duration=30,
         )
 
         settings = BlueSkyAirTrafficSettings.from_config(sim_config, simulation_path=None)
@@ -204,7 +204,7 @@ class TestBlueSkyAirTrafficSettingsFromConfig:
         """Default values work correctly."""
         sim_config = BlueSkyAirTrafficSimulatorSettings(
             number_of_aircraft=2,
-            simulation_duration_seconds=30,
+            simulation_duration=30,
         )
 
         settings = BlueSkyAirTrafficSettings.from_config(sim_config)

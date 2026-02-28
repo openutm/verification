@@ -97,7 +97,7 @@ class AirTrafficStepClient:
             if provider == ProviderType.GEOJSON:
                 sim = app_config.air_traffic_simulator_settings
                 if duration is None:
-                    duration = sim.simulation_duration_seconds
+                    duration = sim.simulation_duration
                 if number_of_aircraft is None:
                     number_of_aircraft = sim.number_of_aircraft
                 if sensor_ids is None and sim.sensor_ids:
@@ -110,7 +110,7 @@ class AirTrafficStepClient:
             elif provider == ProviderType.BLUESKY:
                 sim = app_config.blue_sky_air_traffic_simulator_settings
                 if duration is None:
-                    duration = sim.simulation_duration_seconds
+                    duration = sim.simulation_duration
                 if number_of_aircraft is None:
                     number_of_aircraft = sim.number_of_aircraft
                 if sensor_ids is None and sim.sensor_ids:
@@ -123,7 +123,7 @@ class AirTrafficStepClient:
             elif provider == ProviderType.BAYESIAN:
                 sim = app_config.bayesian_air_traffic_simulator_settings
                 if duration is None:
-                    duration = sim.simulation_duration_seconds
+                    duration = sim.simulation_duration
                 if number_of_aircraft is None:
                     number_of_aircraft = sim.number_of_aircraft
                 if sensor_ids is None and sim.sensor_ids:

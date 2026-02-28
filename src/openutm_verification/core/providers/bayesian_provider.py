@@ -84,7 +84,7 @@ class BayesianProvider:
 
         settings = BayesianAirTrafficSettings(
             simulation_config_path=self._config_path,
-            simulation_duration_seconds=effective_duration,
+            simulation_duration=effective_duration,
             number_of_aircraft=self._number_of_aircraft,
             sensor_ids=self._sensor_ids,
             session_ids=self._session_ids,
