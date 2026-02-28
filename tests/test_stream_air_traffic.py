@@ -6,6 +6,7 @@ import pytest
 
 from openutm_verification.core.providers import ProviderType, create_provider
 from openutm_verification.core.providers.geojson_provider import GeoJSONProvider
+from openutm_verification.core.providers.latency import shift_timestamps
 from openutm_verification.core.providers.opensky_provider import OpenSkyProvider
 from openutm_verification.core.reporting.reporting_models import Status, StepResult
 from openutm_verification.core.steps import AirTrafficStepClient
@@ -129,7 +130,6 @@ class TestLatencySimulation:
 
     def test_apply_latency_does_not_mutate_originals(self):
         """Test that apply_latency creates copies instead of mutating original observations."""
-        from openutm_verification.core.providers.latency import apply_latency
 
         original_obs = FlightObservationSchema(
             lat_dd=46.9,
@@ -142,19 +142,14 @@ class TestLatencySimulation:
         )
         observations = [[original_obs]]
 
-        # Force all observations to be shifted (100% probability, always shift)
-        apply_latency(observations, latency_probability=1.0, timestamp_shift_range=(1.0, 1.0))
+        # Force all observations to be shifted (100% probability, fixed shift)
+        shift_timestamps(observations, probability=1.0, shift_range=(1.0, 1.0))
 
         # Original should be unchanged
         assert original_obs.timestamp == 1000000
 
     def test_apply_latency_shifts_in_seconds_not_milliseconds(self):
         """Test that timestamp shifts are applied in seconds, not milliseconds."""
-        import random
-
-        from openutm_verification.core.providers.latency import apply_latency
-
-        random.seed(42)  # Make test deterministic
         obs = FlightObservationSchema(
             lat_dd=46.9,
             lon_dd=7.4,
@@ -166,15 +161,17 @@ class TestLatencySimulation:
         )
         observations = [[obs]]
 
-        # Use a fixed shift of exactly 2 seconds
-        result = apply_latency(observations, latency_probability=1.0, timestamp_shift_range=(2.0, 2.0))
+        # Use 100% probability and fixed shift of exactly 2 seconds.
+        # Calling shift_timestamps directly guarantees the shift path
+        # is always taken (no random drop/shift branching).
+        result, total_shifted = shift_timestamps(observations, probability=1.0, shift_range=(2.0, 2.0))
 
-        # If any observations remain (not dropped), check the shift magnitude
-        for track in result:
-            for r_obs in track:
-                # Shift should be 2 seconds, not 2000 milliseconds
-                shift = abs(r_obs.timestamp - 1000000)
-                assert shift <= 3, f"Timestamp shift {shift} is too large, likely milliseconds instead of seconds"
+        assert total_shifted == 1
+        assert len(result[0]) == 1
+        shifted_obs = result[0][0]
+        # Shift should be 2 seconds, not 2000 milliseconds
+        shift = abs(shifted_obs.timestamp - 1000000)
+        assert shift == 2, f"Timestamp shift {shift} is not 2 seconds"
 
 
 class TestAirTrafficStepClient:
@@ -683,8 +680,12 @@ class TestFlightBlenderStreamerIntegration:
         mock_provider.get_observations = AsyncMock(return_value=mock_observations)
 
         streamer = FlightBlenderStreamer()
-        with pytest.raises(Exception, match="Connection refused"):
-            await streamer.stream_from_provider(mock_provider, duration_seconds=30)
+        result = await streamer.stream_from_provider(mock_provider, duration_seconds=30)
+
+        # Protocol-compliant: returns StreamResult with success=False instead of raising
+        assert result.success is False
+        assert len(result.errors) == 1
+        assert "Connection refused" in result.errors[0]
 
 
 class TestNullStreamerIntegration:

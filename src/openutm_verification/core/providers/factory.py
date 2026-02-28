@@ -11,6 +11,13 @@ from .protocol import AirTrafficProvider
 
 ProviderType = Literal["geojson", "bluesky", "bayesian", "opensky"]
 
+# Registry mapping data quality types to their wrapper classes.
+# Add new entries here to support additional quality degradation modes
+# without modifying the create_provider function.
+_QUALITY_WRAPPERS: dict[DataQualityType, type] = {
+    DataQualityType.LATENCY: LatencyProviderWrapper,
+}
+
 
 def create_provider(
     name: ProviderType,
@@ -63,7 +70,9 @@ def create_provider(
         **kwargs,
     )
 
-    if data_quality == "latency":
-        return LatencyProviderWrapper(provider)
+    # Apply quality wrapper if registered for this quality type
+    wrapper_cls = _QUALITY_WRAPPERS.get(DataQualityType(data_quality))
+    if wrapper_cls:
+        return wrapper_cls(provider)
 
     return provider

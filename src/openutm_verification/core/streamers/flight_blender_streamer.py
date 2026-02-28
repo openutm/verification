@@ -7,7 +7,8 @@ a consistent streaming interface.
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Literal
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
@@ -23,7 +24,16 @@ from .protocol import StreamResult
 if TYPE_CHECKING:
     from openutm_verification.core.providers.protocol import AirTrafficProvider
 
-RefreshModeType = Literal["normal", "varying"]
+
+class RefreshModeType(StrEnum):
+    """Submission mode for Flight Blender streaming.
+
+    Controls how observations are submitted to the Flight Blender API.
+    StrEnum allows direct comparison with string values.
+    """
+
+    NORMAL = "normal"
+    VARYING = "varying"
 
 
 class FlightBlenderStreamer:
@@ -188,4 +198,10 @@ class FlightBlenderStreamer:
 
         except Exception as e:
             logger.exception(f"Flight Blender streaming failed: {e}")
-            raise
+            return self._make_result(
+                success=False,
+                provider_name=provider.name,
+                duration_seconds=duration_seconds,
+                errors=[str(e)],
+                observations=observations,
+            )

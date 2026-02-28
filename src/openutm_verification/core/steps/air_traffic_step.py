@@ -97,7 +97,7 @@ class AirTrafficStepClient:
             if provider == "geojson":
                 sim = app_config.air_traffic_simulator_settings
                 if duration is None:
-                    duration = sim.simulation_duration if hasattr(sim, "simulation_duration") else 30
+                    duration = sim.simulation_duration_seconds
                 if number_of_aircraft is None:
                     number_of_aircraft = sim.number_of_aircraft
                 if sensor_ids is None and sim.sensor_ids:

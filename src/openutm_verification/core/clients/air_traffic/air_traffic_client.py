@@ -112,7 +112,8 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         duration: int | None = None,
     ) -> list[list[FlightObservationSchema]]:
         """This method, simulates a adding latency to the flight observations list"""
-        flight_observations = await self.generate_simulated_air_traffic_data(config_path=config_path, duration=duration).result
+        step_result = await self.generate_simulated_air_traffic_data(config_path=config_path, duration=duration)
+        flight_observations = step_result.result
         LATENCY_PROBABILITY = 0.1  # 10% chance to have latency issues
         TIMESTAMP_SHIFT_RANGE_SECONDS = (-1, 2.5)  # Shift timestamps by -5 to +5 seconds
 
