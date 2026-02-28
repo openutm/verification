@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Literal
 
 from loguru import logger
 
+from openutm_verification.auth.providers import get_auth_provider
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
@@ -188,23 +189,11 @@ class FlightBlenderStreamer:
                 observations=observations,
             )
 
-        username = config.flight_blender.auth.username
-        password = config.flight_blender.auth.password
-
-        if not username or not password:
-            error_msg = (
-                "Flight Blender credentials are not configured. "
-                "Please set 'flight_blender.auth.username' and "
-                "'flight_blender.auth.password' in your configuration."
-            )
-            logger.error(error_msg)
-            return self._make_result(
-                success=False,
-                provider_name=provider.name,
-                duration_seconds=duration_seconds,
-                errors=[error_msg],
-                observations=observations,
-            )
+        auth_provider = get_auth_provider(config.flight_blender.auth)
+        credentials = auth_provider.get_cached_credentials(
+            audience=config.flight_blender.auth.audience,
+            scopes=config.flight_blender.auth.scopes,
+        )
 
         # Apply timestamp corruption for varying refresh mode
         submit_observations = observations
@@ -215,7 +204,7 @@ class FlightBlenderStreamer:
         try:
             async with FlightBlenderClient(
                 base_url=config.flight_blender.url,
-                credentials={"username": username, "password": password},
+                credentials=credentials,
             ) as client:
                 # Choose submission method based on refresh mode
                 if self._refresh_mode == "varying":

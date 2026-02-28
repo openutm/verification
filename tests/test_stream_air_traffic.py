@@ -507,8 +507,9 @@ class TestFlightBlenderStreamerIntegration:
 
     @pytest.mark.asyncio
     @patch("openutm_verification.core.streamers.flight_blender_streamer.FlightBlenderClient")
+    @patch("openutm_verification.core.streamers.flight_blender_streamer.get_auth_provider")
     @patch("openutm_verification.core.streamers.flight_blender_streamer.get_settings")
-    async def test_flight_blender_streamer_submits_to_client(self, mock_get_settings, mock_fb_class):
+    async def test_flight_blender_streamer_submits_to_client(self, mock_get_settings, mock_get_auth, mock_fb_class):
         """Test that FlightBlenderStreamer properly submits observations to FlightBlenderClient."""
         from openutm_verification.core.streamers.flight_blender_streamer import FlightBlenderStreamer
 
@@ -517,9 +518,14 @@ class TestFlightBlenderStreamerIntegration:
         # Mock get_settings
         mock_config = MagicMock()
         mock_config.flight_blender.url = "http://test-flight-blender:8080"
-        mock_config.flight_blender.auth.username = "test-user"
-        mock_config.flight_blender.auth.password = "test-pass"
+        mock_config.flight_blender.auth.audience = "test-audience"
+        mock_config.flight_blender.auth.scopes = []
         mock_get_settings.return_value = mock_config
+
+        # Mock auth provider
+        mock_auth = MagicMock()
+        mock_auth.get_cached_credentials.return_value = {"token": "test-token"}
+        mock_get_auth.return_value = mock_auth
 
         mock_fb_client = AsyncMock()
         mock_fb_client.submit_simulated_air_traffic = AsyncMock(
@@ -540,8 +546,7 @@ class TestFlightBlenderStreamerIntegration:
         mock_fb_class.assert_called_once()
         call_kwargs = mock_fb_class.call_args[1]
         assert call_kwargs["base_url"] == "http://test-flight-blender:8080"
-        assert call_kwargs["credentials"]["username"] == "test-user"
-        assert call_kwargs["credentials"]["password"] == "test-pass"
+        assert call_kwargs["credentials"] == {"token": "test-token"}
 
         # Verify submit was called with observations
         mock_fb_client.submit_simulated_air_traffic.assert_called_once()
@@ -573,8 +578,9 @@ class TestFlightBlenderStreamerIntegration:
 
     @pytest.mark.asyncio
     @patch("openutm_verification.core.streamers.flight_blender_streamer.FlightBlenderClient")
+    @patch("openutm_verification.core.streamers.flight_blender_streamer.get_auth_provider")
     @patch("openutm_verification.core.streamers.flight_blender_streamer.get_settings")
-    async def test_flight_blender_streamer_handles_client_error(self, mock_get_settings, mock_fb_class):
+    async def test_flight_blender_streamer_handles_client_error(self, mock_get_settings, mock_get_auth, mock_fb_class):
         """Test that FlightBlenderStreamer handles client errors gracefully."""
         from openutm_verification.core.streamers.flight_blender_streamer import FlightBlenderStreamer
 
@@ -582,9 +588,13 @@ class TestFlightBlenderStreamerIntegration:
 
         mock_config = MagicMock()
         mock_config.flight_blender.url = "http://test:8080"
-        mock_config.flight_blender.auth.username = "user"
-        mock_config.flight_blender.auth.password = "pass"
+        mock_config.flight_blender.auth.audience = "test-audience"
+        mock_config.flight_blender.auth.scopes = []
         mock_get_settings.return_value = mock_config
+
+        mock_auth = MagicMock()
+        mock_auth.get_cached_credentials.return_value = {"token": "test-token"}
+        mock_get_auth.return_value = mock_auth
 
         mock_fb_client = AsyncMock()
         mock_fb_client.submit_simulated_air_traffic = AsyncMock(side_effect=Exception("Connection refused"))
