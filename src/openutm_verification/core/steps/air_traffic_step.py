@@ -94,7 +94,7 @@ class AirTrafficStepClient:
             return (resolved_duration, config_path, number_of_aircraft, sensor_ids, session_ids)
 
         try:
-            if provider == "geojson":
+            if provider == ProviderType.GEOJSON:
                 sim = app_config.air_traffic_simulator_settings
                 if duration is None:
                     duration = sim.simulation_duration_seconds
@@ -107,7 +107,7 @@ class AirTrafficStepClient:
                 if config_path is None:
                     config_path = _get_data_file_path("trajectory")
 
-            elif provider == "bluesky":
+            elif provider == ProviderType.BLUESKY:
                 sim = app_config.blue_sky_air_traffic_simulator_settings
                 if duration is None:
                     duration = sim.simulation_duration_seconds
@@ -120,7 +120,7 @@ class AirTrafficStepClient:
                 if config_path is None:
                     config_path = _get_data_file_path("simulation")
 
-            elif provider == "bayesian":
+            elif provider == ProviderType.BAYESIAN:
                 sim = app_config.bayesian_air_traffic_simulator_settings
                 if duration is None:
                     duration = sim.simulation_duration_seconds
@@ -131,7 +131,7 @@ class AirTrafficStepClient:
                 if session_ids is None and sim.session_ids:
                     session_ids = sim.session_ids
 
-            elif provider == "opensky":
+            elif provider == ProviderType.OPENSKY:
                 pass  # OpenSky reads its own config in the provider
         except Exception:
             logger.debug("Could not read application config for defaults, using step arguments only.")
@@ -147,7 +147,7 @@ class AirTrafficStepClient:
         self,
         provider: ProviderType,
         duration: int | None = None,
-        target: TargetType = "flight_blender",
+        target: TargetType = TargetType.FLIGHT_BLENDER,
         *,
         # Provider settings (optional overrides — defaults read from config)
         config_path: str | None = None,
@@ -156,9 +156,9 @@ class AirTrafficStepClient:
         session_ids: list[str] | None = None,
         viewport: tuple[float, float, float, float] | None = None,
         # Data quality mode
-        data_quality: DataQualityType = "nominal",
+        data_quality: DataQualityType = DataQualityType.NOMINAL,
         # Streamer settings
-        refresh_mode: RefreshModeType = "normal",
+        refresh_mode: RefreshModeType = RefreshModeType.NORMAL,
     ) -> StreamResult:
         """Stream air traffic data from a provider to a target system.
 

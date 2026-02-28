@@ -1,6 +1,6 @@
 """Factory for creating air traffic providers."""
 
-from typing import Literal
+from enum import StrEnum
 
 from .bayesian_provider import BayesianProvider
 from .bluesky_provider import BlueSkyProvider
@@ -9,7 +9,13 @@ from .latency import DataQualityType, LatencyProviderWrapper
 from .opensky_provider import OpenSkyProvider
 from .protocol import AirTrafficProvider
 
-ProviderType = Literal["geojson", "bluesky", "bayesian", "opensky"]
+
+class ProviderType(StrEnum):
+    GEOJSON = "geojson"
+    BLUESKY = "bluesky"
+    BAYESIAN = "bayesian"
+    OPENSKY = "opensky"
+
 
 # Registry mapping data quality types to their wrapper classes.
 # Add new entries here to support additional quality degradation modes
@@ -28,7 +34,7 @@ def create_provider(
     sensor_ids: list[str] | None = None,
     session_ids: list[str] | None = None,
     viewport: tuple[float, float, float, float] | None = None,
-    data_quality: DataQualityType = "nominal",
+    data_quality: DataQualityType = DataQualityType.NOMINAL,
     **kwargs,
 ) -> AirTrafficProvider:
     """Factory function to create providers by name.
@@ -50,11 +56,11 @@ def create_provider(
     Raises:
         ValueError: If the provider name is not recognized.
     """
-    providers: dict[str, type] = {
-        "geojson": GeoJSONProvider,
-        "bluesky": BlueSkyProvider,
-        "bayesian": BayesianProvider,
-        "opensky": OpenSkyProvider,
+    providers: dict[ProviderType, type] = {
+        ProviderType.GEOJSON: GeoJSONProvider,
+        ProviderType.BLUESKY: BlueSkyProvider,
+        ProviderType.BAYESIAN: BayesianProvider,
+        ProviderType.OPENSKY: OpenSkyProvider,
     }
 
     if name not in providers:
@@ -71,7 +77,7 @@ def create_provider(
     )
 
     # Apply quality wrapper if registered for this quality type
-    wrapper_cls = _QUALITY_WRAPPERS.get(DataQualityType(data_quality))
+    wrapper_cls = _QUALITY_WRAPPERS.get(data_quality)
     if wrapper_cls:
         return wrapper_cls(provider)
 

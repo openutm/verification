@@ -246,18 +246,14 @@ class TestAirTrafficStepClient:
 
     def test_provider_type_literal(self):
         """Test that ProviderType includes expected values."""
-        from typing import get_args
-
         expected = {"geojson", "bluesky", "bayesian", "opensky"}
-        actual = set(get_args(ProviderType))
+        actual = set(item.value for item in ProviderType)
         assert actual == expected
 
     def test_target_type_literal(self):
         """Test that TargetType includes expected values."""
-        from typing import get_args
-
         expected = {"flight_blender", "amqp", "none"}
-        actual = set(get_args(TargetType))
+        actual = set(item.value for item in TargetType)
         assert actual == expected
 
 

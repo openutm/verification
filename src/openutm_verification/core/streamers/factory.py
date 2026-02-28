@@ -1,20 +1,24 @@
 """Factory for creating air traffic streamers."""
 
-from typing import Literal
+from enum import StrEnum
 
 from .amqp_streamer import AMQPStreamer
 from .flight_blender_streamer import FlightBlenderStreamer, RefreshModeType
 from .null_streamer import NullStreamer
 from .protocol import AirTrafficStreamer
 
-TargetType = Literal["flight_blender", "amqp", "none"]
+
+class TargetType(StrEnum):
+    FLIGHT_BLENDER = "flight_blender"
+    AMQP = "amqp"
+    NONE = "none"
 
 
 def create_streamer(
     name: TargetType,
     *,
     session_ids: list[str] | None = None,
-    refresh_mode: RefreshModeType = "normal",
+    refresh_mode: RefreshModeType = RefreshModeType.NORMAL,
     **kwargs,
 ) -> AirTrafficStreamer:
     """Factory function to create streamers by name.
@@ -31,10 +35,10 @@ def create_streamer(
     Raises:
         ValueError: If the streamer name is not recognized.
     """
-    streamers: dict[str, type] = {
-        "flight_blender": FlightBlenderStreamer,
-        "amqp": AMQPStreamer,
-        "none": NullStreamer,
+    streamers: dict[TargetType, type] = {
+        TargetType.FLIGHT_BLENDER: FlightBlenderStreamer,
+        TargetType.AMQP: AMQPStreamer,
+        TargetType.NONE: NullStreamer,
     }
 
     if name not in streamers:
