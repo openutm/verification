@@ -5,6 +5,7 @@ from typing import Literal
 from .bayesian_provider import BayesianProvider
 from .bluesky_provider import BlueSkyProvider
 from .geojson_provider import GeoJSONProvider
+from .latency import DataQualityType, LatencyProviderWrapper
 from .opensky_provider import OpenSkyProvider
 from .protocol import AirTrafficProvider
 
@@ -20,6 +21,7 @@ def create_provider(
     sensor_ids: list[str] | None = None,
     session_ids: list[str] | None = None,
     viewport: tuple[float, float, float, float] | None = None,
+    data_quality: DataQualityType = "nominal",
     **kwargs,
 ) -> AirTrafficProvider:
     """Factory function to create providers by name.
@@ -32,10 +34,11 @@ def create_provider(
         sensor_ids: List of sensor UUID strings.
         session_ids: List of session UUID strings.
         viewport: Geographic bounds for OpenSky (lat_min, lat_max, lon_min, lon_max).
+        data_quality: Data quality mode - "nominal" or "latency".
         **kwargs: Additional provider-specific arguments.
 
     Returns:
-        An AirTrafficProvider instance.
+        An AirTrafficProvider instance, optionally wrapped with latency simulation.
 
     Raises:
         ValueError: If the provider name is not recognized.
@@ -50,7 +53,7 @@ def create_provider(
     if name not in providers:
         raise ValueError(f"Unknown provider: {name}. Available: {list(providers.keys())}")
 
-    return providers[name].from_kwargs(
+    provider = providers[name].from_kwargs(
         config_path=config_path,
         number_of_aircraft=number_of_aircraft,
         duration=duration,
@@ -59,3 +62,8 @@ def create_provider(
         viewport=viewport,
         **kwargs,
     )
+
+    if data_quality == "latency":
+        return LatencyProviderWrapper(provider)
+
+    return provider

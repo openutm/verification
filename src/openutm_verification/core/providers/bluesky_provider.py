@@ -8,6 +8,7 @@ from openutm_verification.core.clients.air_traffic.base_client import (
 from openutm_verification.core.clients.air_traffic.blue_sky_client import (
     BlueSkyClient,
 )
+from openutm_verification.core.reporting.reporting_models import Status
 from openutm_verification.simulator.models.flight_data_types import (
     FlightObservationSchema,
 )
@@ -90,7 +91,10 @@ class BlueSkyProvider:
         )
 
         async with BlueSkyClient(settings) as client:
-            return await client.generate_bluesky_sim_air_traffic_data(
+            step_result = await client.generate_bluesky_sim_air_traffic_data(
                 config_path=self._config_path,
                 duration=effective_duration,
             )
+            if step_result.status == Status.FAIL:
+                raise RuntimeError(step_result.error_message or "BlueSky generation failed")
+            return step_result.result

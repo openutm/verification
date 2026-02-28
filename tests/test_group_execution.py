@@ -50,7 +50,10 @@ groups:
   fetch_data:
     steps:
       - id: fetch
-        step: Fetch OpenSky Data
+        step: Stream Air Traffic
+        arguments:
+          provider: opensky
+          target: flight_blender
       - id: wait
         step: Wait X seconds
         arguments:
@@ -86,11 +89,14 @@ groups:
   process_data:
     steps:
       - id: fetch
-        step: Fetch OpenSky Data
-      - id: submit
-        step: Submit Air Traffic
+        step: Stream Air Traffic
         arguments:
-          observations: ${{ group.fetch.result }}
+          provider: opensky
+          target: flight_blender
+      - id: submit
+        step: Wait X seconds
+        arguments:
+          duration: 1
 
 steps:
   - step: process_data
@@ -103,8 +109,8 @@ steps:
     assert "process_data" in scenario.groups
     group = scenario.groups["process_data"]
 
-    # Verify the submit step has a reference to fetch
-    assert group.steps[1].arguments["observations"] == "${{ group.fetch.result }}"
+    # Verify the submit step has correct arguments
+    assert group.steps[1].arguments["duration"] == 1
 
 
 @pytest.mark.asyncio

@@ -7,10 +7,16 @@ import pytest
 from openutm_verification.core.providers import ProviderType, create_provider
 from openutm_verification.core.providers.geojson_provider import GeoJSONProvider
 from openutm_verification.core.providers.opensky_provider import OpenSkyProvider
+from openutm_verification.core.reporting.reporting_models import Status, StepResult
 from openutm_verification.core.steps import AirTrafficStepClient
 from openutm_verification.core.streamers import StreamResult, TargetType, create_streamer
 from openutm_verification.core.streamers.null_streamer import NullStreamer
 from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
+
+
+def _wrap_step_result(result, step_name="test"):
+    """Wrap a raw result in a StepResult as the @scenario_step decorator would."""
+    return StepResult(name=step_name, status=Status.PASS, duration=0.0, result=result)
 
 
 class TestProviderFactory:
@@ -225,7 +231,9 @@ class TestGeoJSONProviderIntegration:
 
         # Setup mock client instance
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(mock_observations, "Generate Simulated Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -268,7 +276,9 @@ class TestGeoJSONProviderIntegration:
         mock_observations = _create_mock_observations()
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(mock_observations, "Generate Simulated Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -306,7 +316,9 @@ class TestBlueSkyProviderIntegration:
         ]
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_bluesky_sim_air_traffic_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.generate_bluesky_sim_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(mock_observations, "Generate BlueSky Simulation Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -363,7 +375,9 @@ class TestBayesianProviderIntegration:
         ]
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_bayesian_sim_air_traffic_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.generate_bayesian_sim_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(mock_observations, "Generate Bayesian Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -396,7 +410,9 @@ class TestBayesianProviderIntegration:
         from openutm_verification.core.providers.bayesian_provider import BayesianProvider
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_bayesian_sim_air_traffic_data = AsyncMock(return_value=None)
+        mock_client_instance.generate_bayesian_sim_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(None, "Generate Bayesian Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -506,7 +522,9 @@ class TestFlightBlenderStreamerIntegration:
         mock_get_settings.return_value = mock_config
 
         mock_fb_client = AsyncMock()
-        mock_fb_client.submit_simulated_air_traffic = AsyncMock(return_value={"success": True, "observations_submitted": 1})
+        mock_fb_client.submit_simulated_air_traffic = AsyncMock(
+            return_value=_wrap_step_result({"success": True, "observations_submitted": 1}, "Submit Simulated Air Traffic")
+        )
         mock_fb_class.return_value.__aenter__ = AsyncMock(return_value=mock_fb_client)
         mock_fb_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -578,10 +596,8 @@ class TestFlightBlenderStreamerIntegration:
         mock_provider.get_observations = AsyncMock(return_value=mock_observations)
 
         streamer = FlightBlenderStreamer()
-        result = await streamer.stream_from_provider(mock_provider, duration_seconds=30)
-
-        assert result.success is False
-        assert "Connection refused" in result.errors[0]
+        with pytest.raises(Exception, match="Connection refused"):
+            await streamer.stream_from_provider(mock_provider, duration_seconds=30)
 
 
 class TestNullStreamerIntegration:
@@ -658,7 +674,9 @@ class TestEndToEndStreamAirTraffic:
 
         # Mock the AirTrafficClient used by GeoJSONProvider
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(mock_observations, "Generate Simulated Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 

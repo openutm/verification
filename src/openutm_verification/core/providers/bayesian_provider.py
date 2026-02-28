@@ -8,6 +8,7 @@ from openutm_verification.core.clients.air_traffic.base_client import (
 from openutm_verification.core.clients.air_traffic.bayesian_air_traffic_client import (
     BayesianTrafficClient,
 )
+from openutm_verification.core.reporting.reporting_models import Status
 from openutm_verification.simulator.models.flight_data_types import (
     FlightObservationSchema,
 )
@@ -90,9 +91,11 @@ class BayesianProvider:
         )
 
         async with BayesianTrafficClient(settings) as client:
-            result = await client.generate_bayesian_sim_air_traffic_data(
+            step_result = await client.generate_bayesian_sim_air_traffic_data(
                 config_path=self._config_path,
                 duration=effective_duration,
             )
+            if step_result.status == Status.FAIL:
+                raise RuntimeError(step_result.error_message or "Bayesian generation failed")
             # Handle case where Bayesian client returns None or empty
-            return result if result else []
+            return step_result.result if step_result.result else []

@@ -3,7 +3,7 @@
 from typing import Literal
 
 from .amqp_streamer import AMQPStreamer
-from .flight_blender_streamer import FlightBlenderStreamer
+from .flight_blender_streamer import FlightBlenderStreamer, RefreshModeType
 from .null_streamer import NullStreamer
 from .protocol import AirTrafficStreamer
 
@@ -14,6 +14,7 @@ def create_streamer(
     name: TargetType,
     *,
     session_ids: list[str] | None = None,
+    refresh_mode: RefreshModeType = "normal",
     **kwargs,
 ) -> AirTrafficStreamer:
     """Factory function to create streamers by name.
@@ -21,6 +22,7 @@ def create_streamer(
     Args:
         name: Target type - flight_blender, amqp, or none.
         session_ids: Optional list of session UUID strings (for flight_blender).
+        refresh_mode: Submission mode for flight_blender - "normal" or "varying".
         **kwargs: Additional streamer-specific arguments.
 
     Returns:
@@ -38,4 +40,4 @@ def create_streamer(
     if name not in streamers:
         raise ValueError(f"Unknown streamer: {name}. Available: {list(streamers.keys())}")
 
-    return streamers[name].from_kwargs(session_ids=session_ids, **kwargs)
+    return streamers[name].from_kwargs(session_ids=session_ids, refresh_mode=refresh_mode, **kwargs)
