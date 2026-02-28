@@ -628,30 +628,36 @@ def _valid_metrics_payload(observations: list[list[FlightObservationSchema]]) ->
     window_start = "2024-01-01T00:00:00Z"
     window_end = "2024-01-01T00:00:30Z"
     return {
-        "heartbeat_rate": {
-            "measured_rate_hz": prob,
-            "target_rate_hz": prob,
-            "session_id": "sess_123",
-            "window_start": window_start,
-            "window_end": window_end,
-            "total_heartbeats_in_window": total_obs,
-        },
-        "heartbeat_delivery_probability": {
-            "probability": 1.0,
-            "delivered_on_time": total_obs,
-            "total_expected": total_obs,
-            "session_id": "sess_123",
-            "window_start": window_start,
-            "window_end": window_end,
-        },
-        "track_update_probability": {
-            "probability": prob,
-            "ticks_with_active_tracks": total_obs,
-            "total_ticks": total_obs,
-            "session_id": "sess_123",
-            "window_start": window_start,
-            "window_end": window_end,
-        },
+        "heartbeat_rates": [
+            {
+                "measured_rate_hz": prob,
+                "target_rate_hz": prob,
+                "session_id": "sess_123",
+                "window_start": window_start,
+                "window_end": window_end,
+                "total_heartbeats_in_window": total_obs,
+            }
+        ],
+        "heartbeat_delivery_probabilities": [
+            {
+                "probability": 1.0,
+                "delivered_on_time": total_obs,
+                "total_expected": total_obs,
+                "session_id": "sess_123",
+                "window_start": window_start,
+                "window_end": window_end,
+            }
+        ],
+        "track_update_probabilities": [
+            {
+                "probability": prob,
+                "ticks_with_active_tracks": total_obs,
+                "total_ticks": total_obs,
+                "session_id": "sess_123",
+                "window_start": window_start,
+                "window_end": window_end,
+            }
+        ],
         "per_sensor_health": [
             {
                 "sensor_id": "sensor_1",
@@ -726,7 +732,7 @@ async def test_verify_reported_metrics_missing_field(fb_client):
 async def test_verify_reported_metrics_wrong_track_probability(fb_client):
     observations = _make_observations()
     payload = _valid_metrics_payload(observations)
-    payload["track_update_probability"]["probability"] = 0.8
+    payload["track_update_probabilities"][0]["probability"] = 0.8
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = payload

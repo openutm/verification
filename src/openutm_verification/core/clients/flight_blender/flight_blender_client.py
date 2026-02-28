@@ -49,67 +49,9 @@ from openutm_verification.simulator.models.flight_data_types import (
 from openutm_verification.utils.time_utils import parse_duration
 from openutm_verification.utils.websocket_utils import receive_messages_for_duration
 
-
-class HeartbeatRateDetail(BaseModel):
-    measured_rate_hz: float
-    target_rate_hz: float
-    session_id: str
-    window_start: str
-    window_end: str
-    total_heartbeats_in_window: int
-
-
-class HeartbeatDeliveryProbabilityDetail(BaseModel):
-    probability: float
-    delivered_on_time: int
-    total_expected: int
-    session_id: str
-    window_start: str
-    window_end: str
-
-
-class TrackUpdateProbabilityDetail(BaseModel):
-    probability: float
-    ticks_with_active_tracks: int
-    total_ticks: int
-    session_id: str
-    window_start: str
-    window_end: str
-
-
-class SensorHealthDetail(BaseModel):
-    sensor_id: str
-    sensor_identifier: str
-    mttr_seconds: float | None
-    auto_recovery_time_seconds: float | None
-    mtbf_with_auto_recovery_seconds: float | None
-    mtbf_without_auto_recovery_seconds: float | None
-    failure_count: int
-    auto_recovery_count: int
-    manual_recovery_count: int
-    window_start: str
-    window_end: str
-
-
-class AggregateHealthDetail(BaseModel):
-    avg_mttr_seconds: float | None
-    avg_auto_recovery_time_seconds: float | None
-    avg_mtbf_with_auto_recovery_seconds: float | None
-    avg_mtbf_without_auto_recovery_seconds: float | None
-    total_sensors: int
-    window_start: str
-    window_end: str
-
-
-class SurveillanceMetricsDetail(BaseModel):
-    heartbeat_rate: HeartbeatRateDetail
-    heartbeat_delivery_probability: HeartbeatDeliveryProbabilityDetail
-    track_update_probability: TrackUpdateProbabilityDetail
-    per_sensor_health: list[SensorHealthDetail]
-    aggregate_health: AggregateHealthDetail
-    active_sessions: int
-    window_start: str
-    window_end: str
+from .flight_blender_client_data_definitions import (
+    SurveillanceMetricsDetail,
+)
 
 
 def _create_rid_operator_details(operation_id: str) -> RIDOperatorDetails:
@@ -1040,24 +982,57 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             error_message=None if submission_errors == 0 else f"{submission_errors} submission errors occurred",
         )
 
-    @scenario_step("Verify Reported Metrics in Flight Blender")
-    async def verify_reported_metrics_in_flight_blender(
-        self, observations: list[list[FlightObservationSchema]], session_id: uuid.UUID = uuid.uuid4()
-    ):
-        """
-        This method takes the flight observations queries metrics and reporting outputs of the SDSP.
-        In a Bayesian simulation all every flight generated has a list of Flight Observation.
-        """
-        # Determine simulation time range
-        start_times = []
-        end_times = []
-        for aircraft_obs in observations:
-            if not aircraft_obs:
-                continue
-            start_times.append(arrow.get(aircraft_obs[0].timestamp))
-            end_times.append(arrow.get(aircraft_obs[-1].timestamp))
-
+    def _extract_simulation_time_window(self, observations: list[list[FlightObservationSchema]]) -> tuple[arrow.Arrow, arrow.Arrow, float] | None:
+        """Returns (simulation_start, simulation_end, duration_seconds) or None if no valid observations."""
+        start_times = [arrow.get(a[0].timestamp) for a in observations if a]
+        end_times = [arrow.get(a[-1].timestamp) for a in observations if a]
         if not start_times:
+            return None
+        sim_start = min(start_times)
+        sim_end = max(end_times)
+        return sim_start, sim_end, (sim_end - sim_start).total_seconds()
+
+    def _validate_reported_metrics(
+        self,
+        metrics: SurveillanceMetricsDetail,
+        expected_track_probability: float,
+        expected_heartbeat_rate: float,
+    ) -> list[str]:
+        """Validates each metric field against expected values; returns a list of error strings."""
+        errors: list[str] = []
+        expected_heartbeat_delivery_probability = 1.0
+        expected_active_sessions = 1
+
+        if not metrics.track_update_probabilities:
+            errors.append("track_update_probabilities is empty")
+        elif not math.isclose(metrics.track_update_probabilities[0].probability, expected_track_probability, rel_tol=1e-6):
+            errors.append(f"track_update_probability: expected {expected_track_probability}, got {metrics.track_update_probabilities[0].probability}")
+        if not metrics.heartbeat_delivery_probabilities:
+            errors.append("heartbeat_delivery_probabilities is empty")
+        elif not math.isclose(metrics.heartbeat_delivery_probabilities[0].probability, expected_heartbeat_delivery_probability, rel_tol=1e-6):
+            actual = metrics.heartbeat_delivery_probabilities[0].probability
+            errors.append(f"heartbeat_delivery_probability: expected {expected_heartbeat_delivery_probability}, got {actual}")
+        if not metrics.heartbeat_rates:
+            errors.append("heartbeat_rates is empty")
+        elif not math.isclose(metrics.heartbeat_rates[0].measured_rate_hz, expected_heartbeat_rate, rel_tol=1e-6):
+            errors.append(f"heartbeat_rate: expected {expected_heartbeat_rate}, got {metrics.heartbeat_rates[0].measured_rate_hz}")
+        if metrics.active_sessions != expected_active_sessions:
+            errors.append(f"active_sessions: expected {expected_active_sessions}, got {metrics.active_sessions}")
+        if not metrics.aggregate_health:
+            errors.append("aggregate_health is empty")
+        return errors
+
+    @scenario_step("Verify Reported Metrics in Flight Blender")
+    async def verify_reported_metrics_in_flight_blender(self, observations: list[list[FlightObservationSchema]], session_id: uuid.UUID | None = None):
+        """
+        Queries the SDSP metrics endpoint and verifies reported values against expected values
+        derived from the Bayesian simulation observations.
+        If session_id is provided, metrics are filtered to that session only; otherwise metrics
+        for all sessions with activity in the time window are returned.
+        """
+        logger.info(observations)
+        time_window = self._extract_simulation_time_window(observations)
+        if time_window is None:
             logger.warning("No valid start/end times found in observations.")
             return StepResult(
                 name="Verify Reported Metrics in Flight Blender",
@@ -1066,17 +1041,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 error_message="No valid start/end times found in observations",
             )
 
-        simulation_start = min(start_times)
-        simulation_end = max(end_times)
-        simulation_duration = (simulation_end - simulation_start).total_seconds()
-        metrics_endpoint = (
-            f"/surveillance_monitoring_ops/service_metrics/?session_id={session_id}&start_time={simulation_start}&end_time={simulation_end}"
-        )
-        logger.info(f"Querying metrics from Flight Blender for session: {metrics_endpoint}")
+        simulation_start, simulation_end, simulation_duration = time_window
+        session_param = f"session_id={session_id}&" if session_id is not None else ""
+        metrics_endpoint = f"/surveillance_monitoring_ops/service_metrics?{session_param}start_time={simulation_start}&end_time={simulation_end}"
+        logger.info(f"Querying metrics from Flight Blender: {metrics_endpoint}")
         metrics_response = await self.get(metrics_endpoint)
-        logger.info(metrics_response.json())
-        errors: list[str] = []
-        logger.info(metrics_response.json)
+
         if metrics_response.status_code != 200:
             return StepResult(
                 name="Verify Reported Metrics in Flight Blender",
@@ -1097,25 +1067,10 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         num_aircraft = sum(1 for a in observations if a)
         total_observations = sum(len(a) for a in observations if a)
-        expected_track_update_probability = total_observations / (num_aircraft * simulation_duration)
-        expected_heartbeat_rate = total_observations / (num_aircraft * simulation_duration)
-        expected_heartbeat_delivery_probability = 1.0
-        expected_active_sessions = 1
+        # Track update probability and heartbeat rate share the same formula
+        rate = total_observations / (num_aircraft * simulation_duration)
 
-        if not math.isclose(metrics.track_update_probability.probability, expected_track_update_probability, rel_tol=1e-6):
-            errors.append(
-                f"track_update_probability: expected {expected_track_update_probability}, got {metrics.track_update_probability.probability}"
-            )
-        if not math.isclose(metrics.heartbeat_delivery_probability.probability, expected_heartbeat_delivery_probability, rel_tol=1e-6):
-            errors.append(
-                f"heartbeat_delivery_probability: expected {expected_heartbeat_delivery_probability}, got {metrics.heartbeat_delivery_probability}"
-            )
-        if not math.isclose(metrics.heartbeat_rate.measured_rate_hz, expected_heartbeat_rate, rel_tol=1e-6):
-            errors.append(f"heartbeat_rate: expected {expected_heartbeat_rate}, got {metrics.heartbeat_rate.measured_rate_hz}")
-        if metrics.active_sessions != expected_active_sessions:
-            errors.append(f"active_sessions: expected {expected_active_sessions}, got {metrics.active_sessions}")
-        if not metrics.aggregate_health:
-            errors.append("aggregate_health is empty")
+        errors = self._validate_reported_metrics(metrics, expected_track_probability=rate, expected_heartbeat_rate=rate)
 
         return StepResult(
             name="Verify Reported Metrics in Flight Blender",
