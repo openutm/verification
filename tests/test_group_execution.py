@@ -94,7 +94,7 @@ groups:
           provider: opensky
           target: flight_blender
       - id: generate
-        step: Generate Random number
+        step: Generate Random Number
         arguments:
           min: 1
           max: 5

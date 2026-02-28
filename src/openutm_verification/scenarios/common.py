@@ -72,7 +72,7 @@ async def generate_uuid() -> str:
     return str(uuid.uuid4())
 
 
-@scenario_step("Generate Random number")
+@scenario_step("Generate Random Number")
 async def generate_random_number(min: int = 0, max: int = 5) -> int:
     """Generates a random number."""
     return random.randint(min, max)
