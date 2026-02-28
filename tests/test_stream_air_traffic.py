@@ -49,6 +49,30 @@ class TestProviderFactory:
         with pytest.raises(ValueError, match="Unknown provider"):
             create_provider(name="unknown")  # type: ignore
 
+    def test_create_provider_with_latency_wraps_in_latency_provider(self):
+        """Test that data_quality='latency' wraps the provider with LatencyProviderWrapper."""
+        from openutm_verification.core.providers.latency import LatencyProviderWrapper
+
+        provider = create_provider(
+            name="geojson",
+            config_path="/some/path.geojson",
+            data_quality="latency",
+        )
+        assert isinstance(provider, LatencyProviderWrapper)
+        assert provider.name == "geojson"
+
+    def test_create_provider_nominal_does_not_wrap(self):
+        """Test that data_quality='nominal' returns unwrapped provider."""
+        from openutm_verification.core.providers.latency import LatencyProviderWrapper
+
+        provider = create_provider(
+            name="geojson",
+            config_path="/some/path.geojson",
+            data_quality="nominal",
+        )
+        assert isinstance(provider, GeoJSONProvider)
+        assert not isinstance(provider, LatencyProviderWrapper)
+
 
 class TestStreamerFactory:
     """Tests for the streamer factory."""
@@ -98,6 +122,59 @@ class TestStreamResult:
         )
         assert result.success is False
         assert len(result.errors) == 2
+
+
+class TestLatencySimulation:
+    """Tests for the apply_latency function and LatencyProviderWrapper."""
+
+    def test_apply_latency_does_not_mutate_originals(self):
+        """Test that apply_latency creates copies instead of mutating original observations."""
+        from openutm_verification.core.providers.latency import apply_latency
+
+        original_obs = FlightObservationSchema(
+            lat_dd=46.9,
+            lon_dd=7.4,
+            altitude_mm=1000000,
+            traffic_source=0,
+            source_type=0,
+            icao_address="TEST1",
+            timestamp=1000000,
+        )
+        observations = [[original_obs]]
+
+        # Force all observations to be shifted (100% probability, always shift)
+        apply_latency(observations, latency_probability=1.0, timestamp_shift_range=(1.0, 1.0))
+
+        # Original should be unchanged
+        assert original_obs.timestamp == 1000000
+
+    def test_apply_latency_shifts_in_seconds_not_milliseconds(self):
+        """Test that timestamp shifts are applied in seconds, not milliseconds."""
+        import random
+
+        from openutm_verification.core.providers.latency import apply_latency
+
+        random.seed(42)  # Make test deterministic
+        obs = FlightObservationSchema(
+            lat_dd=46.9,
+            lon_dd=7.4,
+            altitude_mm=1000000,
+            traffic_source=0,
+            source_type=0,
+            icao_address="TEST1",
+            timestamp=1000000,
+        )
+        observations = [[obs]]
+
+        # Use a fixed shift of exactly 2 seconds
+        result = apply_latency(observations, latency_probability=1.0, timestamp_shift_range=(2.0, 2.0))
+
+        # If any observations remain (not dropped), check the shift magnitude
+        for track in result:
+            for r_obs in track:
+                # Shift should be 2 seconds, not 2000 milliseconds
+                shift = abs(r_obs.timestamp - 1000000)
+                assert shift <= 3, f"Timestamp shift {shift} is too large, likely milliseconds instead of seconds"
 
 
 class TestAirTrafficStepClient:
@@ -458,7 +535,7 @@ class TestOpenSkyProviderIntegration:
         mock_get_settings.return_value = mock_config
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.fetch_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.fetch_data = AsyncMock(return_value=_wrap_step_result(mock_observations, "Fetch OpenSky Data"))
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -492,7 +569,7 @@ class TestOpenSkyProviderIntegration:
         mock_get_settings.return_value = mock_config
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.fetch_data = AsyncMock(return_value=None)
+        mock_client_instance.fetch_data = AsyncMock(return_value=_wrap_step_result(None, "Fetch OpenSky Data"))
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 

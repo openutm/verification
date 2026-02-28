@@ -219,7 +219,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         Latency is simulated by randomly removing some observations and randomly shifting the timestamps of some observations
         to be earlier or later than the actual timestamp, mimicking real-world sensor latency issues.
         """
-        flight_observations = self.generate_bayesian_sim_air_traffic_data(config_path=config_path, duration=duration)
+        flight_observations = await self.generate_bayesian_sim_air_traffic_data(config_path=config_path, duration=duration).result
 
         LATENCY_PROBABILITY = 0.1  # 10% chance to have latency issues
         TIMESTAMP_SHIFT_RANGE_SECONDS = (-1, 2.5)  # Shift timestamps by -5 to +5 seconds

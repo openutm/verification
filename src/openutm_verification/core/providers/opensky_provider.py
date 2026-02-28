@@ -80,7 +80,7 @@ class OpenSkyProvider:
         )
 
         async with OpenSkyClient(settings) as client:
-            observations = await client.fetch_data()
+            observations = (await client.fetch_data()).result
             if observations is None:
                 return []
             # Wrap flat list in outer list for interface consistency

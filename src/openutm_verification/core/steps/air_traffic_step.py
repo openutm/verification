@@ -90,7 +90,8 @@ class AirTrafficStepClient:
             app_config = get_settings()
         except Exception:
             logger.debug("Could not read application config for defaults, using step arguments only.")
-            return (duration or 30, config_path, number_of_aircraft, sensor_ids, session_ids)
+            resolved_duration = duration if duration is not None else 30
+            return (resolved_duration, config_path, number_of_aircraft, sensor_ids, session_ids)
 
         try:
             if provider == "geojson":

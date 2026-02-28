@@ -60,9 +60,10 @@ def apply_latency(
                     # Drop the observation entirely
                     total_dropped += 1
                     continue
-                # Shift the timestamp
+                # Shift the timestamp (in seconds, matching the timestamp unit)
                 shift_seconds = random.uniform(*timestamp_shift_range)
-                obs.timestamp += int(shift_seconds * 1000)
+                new_timestamp = obs.timestamp + int(shift_seconds)
+                obs = obs.model_copy(update={"timestamp": new_timestamp})
                 total_shifted += 1
             modified_track.append(obs)
         modified_observations.append(modified_track)

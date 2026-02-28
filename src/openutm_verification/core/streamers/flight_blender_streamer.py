@@ -6,7 +6,6 @@ a consistent streaming interface.
 
 from __future__ import annotations
 
-import random
 import uuid
 from typing import TYPE_CHECKING, Literal
 
@@ -99,53 +98,6 @@ class FlightBlenderStreamer:
             observations=observations if observations is not None else None,
         )
 
-    @staticmethod
-    def _corrupt_timestamps(
-        observations: list[list],
-    ) -> list[list]:
-        """Apply timestamp corruption to simulate malfunctioning sensors.
-
-        Randomly applies anomalies to observation timestamps:
-        - 30% chance: stale timestamp (repeat previous)
-        - 20% chance: backward jump (10-60s into the past)
-        - 15% chance: forward jump (10-60s into the future)
-        - 35% chance: keep original (normal)
-
-        Args:
-            observations: List of observation lists per aircraft.
-
-        Returns:
-            New observation lists with corrupted timestamps.
-        """
-        corrupted_observations = []
-        for aircraft_obs in observations:
-            corrupted_aircraft_obs = []
-            last_used_timestamp: int | None = None
-            for obs in aircraft_obs:
-                original_timestamp = obs.timestamp
-                anomaly_roll = random.random()
-
-                if anomaly_roll < 0.3 and last_used_timestamp is not None:
-                    new_timestamp = last_used_timestamp
-                    logger.debug(f"[off-nominal] Stale timestamp for {obs.icao_address}: kept {new_timestamp} instead of {original_timestamp}")
-                elif anomaly_roll < 0.5:
-                    offset = random.randint(10, 60)
-                    new_timestamp = original_timestamp - offset
-                    logger.debug(f"[off-nominal] Backward jump for {obs.icao_address}: {original_timestamp} -> {new_timestamp} (-{offset}s)")
-                elif anomaly_roll < 0.65:
-                    offset = random.randint(10, 60)
-                    new_timestamp = original_timestamp + offset
-                    logger.debug(f"[off-nominal] Forward jump for {obs.icao_address}: {original_timestamp} -> {new_timestamp} (+{offset}s)")
-                else:
-                    new_timestamp = original_timestamp
-
-                corrupted_obs = obs.model_copy(update={"timestamp": new_timestamp})
-                corrupted_aircraft_obs.append(corrupted_obs)
-                last_used_timestamp = new_timestamp
-
-            corrupted_observations.append(corrupted_aircraft_obs)
-        return corrupted_observations
-
     async def stream_from_provider(
         self,
         provider: "AirTrafficProvider",
@@ -155,8 +107,8 @@ class FlightBlenderStreamer:
 
         Gets observations from the provider, then submits them to Flight Blender.
         In "normal" mode, submits using standard real-time playback.
-        In "varying" mode, corrupts timestamps before submission to simulate
-        malfunctioning sensors.
+        In "varying" mode, uses the client's varying-refresh submission method
+        which applies its own timestamp anomalies to simulate malfunctioning sensors.
 
         Args:
             provider: The air traffic provider to get observations from.
@@ -195,25 +147,21 @@ class FlightBlenderStreamer:
             scopes=config.flight_blender.auth.scopes,
         )
 
-        # Apply timestamp corruption for varying refresh mode
-        submit_observations = observations
-        if self._refresh_mode == "varying":
-            logger.info("Applying timestamp corruption for varying refresh rate submission")
-            submit_observations = self._corrupt_timestamps(observations)
-
         try:
             async with FlightBlenderClient(
                 base_url=config.flight_blender.url,
                 credentials=credentials,
             ) as client:
-                # Choose submission method based on refresh mode
+                # Choose submission method based on refresh mode.
+                # The varying-refresh client method applies its own timestamp
+                # anomalies, so we always pass the original observations.
                 if self._refresh_mode == "varying":
                     submit_fn = client.submit_simulated_air_traffic_at_random_refresh_rates
                 else:
                     submit_fn = client.submit_simulated_air_traffic
 
                 step_result = await submit_fn(
-                    observations=submit_observations,
+                    observations=observations,
                     session_ids=self._session_ids,
                 )
 

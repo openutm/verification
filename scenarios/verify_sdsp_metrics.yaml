@@ -25,6 +25,8 @@ steps:
   arguments:
     duration: 10
 - step: Verify Reported Metrics in Flight Blender
+  needs:
+    - stream_air_traffic
   arguments:
     observations: ${{ steps.stream_air_traffic.result.observations }}
     session_id: ${{ steps.generated_sdsp_session_id.result }}

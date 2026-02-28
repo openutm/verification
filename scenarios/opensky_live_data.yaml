@@ -6,5 +6,6 @@ steps:
     id: stream_opensky
     arguments:
       provider: opensky
-      duration: 3
       target: flight_blender
+    loop:
+      count: 5
