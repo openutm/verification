@@ -29,7 +29,7 @@ steps:
 - step: Verify Reported Metrics in Flight Blender
   arguments:
     observations: ${{ steps.generate_bayesian_simulation_air_traffic_data.result }}
-    session_id: ${{ steps.generated_sdsp_session_id.result }}
+    # session_id: ${{ steps.generated_sdsp_session_id.result }}
 - id: stop_sdsp_session
   step: Start / Stop SDSP Session
   arguments:
