@@ -88,15 +88,20 @@ description: Test scenario with group internal references
 groups:
   process_data:
     steps:
-      - id: fetch
+      - id: stream
         step: Stream Air Traffic
         arguments:
           provider: opensky
           target: flight_blender
-      - id: submit
+      - id: generate
+        step: Generate Random number
+        arguments:
+          min: 1
+          max: 5
+      - id: wait
         step: Wait X seconds
         arguments:
-          duration: 1
+          duration: ${{ group.generate.result }}
 
 steps:
   - step: process_data
@@ -110,7 +115,7 @@ steps:
     group = scenario.groups["process_data"]
 
     # Verify the submit step has correct arguments
-    assert group.steps[1].arguments["duration"] == 1
+    assert group.steps[2].arguments["duration"] == "${{ group.generate.result }}"
 
 
 @pytest.mark.asyncio
