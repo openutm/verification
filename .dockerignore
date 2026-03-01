@@ -95,3 +95,4 @@ temp/
 
 # CI/CD
 .github/
+node_modules/

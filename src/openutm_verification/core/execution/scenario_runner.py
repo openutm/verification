@@ -145,7 +145,7 @@ class ScenarioContext:
     @classmethod
     def add_air_traffic_data(cls, data: list[FlightObservationSchema]) -> None:
         state = _scenario_state.get()
-        if state and state.active:
+        if state:
             state.air_traffic_data.append(data)
 
     @property

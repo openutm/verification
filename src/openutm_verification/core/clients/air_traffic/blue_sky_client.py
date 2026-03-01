@@ -5,6 +5,7 @@ import random
 import tempfile
 import uuid
 from collections.abc import Iterable
+from pathlib import Path
 from uuid import UUID
 
 import arrow
@@ -54,6 +55,8 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         """
 
         scn_path = config_path or self.settings.simulation_config_path
+        if scn_path:
+            scn_path = str(Path(scn_path).expanduser().resolve())
         duration_s = int(duration or self.settings.simulation_duration_seconds or 30)
 
         sensor_ids = self.settings.sensor_ids
@@ -147,6 +150,8 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         """This method generates"""
 
         scn_path = config_path or self.settings.simulation_config_path
+        if scn_path:
+            scn_path = str(Path(scn_path).expanduser().resolve())
         duration_s = int(duration or self.settings.simulation_duration_seconds or 30)
 
         sensor_ids = self.settings.sensor_ids
