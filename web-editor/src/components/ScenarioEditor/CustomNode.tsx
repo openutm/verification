@@ -2,6 +2,7 @@
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass, Plane } from 'lucide-react';
 import styles from '../../styles/Node.module.css';
+import { getPhaseColor } from '../../utils/phaseColors';
 import type { NodeData } from '../../types/scenario';
 
 export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
@@ -60,7 +61,15 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                 <Box size={16} className={styles.icon} />
                 <span>{data.label}</span>
                 {data.phase && (
-                    <div className={styles.phaseBadge} title={`Flight phase: ${data.phase}`}>
+                    <div
+                        className={styles.phaseBadge}
+                        title={`Flight phase: ${data.phase}`}
+                        style={{
+                            backgroundColor: getPhaseColor(data.phase).bg,
+                            color: getPhaseColor(data.phase).text,
+                            border: `1px solid ${getPhaseColor(data.phase).border}`,
+                        }}
+                    >
                         <Plane size={12} />
                         <span>{data.phase}</span>
                     </div>
