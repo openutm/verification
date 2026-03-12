@@ -1,6 +1,6 @@
 
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass } from 'lucide-react';
+import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass, Plane } from 'lucide-react';
 import styles from '../../styles/Node.module.css';
 import type { NodeData } from '../../types/scenario';
 
@@ -59,6 +59,12 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
             <div className={styles.customNodeHeader}>
                 <Box size={16} className={styles.icon} />
                 <span>{data.label}</span>
+                {data.phase && (
+                    <div className={styles.phaseBadge} title={`Flight phase: ${data.phase}`}>
+                        <Plane size={12} />
+                        <span>{data.phase}</span>
+                    </div>
+                )}
                 <div className={styles.modifierBadges}>
                     {data.runInBackground && (
                         <div className={styles.backgroundBadge} title="Runs in background">

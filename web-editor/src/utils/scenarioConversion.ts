@@ -123,6 +123,7 @@ export const convertYamlToGraph = (
                         stepId: groupStep.id || groupStep.step,
                         operationId: groupOperation?.id,
                         description: groupStep.description || groupOperation?.description || '',
+                        phase: groupOperation?.phase,
                         parameters: groupParameters
                     }
                 };
@@ -180,6 +181,7 @@ export const convertYamlToGraph = (
                     stepId: step.id,
                     operationId: operation?.id,
                     description: step.description || operation?.description || '',
+                    phase: operation?.phase,
                     parameters: parameters,
                     runInBackground: step.background,
                     ifCondition: step.if,

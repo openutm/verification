@@ -50,6 +50,9 @@
             color: #495057;
         }
         .toggle-btn:hover { background-color: rgba(222, 226, 230, 0.95); }
+        .phase-group { margin-bottom: 15px; }
+        .phase-header { background-color: #e9ecef; padding: 8px 12px; border-radius: 4px; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+        .phase-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background-color: #6c757d; color: white; font-weight: normal; }
     </style>
 </head>
 <body>
@@ -125,6 +128,51 @@
                 </div>
                 {% endif %}
                 <h4>Steps:</h4>
+                {% set has_phases = result.steps | selectattr('phase') | list | length > 0 %}
+                {% if has_phases %}
+                    {% set ns = namespace(current_phase='__none__') %}
+                    {% for step in result.steps %}
+                        {% set step_phase = step.phase or '__ungrouped__' %}
+                        {% if step_phase != ns.current_phase %}
+                            {% if ns.current_phase != '__none__' %}
+                                </tbody></table></div>
+                            {% endif %}
+                            {% set ns.current_phase = step_phase %}
+                            <div class="phase-group">
+                            {% if step.phase %}
+                                <div class="phase-header">
+                                    <span class="phase-badge">{{ step.phase }}</span>
+                                    {{ phase_labels.get(step.phase, step.phase) }}
+                                </div>
+                            {% else %}
+                                <div class="phase-header">Other Steps</div>
+                            {% endif %}
+                            <table class="steps-table">
+                            <thead><tr><th>Step Name</th><th>Status</th><th>Duration (s)</th><th>Result</th></tr></thead>
+                            <tbody>
+                        {% endif %}
+                        {% set result_json = step.result | tojson(indent=2) %}
+                        {% set line_count = result_json.split('\n') | length %}
+                        <tr>
+                            <td>{{ step.name }}</td>
+                            <td><span class="status status-{{ step.status }}">{{ step.status }}</span></td>
+                            <td>{{ "%.2f"|format(step.duration) }}</td>
+                            <td>
+                                {% if line_count > 10 %}
+                                <div class="result-wrapper">
+                                    <pre class="result-collapsed" id="result-{{ scenario_index }}-{{ loop.index }}">{{ result_json }}</pre>
+                                    <button class="toggle-btn" onclick="toggleResult('result-{{ scenario_index }}-{{ loop.index }}', this)">Show more</button>
+                                </div>
+                                {% else %}
+                                <pre>{{ result_json }}</pre>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    {% if ns.current_phase != '__none__' %}
+                        </tbody></table></div>
+                    {% endif %}
+                {% else %}
                 <table class="steps-table">
                     <thead>
                         <tr>
@@ -156,6 +204,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                {% endif %}
             </div>
         </details>
     </div>

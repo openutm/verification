@@ -24,7 +24,7 @@ const ToolboxGroup = ({ title, ops }: { title: string, ops: Operation[] }) => {
                         <div
                             key={op.id}
                             className={styles.nodeItem}
-                            title={op.name}
+                            title={op.phase ? `${op.name} [${op.phase}]` : op.name}
                             onDragStart={(event) => {
                                 event.dataTransfer.setData('application/reactflow', op.name);
                                 event.dataTransfer.setData('application/reactflow/id', op.id);
@@ -34,7 +34,12 @@ const ToolboxGroup = ({ title, ops }: { title: string, ops: Operation[] }) => {
                             tabIndex={0}
                         >
                             <Box size={16} color="#8b949e" />
-                            <span>{op.name}</span>
+                            <div className={styles.nodeItemContent}>
+                                <span>{op.name}</span>
+                                {op.phase && (
+                                    <span className={styles.phaseBadge}>{op.phase}</span>
+                                )}
+                            </div>
                         </div>
                     ))}
                 </div>

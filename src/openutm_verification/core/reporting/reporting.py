@@ -10,6 +10,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 
 from openutm_verification.core.execution.config_models import AppConfig, ReportingConfig
+from openutm_verification.core.flight_phase import FLIGHT_PHASE_LABELS
 from openutm_verification.core.reporting.reporting_models import (
     ReportData,
     ReportSummary,
@@ -191,7 +192,10 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
     env.filters["markdown"] = lambda text: markdown.markdown(text) if text else ""
     template = env.get_template("report_template.html")
 
-    html_content = template.render(report_data=report_data.model_dump(mode="json"))
+    html_content = template.render(
+        report_data=report_data.model_dump(mode="json"),
+        phase_labels={k.value: v for k, v in FLIGHT_PHASE_LABELS.items()},
+    )
 
     report_path = output_dir / f"{base_filename}.html"
     with open(report_path, "w", encoding="utf-8") as f:

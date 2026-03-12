@@ -59,6 +59,28 @@
   min-width: 0;
 }
 
+.nodeItemContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.nodeItemContent span {
+  flex: initial;
+}
+
+.phaseBadge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-weight: 600;
+  width: fit-content;
+}
+
 .nodeItem svg {
   flex-shrink: 0;
 }

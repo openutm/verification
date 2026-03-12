@@ -163,6 +163,23 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     <h3>{selectedNode.data.label}</h3>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
                         <div style={{ fontFamily: 'monospace' }}>Node ID: {selectedNode.id}</div>
+                        {selectedNode.data.phase && (
+                            <div style={{ marginTop: '4px' }}>
+                                <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '2px 8px',
+                                    borderRadius: '10px',
+                                    backgroundColor: 'var(--bg-secondary)',
+                                    border: '1px solid var(--border-color)',
+                                    fontSize: '11px',
+                                    fontWeight: 600
+                                }}>
+                                    ✈ {selectedNode.data.phase}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     <div className={styles.paramItem}>

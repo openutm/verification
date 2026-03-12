@@ -106,6 +106,21 @@
   margin-left: auto;
 }
 
+/* Flight phase badge */
+.phaseBadge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  background-color: rgba(107, 114, 128, 0.15);
+  color: var(--text-secondary);
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
 .loopBadge,
 .conditionBadge,
 .backgroundBadge {
