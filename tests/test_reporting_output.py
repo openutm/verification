@@ -14,13 +14,13 @@ from openutm_verification.core.execution.config_models import (
     OpenSkyConfig,
     ReportingConfig,
 )
+from openutm_verification.core.flight_phase import FlightPhase
 from openutm_verification.core.reporting.reporting import create_report_data, generate_reports
 from openutm_verification.core.reporting.reporting_models import ScenarioResult, Status, StepResult
 
 
-def test_report_outputs_use_result(tmp_path: Path):
-    # Minimal AppConfig
-    app_config = AppConfig(
+def _make_app_config(tmp_path: Path) -> AppConfig:
+    return AppConfig(
         version="1.0",
         run_id="test-run",
         flight_blender=FlightBlenderConfig(url="http://localhost:8000", auth=AuthConfig()),
@@ -38,6 +38,10 @@ def test_report_outputs_use_result(tmp_path: Path):
         suites={},
         reporting=ReportingConfig(output_dir=str(tmp_path), formats=["json", "html"], deployment_details=DeploymentDetails()),
     )
+
+
+def test_report_outputs_use_result(tmp_path: Path):
+    app_config = _make_app_config(tmp_path)
 
     # Build a simple scenario result with a single step
     step = StepResult(id="Generate UUID", name="Generate UUID", status=Status.PASS, duration=0.01, result={"uuid": "abc-123"})
@@ -84,3 +88,107 @@ def test_report_outputs_use_result(tmp_path: Path):
     html = html_path.read_text(encoding="utf-8")
     assert "<th>Result</th>" in html
     assert "abc-123" in html
+
+
+def test_report_html_groups_steps_by_phase(tmp_path: Path):
+    app_config = _make_app_config(tmp_path)
+
+    steps = [
+        StepResult(id="s1", name="Setup geo fence", status=Status.PASS, duration=0.01, result={}, phase=FlightPhase.PRE_FLIGHT),
+        StepResult(id="s2", name="Upload declaration", status=Status.PASS, duration=0.02, result={}, phase=FlightPhase.PRE_FLIGHT),
+        StepResult(id="s3", name="Stream telemetry", status=Status.PASS, duration=1.0, result={}, phase=FlightPhase.CRUISE),
+        StepResult(id="s4", name="Cleanup", status=Status.PASS, duration=0.01, result={}, phase=FlightPhase.POST_FLIGHT),
+    ]
+    scenario_result = ScenarioResult(
+        name="phased_scenario",
+        suite_name=None,
+        status=Status.PASS,
+        duration=1.04,
+        steps=steps,
+        error_message=None,
+        flight_declaration_filename=None,
+        telemetry_filename=None,
+        flight_declaration_data=None,
+        flight_declaration_via_operational_intent_data=None,
+        telemetry_data=None,
+        air_traffic_data=None,
+        visualization_2d_path=None,
+        visualization_3d_path=None,
+        docs=None,
+    )
+
+    report_data = create_report_data(
+        config=app_config,
+        config_path="config/default.yaml",
+        results=[scenario_result],
+        start_time=datetime.now(UTC),
+        end_time=datetime.now(UTC),
+        run_id="test-run",
+        docs_dir=None,
+    )
+    generate_reports(report_data, app_config.reporting, base_filename="report")
+
+    html_path = next(tmp_path.rglob("report.html"))
+    html = html_path.read_text(encoding="utf-8")
+
+    # Phase headers should appear with human-readable labels
+    assert "Pre-flight" in html
+    assert "Cruise" in html
+    assert "Post-flight" in html
+
+    # Phase badges should contain the codes
+    assert ">PRF<" in html
+    assert ">CRZ<" in html
+    assert ">PST<" in html
+
+    # All steps should be present
+    assert "Setup geo fence" in html
+    assert "Upload declaration" in html
+    assert "Stream telemetry" in html
+    assert "Cleanup" in html
+
+
+def test_report_html_no_phases_renders_flat_table(tmp_path: Path):
+    app_config = _make_app_config(tmp_path)
+
+    steps = [
+        StepResult(id="s1", name="Step A", status=Status.PASS, duration=0.01, result={}),
+        StepResult(id="s2", name="Step B", status=Status.PASS, duration=0.02, result={}),
+    ]
+    scenario_result = ScenarioResult(
+        name="flat_scenario",
+        suite_name=None,
+        status=Status.PASS,
+        duration=0.03,
+        steps=steps,
+        error_message=None,
+        flight_declaration_filename=None,
+        telemetry_filename=None,
+        flight_declaration_data=None,
+        flight_declaration_via_operational_intent_data=None,
+        telemetry_data=None,
+        air_traffic_data=None,
+        visualization_2d_path=None,
+        visualization_3d_path=None,
+        docs=None,
+    )
+
+    report_data = create_report_data(
+        config=app_config,
+        config_path="config/default.yaml",
+        results=[scenario_result],
+        start_time=datetime.now(UTC),
+        end_time=datetime.now(UTC),
+        run_id="test-run",
+        docs_dir=None,
+    )
+    generate_reports(report_data, app_config.reporting, base_filename="report")
+
+    html_path = next(tmp_path.rglob("report.html"))
+    html = html_path.read_text(encoding="utf-8")
+
+    # No phase group headers in content (CSS rule may still exist in <style>)
+    assert 'class="phase-header"' not in html
+    # Steps still render
+    assert "Step A" in html
+    assert "Step B" in html

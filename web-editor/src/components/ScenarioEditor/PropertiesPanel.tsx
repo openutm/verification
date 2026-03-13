@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Link as LinkIcon, Unlink } from 'lucide-react';
+import { X, Link as LinkIcon, Unlink, Plane } from 'lucide-react';
 import type { Node } from '@xyflow/react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
 import styles from '../../styles/SidebarPanel.module.css';
@@ -178,7 +178,8 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                                     fontSize: '11px',
                                     fontWeight: 600
                                 }}>
-                                    ✈ {selectedNode.data.phase}
+                                    <Plane size={12} aria-hidden />
+                                    {selectedNode.data.phase}
                                 </span>
                             </div>
                         )}

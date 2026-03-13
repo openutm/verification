@@ -43,7 +43,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         # but we inherit from it. Ideally, we should refactor to composition over inheritance.
         BaseBlenderAPIClient.__init__(self, base_url="", credentials={})
 
-    @scenario_step("Fetch Session IDs for Bayesian Simulation", phase=FlightPhase.STANDING)
+    @scenario_step("Fetch Session IDs for Bayesian Simulation", phase=FlightPhase.PRE_FLIGHT)
     async def get_configured_bayesian_session_ids(
         self,
     ) -> list[UUID]:
@@ -66,7 +66,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
             raise
         return session_ids
 
-    @scenario_step("Generate Bayesian Simulation Air Traffic Data", phase=FlightPhase.EN_ROUTE)
+    @scenario_step("Generate Bayesian Simulation Air Traffic Data", phase=FlightPhase.PRE_FLIGHT)
     async def generate_bayesian_sim_air_traffic_data(
         self,
         config_path: str | None = None,
@@ -209,7 +209,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
 
         return observations
 
-    @scenario_step("Generate Bayesian Simulation Air Traffic Data with latency issues", phase=FlightPhase.EN_ROUTE)
+    @scenario_step("Generate Bayesian Simulation Air Traffic Data with latency issues", phase=FlightPhase.PRE_FLIGHT)
     async def generate_bayesian_sim_air_traffic_data_with_sensor_latency_issues(
         self,
         config_path: str | None = None,

@@ -247,7 +247,7 @@ class AMQPClient:
                     pass
             logger.info("AMQP consumer stopped")
 
-    @scenario_step("Start AMQP Queue Monitor", phase=FlightPhase.STANDING)
+    @scenario_step("Start AMQP Queue Monitor", phase=FlightPhase.PRE_FLIGHT)
     async def start_queue_monitor(
         self,
         queue_name: str | None = None,
@@ -322,7 +322,7 @@ class AMQPClient:
             "error": self._state.error,
         }
 
-    @scenario_step("Get AMQP Messages", phase=FlightPhase.EN_ROUTE)
+    @scenario_step("Get AMQP Messages", phase=FlightPhase.CRUISE)
     async def get_received_messages(
         self,
         routing_key_filter: str | None = None,
@@ -354,7 +354,7 @@ class AMQPClient:
 
         return [m.to_dict() for m in messages]
 
-    @scenario_step("Wait for AMQP Messages", phase=FlightPhase.EN_ROUTE)
+    @scenario_step("Wait for AMQP Messages", phase=FlightPhase.CRUISE)
     async def wait_for_messages(
         self,
         count: int = 1,
@@ -408,7 +408,7 @@ class AMQPClient:
         logger.info(f"Cleared {count} AMQP messages")
         return {"cleared_count": count}
 
-    @scenario_step("Check AMQP Connection", phase=FlightPhase.STANDING)
+    @scenario_step("Check AMQP Connection", phase=FlightPhase.PRE_FLIGHT)
     async def check_connection(self) -> dict[str, Any]:
         """Check if AMQP connection can be established.
 

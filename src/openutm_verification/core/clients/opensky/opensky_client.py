@@ -103,7 +103,7 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
 
         return self.process_flight_data(flight_df)
 
-    @scenario_step("Fetch OpenSky Data", phase=FlightPhase.EN_ROUTE)
+    @scenario_step("Fetch OpenSky Data", phase=FlightPhase.CRUISE)
     async def fetch_data(self) -> list[FlightObservationSchema] | None:
         """Fetch and process live flight data from OpenSky Network.
 

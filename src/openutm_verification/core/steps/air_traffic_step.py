@@ -24,7 +24,7 @@ class AirTrafficStepClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    @scenario_step("Stream Air Traffic", phase=FlightPhase.EN_ROUTE)
+    @scenario_step("Stream Air Traffic", phase=FlightPhase.CRUISE)
     async def stream_air_traffic(
         self,
         provider: ProviderType,
