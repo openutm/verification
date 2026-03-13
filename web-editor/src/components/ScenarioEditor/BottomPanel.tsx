@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { X, Copy, Check } from 'lucide-react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
 import panelStyles from '../../styles/SidebarPanel.module.css';
@@ -51,6 +51,16 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
     const [activeTab, setActiveTab] = useState<'output' | 'logs'>('output');
     const [logLevel, setLogLevel] = useState<string>('ALL');
     const [copied, setCopied] = useState(false);
+    const copyTimeoutRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (copyTimeoutRef.current !== null) {
+                clearTimeout(copyTimeoutRef.current);
+                copyTimeoutRef.current = null;
+            }
+        };
+    }, []);
 
     const result = selectedNode?.data?.result;
     const nodeLogs = (selectedNode?.data as { logs?: string[] } | undefined)?.logs;
@@ -77,8 +87,15 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
         if (!textToCopy) return;
 
         const handleSuccess = () => {
+            if (copyTimeoutRef.current !== null) {
+                clearTimeout(copyTimeoutRef.current);
+                copyTimeoutRef.current = null;
+            }
             setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            copyTimeoutRef.current = window.setTimeout(() => {
+                setCopied(false);
+                copyTimeoutRef.current = null;
+            }, 2000);
         };
 
         const fallbackCopy = () => {
