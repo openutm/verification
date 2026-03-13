@@ -130,7 +130,7 @@
                 <h4>Steps:</h4>
                 {% set has_phases = result.steps | selectattr('phase') | list | length > 0 %}
                 {% if has_phases %}
-                    {% for phase_group in result.steps | groupby('phase') %}
+                    {% for phase_group in result.steps | groupby(attribute='phase', default='') %}
                     <div class="phase-group">
                         {% if phase_group.grouper %}
                         <div class="phase-header">
