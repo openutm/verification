@@ -190,6 +190,7 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
         autoescape=select_autoescape(enabled_extensions=("html", "xml"), default_for_string=True, default=True),
     )
     env.filters["markdown"] = lambda text: markdown.markdown(text) if text else ""
+    env.filters["default_phase"] = lambda steps: [{**s, "phase": s.get("phase") or ""} for s in steps]
     template = env.get_template("report_template.html")
 
     html_content = template.render(
