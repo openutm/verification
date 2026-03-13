@@ -240,11 +240,19 @@ export const convertGraphToYaml = (
     const sequenceEdges = edges.filter(e => e.style?.strokeDasharray !== '5 5');
     const dependencyEdges = edges.filter(e => e.style?.strokeDasharray === '5 5');
 
-    // Identify group containers (nodes that are group references)
-    const groupContainerIds = new Set(nodes.filter(n => n.data.isGroupContainer).map(n => n.id));
+    // Identify group containers (nodes that are group references, NOT phase containers)
+    const groupContainerIds = new Set(nodes.filter(n => n.data.isGroupContainer && !n.data.isPhaseContainer).map(n => n.id));
+    const phaseContainerIds = new Set(nodes.filter(n => n.data.isPhaseContainer).map(n => n.id));
 
     // Filter out nodes that are inside group containers (they have a parentId that is a group container)
-    const topLevelNodes = nodes.filter(n => !n.parentId || !groupContainerIds.has(n.parentId));
+    // Phase container children are treated as top-level; phase containers themselves are excluded
+    const topLevelNodes = nodes.filter(n => {
+        if (n.data.isPhaseContainer) return false; // exclude phase containers
+        if (!n.parentId) return true; // top-level nodes
+        if (phaseContainerIds.has(n.parentId)) return true; // children of phase containers are top-level
+        if (groupContainerIds.has(n.parentId)) return false; // children of user groups are excluded
+        return true;
+    });
 
     // Sort nodes based on edges to determine order
     const targetIds = new Set(sequenceEdges.map(e => e.target).filter(id => topLevelNodes.some(n => n.id === id)));

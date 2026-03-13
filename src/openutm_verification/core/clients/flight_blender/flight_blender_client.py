@@ -1147,7 +1147,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             result=f"Retrieved {len(notifications)} sensor failure notifications",
         )
 
-    @scenario_step("Start / Stop SDSP Session", phase=FlightPhase.CRUISE)
+    @scenario_step("Start / Stop SDSP Session")
     async def start_stop_sdsp_session(self, session_id: str, action: SDSPSessionAction) -> str:
         """
         Starts or stops an SDSP (Strategic Deconfliction Service Provider) session based on the specified action.

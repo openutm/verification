@@ -30,6 +30,7 @@ export interface NodeData extends Record<string, unknown> {
     needs?: string[];
     isGroupReference?: boolean;
     isGroupContainer?: boolean;
+    isPhaseContainer?: boolean;
     onShowResult?: (result: unknown) => void;
 }
 
