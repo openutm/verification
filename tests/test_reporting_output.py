@@ -192,3 +192,59 @@ def test_report_html_no_phases_renders_flat_table(tmp_path: Path):
     # Steps still render
     assert "Step A" in html
     assert "Step B" in html
+
+
+def test_report_html_mixed_phases_and_none(tmp_path: Path):
+    """Regression: steps mixing phase=None and phase=<value> must not crash groupby."""
+    app_config = _make_app_config(tmp_path)
+
+    steps = [
+        StepResult(id="s1", name="Setup", status=Status.PASS, duration=0.01, result={}, phase=FlightPhase.PRE_FLIGHT),
+        StepResult(id="s2", name="Generate UUID", status=Status.PASS, duration=0.01, result={}),  # phase=None
+        StepResult(id="s3", name="Stream", status=Status.PASS, duration=1.0, result={}, phase=FlightPhase.CRUISE),
+        StepResult(id="s4", name="Cleanup", status=Status.PASS, duration=0.01, result={}),  # phase=None
+    ]
+    scenario_result = ScenarioResult(
+        name="mixed_phases",
+        suite_name=None,
+        status=Status.PASS,
+        duration=1.03,
+        steps=steps,
+        error_message=None,
+        flight_declaration_filename=None,
+        telemetry_filename=None,
+        flight_declaration_data=None,
+        flight_declaration_via_operational_intent_data=None,
+        telemetry_data=None,
+        air_traffic_data=None,
+        visualization_2d_path=None,
+        visualization_3d_path=None,
+        docs=None,
+    )
+
+    report_data = create_report_data(
+        config=app_config,
+        config_path="config/default.yaml",
+        results=[scenario_result],
+        start_time=datetime.now(UTC),
+        end_time=datetime.now(UTC),
+        run_id="test-run",
+        docs_dir=None,
+    )
+
+    # Must not raise TypeError from groupby sorting None vs str
+    generate_reports(report_data, app_config.reporting, base_filename="report")
+
+    html_path = next(tmp_path.rglob("report.html"))
+    html = html_path.read_text(encoding="utf-8")
+
+    # Phased steps grouped under phase headers
+    assert "Pre-flight" in html
+    assert "Cruise" in html
+    # Unphased steps grouped under "Other Steps"
+    assert "Other Steps" in html
+    # All step names present
+    assert "Setup" in html
+    assert "Generate UUID" in html
+    assert "Stream" in html
+    assert "Cleanup" in html
