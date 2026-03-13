@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { X } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { X, Copy, Check } from 'lucide-react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
 import panelStyles from '../../styles/SidebarPanel.module.css';
 import styles from '../../styles/BottomPanel.module.css';
@@ -50,6 +50,7 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
     const { panelHeight, isResizing, startResizing } = useBottomPanelResize();
     const [activeTab, setActiveTab] = useState<'output' | 'logs'>('output');
     const [logLevel, setLogLevel] = useState<string>('ALL');
+    const [copied, setCopied] = useState(false);
 
     const result = selectedNode?.data?.result;
     const nodeLogs = (selectedNode?.data as { logs?: string[] } | undefined)?.logs;
@@ -66,9 +67,40 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
         });
     }, [logs, logLevel]);
 
+    const handleCopy = useCallback(() => {
+        let textToCopy = '';
+        if (activeTab === 'output' && result) {
+            textToCopy = JSON.stringify(result, null, 2);
+        } else if (activeTab === 'logs' && filteredLogs.length > 0) {
+            textToCopy = filteredLogs.join('\n');
+        }
+        if (!textToCopy) return;
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    }, [activeTab, result, filteredLogs]);
+
+    const canCopy = activeTab === 'output' ? !!result : filteredLogs.length > 0;
+
     if (!selectedNode) return null;
 
     const { status, label } = selectedNode.data;
+
+    // Extract background and text color based on status
+    let statusBgColor = 'var(--bg-secondary)';
+    let statusTextColor = 'var(--text-secondary)';
+    if (status === 'success') {
+        statusBgColor = 'var(--success-bg)';
+        statusTextColor = 'var(--success)';
+    } else if (status === 'failure') {
+        statusBgColor = 'var(--danger-bg)';
+        statusTextColor = 'var(--danger)';
+    } else if (status === 'skipped') {
+        statusBgColor = 'var(--bg-tertiary)';
+        statusTextColor = 'var(--text-tertiary)';
+    }
 
     return (
         <div className={layoutStyles.bottomPanel} style={{ height: panelHeight, position: 'relative' }}>
@@ -87,14 +119,8 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
                                 fontSize: '10px',
                                 padding: '2px 6px',
                                 borderRadius: '4px',
-                                backgroundColor: status === 'success' ? 'var(--success-bg)' :
-                                                 status === 'failure' ? 'var(--danger-bg)' :
-                                                 status === 'skipped' ? 'var(--bg-tertiary)' :
-                                                 'var(--bg-secondary)',
-                                color: status === 'success' ? 'var(--success)' :
-                                       status === 'failure' ? 'var(--danger)' :
-                                       status === 'skipped' ? 'var(--text-tertiary)' :
-                                       'var(--text-secondary)',
+                                backgroundColor: statusBgColor,
+                                color: statusTextColor,
                                 border: '1px solid currentColor'
                             }}>
                                 {status.toUpperCase()}
@@ -111,18 +137,40 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
                 </div>
 
                 <div className={styles.tabContainer}>
-                    <button
-                        className={`${styles.tab} ${activeTab === 'output' ? styles.activeTab : ''}`}
-                        onClick={() => setActiveTab('output')}
-                    >
-                        Output Data
-                    </button>
-                    <button
-                        className={`${styles.tab} ${activeTab === 'logs' ? styles.activeTab : ''}`}
-                        onClick={() => setActiveTab('logs')}
-                    >
-                        Logs {logs && logs.length > 0 && `(${logs.length})`}
-                    </button>
+                    <div className={styles.tabGroup}>
+                        <button
+                            className={`${styles.tab} ${activeTab === 'output' ? styles.activeTab : ''}`}
+                            onClick={() => setActiveTab('output')}
+                        >
+                            Output Data
+                        </button>
+                        <button
+                            className={`${styles.tab} ${activeTab === 'logs' ? styles.activeTab : ''}`}
+                            onClick={() => setActiveTab('logs')}
+                        >
+                            Logs {logs && logs.length > 0 && `(${logs.length})`}
+                        </button>
+                    </div>
+                    {canCopy && (
+                        <button
+                            className={`${styles.copyButton} ${copied ? styles.copyButtonSuccess : ''}`}
+                            onClick={handleCopy}
+                            aria-label="Copy to clipboard"
+                            type="button"
+                        >
+                            {copied ? (
+                                <>
+                                    <Check size={14} />
+                                    <span>Copied!</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Copy size={14} />
+                                    <span>Copy</span>
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
 
                 <div className={styles.content}>
