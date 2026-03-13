@@ -76,10 +76,49 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
         }
         if (!textToCopy) return;
 
-        navigator.clipboard.writeText(textToCopy).then(() => {
+        const handleSuccess = () => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        });
+        };
+
+        const fallbackCopy = () => {
+            try {
+                const textarea = document.createElement('textarea');
+                textarea.value = textToCopy;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'absolute';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                const selection = document.getSelection();
+                const selected = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+                textarea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                if (selected && selection) {
+                    selection.removeAllRanges();
+                    selection.addRange(selected);
+                }
+                if (successful) {
+                    handleSuccess();
+                } else if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+                    window.alert('Failed to copy to clipboard.');
+                }
+            } catch {
+                if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+                    window.alert('Failed to copy to clipboard.');
+                }
+            }
+        };
+
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            navigator.clipboard.writeText(textToCopy)
+                .then(handleSuccess)
+                .catch(() => {
+                    fallbackCopy();
+                });
+        } else {
+            fallbackCopy();
+        }
     }, [activeTab, result, filteredLogs]);
 
     const canCopy = activeTab === 'output' ? !!result : filteredLogs.length > 0;
