@@ -131,6 +131,7 @@
                 {% set has_phases = result.steps | selectattr('phase') | list | length > 0 %}
                 {% if has_phases %}
                     {% for phase_group in result.steps | default_phase | groupby('phase') %}
+                    {% set phase_index = loop.index %}
                     <div class="phase-group">
                         {% if phase_group.grouper %}
                         <div class="phase-header">
@@ -153,8 +154,8 @@
                                 <td>
                                     {% if line_count > 10 %}
                                     <div class="result-wrapper">
-                                        <pre class="result-collapsed" id="result-{{ scenario_index }}-{{ loop.parent.loop.index }}-{{ loop.index }}">{{ result_json }}</pre>
-                                        <button class="toggle-btn" onclick="toggleResult('result-{{ scenario_index }}-{{ loop.parent.loop.index }}-{{ loop.index }}', this)">Show more</button>
+                                        <pre class="result-collapsed" id="result-{{ scenario_index }}-{{ phase_index }}-{{ loop.index }}">{{ result_json }}</pre>
+                                        <button class="toggle-btn" onclick="toggleResult('result-{{ scenario_index }}-{{ phase_index }}-{{ loop.index }}', this)">Show more</button>
                                     </div>
                                     {% else %}
                                     <pre>{{ result_json }}</pre>
