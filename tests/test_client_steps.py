@@ -623,8 +623,8 @@ def _valid_metrics_payload(observations: list[list[FlightObservationSchema]]) ->
     total_obs = sum(len(a) for a in observations if a)
     start_ts = min(a[0].timestamp for a in observations if a)
     end_ts = max(a[-1].timestamp for a in observations if a)
-    duration = end_ts - start_ts
-    prob = total_obs / (num_aircraft * duration)
+    duration = end_ts - start_ts + 1  # +1 to include the last observation interval
+    prob = min(1.0, total_obs / (num_aircraft * duration))
     window_start = "2024-01-01T00:00:00Z"
     window_end = "2024-01-01T00:00:30Z"
     return {
