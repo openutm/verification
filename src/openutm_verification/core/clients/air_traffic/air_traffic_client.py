@@ -14,6 +14,7 @@ from openutm_verification.core.clients.flight_blender.base_client import (
     BaseBlenderAPIClient,
 )
 from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.core.flight_phase import FlightPhase
 from openutm_verification.simulator.geo_json_telemetry import (
     GeoJSONAirtrafficSimulator,
 )
@@ -33,7 +34,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         # but we inherit from it. Ideally, we should refactor to composition over inheritance.
         BaseBlenderAPIClient.__init__(self, base_url="", credentials={})
 
-    @scenario_step("Fetch Session IDs")
+    @scenario_step("Fetch Session IDs", phase=FlightPhase.PRE_FLIGHT)
     async def get_configured_session_ids(
         self,
     ) -> list[UUID]:
@@ -54,7 +55,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
             raise
         return session_ids
 
-    @scenario_step("Generate Simulated Air Traffic Data")
+    @scenario_step("Generate Simulated Air Traffic Data", phase=FlightPhase.PRE_FLIGHT)
     async def generate_simulated_air_traffic_data(
         self,
         config_path: str | None = None,
@@ -105,7 +106,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
             logger.error(f"Failed to generate telemetry states from {config_path}: {exc}")
             raise
 
-    @scenario_step("Generate Simulated Air Traffic Data with Latency")
+    @scenario_step("Generate Simulated Air Traffic Data with Latency", phase=FlightPhase.PRE_FLIGHT)
     async def generate_simulated_air_traffic_data_with_latency(
         self,
         config_path: str | None = None,

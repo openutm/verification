@@ -21,6 +21,7 @@ from openutm_verification.core.clients.flight_blender.base_client import (
     BaseBlenderAPIClient,
 )
 from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.core.flight_phase import FlightPhase
 from openutm_verification.simulator.models.flight_data_types import (
     FlightObservationSchema,
 )
@@ -36,7 +37,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         # but we inherit from it. Ideally, we should refactor to composition over inheritance.
         BaseBlenderAPIClient.__init__(self, base_url="", credentials={})
 
-    @scenario_step("Generate BlueSky Simulation Air Traffic Data")
+    @scenario_step("Generate BlueSky Simulation Air Traffic Data", phase=FlightPhase.PRE_FLIGHT)
     async def generate_bluesky_sim_air_traffic_data(
         self,
         config_path: str | None = None,
@@ -138,7 +139,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
             # Convert dict -> list[list[FlightObservationSchema]] with stable ordering
             return [results_by_acid[acid] for acid in sorted(results_by_acid.keys())]
 
-    @scenario_step("Generate BlueSky Simulation Air Traffic Data with latency issues")
+    @scenario_step("Generate BlueSky Simulation Air Traffic Data with latency issues", phase=FlightPhase.PRE_FLIGHT)
     async def generate_bluesky_sim_air_traffic_data_with_sensor_latency_issues(
         self,
         config_path: str | None = None,

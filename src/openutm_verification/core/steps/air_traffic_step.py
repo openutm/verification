@@ -5,6 +5,7 @@ replacing the multiple provider-specific steps with a unified interface.
 """
 
 from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.core.flight_phase import FlightPhase
 from openutm_verification.core.providers import ProviderType, create_provider
 from openutm_verification.core.streamers import StreamResult, TargetType, create_streamer
 
@@ -23,7 +24,7 @@ class AirTrafficStepClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    @scenario_step("Stream Air Traffic")
+    @scenario_step("Stream Air Traffic", phase=FlightPhase.CRUISE)
     async def stream_air_traffic(
         self,
         provider: ProviderType,

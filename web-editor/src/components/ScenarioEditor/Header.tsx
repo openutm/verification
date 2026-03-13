@@ -1,4 +1,4 @@
-import { Activity, Moon, Sun, Layout, FilePlus, Save, Play, Loader2, Copy, Square } from 'lucide-react';
+import { Activity, Moon, Sun, Layout, FilePlus, Save, Play, Loader2, Copy, Square, Layers } from 'lucide-react';
 import styles from '../../styles/Header.module.css';
 import btnStyles from '../../styles/Button.module.css';
 
@@ -12,6 +12,8 @@ interface HeaderProps {
     onRun: () => void;
     onStop: () => void;
     isRunning: boolean;
+    groupedByPhase: boolean;
+    onToggleGroupByPhase: () => void;
 }
 
 export const Header = ({
@@ -24,6 +26,8 @@ export const Header = ({
     onRun,
     onStop,
     isRunning,
+    groupedByPhase,
+    onToggleGroupByPhase,
 }: HeaderProps) => {
     return (
         <header className={styles.header}>
@@ -38,6 +42,15 @@ export const Header = ({
                 <button className={btnStyles.button} onClick={onLayout} title="Auto-arrange nodes" type="button">
                     <Layout size={16} />
                     Auto Layout
+                </button>
+                <button
+                    className={`${btnStyles.button} ${groupedByPhase ? btnStyles.active : ''}`}
+                    onClick={onToggleGroupByPhase}
+                    title={groupedByPhase ? 'Ungroup phase containers' : 'Group nodes by flight phase'}
+                    type="button"
+                >
+                    <Layers size={16} />
+                    {groupedByPhase ? 'Ungroup Phases' : 'Group by Phase'}
                 </button>
                 <button className={btnStyles.button} onClick={onNew} title="Create new scenario" type="button">
                     <FilePlus size={16} />

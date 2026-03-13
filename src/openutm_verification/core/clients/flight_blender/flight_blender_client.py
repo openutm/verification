@@ -21,6 +21,7 @@ from openutm_verification.core.execution.scenario_runner import (
     ScenarioContext,
     scenario_step,
 )
+from openutm_verification.core.flight_phase import FlightPhase
 from openutm_verification.core.reporting.reporting_models import (
     Status,
     StepResult,
@@ -132,7 +133,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         return await super().__aexit__(exc_type, exc_val, exc_tb)
 
-    @scenario_step("Upload Geo Fence")
+    @scenario_step("Upload Geo Fence", phase=FlightPhase.PRE_FLIGHT)
     async def upload_geo_fence(self, filename: str | None = None) -> dict[str, Any]:
         """Upload an Area-of-Interest (Geo Fence) to Flight Blender.
 
@@ -164,7 +165,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.warning("Failed to extract geo-fence ID from response")
         return body
 
-    @scenario_step("Get Geo Fence")
+    @scenario_step("Get Geo Fence", phase=FlightPhase.PRE_FLIGHT)
     async def get_geo_fence(self) -> dict[str, Any]:
         """Retrieve the details of the most recently uploaded geo-fence.
 
@@ -182,7 +183,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.info(f"Retrieved geo-fence details for ID: {geo_fence_id}")
         return response.json()
 
-    @scenario_step("Delete Geo Fence")
+    @scenario_step("Delete Geo Fence", phase=FlightPhase.POST_FLIGHT)
     async def delete_geo_fence(self, geo_fence_id: str | None = None) -> dict[str, Any]:
         """Delete a geo-fence by ID.
 
@@ -220,7 +221,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.warning(f"Non-JSON response on geo-fence deletion, status: {response.status_code}")
             return {"deleted": response.status_code in (200, 204), "id": op_id}
 
-    @scenario_step("Upload Flight Declaration")
+    @scenario_step("Upload Flight Declaration", phase=FlightPhase.PRE_FLIGHT)
     async def upload_flight_declaration(self, declaration: str | BaseModel) -> dict[str, Any]:
         """Upload a flight declaration to the Flight Blender API.
 
@@ -272,7 +273,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         return response_json
 
-    @scenario_step("Bulk Upload Flight Declarations")
+    @scenario_step("Bulk Upload Flight Declarations", phase=FlightPhase.PRE_FLIGHT)
     async def upload_multiple_flight_declarations(self, declarations: list[BaseModel]) -> dict[str, Any]:
         """
         Upload multiple flight declarations to Flight Blender.
@@ -317,7 +318,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.warning("Failed to extract flight declaration IDs from response")
         return response_json
 
-    @scenario_step("Upload Flight Declaration Via Operational Intent")
+    @scenario_step("Upload Flight Declaration Via Operational Intent", phase=FlightPhase.PRE_FLIGHT)
     async def upload_flight_declaration_via_operational_intent(self, declaration: str | BaseModel) -> dict[str, Any]:
         """Upload a flight declaration to the Flight Blender API.
 
@@ -370,7 +371,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         return response_json
 
-    @scenario_step("Upload two Flight Declarations Via Operational Intent")
+    @scenario_step("Upload two Flight Declarations Via Operational Intent", phase=FlightPhase.PRE_FLIGHT)
     async def upload_multiple_flight_declarations_via_operational_intents(self, declarations: list[BaseModel]) -> dict[str, Any]:
         endpoint = "/flight_declaration_ops/set_operational_intents_bulk"
 
@@ -405,7 +406,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         """
         return input(prompt)
 
-    @scenario_step("Update Operation State")
+    @scenario_step("Update Operation State", phase=FlightPhase.CRUISE)
     async def update_operation_state(self, state: OperationState, duration: str | int | float = 0) -> dict[str, Any]:
         """Update the state of a flight operation.
 
@@ -433,7 +434,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             await asyncio.sleep(duration_seconds)
         return response.json()
 
-    @scenario_step("Update Operation State of declaration")
+    @scenario_step("Update Operation State of declaration", phase=FlightPhase.CRUISE)
     async def update_operation_state_of_declaration(
         self, state: OperationState, declaration_id: str, duration: str | int | float = 0
     ) -> dict[str, Any]:
@@ -541,7 +542,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.info("Telemetry submission completed")
         return last_response
 
-    @scenario_step("Submit Telemetry (from file)")
+    @scenario_step("Submit Telemetry (from file)", phase=FlightPhase.CRUISE)
     async def submit_telemetry_from_file(self, filename: str, duration: str | int | float = 0) -> dict[str, Any] | None:
         """Submit telemetry data for a flight operation.
 
@@ -562,7 +563,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         states = self._load_telemetry_file(filename)
         return await self._submit_telemetry_states_impl(states, duration)
 
-    @scenario_step("Submit Telemetry")
+    @scenario_step("Submit Telemetry", phase=FlightPhase.CRUISE)
     async def submit_telemetry(self, states: list[RIDAircraftState] | None = None, duration: str | int | float = 0) -> dict[str, Any] | None:
         """Submit telemetry data for a flight operation from in-memory states.
 
@@ -586,7 +587,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         return await self._submit_telemetry_states_impl(telemetry_states, duration)
 
-    @scenario_step("Check Operation State")
+    @scenario_step("Check Operation State", phase=FlightPhase.CRUISE)
     async def check_operation_state(
         self,
         expected_state: OperationState,
@@ -611,7 +612,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.info(f"Flight state check for {self.latest_flight_declaration_id} completed (simulated).")
         return f"Waited for Flight Blender to process {expected_state} state."
 
-    @scenario_step("Check Operation State Connected")
+    @scenario_step("Check Operation State Connected", phase=FlightPhase.CRUISE)
     async def check_operation_state_connected(
         self,
         expected_state: OperationState,
@@ -652,7 +653,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             f"Operation {self.latest_flight_declaration_id} did not reach expected state {expected_state.name} within {duration_seconds} seconds"
         )
 
-    @scenario_step("Cleanup Flight Declarations")
+    @scenario_step("Cleanup Flight Declarations", phase=FlightPhase.POST_FLIGHT)
     async def cleanup_flight_declarations(self) -> dict[str, Any]:
         """Specific cleanup for flight declarations in the active volume.
 
@@ -703,7 +704,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.error(f"Error during flight declaration cleanup: {e}")
             return {"cleaned": False, "error": str(e)}
 
-    @scenario_step("Delete Flight Declaration")
+    @scenario_step("Delete Flight Declaration", phase=FlightPhase.POST_FLIGHT)
     async def delete_flight_declaration(self, flight_declaration_id: str | None = None) -> dict[str, Any]:
         """Delete a flight declaration by ID.
 
@@ -737,7 +738,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.warning(f"Non-JSON response on flight declaration deletion, status: {response.status_code}")
             return {"deleted": response.status_code in (200, 204), "id": op_id}
 
-    @scenario_step("Submit Simulated Air Traffic")
+    @scenario_step("Submit Simulated Air Traffic", phase=FlightPhase.CRUISE)
     async def submit_simulated_air_traffic(
         self,
         observations: list[list[FlightObservationSchema]],
@@ -846,7 +847,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             "simulation_duration_seconds": (simulation_end - simulation_start).total_seconds(),
         }
 
-    @scenario_step("Submit Simulated Air Traffic at varying refresh rates")
+    @scenario_step("Submit Simulated Air Traffic at varying refresh rates", phase=FlightPhase.CRUISE)
     async def submit_simulated_air_traffic_at_random_refresh_rates(
         self,
         observations: list[list[FlightObservationSchema]],
@@ -1022,7 +1023,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             errors.append("aggregate_health is empty")
         return errors
 
-    @scenario_step("Verify Reported Metrics in Flight Blender")
+    @scenario_step("Verify Reported Metrics in Flight Blender", phase=FlightPhase.POST_FLIGHT)
     async def verify_reported_metrics_in_flight_blender(self, observations: list[list[FlightObservationSchema]], session_id: uuid.UUID | None = None):
         """
         Queries the SDSP metrics endpoint and verifies reported values against expected values
@@ -1088,7 +1089,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             error_message=None if not errors else "; ".join(errors),
         )
 
-    @scenario_step("Submit Air Traffic")
+    @scenario_step("Submit Air Traffic", phase=FlightPhase.CRUISE)
     async def submit_air_traffic(self, observations: list[FlightObservationSchema], session_id: uuid.UUID = uuid.uuid4()) -> dict[str, Any]:
         """Submit air traffic observations to the Flight Blender API.
 
@@ -1112,7 +1113,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         logger.info(f"Air traffic observations submitted successfully for session {session_id}")
         return response.json()
 
-    @scenario_step("Get Active Sensors from SDSP")
+    @scenario_step("Get Active Sensors from SDSP", phase=FlightPhase.PRE_FLIGHT)
     async def get_active_sensors(self):
         endpoint = "/surveillance_monitoring_ops/list_surveillance_sensors"
         response = await self.get(endpoint)
@@ -1124,7 +1125,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.error(f"Failed to retrieve active sensors. Response: {response.text}")
             raise FlightBlenderError("Failed to retrieve active sensors from SDSP")
 
-    @scenario_step("Set Sensor Failure in SDSP")
+    @scenario_step("Set Sensor Failure in SDSP", phase=FlightPhase.CRUISE)
     async def set_sensor_failure(self, sensor_id: str):
         endpoint = f"/surveillance_monitoring_ops/update_sensor_health/{sensor_id}"
         new_status_payload = {"status": "outage"}
@@ -1136,7 +1137,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             logger.error(f"Failed to update sensor {sensor_id} status. Response: {response.text}")
             raise FlightBlenderError(f"Failed to update sensor {sensor_id} status to outage")
 
-    @scenario_step("List Sensor Failure Notifications from SDSP")
+    @scenario_step("List Sensor Failure Notifications from SDSP", phase=FlightPhase.CRUISE)
     async def list_sensor_failure_notifications(self) -> StepResult:
         endpoint = "/surveillance_monitoring_ops/list_sensor_health_notifications"
         response = await self.get(endpoint)
@@ -1195,7 +1196,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         ws = await self.create_websocket_connection(endpoint=endpoint)
         return ws
 
-    @scenario_step("Verify SDSP Track")
+    @scenario_step("Verify SDSP Track", phase=FlightPhase.CRUISE)
     async def initialize_verify_sdsp_track(
         self,
         expected_track_interval_seconds: int,
@@ -1257,7 +1258,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 duration=duration,
             )
 
-    @scenario_step("Verify SDSP Heartbeat")
+    @scenario_step("Verify SDSP Heartbeat", phase=FlightPhase.CRUISE)
     async def initialize_verify_sdsp_heartbeat(
         self,
         expected_heartbeat_interval_seconds: int,
@@ -1329,12 +1330,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
     async def close_heartbeat_websocket_connection(self, ws_connection: ClientConnection) -> None:
         await ws_connection.close()
 
-    @scenario_step("Teardown Flight Declaration")
+    @scenario_step("Teardown Flight Declaration", phase=FlightPhase.POST_FLIGHT)
     async def teardown_flight_declaration(self, flight_declaration_id: str | None = None) -> dict[str, Any]:
         logger.info("Tearing down flight declaration...")
         await self.delete_flight_declaration(flight_declaration_id=flight_declaration_id)
 
-    @scenario_step("Setup Flight Declaration via Operational Intent")
+    @scenario_step("Setup Flight Declaration via Operational Intent", phase=FlightPhase.PRE_FLIGHT)
     async def setup_flight_declaration_via_operational_intent(
         self,
         flight_declaration_via_operational_intent_path: str,
@@ -1382,7 +1383,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             "end_datetime": flight_declaration.end_datetime,
         }
 
-    @scenario_step("Setup Flight Declaration")
+    @scenario_step("Setup Flight Declaration", phase=FlightPhase.PRE_FLIGHT)
     async def setup_flight_declaration(
         self,
         flight_declaration_path: str | None = None,
@@ -1440,7 +1441,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             "end_datetime": flight_declaration.end_datetime,
         }
 
-    @scenario_step("Setup Two Flight Declarations")
+    @scenario_step("Setup Two Flight Declarations", phase=FlightPhase.PRE_FLIGHT)
     async def setup_two_flight_declarations(
         self,
         flight_declaration_path: str | None = None,
@@ -1503,7 +1504,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         return asdict(all_declaration_details)
 
-    @scenario_step("Setup Two Operational Intents")
+    @scenario_step("Setup Two Operational Intents", phase=FlightPhase.PRE_FLIGHT)
     async def setup_two_flight_declarations_via_operational_intents(
         self,
         flight_declaration_via_operational_intent_path: str | None = None,

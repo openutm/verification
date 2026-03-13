@@ -13,6 +13,8 @@ describe('Header', () => {
         onRun: vi.fn(),
         onStop: vi.fn(),
         isRunning: false,
+        groupedByPhase: false,
+        onToggleGroupByPhase: vi.fn(),
     };
 
     it('renders correctly', () => {
