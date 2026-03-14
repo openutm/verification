@@ -391,6 +391,17 @@ async def test_submit_simulated_air_traffic(fb_client):
         def shift(self, seconds=0):
             return MockArrow(self.time_val + seconds)
 
+        def floor(self, _unit="second"):
+            return MockArrow(int(self.time_val))
+
+        def __hash__(self):
+            return hash(int(self.time_val))
+
+        def __eq__(self, other):
+            if isinstance(other, MockArrow):
+                return self.time_val == other.time_val
+            return NotImplemented
+
         def __repr__(self):
             return f"MockArrow({self.time_val})"
 
@@ -417,24 +428,15 @@ async def test_submit_simulated_air_traffic(fb_client):
         mock_get.side_effect = side_effect_get
 
         # Mock arrow.now() to advance time
-        # Logic in code:
-        # start_time = now() (0)
-        # loop: current_sim_time (0) < sim_end (1)
-        #   target_real_time = start_time + (current - start) = 0 + 0 = 0
-        #   while now() < target_real_time: sleep
-        #   submit
-        #   current_sim_time shift +1 -> 1
-        # loop: current_sim_time (1) < sim_end (1) -> False (Wait, loop is while < end)
-        # Actually max(end_times) is 1. So loop runs for 0.
-
-        # We need to ensure loop runs at least once.
-        # If start=0, end=1. Loop runs for 0. Next is 1. 1 < 1 is False.
+        # The code iterates over unique time slots [0, 1] with 1s pacing.
+        # slot 0: slot_index==0 → skip wait → batch submit 2 aircraft
+        # slot 1: slot_index==1 → asyncio.sleep(shift(1) - now()) → batch submit 2 aircraft
+        # After loop: now() for duration calculation
 
         mock_now.side_effect = [
             MockArrow(0),  # start_time
-            MockArrow(0),  # check loop wait
-            MockArrow(2),  # check loop wait (exit wait)
-            MockArrow(3),  # next call
+            MockArrow(0),  # slot 1: sleep_seconds calc → (shift(1) - 0).total_seconds() = 1
+            MockArrow(3),  # duration calculation
         ]
 
         result = await fb_client.submit_simulated_air_traffic(observations=obs)
@@ -442,7 +444,7 @@ async def test_submit_simulated_air_traffic(fb_client):
         # Result now returns detailed dict with submission stats
         assert isinstance(result.result, dict)
         assert result.result["aircraft_count"] == 2
-        assert result.result["observations_submitted"] == 2
+        assert result.result["observations_submitted"] == 4
         assert fb_client.post.called
 
 
