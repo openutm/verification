@@ -142,6 +142,9 @@ async def reset_session(
     logger.debug(f"Session reset request received: {config.model_dump()}")
 
     await runner.close_session()
+    runner.current_output_dir = None
+    runner.current_timestamp_str = None
+    runner.current_start_time = None
 
     # If configuration is provided from the frontend, apply it
     if config.flight_blender:
