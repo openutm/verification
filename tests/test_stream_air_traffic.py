@@ -140,7 +140,7 @@ class TestLatencySimulation:
             icao_address="TEST1",
             timestamp=1000000,
         )
-        observations = [[original_obs]]
+        observations = [original_obs]
 
         # Force all observations to be shifted (100% probability, fixed shift)
         shift_timestamps(observations, probability=1.0, shift_range=(1.0, 1.0))
@@ -159,7 +159,7 @@ class TestLatencySimulation:
             icao_address="TEST1",
             timestamp=1000000,
         )
-        observations = [[obs]]
+        observations = [obs]
 
         # Use 100% probability and fixed shift of exactly 2 seconds.
         # Calling shift_timestamps directly guarantees the shift path
@@ -167,8 +167,8 @@ class TestLatencySimulation:
         result, total_shifted = shift_timestamps(observations, probability=1.0, shift_range=(2.0, 2.0))
 
         assert total_shifted == 1
-        assert len(result[0]) == 1
-        shifted_obs = result[0][0]
+        assert len(result) == 1
+        shifted_obs = result[0]
         # Shift should be 2 seconds, not 2000 milliseconds
         shift = abs(shifted_obs.timestamp - 1000000)
         assert shift == 2, f"Timestamp shift {shift} is not 2 seconds"
@@ -265,28 +265,24 @@ class TestAirTrafficStepClient:
 def _create_mock_observations():
     """Helper to create mock flight observations."""
     return [
-        [
-            FlightObservationSchema(
-                lat_dd=46.9,
-                lon_dd=7.4,
-                altitude_mm=1000000,
-                traffic_source=0,
-                source_type=0,
-                icao_address="ABC123",
-                timestamp=1234567890,
-            ),
-        ],
-        [
-            FlightObservationSchema(
-                lat_dd=46.95,
-                lon_dd=7.45,
-                altitude_mm=1100000,
-                traffic_source=0,
-                source_type=0,
-                icao_address="DEF456",
-                timestamp=1234567891,
-            ),
-        ],
+        FlightObservationSchema(
+            lat_dd=46.9,
+            lon_dd=7.4,
+            altitude_mm=1000000,
+            traffic_source=0,
+            source_type=0,
+            icao_address="ABC123",
+            timestamp=1234567890,
+        ),
+        FlightObservationSchema(
+            lat_dd=46.95,
+            lon_dd=7.45,
+            altitude_mm=1100000,
+            traffic_source=0,
+            source_type=0,
+            icao_address="DEF456",
+            timestamp=1234567891,
+        ),
     ]
 
 
@@ -372,17 +368,15 @@ class TestBlueSkyProviderIntegration:
         from openutm_verification.core.providers.bluesky_provider import BlueSkyProvider
 
         mock_observations = [
-            [
-                FlightObservationSchema(
-                    lat_dd=46.9,
-                    lon_dd=7.4,
-                    altitude_mm=5000000,
-                    traffic_source=0,
-                    source_type=0,
-                    icao_address="BLUESKY1",
-                    timestamp=1234567890,
-                ),
-            ],
+            FlightObservationSchema(
+                lat_dd=46.9,
+                lon_dd=7.4,
+                altitude_mm=5000000,
+                traffic_source=0,
+                source_type=0,
+                icao_address="BLUESKY1",
+                timestamp=1234567890,
+            ),
         ]
 
         mock_client_instance = AsyncMock()
@@ -431,17 +425,15 @@ class TestBayesianProviderIntegration:
         from openutm_verification.core.providers.bayesian_provider import BayesianProvider
 
         mock_observations = [
-            [
-                FlightObservationSchema(
-                    lat_dd=47.0,
-                    lon_dd=8.0,
-                    altitude_mm=3000000,
-                    traffic_source=0,
-                    source_type=0,
-                    icao_address="BAYES1",
-                    timestamp=1234567890,
-                ),
-            ],
+            FlightObservationSchema(
+                lat_dd=47.0,
+                lon_dd=8.0,
+                altitude_mm=3000000,
+                traffic_source=0,
+                source_type=0,
+                icao_address="BAYES1",
+                timestamp=1234567890,
+            ),
         ]
 
         mock_client_instance = AsyncMock()
@@ -548,8 +540,8 @@ class TestOpenSkyProviderIntegration:
         # Verify fetch_data was called
         mock_client_instance.fetch_data.assert_called_once()
 
-        # Result should be wrapped in outer list for consistency
-        assert result == [mock_observations]
+        # Result should be the flat list directly
+        assert result == mock_observations
 
     @pytest.mark.asyncio
     @patch("openutm_verification.core.providers.opensky_provider.OpenSkyClient")
@@ -627,7 +619,7 @@ class TestFlightBlenderStreamerIntegration:
         assert result.success is True
         assert result.provider == "geojson"
         assert result.target == "flight_blender"
-        assert result.total_batches == 2
+        assert result.total_batches == 1
 
     @pytest.mark.asyncio
     async def test_flight_blender_streamer_handles_empty_observations(self):
@@ -691,28 +683,24 @@ class TestNullStreamerIntegration:
     async def test_null_streamer_collects_observations_without_sending(self):
         """Test that NullStreamer collects all observations and returns them."""
         mock_observations = [
-            [
-                FlightObservationSchema(
-                    lat_dd=46.9,
-                    lon_dd=7.4,
-                    altitude_mm=1000000,
-                    traffic_source=0,
-                    source_type=0,
-                    icao_address="NULL1",
-                    timestamp=1234567890,
-                ),
-            ],
-            [
-                FlightObservationSchema(
-                    lat_dd=47.0,
-                    lon_dd=7.5,
-                    altitude_mm=1100000,
-                    traffic_source=0,
-                    source_type=0,
-                    icao_address="NULL2",
-                    timestamp=1234567891,
-                ),
-            ],
+            FlightObservationSchema(
+                lat_dd=46.9,
+                lon_dd=7.4,
+                altitude_mm=1000000,
+                traffic_source=0,
+                source_type=0,
+                icao_address="NULL1",
+                timestamp=1234567890,
+            ),
+            FlightObservationSchema(
+                lat_dd=47.0,
+                lon_dd=7.5,
+                altitude_mm=1100000,
+                traffic_source=0,
+                source_type=0,
+                icao_address="NULL2",
+                timestamp=1234567891,
+            ),
         ]
 
         mock_provider = AsyncMock()
@@ -728,7 +716,7 @@ class TestNullStreamerIntegration:
         # Verify result contains all observations
         assert result.success is True
         assert result.target == "none"
-        assert result.total_batches == 2
+        assert result.total_batches == 1
         assert result.total_observations == 2
         assert result.observations == mock_observations
 
@@ -743,17 +731,15 @@ class TestEndToEndStreamAirTraffic:
         from openutm_verification.core.reporting.reporting_models import Status
 
         mock_observations = [
-            [
-                FlightObservationSchema(
-                    lat_dd=46.9,
-                    lon_dd=7.4,
-                    altitude_mm=1000000,
-                    traffic_source=0,
-                    source_type=0,
-                    icao_address="E2E1",
-                    timestamp=1234567890,
-                ),
-            ],
+            FlightObservationSchema(
+                lat_dd=46.9,
+                lon_dd=7.4,
+                altitude_mm=1000000,
+                traffic_source=0,
+                source_type=0,
+                icao_address="E2E1",
+                timestamp=1234567890,
+            ),
         ]
 
         # Mock the AirTrafficClient used by GeoJSONProvider

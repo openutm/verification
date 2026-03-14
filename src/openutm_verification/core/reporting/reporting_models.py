@@ -60,7 +60,7 @@ class ScenarioResult(BaseModel):
     flight_declaration_data: FlightDeclaration | None = None
     flight_declaration_via_operational_intent_data: FlightDeclarationViaOperationalIntent | None = None
     telemetry_data: list[RIDAircraftState] | None = None
-    air_traffic_data: list[list[FlightObservationSchema]] | None = None
+    air_traffic_data: list[FlightObservationSchema] | None = None
     visualization_2d_path: str | None = None
     visualization_3d_path: str | None = None
     docs: str | None = None

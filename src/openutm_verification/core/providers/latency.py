@@ -39,71 +39,65 @@ class DataQualityType(StrEnum):
 
 
 def drop_observations(
-    observations: list[list[FlightObservationSchema]],
+    observations: list[FlightObservationSchema],
     probability: float = LATENCY_PROBABILITY,
-) -> tuple[list[list[FlightObservationSchema]], int]:
+) -> tuple[list[FlightObservationSchema], int]:
     """Randomly drop observations to simulate missed sensor readings.
 
     Each observation has an independent probability of being removed.
 
     Args:
-        observations: List of observation lists per aircraft (tracks).
+        observations: Flat list of observations across all aircraft.
         probability: Probability each observation is dropped (0.0-1.0).
 
     Returns:
-        Tuple of (modified observation lists, total observations dropped).
+        Tuple of (modified observation list, total observations dropped).
     """
-    modified = []
+    kept = []
     total_dropped = 0
-    for track in observations:
-        kept = []
-        for obs in track:
-            if random.random() < probability:
-                total_dropped += 1
-            else:
-                kept.append(obs)
-        modified.append(kept)
-    return modified, total_dropped
+    for obs in observations:
+        if random.random() < probability:
+            total_dropped += 1
+        else:
+            kept.append(obs)
+    return kept, total_dropped
 
 
 def shift_timestamps(
-    observations: list[list[FlightObservationSchema]],
+    observations: list[FlightObservationSchema],
     probability: float = LATENCY_PROBABILITY,
     shift_range: tuple[float, float] = TIMESTAMP_SHIFT_RANGE_SECONDS,
-) -> tuple[list[list[FlightObservationSchema]], int]:
+) -> tuple[list[FlightObservationSchema], int]:
     """Randomly shift observation timestamps to simulate delayed sensor data.
 
     Each observation has an independent probability of having its timestamp
     shifted by a random amount within the given range (in seconds).
 
     Args:
-        observations: List of observation lists per aircraft (tracks).
+        observations: Flat list of observations across all aircraft.
         probability: Probability each observation is shifted (0.0-1.0).
         shift_range: Range (min, max) for timestamp shifts in seconds.
 
     Returns:
-        Tuple of (modified observation lists, total observations shifted).
+        Tuple of (modified observation list, total observations shifted).
     """
-    modified = []
+    new_observations = []
     total_shifted = 0
-    for track in observations:
-        new_track = []
-        for obs in track:
-            if random.random() < probability:
-                shift_seconds = random.uniform(*shift_range)
-                obs = obs.model_copy(update={"timestamp": obs.timestamp + int(shift_seconds)})
-                total_shifted += 1
-            new_track.append(obs)
-        modified.append(new_track)
-    return modified, total_shifted
+    for obs in observations:
+        if random.random() < probability:
+            shift_seconds = random.uniform(*shift_range)
+            obs = obs.model_copy(update={"timestamp": obs.timestamp + int(shift_seconds)})
+            total_shifted += 1
+        new_observations.append(obs)
+    return new_observations, total_shifted
 
 
 def apply_latency(
-    observations: list[list[FlightObservationSchema]],
+    observations: list[FlightObservationSchema],
     *,
     latency_probability: float = LATENCY_PROBABILITY,
     timestamp_shift_range: tuple[float, float] = TIMESTAMP_SHIFT_RANGE_SECONDS,
-) -> list[list[FlightObservationSchema]]:
+) -> list[FlightObservationSchema]:
     """Apply simulated sensor latency effects to observations.
 
     Composes independent quality degradation effects:
@@ -114,13 +108,13 @@ def apply_latency(
     new quality degradation types in the future.
 
     Args:
-        observations: List of observation lists per aircraft (tracks).
+        observations: Flat list of observations across all aircraft.
         latency_probability: Base probability for each effect (0.0-1.0).
             Split equally between drops and shifts to maintain overall 50/50 ratio.
         timestamp_shift_range: Range (min, max) for timestamp shifts in seconds.
 
     Returns:
-        Modified observation lists with latency effects applied.
+        Modified observation list with latency effects applied.
     """
     drop_prob = latency_probability / 2
     shift_prob = latency_probability / 2
@@ -150,14 +144,14 @@ class LatencyProviderWrapper:
     async def get_observations(
         self,
         duration: int | None = None,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """Get observations with latency effects applied.
 
         Args:
             duration: Override duration in seconds.
 
         Returns:
-            Observation lists with simulated latency effects.
+            Observation list with simulated latency effects.
         """
         observations = await self._inner.get_observations(duration=duration)
         return apply_latency(observations)

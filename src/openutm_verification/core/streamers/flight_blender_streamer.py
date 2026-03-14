@@ -191,8 +191,8 @@ class FlightBlenderStreamer:
                     success=success,
                     provider_name=provider.name,
                     duration_seconds=duration_seconds,
-                    total_observations=sum(len(batch) for batch in observations),
-                    total_batches=len(observations),
+                    total_observations=len(observations),
+                    total_batches=1,
                     observations=observations,
                 )
 

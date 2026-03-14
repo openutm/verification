@@ -59,7 +59,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         self,
         config_path: str | None = None,
         duration: int | None = None,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """Generate simulated air traffic data from GeoJSON configuration.
 
         Loads GeoJSON data from the specified config path and uses it to generate
@@ -110,7 +110,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         self,
         config_path: str | None = None,
         duration: int | None = None,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """This method, simulates a adding latency to the flight observations list"""
         step_result = await self.generate_simulated_air_traffic_data(config_path=config_path, duration=duration)
         flight_observations = step_result.result
@@ -118,16 +118,13 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         TIMESTAMP_SHIFT_RANGE_SECONDS = (-1, 2.5)  # Shift timestamps by -5 to +5 seconds
 
         modified_flight_observations = []
-        for track_observations in flight_observations:
-            modified_track_observations = []
-            for obs in track_observations:
-                if random.random() < LATENCY_PROBABILITY:
-                    # Simulate latency by removing some observations
-                    if random.random() < 0.5:  # 50% chance to remove observation
-                        continue
-                    # Simulate timestamp shift
-                    shift_seconds = random.uniform(*TIMESTAMP_SHIFT_RANGE_SECONDS)
-                    obs.timestamp += int(shift_seconds * 1000)  # Convert seconds to milliseconds
-                modified_track_observations.append(obs)
-            modified_flight_observations.append(modified_track_observations)
+        for obs in flight_observations:
+            if random.random() < LATENCY_PROBABILITY:
+                # Simulate latency by removing some observations
+                if random.random() < 0.5:  # 50% chance to remove observation
+                    continue
+                # Simulate timestamp shift
+                shift_seconds = random.uniform(*TIMESTAMP_SHIFT_RANGE_SECONDS)
+                obs = obs.model_copy(update={"timestamp": obs.timestamp + int(shift_seconds * 1000)})
+            modified_flight_observations.append(obs)
         return modified_flight_observations

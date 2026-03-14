@@ -71,14 +71,14 @@ class BlueSkyProvider:
     async def get_observations(
         self,
         duration: int | None = None,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """Generate observations using the underlying BlueSkyClient.
 
         Args:
             duration: Override duration in seconds.
 
         Returns:
-            List of observation lists per aircraft.
+            Flat list of observations across all aircraft.
         """
         effective_duration = duration or self._duration
 
