@@ -990,7 +990,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return None
         sim_start = min(start_times)
         sim_end = max(end_times)
-        return sim_start, sim_end, (sim_end - sim_start).total_seconds()
+        return sim_start, sim_end, (sim_end - sim_start).total_seconds() + 1.0
 
     def _validate_reported_metrics(
         self,
@@ -1030,7 +1030,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         If session_id is provided, metrics are filtered to that session only; otherwise metrics
         for all sessions with activity in the time window are returned.
         """
-        logger.info(observations)
+
         time_window = self._extract_simulation_time_window(observations)
         if time_window is None:
             logger.warning("No valid start/end times found in observations.")
@@ -1042,8 +1042,14 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             )
 
         simulation_start, simulation_end, simulation_duration = time_window
+        logger.info(f"Extracted simulation time window: start={simulation_start}, end={simulation_end}, duration_seconds={simulation_duration}")
+        logger.info(f"Start time: {simulation_start.isoformat()}, End time: {simulation_end.isoformat()}, Duration (s): {simulation_duration}")
         session_param = f"session_id={session_id}&" if session_id is not None else ""
-        metrics_endpoint = f"/surveillance_monitoring_ops/service_metrics?{session_param}start_time={simulation_start}&end_time={simulation_end}"
+        simulation_end_payload = simulation_end.format("YYYY-MM-DDTHH:mm:ssZ")
+        simulation_start_payload = simulation_start.format("YYYY-MM-DDTHH:mm:ssZ")
+        metrics_endpoint = (
+            f"/surveillance_monitoring_ops/service_metrics?{session_param}start_date={simulation_start_payload}&end_date={simulation_end_payload}"
+        )
         logger.info(f"Querying metrics from Flight Blender: {metrics_endpoint}")
         metrics_response = await self.get(metrics_endpoint)
 
@@ -1067,10 +1073,13 @@ class FlightBlenderClient(BaseBlenderAPIClient):
 
         num_aircraft = sum(1 for a in observations if a)
         total_observations = sum(len(a) for a in observations if a)
-        # Track update probability and heartbeat rate share the same formula
         rate = total_observations / (num_aircraft * simulation_duration)
+        expected_track_probability = min(1.0, rate)
+        expected_heartbeat_rate = min(1.0, rate)
 
-        errors = self._validate_reported_metrics(metrics, expected_track_probability=rate, expected_heartbeat_rate=rate)
+        errors = self._validate_reported_metrics(
+            metrics, expected_track_probability=expected_track_probability, expected_heartbeat_rate=expected_heartbeat_rate
+        )
 
         return StepResult(
             name="Verify Reported Metrics in Flight Blender",
