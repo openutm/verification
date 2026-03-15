@@ -41,20 +41,20 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         self,
         config_path: str | None = None,
         duration: int | None = None,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """Run BlueSky scenario and sample aircraft state every second.
 
         Args:
             config_path: Path to .scn scenario file. Defaults to settings.simulation_config_path.
-            duration: Simulation duration in seconds. Defaults to settings.simulation_duration_seconds (expected 30).
+            duration: Simulation duration in seconds. Defaults to settings.simulation_duration (expected 30).
 
         Returns:
-            list[list[FlightObservationSchema]]: outer list per aircraft (icao_address),
-            inner list is time-series sampled at 1 Hz.
+            list[FlightObservationSchema]: flat list of observations across all aircraft,
+            time-series sampled at 1 Hz.
         """
 
         scn_path = config_path or self.settings.simulation_config_path
-        duration_s = int(duration or self.settings.simulation_duration_seconds or 30)
+        duration_s = int(duration or self.settings.simulation_duration or 30)
 
         sensor_ids = self.settings.sensor_ids
         use_multiple_sensors = self.settings.single_or_multiple_sensors == SENSOR_MODE_MULTIPLE
@@ -135,19 +135,22 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
 
                     logger.debug(f"{acid:>6} lat={lat:.6f} lon={lon:.6f} alt_mm={altitude_mm:.1f}")
 
-            # Convert dict -> list[list[FlightObservationSchema]] with stable ordering
-            return [results_by_acid[acid] for acid in sorted(results_by_acid.keys())]
+            # Flatten dict -> list[FlightObservationSchema] with stable ordering
+            all_obs: list[FlightObservationSchema] = []
+            for acid in sorted(results_by_acid.keys()):
+                all_obs.extend(results_by_acid[acid])
+            return all_obs
 
     @scenario_step("Generate BlueSky Simulation Air Traffic Data with latency issues")
     async def generate_bluesky_sim_air_traffic_data_with_sensor_latency_issues(
         self,
         config_path: str | None = None,
         duration: int | None = None,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """This method generates"""
 
         scn_path = config_path or self.settings.simulation_config_path
-        duration_s = int(duration or self.settings.simulation_duration_seconds or 30)
+        duration_s = int(duration or self.settings.simulation_duration or 30)
 
         sensor_ids = self.settings.sensor_ids
         use_multiple_sensors = self.settings.single_or_multiple_sensors == SENSOR_MODE_MULTIPLE
@@ -166,7 +169,7 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
         # detached=True prevents UI/event loop from blocking.
         # Use a temporary directory for BlueSky working files to avoid polluting ~/bluesky
         # BlueSky's pathfinder.init() auto-creates required subdirs (scenario, plugins, output, cache)
-        flight_observations: list[list[FlightObservationSchema]] = []
+        flight_observations: list[FlightObservationSchema] = []
         with tempfile.TemporaryDirectory(prefix="openutm-bluesky-") as tmp_dir:
             cfg_path = os.path.join(tmp_dir, "settings.cfg")
             bs.init(mode="sim", detached=True, workdir=tmp_dir, configfile=cfg_path)
@@ -229,26 +232,24 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
 
                     logger.debug(f"{acid:>6} lat={lat:.6f} lon={lon:.6f} alt_mm={altitude_mm:.1f}")
 
-            # Convert dict -> list[list[FlightObservationSchema]] with stable ordering
-            flight_observations = [results_by_acid[acid] for acid in sorted(results_by_acid.keys())]
+            # Flatten dict -> list[FlightObservationSchema] with stable ordering
+            for acid in sorted(results_by_acid.keys()):
+                flight_observations.extend(results_by_acid[acid])
 
         # This method modifies the retrieved simulation data by changing the timestamp and adding latency to the observed dataset
         LATENCY_PROBABILITY = 0.1  # 10% chance to have latency issues
         TIMESTAMP_SHIFT_RANGE_SECONDS = (-1, 2.5)  # Shift timestamps by -5 to +5 seconds
 
         modified_flight_observations = []
-        for track_observations in flight_observations:
-            modified_track_observations = []
-            for obs in track_observations:
-                if random.random() < LATENCY_PROBABILITY:
-                    # Simulate latency by removing some observations
-                    if random.random() < 0.5:  # 50% chance to remove observation
-                        continue
-                    # Simulate timestamp shift
-                    shift_seconds = random.uniform(*TIMESTAMP_SHIFT_RANGE_SECONDS)
-                    obs.timestamp += int(shift_seconds * 1000)  # Convert seconds to milliseconds
-                modified_track_observations.append(obs)
-            modified_flight_observations.append(modified_track_observations)
+        for obs in flight_observations:
+            if random.random() < LATENCY_PROBABILITY:
+                # Simulate latency by removing some observations
+                if random.random() < 0.5:  # 50% chance to remove observation
+                    continue
+                # Simulate timestamp shift
+                shift_seconds = random.uniform(*TIMESTAMP_SHIFT_RANGE_SECONDS)
+                obs = obs.model_copy(update={"timestamp": obs.timestamp + int(shift_seconds * 1000)})
+            modified_flight_observations.append(obs)
         return modified_flight_observations
 
 

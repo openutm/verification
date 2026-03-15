@@ -111,14 +111,14 @@ export interface AirTrafficSimulatorSettings {
 
 export interface BlueSkyAirTrafficSimulatorSettings {
     number_of_aircraft?: number;
-    simulation_duration_seconds?: number;
+    simulation_duration?: number;
     single_or_multiple_sensors?: string;
     sensor_ids?: string[];
 }
 
 export interface BayesianAirTrafficSimulatorSettings {
     number_of_aircraft?: number;
-    simulation_duration_seconds?: number;
+    simulation_duration?: number;
     single_or_multiple_sensors?: string;
     sensor_ids?: string[];
 }

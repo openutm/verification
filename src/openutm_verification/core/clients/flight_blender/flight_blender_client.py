@@ -1,4 +1,5 @@
 import asyncio
+import bisect
 import json
 import math
 import random
@@ -740,7 +741,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
     @scenario_step("Submit Simulated Air Traffic")
     async def submit_simulated_air_traffic(
         self,
-        observations: list[list[FlightObservationSchema]],
+        observations: list[FlightObservationSchema],
         session_ids: list[uuid.UUID] | None = None,
         single_or_multiple_sensors: str = "single",
     ) -> dict[str, Any]:
@@ -749,13 +750,12 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         Plays back observations in real-time, submitting one observation per aircraft per second.
 
         Args:
-            observations: List of observation lists, one per aircraft.
+            observations: Flat list of observations across all aircraft.
             single_or_multiple_sensors: Whether to use single or multiple sensor IDs.
 
         Returns:
             Dictionary with submission statistics.
         """
-        # Generate a random session ID for this submission
         session_ids = session_ids or [uuid.uuid4()]
         if not observations:
             logger.warning("No air traffic observations to submit.")
@@ -766,74 +766,68 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 "duration_seconds": 0,
             }
 
-        number_of_aircraft = len(observations)
+        # Pre-convert all timestamps to Arrow objects once and group by aircraft.
+        # Sorting per-aircraft enables O(log N) bisect lookups in the inner loop.
+        all_arrow_timestamps: list[arrow.Arrow] = []
+        aircraft_data: dict[str, list[tuple[arrow.Arrow, FlightObservationSchema]]] = {}
+        for obs in observations:
+            ts = arrow.get(obs.timestamp)
+            all_arrow_timestamps.append(ts)
+            aircraft_data.setdefault(obs.icao_address, []).append((ts, obs))
+
+        number_of_aircraft = len(aircraft_data)
         logger.debug(f"Submitting simulated air traffic for {number_of_aircraft} aircraft")
 
-        # TODO: When single_or_multiple_sensors is "single", we need to aggregate all observations under one sensor ID
-        # and when it's "multiple", we need to submit them separately as different session_ids, one for each track
-        session_id = str(session_ids[0])
-        # get the start and end point of the simulation
-        start_times = []
-        end_times = []
-        for aircraft_obs in observations:
-            if not aircraft_obs:
-                continue
-            start_times.append(arrow.get(aircraft_obs[0].timestamp))
-            end_times.append(arrow.get(aircraft_obs[-1].timestamp))
+        simulation_start = min(all_arrow_timestamps)
+        simulation_end = max(all_arrow_timestamps)
 
-        if not start_times:
-            logger.warning("No valid start/end times found in observations.")
-            return {
-                "success": True,
-                "aircraft_count": number_of_aircraft,
-                "observations_submitted": 0,
-                "duration_seconds": 0,
-                "warning": "No valid start/end times found in observations",
-            }
+        # Sort per-aircraft observations and extract timestamp lists for bisect
+        for icao in aircraft_data:
+            aircraft_data[icao].sort(key=lambda pair: pair[0])
+        aircraft_ts: dict[str, list[arrow.Arrow]] = {icao: [ts for ts, _ in pairs] for icao, pairs in aircraft_data.items()}
 
-        simulation_start = min(start_times)
-        simulation_end = max(end_times)
+        # Only iterate over seconds that actually contain observations
+        unique_time_slots = sorted({ts.floor("second") for ts in all_arrow_timestamps})
 
-        now = arrow.now()
-        start_time = now
+        start_time = arrow.now()
         observations_submitted = 0
         submission_errors = 0
+        session_id = str(session_ids[0])
 
-        current_simulation_time = simulation_start
-        # Loop through the simulation time from start to end, advancing by 1 second each iteration
-        while current_simulation_time < simulation_end:
-            # Calculate the corresponding real-world time for the current simulation time
-            target_real_time = start_time + (current_simulation_time - simulation_start)
-            # Wait until the current real time reaches the target time
-            while arrow.now() < target_real_time:
-                await asyncio.sleep(0.1)
-            # For each aircraft, find the observation closest to the current simulation time
-            filtered_observations: list[list[FlightObservationSchema]] = []
-            for aircraft_obs in observations:
-                if not aircraft_obs:
-                    continue
-                closest_obs = min(
-                    aircraft_obs,
-                    key=lambda obs: abs(arrow.get(obs.timestamp) - current_simulation_time),
-                )
-                filtered_observations.append([closest_obs])
-            # Submit the filtered observations for each aircraft to the API
-            logger.debug(f"Submitting {len(filtered_observations)} air traffic observations")
-            for filtered_observation in filtered_observations:
-                endpoint = f"/flight_stream/set_air_traffic/{session_id}"
-                payload = {"observations": [obs.model_dump(mode="json") for obs in filtered_observation]}
+        for slot_index, current_simulation_time in enumerate(unique_time_slots):
+            # Pace at 1 second per slot with a single sleep instead of busy-wait
+            if slot_index > 0:
+                sleep_seconds = (start_time.shift(seconds=slot_index) - arrow.now()).total_seconds()
+                if sleep_seconds > 0:
+                    await asyncio.sleep(sleep_seconds)
 
-                ScenarioContext.add_air_traffic_data(filtered_observation)
-                try:
-                    response = await self.post(endpoint, json=payload)
-                    logger.debug(f"Air traffic submission response: {response.text}")
-                    logger.info(f"Observations submitted for aircraft {filtered_observation[0].icao_address} at time {current_simulation_time}")
-                    observations_submitted += 1
-                except Exception as e:
-                    logger.error(f"Failed to submit observation: {e}")
-                    submission_errors += 1
-            # Advance the simulation time by 1 second
-            current_simulation_time = current_simulation_time.shift(seconds=1)
+            # Collect closest observation per aircraft using binary search
+            slot_observations: list[FlightObservationSchema] = []
+            for icao, pairs in aircraft_data.items():
+                ts_list = aircraft_ts[icao]
+                idx = bisect.bisect_left(ts_list, current_simulation_time)
+                if idx == 0:
+                    closest_obs = pairs[0][1]
+                elif idx >= len(pairs):
+                    closest_obs = pairs[-1][1]
+                elif abs(ts_list[idx - 1] - current_simulation_time) <= abs(ts_list[idx] - current_simulation_time):
+                    closest_obs = pairs[idx - 1][1]
+                else:
+                    closest_obs = pairs[idx][1]
+                slot_observations.append(closest_obs)
+
+            # Batch all aircraft for this time slot into a single request
+            endpoint = f"/flight_stream/set_air_traffic/{session_id}"
+            payload = {"observations": [obs.model_dump(mode="json") for obs in slot_observations]}
+            ScenarioContext.add_air_traffic_data(slot_observations)
+            try:
+                response = await self.post(endpoint, json=payload)
+                logger.debug(f"Air traffic submission response: {response.text}")
+                logger.info(f"Submitted {len(slot_observations)} observations at time {current_simulation_time}")
+                observations_submitted += len(slot_observations)
+            except Exception as e:
+                logger.error(f"Failed to submit observations at {current_simulation_time}: {e}")
+                submission_errors += len(slot_observations)
 
         duration_seconds = (arrow.now() - start_time).total_seconds()
 
@@ -843,13 +837,13 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             "observations_submitted": observations_submitted,
             "submission_errors": submission_errors,
             "duration_seconds": round(duration_seconds, 2),
-            "simulation_duration_seconds": (simulation_end - simulation_start).total_seconds(),
+            "simulation_duration": (simulation_end - simulation_start).total_seconds(),
         }
 
     @scenario_step("Submit Simulated Air Traffic at varying refresh rates")
     async def submit_simulated_air_traffic_at_random_refresh_rates(
         self,
-        observations: list[list[FlightObservationSchema]],
+        observations: list[FlightObservationSchema],
         session_ids: list[uuid.UUID] | None = None,
         single_or_multiple_sensors: str = "single",
     ) -> StepResult:
@@ -861,7 +855,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         - Large forward jumps (timestamp shifted into the future)
 
         Args:
-            observations: List of observation lists, one per aircraft.
+            observations: Flat list of observations across all aircraft.
             session_ids: Optional list of session UUIDs.
             single_or_multiple_sensors: Whether to use single or multiple sensor IDs.
 
@@ -878,40 +872,28 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 error_message="No air traffic observations provided",
             )
 
-        number_of_aircraft = len(observations)
+        # Pre-convert timestamps to Arrow once and group by aircraft
+        all_arrow_timestamps: list[arrow.Arrow] = []
+        obs_by_aircraft: dict[str, list[FlightObservationSchema]] = {}
+        for obs in observations:
+            all_arrow_timestamps.append(arrow.get(obs.timestamp))
+            obs_by_aircraft.setdefault(obs.icao_address, []).append(obs)
+
+        number_of_aircraft = len(obs_by_aircraft)
         logger.debug(f"Submitting simulated air traffic (off-nominal timestamps) for {number_of_aircraft} aircraft")
 
         session_id = str(session_ids[0])
 
-        # Determine simulation time range
-        start_times = []
-        end_times = []
-        for aircraft_obs in observations:
-            if not aircraft_obs:
-                continue
-            start_times.append(arrow.get(aircraft_obs[0].timestamp))
-            end_times.append(arrow.get(aircraft_obs[-1].timestamp))
+        # Build unique time slots from original (uncorrupted) timestamps
+        unique_time_slots = sorted({ts.floor("second") for ts in all_arrow_timestamps})
 
-        if not start_times:
-            logger.warning("No valid start/end times found in observations.")
-            return StepResult(
-                name="Submit Simulated Air Traffic at varying refresh rates",
-                status=Status.FAIL,
-                duration=0,
-                error_message="No valid start/end times found in observations",
-            )
-
-        simulation_start = min(start_times)
-        simulation_end = max(end_times)
-
-        now = arrow.now()
-        start_time = now
+        start_time = arrow.now()
         observations_submitted = 0
         submission_errors = 0
 
-        # Build a flat list of observations with corrupted timestamps per aircraft
-        corrupted_observations: list[list[FlightObservationSchema]] = []
-        for aircraft_obs in observations:
+        # Build corrupted observations per aircraft
+        corrupted_by_aircraft: dict[str, list[FlightObservationSchema]] = {}
+        for icao, aircraft_obs in obs_by_aircraft.items():
             corrupted_aircraft_obs: list[FlightObservationSchema] = []
             last_used_timestamp: int | None = None
             for obs in aircraft_obs:
@@ -919,60 +901,67 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 anomaly_roll = random.random()
 
                 if anomaly_roll < 0.3 and last_used_timestamp is not None:
-                    # 30% chance: stale timestamp — repeat the previous timestamp
                     new_timestamp = last_used_timestamp
                     logger.debug(f"[off-nominal] Stale timestamp for {obs.icao_address}: kept {new_timestamp} instead of {original_timestamp}")
                 elif anomaly_roll < 0.5:
-                    # 20% chance: backward jump — shift timestamp 10-60s into the past
                     offset = random.randint(10, 60)
                     new_timestamp = original_timestamp - offset
-                    logger.debug(f"[off-nominal] Backward jump for {obs.icao_address}: {original_timestamp} -> {new_timestamp} (−{offset}s)")
+                    logger.debug(f"[off-nominal] Backward jump for {obs.icao_address}: {original_timestamp} -> {new_timestamp} (\u2212{offset}s)")
                 elif anomaly_roll < 0.65:
-                    # 15% chance: forward jump — shift timestamp 10-60s into the future
                     offset = random.randint(10, 60)
                     new_timestamp = original_timestamp + offset
                     logger.debug(f"[off-nominal] Forward jump for {obs.icao_address}: {original_timestamp} -> {new_timestamp} (+{offset}s)")
                 else:
-                    # 35% chance: keep the original timestamp (normal)
                     new_timestamp = original_timestamp
 
                 corrupted_obs = obs.model_copy(update={"timestamp": new_timestamp})
                 corrupted_aircraft_obs.append(corrupted_obs)
                 last_used_timestamp = new_timestamp
 
-            corrupted_observations.append(corrupted_aircraft_obs)
+            corrupted_by_aircraft[icao] = corrupted_aircraft_obs
 
-        # Play back observations in real-time using the original simulation timeline
-        current_simulation_time = simulation_start
-        while current_simulation_time < simulation_end:
-            target_real_time = start_time + (current_simulation_time - simulation_start)
-            while arrow.now() < target_real_time:
-                await asyncio.sleep(0.1)
+        # Pre-convert corrupted timestamps to Arrow and sort for bisect lookups
+        corrupted_data: dict[str, list[tuple[arrow.Arrow, FlightObservationSchema]]] = {}
+        for icao, corrupted_obs_list in corrupted_by_aircraft.items():
+            pairs = [(arrow.get(obs.timestamp), obs) for obs in corrupted_obs_list]
+            pairs.sort(key=lambda p: p[0])
+            corrupted_data[icao] = pairs
+        corrupted_ts: dict[str, list[arrow.Arrow]] = {icao: [ts for ts, _ in pairs] for icao, pairs in corrupted_data.items()}
 
-            for aircraft_obs in corrupted_observations:
-                if not aircraft_obs:
+        # Play back using unique time slots, pacing at 1 second per slot
+        for slot_index, current_simulation_time in enumerate(unique_time_slots):
+            if slot_index > 0:
+                sleep_seconds = (start_time.shift(seconds=slot_index) - arrow.now()).total_seconds()
+                if sleep_seconds > 0:
+                    await asyncio.sleep(sleep_seconds)
+
+            slot_observations: list[FlightObservationSchema] = []
+            for icao, pairs in corrupted_data.items():
+                if not pairs:
                     continue
-                # Find observation closest to current simulation time using original positions
-                closest_obs = min(
-                    aircraft_obs,
-                    key=lambda obs: abs(arrow.get(obs.timestamp) - current_simulation_time),
-                )
-                endpoint = f"/flight_stream/set_air_traffic/{session_id}"
-                payload = {"observations": [closest_obs.model_dump(mode="json")]}
-                ScenarioContext.add_air_traffic_data([closest_obs])
-                try:
-                    response = await self.post(endpoint, json=payload)
-                    logger.debug(f"Air traffic submission response: {response.text}")
-                    logger.info(
-                        f"Off-nominal observation submitted for {closest_obs.icao_address} "
-                        f"at sim time {current_simulation_time} with timestamp {closest_obs.timestamp}"
-                    )
-                    observations_submitted += 1
-                except Exception as e:
-                    logger.error(f"Failed to submit off-nominal observation: {e}")
-                    submission_errors += 1
+                ts_list = corrupted_ts[icao]
+                idx = bisect.bisect_left(ts_list, current_simulation_time)
+                if idx == 0:
+                    closest_obs = pairs[0][1]
+                elif idx >= len(pairs):
+                    closest_obs = pairs[-1][1]
+                elif abs(ts_list[idx - 1] - current_simulation_time) <= abs(ts_list[idx] - current_simulation_time):
+                    closest_obs = pairs[idx - 1][1]
+                else:
+                    closest_obs = pairs[idx][1]
+                slot_observations.append(closest_obs)
 
-            current_simulation_time = current_simulation_time.shift(seconds=1)
+            endpoint = f"/flight_stream/set_air_traffic/{session_id}"
+            payload = {"observations": [obs.model_dump(mode="json") for obs in slot_observations]}
+            ScenarioContext.add_air_traffic_data(slot_observations)
+            try:
+                response = await self.post(endpoint, json=payload)
+                logger.debug(f"Air traffic submission response: {response.text}")
+                logger.info(f"Submitted {len(slot_observations)} off-nominal observations at sim time {current_simulation_time}")
+                observations_submitted += len(slot_observations)
+            except Exception as e:
+                logger.error(f"Failed to submit off-nominal observations at {current_simulation_time}: {e}")
+                submission_errors += len(slot_observations)
 
         duration_seconds = (arrow.now() - start_time).total_seconds()
         return StepResult(
@@ -982,14 +971,13 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             error_message=None if submission_errors == 0 else f"{submission_errors} submission errors occurred",
         )
 
-    def _extract_simulation_time_window(self, observations: list[list[FlightObservationSchema]]) -> tuple[arrow.Arrow, arrow.Arrow, float] | None:
+    def _extract_simulation_time_window(self, observations: list[FlightObservationSchema]) -> tuple[arrow.Arrow, arrow.Arrow, float] | None:
         """Returns (simulation_start, simulation_end, duration_seconds) or None if no valid observations."""
-        start_times = [arrow.get(a[0].timestamp) for a in observations if a]
-        end_times = [arrow.get(a[-1].timestamp) for a in observations if a]
-        if not start_times:
+        if not observations:
             return None
-        sim_start = min(start_times)
-        sim_end = max(end_times)
+        all_timestamps = [obs.timestamp for obs in observations]
+        sim_start = arrow.get(min(all_timestamps))
+        sim_end = arrow.get(max(all_timestamps))
         return sim_start, sim_end, (sim_end - sim_start).total_seconds() + 1.0
 
     def _validate_reported_metrics(
@@ -1023,7 +1011,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return errors
 
     @scenario_step("Verify Reported Metrics in Flight Blender")
-    async def verify_reported_metrics_in_flight_blender(self, observations: list[list[FlightObservationSchema]], session_id: uuid.UUID | None = None):
+    async def verify_reported_metrics_in_flight_blender(self, observations: list[FlightObservationSchema], session_id: uuid.UUID | None = None):
         """
         Queries the SDSP metrics endpoint and verifies reported values against expected values
         derived from the Bayesian simulation observations.
@@ -1041,9 +1029,9 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 error_message="No valid start/end times found in observations",
             )
 
-        simulation_start, simulation_end, duration_seconds = time_window
-        logger.info(f"Extracted simulation time window: start={simulation_start}, end={simulation_end}, duration_seconds={duration_seconds}")
-        logger.info(f"Start time: {simulation_start.isoformat()}, End time: {simulation_end.isoformat()}, Duration (s): {duration_seconds}")
+        simulation_start, simulation_end, simulation_duration = time_window
+        logger.info(f"Extracted simulation time window: start={simulation_start}, end={simulation_end}, duration_seconds={simulation_duration}")
+        logger.info(f"Start time: {simulation_start.isoformat()}, End time: {simulation_end.isoformat()}, Duration (s): {simulation_duration}")
         session_param = f"session_id={session_id}&" if session_id is not None else ""
         simulation_end_payload = simulation_end.format("YYYY-MM-DDTHH:mm:ssZ")
         simulation_start_payload = simulation_start.format("YYYY-MM-DDTHH:mm:ssZ")
@@ -1057,7 +1045,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return StepResult(
                 name="Verify Reported Metrics in Flight Blender",
                 status=Status.FAIL,
-                duration=round(duration_seconds, 2),
+                duration=round(simulation_duration, 2),
                 error_message=f"Metrics endpoint returned HTTP {metrics_response.status_code}",
             )
 
@@ -1067,13 +1055,14 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             return StepResult(
                 name="Verify Reported Metrics in Flight Blender",
                 status=Status.FAIL,
-                duration=round(duration_seconds, 2),
+                duration=round(simulation_duration, 2),
                 error_message=f"Invalid metrics response structure: {e}",
             )
 
-        num_aircraft = sum(1 for a in observations if a)
-        total_observations = sum(len(a) for a in observations if a)
-        rate = total_observations / (num_aircraft * duration_seconds)
+        icao_addresses = set(obs.icao_address for obs in observations)
+        num_aircraft = len(icao_addresses)
+        total_observations = len(observations)
+        rate = total_observations / (num_aircraft * simulation_duration)
         expected_track_probability = min(1.0, rate)
         expected_heartbeat_rate = min(1.0, rate)
 
@@ -1084,7 +1073,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         return StepResult(
             name="Verify Reported Metrics in Flight Blender",
             status=Status.PASS if not errors else Status.FAIL,
-            duration=round(duration_seconds, 2),
+            duration=round(simulation_duration, 2),
             error_message=None if not errors else "; ".join(errors),
         )
 

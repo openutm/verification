@@ -13,8 +13,8 @@ def test_group_roundtrip():
             "process_data": {
                 "description": "Process some data",
                 "steps": [
-                    {"id": "fetch", "step": "Fetch OpenSky Data"},
-                    {"id": "submit", "step": "Submit Air Traffic", "arguments": {"observations": "${{ group.fetch.result }}"}},
+                    {"id": "fetch", "step": "Stream Air Traffic", "arguments": {"provider": "opensky", "target": "flight_blender"}},
+                    {"id": "submit", "step": "Wait X seconds", "arguments": {"duration": 1}},
                 ],
             }
         },
@@ -29,7 +29,7 @@ def test_group_roundtrip():
     assert scenario.groups["process_data"].description == "Process some data"
     assert len(scenario.groups["process_data"].steps) == 2
     assert scenario.groups["process_data"].steps[0].id == "fetch"
-    assert scenario.groups["process_data"].steps[1].arguments["observations"] == "${{ group.fetch.result }}"
+    assert scenario.groups["process_data"].steps[1].arguments["duration"] == 1
 
     # Verify the group is referenced in steps
     assert scenario.steps[0].step == "process_data"

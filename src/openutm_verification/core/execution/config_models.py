@@ -37,12 +37,12 @@ class FlightBlenderConfig(StrictBaseModel):
 
 class AirTrafficSimulatorSettings(StrictBaseModel):
     number_of_aircraft: int
-    simulation_duration: int | str
+    simulation_duration: int
     single_or_multiple_sensors: Literal["single", "multiple"] = "single"
     sensor_ids: list[str] = Field(default_factory=list)
     session_ids: list[str] = Field(default_factory=list)
 
-    @field_validator("simulation_duration")
+    @field_validator("simulation_duration", mode="before")
     @classmethod
     def validate_duration(cls, v: int | str) -> int:
         return int(parse_duration(v))
@@ -50,7 +50,7 @@ class AirTrafficSimulatorSettings(StrictBaseModel):
 
 class BlueSkyAirTrafficSimulatorSettings(StrictBaseModel):
     number_of_aircraft: int
-    simulation_duration_seconds: int
+    simulation_duration: int
     single_or_multiple_sensors: Literal["single", "multiple"] = "single"
     sensor_ids: list[str] = Field(default_factory=list)
     session_ids: list[str] = Field(default_factory=list)
@@ -58,7 +58,7 @@ class BlueSkyAirTrafficSimulatorSettings(StrictBaseModel):
 
 class BayesianAirTrafficSimulatorSettings(StrictBaseModel):
     number_of_aircraft: int
-    simulation_duration_seconds: int
+    simulation_duration: int
     single_or_multiple_sensors: Literal["single", "multiple"] = "single"
     sensor_ids: list[str] = Field(default_factory=list)
     session_ids: list[str] = Field(default_factory=list)

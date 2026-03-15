@@ -136,11 +136,11 @@ class TestAppConfigResolvePathsMergesDefaults:
             },
             "blue_sky_air_traffic_simulator_settings": {
                 "number_of_aircraft": 3,
-                "simulation_duration_seconds": 30,
+                "simulation_duration": 30,
             },
             "bayesian_air_traffic_simulator_settings": {
                 "number_of_aircraft": 3,
-                "simulation_duration_seconds": 30,
+                "simulation_duration": 30,
             },
             "data_files": {
                 "trajectory": "default_traj.json",
@@ -212,11 +212,11 @@ class TestAppConfigResolvePathsMergesDefaults:
             },
             "blue_sky_air_traffic_simulator_settings": {
                 "number_of_aircraft": 3,
-                "simulation_duration_seconds": 30,
+                "simulation_duration": 30,
             },
             "bayesian_air_traffic_simulator_settings": {
                 "number_of_aircraft": 3,
-                "simulation_duration_seconds": 30,
+                "simulation_duration": 30,
             },
             "data_files": {
                 "trajectory": "trajectory_f1.json",  # DEFAULT

@@ -70,19 +70,19 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         self,
         config_path: str | None = None,
         duration: int | None = None,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """Run Bayesian scenario and sample aircraft state every second.
 
         Args:
             config_path: Path to .scn scenario file. Defaults to settings.simulation_config_path.
-            duration: Simulation duration in seconds. Defaults to settings.simulation_duration_seconds (expected 30).
+            duration: Simulation duration in seconds. Defaults to settings.simulation_duration (expected 30).
         Returns:
-            list[list[FlightObservationSchema]]: outer list per aircraft (icao_address),
-            inner list is time-series sampled at 1 Hz.
+            list[FlightObservationSchema]: flat list of observations across all aircraft,
+            time-series sampled at 1 Hz.
         """
 
         # scn_path = config_path or self.settings.simulation_config_path
-        duration_in_seconds = int(duration or self.settings.simulation_duration_seconds or 30)
+        duration_in_seconds = int(duration or self.settings.simulation_duration or 30)
         number_of_aircraft = self.settings.number_of_aircraft or 3
         sensor_ids = self.settings.sensor_ids
         use_multiple_sensors = self.settings.single_or_multiple_sensors == SENSOR_MODE_MULTIPLE
@@ -124,7 +124,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         logger.info(f"Successfully generated {len(tracks)} tracks.")
 
         base_timestamp = int(arrow.utcnow().timestamp())
-        all_observations: list[list[FlightObservationSchema]] = []
+        all_observations: list[FlightObservationSchema] = []
 
         for track_idx, track in enumerate(tracks):
             icao_address = random_icao()
@@ -136,12 +136,10 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
                 sensor_ids=sensor_ids,
                 use_multiple_sensors=use_multiple_sensors,
             )
-            all_observations.append(observations)
+            all_observations.extend(observations)
             logger.info(f"Track {track_idx} ({icao_address}): {len(observations)} observations")
-        logger.info(
-            f"Generated observations for {len(all_observations)} tracks, with {sum(len(obs) for obs in all_observations)} total observations."
-        )
-        logger.info(f"First observation altitude: {all_observations[0][0].icao_address}")
+        logger.info(f"Generated observations for {len(tracks)} tracks, with {len(all_observations)} total observations.")
+        logger.info(f"First observation altitude: {all_observations[0].icao_address}")
 
         return all_observations
 
@@ -213,29 +211,27 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         self,
         config_path: str | None = None,
         duration: int | None = None,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """
         This method modifies the retrieved simulation data by changing the timestamp and adding latency to the observed dataset.
         Latency is simulated by randomly removing some observations and randomly shifting the timestamps of some observations
         to be earlier or later than the actual timestamp, mimicking real-world sensor latency issues.
         """
-        flight_observations = self.generate_bayesian_sim_air_traffic_data(config_path=config_path, duration=duration)
+        step_result = await self.generate_bayesian_sim_air_traffic_data(config_path=config_path, duration=duration)
+        flight_observations = step_result.result
 
         LATENCY_PROBABILITY = 0.1  # 10% chance to have latency issues
         TIMESTAMP_SHIFT_RANGE_SECONDS = (-1, 2.5)  # Shift timestamps by -5 to +5 seconds
 
         modified_flight_observations = []
-        for track_observations in flight_observations:
-            modified_track_observations = []
-            for obs in track_observations:
-                if random.random() < LATENCY_PROBABILITY:
-                    # Simulate latency by removing some observations
-                    if random.random() < 0.5:  # 50% chance to remove observation
-                        continue
-                    # Simulate timestamp shift
-                    shift_seconds = random.uniform(*TIMESTAMP_SHIFT_RANGE_SECONDS)
-                    obs.timestamp += int(shift_seconds * 1000)  # Convert seconds to milliseconds
-                modified_track_observations.append(obs)
-            modified_flight_observations.append(modified_track_observations)
+        for obs in flight_observations:
+            if random.random() < LATENCY_PROBABILITY:
+                # Simulate latency by removing some observations
+                if random.random() < 0.5:  # 50% chance to remove observation
+                    continue
+                # Simulate timestamp shift
+                shift_seconds = random.uniform(*TIMESTAMP_SHIFT_RANGE_SECONDS)
+                obs = obs.model_copy(update={"timestamp": obs.timestamp + int(shift_seconds * 1000)})
+            modified_flight_observations.append(obs)
 
         return modified_flight_observations

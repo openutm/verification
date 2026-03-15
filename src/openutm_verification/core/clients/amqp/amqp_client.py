@@ -373,7 +373,8 @@ class AMQPClient:
         start_time = time.time()
 
         while (time.time() - start_time) < timeout:
-            messages = await self.get_received_messages(routing_key_filter=routing_key_filter)
+            step_result = await self.get_received_messages(routing_key_filter=routing_key_filter)
+            messages = step_result.result
             if len(messages) >= count:
                 return {
                     "success": True,
@@ -384,7 +385,8 @@ class AMQPClient:
             await asyncio.sleep(0.5)
 
         # Timeout reached
-        messages = await self.get_received_messages(routing_key_filter=routing_key_filter)
+        step_result = await self.get_received_messages(routing_key_filter=routing_key_filter)
+        messages = step_result.result
         return {
             "success": False,
             "message_count": len(messages),
