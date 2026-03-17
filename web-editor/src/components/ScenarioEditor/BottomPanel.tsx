@@ -79,7 +79,7 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
 
     const handleCopy = useCallback(() => {
         let textToCopy = '';
-        if (activeTab === 'output' && result) {
+        if (activeTab === 'output' && result !== null && result !== undefined) {
             textToCopy = JSON.stringify(result, null, 2);
         } else if (activeTab === 'logs' && filteredLogs.length > 0) {
             textToCopy = filteredLogs.join('\n');
@@ -96,6 +96,16 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
                 setCopied(false);
                 copyTimeoutRef.current = null;
             }, 2000);
+        };
+
+        const handleFailure = () => {
+            if (copyTimeoutRef.current !== null) {
+                clearTimeout(copyTimeoutRef.current);
+                copyTimeoutRef.current = null;
+            }
+            // Non-blocking feedback for copy failure
+            // This avoids using window.alert, which is blocking and inconsistent with the rest of the UI.
+            console.error('Failed to copy to clipboard.');
         };
 
         const fallbackCopy = () => {
@@ -117,17 +127,15 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
                 }
                 if (successful) {
                     handleSuccess();
-                } else if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-                    window.alert('Failed to copy to clipboard.');
+                } else {
+                    handleFailure();
                 }
             } catch {
-                if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-                    window.alert('Failed to copy to clipboard.');
-                }
+                handleFailure();
             }
         };
 
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
             navigator.clipboard.writeText(textToCopy)
                 .then(handleSuccess)
                 .catch(() => {
@@ -148,10 +156,10 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
     let statusBgColor = 'var(--bg-secondary)';
     let statusTextColor = 'var(--text-secondary)';
     if (status === 'success') {
-        statusBgColor = 'var(--success-bg)';
+        statusBgColor = 'rgba(34, 197, 94, 0.12)'; // soft green background
         statusTextColor = 'var(--success)';
     } else if (status === 'failure') {
-        statusBgColor = 'var(--danger-bg)';
+        statusBgColor = 'rgba(239, 68, 68, 0.12)'; // soft red background
         statusTextColor = 'var(--danger)';
     } else if (status === 'skipped') {
         statusBgColor = 'var(--bg-tertiary)';
@@ -211,7 +219,7 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
                         <button
                             className={`${styles.copyButton} ${copied ? styles.copyButtonSuccess : ''}`}
                             onClick={handleCopy}
-                            aria-label="Copy to clipboard"
+                            aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
                             type="button"
                         >
                             {copied ? (
