@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { X, Link as LinkIcon, Unlink } from 'lucide-react';
+import { X, Link as LinkIcon, Unlink, Plane } from 'lucide-react';
 import type { Node } from '@xyflow/react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
 import styles from '../../styles/SidebarPanel.module.css';
 import type { NodeData } from '../../types/scenario';
 import { useSidebarResize } from '../../hooks/useSidebarResize';
+import { getPhaseColor } from '../../utils/phaseColors';
 
 const DocstringViewer = ({ text }: { text: string }) => {
     const [expanded, setExpanded] = useState(false);
@@ -163,6 +164,25 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     <h3>{selectedNode.data.label}</h3>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
                         <div style={{ fontFamily: 'monospace' }}>Node ID: {selectedNode.id}</div>
+                        {selectedNode.data.phase && (
+                            <div style={{ marginTop: '4px' }}>
+                                <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '2px 8px',
+                                    borderRadius: '10px',
+                                    backgroundColor: getPhaseColor(selectedNode.data.phase!).bg,
+                                    color: getPhaseColor(selectedNode.data.phase!).text,
+                                    border: `1px solid ${getPhaseColor(selectedNode.data.phase!).border}`,
+                                    fontSize: '11px',
+                                    fontWeight: 600
+                                }}>
+                                    <Plane size={12} aria-hidden />
+                                    {selectedNode.data.phase}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     <div className={styles.paramItem}>

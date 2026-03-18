@@ -18,6 +18,7 @@ from pika.exceptions import AMQPConnectionError, ChannelClosedByBroker
 from pydantic import BaseModel
 
 from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.core.flight_phase import FlightPhase
 
 if TYPE_CHECKING:
     from openutm_verification.core.execution.config_models import AMQPConfig
@@ -246,7 +247,7 @@ class AMQPClient:
                     pass
             logger.info("AMQP consumer stopped")
 
-    @scenario_step("Start AMQP Queue Monitor")
+    @scenario_step("Start AMQP Queue Monitor", phase=FlightPhase.PRE_FLIGHT)
     async def start_queue_monitor(
         self,
         queue_name: str | None = None,
@@ -295,7 +296,7 @@ class AMQPClient:
             "duration": duration,
         }
 
-    @scenario_step("Stop AMQP Queue Monitor")
+    @scenario_step("Stop AMQP Queue Monitor", phase=FlightPhase.POST_FLIGHT)
     async def stop_queue_monitor(self) -> dict[str, Any]:
         """Stop the AMQP queue monitor.
 
@@ -321,7 +322,7 @@ class AMQPClient:
             "error": self._state.error,
         }
 
-    @scenario_step("Get AMQP Messages")
+    @scenario_step("Get AMQP Messages", phase=FlightPhase.CRUISE)
     async def get_received_messages(
         self,
         routing_key_filter: str | None = None,
@@ -353,7 +354,7 @@ class AMQPClient:
 
         return [m.to_dict() for m in messages]
 
-    @scenario_step("Wait for AMQP Messages")
+    @scenario_step("Wait for AMQP Messages", phase=FlightPhase.CRUISE)
     async def wait_for_messages(
         self,
         count: int = 1,
@@ -395,7 +396,7 @@ class AMQPClient:
             "error": f"Timed out waiting for {count} messages, got {len(messages)}",
         }
 
-    @scenario_step("Clear AMQP Messages")
+    @scenario_step("Clear AMQP Messages", phase=FlightPhase.POST_FLIGHT)
     async def clear_messages(self) -> dict[str, Any]:
         """Clear the collected messages buffer.
 
@@ -409,7 +410,7 @@ class AMQPClient:
         logger.info(f"Cleared {count} AMQP messages")
         return {"cleared_count": count}
 
-    @scenario_step("Check AMQP Connection")
+    @scenario_step("Check AMQP Connection", phase=FlightPhase.PRE_FLIGHT)
     async def check_connection(self) -> dict[str, Any]:
         """Check if AMQP connection can be established.
 

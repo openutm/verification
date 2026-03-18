@@ -11,6 +11,7 @@ from loguru import logger
 from openutm_verification.core.execution.config_models import get_settings
 from openutm_verification.core.execution.dependency_resolution import CONTEXT
 from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.core.flight_phase import FlightPhase
 from openutm_verification.core.providers import DataQualityType, ProviderType, create_provider
 from openutm_verification.core.streamers import RefreshModeType, StreamResult, TargetType, create_streamer
 
@@ -141,8 +142,8 @@ class AirTrafficStepClient:
             duration = 30
 
         return (duration, config_path, number_of_aircraft, sensor_ids, session_ids)
-
-    @scenario_step("Stream Air Traffic")
+    
+    @scenario_step("Stream Air Traffic", phase=FlightPhase.CRUISE)
     async def stream_air_traffic(
         self,
         provider: ProviderType,

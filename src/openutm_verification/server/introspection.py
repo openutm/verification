@@ -117,4 +117,5 @@ def process_method(client_class: Type, method: Any) -> Dict[str, Any] | None:
         "category": client_class.__name__,
         "description": inspect.getdoc(method) or "",
         "parameters": parameters,
+        "phase": getattr(method, "_step_phase", None),
     }

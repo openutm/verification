@@ -12,6 +12,7 @@ export interface Operation {
     description: string;
     parameters: OperationParam[];
     category?: string;
+    phase?: string;
 }
 
 export interface NodeData extends Record<string, unknown> {
@@ -20,6 +21,7 @@ export interface NodeData extends Record<string, unknown> {
     operationId?: string;
     description?: string;
     parameters?: OperationParam[];
+    phase?: string;
     status?: 'success' | 'failure' | 'error' | 'running' | 'waiting' | 'skipped';
     result?: unknown;
     runInBackground?: boolean;
@@ -28,6 +30,7 @@ export interface NodeData extends Record<string, unknown> {
     needs?: string[];
     isGroupReference?: boolean;
     isGroupContainer?: boolean;
+    isPhaseContainer?: boolean;
     onShowResult?: (result: unknown) => void;
 }
 
@@ -69,6 +72,7 @@ export interface ScenarioDefinition {
 
 export interface StepResult {
     id: string;
+    phase?: string;
     status: 'success' | 'failure' | 'error';
     result: unknown;
     error?: string;

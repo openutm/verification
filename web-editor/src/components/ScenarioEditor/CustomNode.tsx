@@ -1,8 +1,32 @@
 
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass } from 'lucide-react';
+import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass, Plane } from 'lucide-react';
 import styles from '../../styles/Node.module.css';
+import { getPhaseColor } from '../../utils/phaseColors';
 import type { NodeData } from '../../types/scenario';
+
+const ModifierBadges = ({ data }: { data: NodeData }) => (
+    <div className={styles.modifierBadges}>
+        {data.runInBackground && (
+            <div className={styles.backgroundBadge} title="Runs in background">
+                <Timer size={14} />
+                <span>bg</span>
+            </div>
+        )}
+        {data.ifCondition && data.ifCondition.trim() !== '' && (
+            <div className={styles.conditionBadge} title={`Condition: ${data.ifCondition}`}>
+                <GitBranch size={14} />
+                <span>if</span>
+            </div>
+        )}
+        {data.loop && (
+            <div className={styles.loopBadge} title={`Loop: ${JSON.stringify(data.loop)}`}>
+                <RotateCw size={14} />
+                <span>loop</span>
+            </div>
+        )}
+    </div>
+);
 
 export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
     const isGroupContainer = data.isGroupContainer;
@@ -22,36 +46,38 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
 
     const selectedClass = selected ? styles.selected : '';
 
+    // Render phase containers with phase-colored label bar
+    if (isGroupContainer && data.isPhaseContainer) {
+        const colors = getPhaseColor(data.phase as string);
+        return (
+            <div
+                className={`${styles.groupContainerLabel} ${styles.phaseContainerLabel} ${selectedClass}`}
+                style={{
+                    backgroundColor: colors.bg,
+                    borderColor: colors.border,
+                }}
+            >
+                <div className={styles.groupLabelContent}>
+                    <Plane size={14} aria-hidden="true" style={{ color: colors.text }} />
+                    <span style={{ color: colors.text }}>{data.label}</span>
+                </div>
+            </div>
+        );
+    }
+
     // Render group containers with label and badges overlay
     if (isGroupContainer) {
         return (
             <div className={`${styles.groupContainerLabel} ${selectedClass}`}>
                 <div className={styles.groupLabelContent}>
                     <span>{data.label}</span>
-                    <div className={styles.modifierBadges}>
-                        {data.runInBackground && (
-                            <div className={styles.backgroundBadge} title="Runs in background">
-                                <Timer size={14} />
-                                <span>bg</span>
-                            </div>
-                        )}
-                        {data.ifCondition && data.ifCondition.trim() !== '' && (
-                            <div className={styles.conditionBadge} title={`Condition: ${data.ifCondition}`}>
-                                <GitBranch size={14} />
-                                <span>if</span>
-                            </div>
-                        )}
-                        {data.loop && (
-                            <div className={styles.loopBadge} title={`Loop: ${JSON.stringify(data.loop)}`}>
-                                <RotateCw size={14} />
-                                <span>loop</span>
-                            </div>
-                        )}
-                    </div>
+                    <ModifierBadges data={data} />
                 </div>
             </div>
         );
     }
+
+    const phaseColors = data.phase ? getPhaseColor(data.phase) : null;
 
     return (
         <div className={`${styles.customNode} ${statusClass} ${selectedClass}`}>
@@ -59,26 +85,21 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
             <div className={styles.customNodeHeader}>
                 <Box size={16} className={styles.icon} />
                 <span>{data.label}</span>
-                <div className={styles.modifierBadges}>
-                    {data.runInBackground && (
-                        <div className={styles.backgroundBadge} title="Runs in background">
-                            <Timer size={14} />
-                            <span>bg</span>
-                        </div>
-                    )}
-                    {data.ifCondition && data.ifCondition.trim() !== '' && (
-                        <div className={styles.conditionBadge} title={`Condition: ${data.ifCondition}`}>
-                            <GitBranch size={14} />
-                            <span>if</span>
-                        </div>
-                    )}
-                    {data.loop && (
-                        <div className={styles.loopBadge} title={`Loop: ${JSON.stringify(data.loop)}`}>
-                            <RotateCw size={14} />
-                            <span>loop</span>
-                        </div>
-                    )}
-                </div>
+                {phaseColors && (
+                    <div
+                        className={styles.phaseBadge}
+                        title={`Flight phase: ${data.phase}`}
+                        style={{
+                            backgroundColor: phaseColors.bg,
+                            color: phaseColors.text,
+                            border: `1px solid ${phaseColors.border}`,
+                        }}
+                    >
+                        <Plane size={12} />
+                        <span>{data.phase}</span>
+                    </div>
+                )}
+                <ModifierBadges data={data} />
                 {data.status && (
                     <div className={styles.statusIndicator} data-testid={`status-${data.status}`}>
                         {data.status === 'success' && (

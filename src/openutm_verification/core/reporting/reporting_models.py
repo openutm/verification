@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 from openutm_verification.core.execution.config_models import DeploymentDetails
+from openutm_verification.core.flight_phase import FlightPhase
 from openutm_verification.simulator.models.declaration_models import (
     FlightDeclaration,
     FlightDeclarationViaOperationalIntent,
@@ -37,6 +38,7 @@ class StepResult(BaseModel, Generic[T]):
 
     id: str | None = None
     name: str
+    phase: FlightPhase | None = None
     status: Status
     duration: float
     result: T = None  # type: ignore
