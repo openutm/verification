@@ -127,15 +127,15 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
     const renderScenarioItem = (name: string) => {
         const displayName = name.split('/').pop() ?? name;
         return (
-            <div
+            <button
                 key={name}
+                type="button"
                 className={styles.nodeItem}
                 onClick={() => handleLoad(name)}
-                role="button"
-                tabIndex={0}
                 title={name}
+                disabled={loading}
                 style={{
-                    cursor: 'pointer',
+                    cursor: loading ? 'not-allowed' : 'pointer',
                     opacity: loading ? 0.5 : 1,
                     borderColor: name === currentScenarioName ? 'var(--accent-primary)' : 'var(--border-color)',
                     backgroundColor: name === currentScenarioName ? 'var(--bg-secondary)' : 'var(--bg-primary)'
@@ -143,7 +143,7 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
             >
                 <FileText size={16} color={name === currentScenarioName ? "var(--accent-primary)" : "#8b949e"} />
                 <span>{displayName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-            </div>
+            </button>
         );
     };
 
