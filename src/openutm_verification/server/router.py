@@ -99,7 +99,7 @@ async def get_scenario_docs(scenario: str):
         else:
             raise HTTPException(status_code=404, detail="Documentation not found")
 
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         return PlainTextResponse(f.read())
 
 
