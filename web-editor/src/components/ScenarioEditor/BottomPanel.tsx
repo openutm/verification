@@ -98,14 +98,16 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
             }, 2000);
         };
 
-        const handleFailure = () => {
+        const handleFailure = (message: string, error?: unknown) => {
             if (copyTimeoutRef.current !== null) {
                 clearTimeout(copyTimeoutRef.current);
                 copyTimeoutRef.current = null;
             }
-            // Non-blocking feedback for copy failure
-            // This avoids using window.alert, which is blocking and inconsistent with the rest of the UI.
-            console.error('Failed to copy to clipboard.');
+            if (error !== undefined) {
+                console.error(message, error);
+            } else {
+                console.error(message);
+            }
         };
 
         const fallbackCopy = () => {
@@ -128,17 +130,18 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
                 if (successful) {
                     handleSuccess();
                 } else {
-                    handleFailure();
+                    handleFailure('Fallback copy using document.execCommand("copy") reported failure.');
                 }
-            } catch {
-                handleFailure();
+            } catch (error) {
+                handleFailure('Exception during fallback copy.', error);
             }
         };
 
         if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
             navigator.clipboard.writeText(textToCopy)
                 .then(handleSuccess)
-                .catch(() => {
+                .catch((error) => {
+                    handleFailure('navigator.clipboard.writeText failed; attempting fallback.', error);
                     fallbackCopy();
                 });
         } else {
@@ -146,7 +149,7 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
         }
     }, [activeTab, result, filteredLogs]);
 
-    const canCopy = activeTab === 'output' ? !!result : filteredLogs.length > 0;
+    const canCopy = activeTab === 'output' ? result !== null && result !== undefined : filteredLogs.length > 0;
 
     if (!selectedNode) return null;
 
