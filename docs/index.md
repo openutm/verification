@@ -20,4 +20,4 @@ All scenarios are defined as YAML files and executed via the runner. See the [sc
 * [OpenUTM Sim Air Traffic Data](scenarios/openutm_sim_air_traffic_data.md)
 * [SDSP Heartbeat](scenarios/sdsp_heartbeat.md)
 * [SDSP Track](scenarios/sdsp_track.md)
-* [SDSP Sensor Failure](scenarios/sdsp_verify_sensor_failure_report.md)
+* [SDSP Sensor Failure](scenarios/sdsp-f3623/sdsp_verify_sensor_failure_report.md)
