@@ -118,8 +118,16 @@ async def get_scenario(scenario: str):
 @scenario_router.post("/api/scenarios/{name:path}")
 async def save_scenario(name: str, scenario: ScenarioDefinition):
     """Save a scenario to a YAML file."""
-    path = get_scenarios_directory()
-    file_path = (path / name).with_suffix(".yaml")
+    base_dir = get_scenarios_directory().resolve()
+
+    # Reject absolute paths in the name to prevent writing outside the scenarios directory
+    if Path(name).is_absolute():
+        raise HTTPException(status_code=400, detail="Invalid scenario name")
+
+    # Normalize and validate the target path to prevent directory traversal
+    file_path = (base_dir / name).with_suffix(".yaml").resolve()
+    if not file_path.is_relative_to(base_dir):
+        raise HTTPException(status_code=400, detail="Invalid scenario name")
 
     # Ensure directory exists (including any sub-folder)
     file_path.parent.mkdir(parents=True, exist_ok=True)
