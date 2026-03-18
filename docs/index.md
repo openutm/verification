@@ -12,7 +12,7 @@ All scenarios are defined as YAML files and executed via the runner. See the [sc
 
 ### Flight Declarations
 * [Add Flight Declaration](scenarios/flight-declarations/add_flight_declaration.md)
-* [Add Flight Declaration (via Operational Itnent)](scenarios/flight-declarations/add_flight_declaration_via_operational_intent.md)
+* [Add Flight Declaration (via Operational Intent)](scenarios/flight-declarations/add_flight_declaration_via_operational_intent.md)
 
 ### Basic Scenarios
 * [F1 Happy Path](scenarios/standard-scenarios/F1_happy_path.md)
