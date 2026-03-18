@@ -46,12 +46,35 @@ async def list_scenarios():
 async def list_suites(runner: Any = Depends(get_runner)):
     """Return suite-to-scenario mapping, resolving bare names to subfolder-relative paths."""
     scenarios_path = get_scenarios_directory()
-    stem_to_id = {f.stem: str(f.relative_to(scenarios_path).with_suffix("")) for f in scenarios_path.rglob("*.yaml")}
+    # Build a mapping from stem to all matching scenario IDs to detect ambiguities.
+    stem_to_ids: dict[str, list[str]] = {}
+    for f in scenarios_path.rglob("*.yaml"):
+        stem = f.stem
+        scenario_id = str(f.relative_to(scenarios_path).with_suffix(""))
+        stem_to_ids.setdefault(stem, []).append(scenario_id)
+
+    def resolve_scenario_name(name: str) -> str:
+        """Resolve a bare scenario name to its ID if unambiguous.
+
+        If there are no scenarios with the given stem, or if multiple scenarios
+        share the same stem, return the name unchanged so callers can use a
+        fully-qualified ID instead.
+        """
+        ids = stem_to_ids.get(name)
+        if not ids:
+            # No matching stem; leave as-is.
+            return name
+        if len(ids) == 1:
+            # Unique stem; safe to auto-resolve.
+            return ids[0]
+        # Ambiguous stem; do not auto-resolve to avoid silently picking one.
+        return name
+
     config = runner.config
     result: dict[str, list[str]] = {}
     for suite_name, suite_config in config.suites.items():
         if suite_config.scenarios:
-            result[suite_name] = [stem_to_id.get(s.name, s.name) for s in suite_config.scenarios]
+            result[suite_name] = [resolve_scenario_name(s.name) for s in suite_config.scenarios]
         else:
             result[suite_name] = []
     return result
