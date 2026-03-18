@@ -56,7 +56,7 @@ class AMQPStreamer:
         # Get observations from provider
         observations = await provider.get_observations(duration=duration_seconds)
 
-        total_observations = sum(len(batch) for batch in observations)
+        total_observations = len(observations)
 
         return StreamResult(
             success=True,
@@ -64,7 +64,7 @@ class AMQPStreamer:
             target=self.name,
             duration_seconds=duration_seconds,
             total_observations=total_observations,
-            total_batches=len(observations),
+            total_batches=1,
             errors=["AMQP streaming not fully implemented - data collected but not sent"],
             observations=observations,
         )

@@ -32,7 +32,7 @@ def visualize_flight_path_2d(
     telemetry_data: list[RIDAircraftState],
     declaration_data: dict,
     output_html_path: Path,
-    air_traffic_data: list[list[FlightObservationSchema]] | None = None,
+    air_traffic_data: list[FlightObservationSchema] | None = None,
 ):
     """
     Creates an interactive 2D map from flight telemetry and declaration data.
@@ -41,7 +41,7 @@ def visualize_flight_path_2d(
         telemetry_data (dict): The flight telemetry data as a dictionary.
         declaration_data (dict): The flight declaration data as a dictionary.
         output_html_path (Path): The full path where the output HTML map will be saved.
-        air_traffic_data (list[list[FlightObservationSchema]] | None): Optional air traffic data from simulators.
+        air_traffic_data (list[FlightObservationSchema] | None): Optional air traffic data from simulators.
     """
     logger.info("Starting 2D flight path visualization")
 
@@ -120,48 +120,45 @@ def visualize_flight_path_2d(
 
 
 def _reorganize_air_traffic_by_aircraft(
-    air_traffic_data: list[list[FlightObservationSchema]],
+    air_traffic_data: list[FlightObservationSchema],
 ) -> dict[str, list]:
     """
-    Reorganizes air traffic data from timestamp-based to aircraft-based grouping.
+    Reorganizes air traffic data into aircraft-based grouping.
 
-    The input data may be organized as list of timestamps, where each timestamp
-    contains observations from multiple aircraft. This function reorganizes it
-    into a dict keyed by ICAO address with all observations for that aircraft.
+    Groups the flat observation list by ICAO address.
 
     Args:
-        air_traffic_data: Air traffic data (may be organized by timestamp or aircraft).
+        air_traffic_data: Flat list of air traffic observations.
 
     Returns:
         Dict mapping ICAO address to list of observations for that aircraft.
     """
     aircraft_tracks: dict[str, list] = {}
 
-    for observations in air_traffic_data:
-        for obs in observations:
-            # Handle both dict and Pydantic model
-            if isinstance(obs, dict):
-                icao = obs.get("icao_address", "UNKNOWN")
-            else:
-                icao = obs.icao_address
+    for obs in air_traffic_data:
+        # Handle both dict and Pydantic model
+        if isinstance(obs, dict):
+            icao = obs.get("icao_address", "UNKNOWN")
+        else:
+            icao = obs.icao_address
 
-            if icao not in aircraft_tracks:
-                aircraft_tracks[icao] = []
-            aircraft_tracks[icao].append(obs)
+        if icao not in aircraft_tracks:
+            aircraft_tracks[icao] = []
+        aircraft_tracks[icao].append(obs)
 
     return aircraft_tracks
 
 
 def _add_air_traffic_to_2d_map(
     flight_map: folium.Map,
-    air_traffic_data: list[list[FlightObservationSchema]],
+    air_traffic_data: list[FlightObservationSchema],
 ) -> None:
     """
     Adds airplane/air traffic paths to the 2D map with distinct colors.
 
     Args:
         flight_map: The Folium map to add paths to.
-        air_traffic_data: Air traffic data as list of aircraft, each with list of observations.
+        air_traffic_data: Flat list of air traffic observations.
     """
     # Reorganize data by aircraft ICAO address
     aircraft_tracks = _reorganize_air_traffic_by_aircraft(air_traffic_data)
@@ -386,7 +383,7 @@ def _create_airplane_path_group(projected_path: list[tuple[float, float, float]]
 
 def _add_air_traffic_to_3d_scene(
     scene: three.Scene,
-    air_traffic_data: list[list[FlightObservationSchema]],
+    air_traffic_data: list[FlightObservationSchema],
     project_fn,
 ) -> list[tuple[float, float, float]]:
     """
@@ -394,7 +391,7 @@ def _add_air_traffic_to_3d_scene(
 
     Args:
         scene: The pythreejs Scene to add paths to.
-        air_traffic_data: Air traffic data as list of aircraft, each with list of observations.
+        air_traffic_data: Flat list of air traffic observations.
         project_fn: Projection function (lon, lat, alt) -> (x, y, z).
 
     Returns:
@@ -444,7 +441,7 @@ def visualize_flight_path_3d(
     telemetry_data: list[RIDAircraftState],
     declaration_data: dict,
     output_html_path: Path,
-    air_traffic_data: list[list[FlightObservationSchema]] | None = None,
+    air_traffic_data: list[FlightObservationSchema] | None = None,
 ):
     """Creates an interactive 3D visualization of the flight path and geofence.
 

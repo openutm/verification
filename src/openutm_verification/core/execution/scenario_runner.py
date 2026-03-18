@@ -56,7 +56,7 @@ class ScenarioState:
     flight_declaration_data: FlightDeclaration | None = None
     flight_declaration_via_operational_intent_data: FlightDeclarationViaOperationalIntent | None = None
     telemetry_data: list[RIDAircraftState] | None = None
-    air_traffic_data: list[list[FlightObservationSchema]] = field(default_factory=list)
+    air_traffic_data: list[FlightObservationSchema] = field(default_factory=list)
     added_results: Queue[StepResult[Any]] = field(default_factory=Queue)
 
     @property
@@ -147,7 +147,7 @@ class ScenarioContext:
     def add_air_traffic_data(cls, data: list[FlightObservationSchema]) -> None:
         state = _scenario_state.get()
         if state and state.active:
-            state.air_traffic_data.append(data)
+            state.air_traffic_data.extend(data)
 
     @property
     def state(self) -> ScenarioState | None:
@@ -184,7 +184,7 @@ class ScenarioContext:
         return state.telemetry_data if state else None
 
     @property
-    def air_traffic_data(self) -> list[list[FlightObservationSchema]]:
+    def air_traffic_data(self) -> list[FlightObservationSchema]:
         if self._state:
             return self._state.air_traffic_data
         state = _scenario_state.get()

@@ -51,7 +51,7 @@ class BlueSkyAirTrafficSettings(BaseModel):
     """Settings for BlueSky Air Traffic API."""
 
     simulation_config_path: str = ""
-    simulation_duration_seconds: int = 30
+    simulation_duration: int = 30
     number_of_aircraft: int = 2
     single_or_multiple_sensors: Literal["single", "multiple"] = SENSOR_MODE_SINGLE
     sensor_ids: list[str] = []
@@ -62,7 +62,7 @@ class BlueSkyAirTrafficSettings(BaseModel):
         """Create settings from config."""
         return cls(
             simulation_config_path=simulation_path or "",
-            simulation_duration_seconds=sim_config.simulation_duration_seconds,
+            simulation_duration=sim_config.simulation_duration,
             number_of_aircraft=sim_config.number_of_aircraft,
             single_or_multiple_sensors=sim_config.single_or_multiple_sensors,
             sensor_ids=sim_config.sensor_ids,
@@ -74,7 +74,7 @@ class BayesianAirTrafficSettings(BaseModel):
     """Settings for Bayesian Air Traffic API."""
 
     simulation_config_path: str = ""
-    simulation_duration_seconds: int = 30
+    simulation_duration: int = 30
     number_of_aircraft: int = 2
 
     single_or_multiple_sensors: Literal["single", "multiple"] = SENSOR_MODE_SINGLE
@@ -86,7 +86,7 @@ class BayesianAirTrafficSettings(BaseModel):
         """Create settings from config."""
         return cls(
             simulation_config_path=simulation_path or "",
-            simulation_duration_seconds=sim_config.simulation_duration_seconds,
+            simulation_duration=sim_config.simulation_duration,
             number_of_aircraft=sim_config.number_of_aircraft,
             single_or_multiple_sensors=sim_config.single_or_multiple_sensors,
             sensor_ids=sim_config.sensor_ids,

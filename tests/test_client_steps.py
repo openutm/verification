@@ -31,7 +31,7 @@ def fb_client():
 def at_client():
     settings = MagicMock()
     settings.simulation_config_path = "test_config.json"
-    settings.simulation_duration_seconds = 60
+    settings.simulation_duration = 60
     settings.number_of_aircraft = 1
     settings.sensor_ids = []
     client = AirTrafficClient(settings)
@@ -327,52 +327,48 @@ async def test_submit_simulated_air_traffic(fb_client):
     mock_response.text = "ok"
     fb_client.post.return_value = mock_response
 
-    # Create dummy observations
+    # Create dummy observations (flat list)
     obs = [
-        [
-            FlightObservationSchema(
-                lat_dd=0.0,
-                lon_dd=0.0,
-                altitude_mm=0.0,
-                traffic_source=0,
-                source_type=0,
-                timestamp=0,
-                metadata={"session_id": "sess1"},
-                icao_address="A1",
-            ),
-            FlightObservationSchema(
-                lat_dd=0.0,
-                lon_dd=0.0,
-                altitude_mm=0.0,
-                traffic_source=0,
-                source_type=0,
-                timestamp=1,
-                metadata={"session_id": "sess1"},
-                icao_address="A1",
-            ),
-        ],
-        [
-            FlightObservationSchema(
-                lat_dd=0.0,
-                lon_dd=0.0,
-                altitude_mm=0.0,
-                traffic_source=0,
-                source_type=0,
-                timestamp=0,
-                metadata={"session_id": "sess2"},
-                icao_address="A2",
-            ),
-            FlightObservationSchema(
-                lat_dd=0.0,
-                lon_dd=0.0,
-                altitude_mm=0.0,
-                traffic_source=0,
-                source_type=0,
-                timestamp=1,
-                metadata={"session_id": "sess2"},
-                icao_address="A2",
-            ),
-        ],
+        FlightObservationSchema(
+            lat_dd=0.0,
+            lon_dd=0.0,
+            altitude_mm=0.0,
+            traffic_source=0,
+            source_type=0,
+            timestamp=0,
+            metadata={"session_id": "sess1"},
+            icao_address="A1",
+        ),
+        FlightObservationSchema(
+            lat_dd=0.0,
+            lon_dd=0.0,
+            altitude_mm=0.0,
+            traffic_source=0,
+            source_type=0,
+            timestamp=1,
+            metadata={"session_id": "sess1"},
+            icao_address="A1",
+        ),
+        FlightObservationSchema(
+            lat_dd=0.0,
+            lon_dd=0.0,
+            altitude_mm=0.0,
+            traffic_source=0,
+            source_type=0,
+            timestamp=0,
+            metadata={"session_id": "sess2"},
+            icao_address="A2",
+        ),
+        FlightObservationSchema(
+            lat_dd=0.0,
+            lon_dd=0.0,
+            altitude_mm=0.0,
+            traffic_source=0,
+            source_type=0,
+            timestamp=1,
+            metadata={"session_id": "sess2"},
+            icao_address="A2",
+        ),
     ]
 
     # Mock Arrow objects
@@ -394,6 +390,17 @@ async def test_submit_simulated_air_traffic(fb_client):
 
         def shift(self, seconds=0):
             return MockArrow(self.time_val + seconds)
+
+        def floor(self, _unit="second"):
+            return MockArrow(int(self.time_val))
+
+        def __hash__(self):
+            return hash(int(self.time_val))
+
+        def __eq__(self, other):
+            if isinstance(other, MockArrow):
+                return self.time_val == other.time_val
+            return NotImplemented
 
         def __repr__(self):
             return f"MockArrow({self.time_val})"
@@ -421,24 +428,15 @@ async def test_submit_simulated_air_traffic(fb_client):
         mock_get.side_effect = side_effect_get
 
         # Mock arrow.now() to advance time
-        # Logic in code:
-        # start_time = now() (0)
-        # loop: current_sim_time (0) < sim_end (1)
-        #   target_real_time = start_time + (current - start) = 0 + 0 = 0
-        #   while now() < target_real_time: sleep
-        #   submit
-        #   current_sim_time shift +1 -> 1
-        # loop: current_sim_time (1) < sim_end (1) -> False (Wait, loop is while < end)
-        # Actually max(end_times) is 1. So loop runs for 0.
-
-        # We need to ensure loop runs at least once.
-        # If start=0, end=1. Loop runs for 0. Next is 1. 1 < 1 is False.
+        # The code iterates over unique time slots [0, 1] with 1s pacing.
+        # slot 0: slot_index==0 → skip wait → batch submit 2 aircraft
+        # slot 1: slot_index==1 → asyncio.sleep(shift(1) - now()) → batch submit 2 aircraft
+        # After loop: now() for duration calculation
 
         mock_now.side_effect = [
             MockArrow(0),  # start_time
-            MockArrow(0),  # check loop wait
-            MockArrow(2),  # check loop wait (exit wait)
-            MockArrow(3),  # next call
+            MockArrow(0),  # slot 1: sleep_seconds calc → (shift(1) - 0).total_seconds() = 1
+            MockArrow(3),  # duration calculation
         ]
 
         result = await fb_client.submit_simulated_air_traffic(observations=obs)
@@ -446,7 +444,7 @@ async def test_submit_simulated_air_traffic(fb_client):
         # Result now returns detailed dict with submission stats
         assert isinstance(result.result, dict)
         assert result.result["aircraft_count"] == 2
-        assert result.result["observations_submitted"] == 2
+        assert result.result["observations_submitted"] == 4
         assert fb_client.post.called
 
 
@@ -523,11 +521,11 @@ async def test_generate_simulated_air_traffic_data(at_client):
         patch("openutm_verification.core.clients.air_traffic.air_traffic_client.GeoJSONAirtrafficSimulator") as MockSim,
     ):
         mock_sim_instance = MockSim.return_value
-        mock_sim_instance.generate_air_traffic_data.return_value = [[{"obs": 1}]]
+        mock_sim_instance.generate_air_traffic_data.return_value = [{"obs": 1}]
 
         result = await at_client.generate_simulated_air_traffic_data()
 
-        assert result.result == [[{"obs": 1}]]
+        assert result.result == [{"obs": 1}]
         mock_sim_instance.generate_air_traffic_data.assert_called_once()
 
 
@@ -546,7 +544,7 @@ async def test_generate_simulated_air_traffic_data_single_sensor():
         patch("openutm_verification.core.clients.air_traffic.air_traffic_client.GeoJSONAirtrafficSimulator") as MockSim,
     ):
         mock_sim_instance = MockSim.return_value
-        mock_sim_instance.generate_air_traffic_data.return_value = [[{"obs": 1}]]
+        mock_sim_instance.generate_air_traffic_data.return_value = [{"obs": 1}]
 
         await client.generate_simulated_air_traffic_data()
 
@@ -569,7 +567,7 @@ async def test_generate_simulated_air_traffic_data_multiple_sensors():
         patch("openutm_verification.core.clients.air_traffic.air_traffic_client.GeoJSONAirtrafficSimulator") as MockSim,
     ):
         mock_sim_instance = MockSim.return_value
-        mock_sim_instance.generate_air_traffic_data.return_value = [[{"obs": 1}]]
+        mock_sim_instance.generate_air_traffic_data.return_value = [{"obs": 1}]
 
         await client.generate_simulated_air_traffic_data()
 
@@ -596,35 +594,35 @@ async def test_fetch_data(os_client):
     os_client.get.assert_called_once()
 
 
-def _make_observations(num_aircraft: int = 2, duration_seconds: int = 30) -> list[list[FlightObservationSchema]]:
+def _make_observations(num_aircraft: int = 2, duration_seconds: int = 30) -> list[FlightObservationSchema]:
     """Build a minimal observations list: num_aircraft aircraft, each with duration_seconds 1-Hz observations."""
     base_ts = int(_time.time()) - duration_seconds
     result = []
     for i in range(num_aircraft):
-        aircraft_obs = [
-            FlightObservationSchema(
-                lat_dd=46.97 + i * 0.001,
-                lon_dd=7.47,
-                altitude_mm=100000.0,
-                traffic_source=0,
-                source_type=0,
-                icao_address=f"AABBCC{i:02d}",
-                timestamp=base_ts + t,
-                metadata={},
+        for t in range(duration_seconds):
+            result.append(
+                FlightObservationSchema(
+                    lat_dd=46.97 + i * 0.001,
+                    lon_dd=7.47,
+                    altitude_mm=100000.0,
+                    traffic_source=0,
+                    source_type=0,
+                    icao_address=f"AABBCC{i:02d}",
+                    timestamp=base_ts + t,
+                    metadata={},
+                )
             )
-            for t in range(duration_seconds)
-        ]
-        result.append(aircraft_obs)
     return result
 
 
-def _valid_metrics_payload(observations: list[list[FlightObservationSchema]]) -> dict:
-    num_aircraft = sum(1 for a in observations if a)
-    total_obs = sum(len(a) for a in observations if a)
-    start_ts = min(a[0].timestamp for a in observations if a)
-    end_ts = max(a[-1].timestamp for a in observations if a)
-    duration = end_ts - start_ts
-    prob = total_obs / (num_aircraft * duration)
+def _valid_metrics_payload(observations: list[FlightObservationSchema]) -> dict:
+    icao_addresses = set(obs.icao_address for obs in observations)
+    num_aircraft = len(icao_addresses)
+    total_obs = len(observations)
+    start_ts = min(obs.timestamp for obs in observations)
+    end_ts = max(obs.timestamp for obs in observations)
+    duration = end_ts - start_ts + 1  # +1 to include the last observation interval
+    prob = min(1.0, total_obs / (num_aircraft * duration))
     window_start = "2024-01-01T00:00:00Z"
     window_end = "2024-01-01T00:00:30Z"
     return {

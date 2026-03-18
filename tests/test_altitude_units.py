@@ -111,10 +111,9 @@ class TestGeoJSONAirtrafficSimulator:
             number_of_aircraft=1,
         )
 
-        # Get first observation from first aircraft
+        # Get first observation from flat list
         assert len(result) > 0
-        assert len(result[0]) > 0
-        first_obs = result[0][0]
+        first_obs = result[0]
 
         # altitude_mm should be altitude_meters * 1000
         expected_mm = altitude_meters * 1000
@@ -141,7 +140,7 @@ class TestGeoJSONAirtrafficSimulator:
             use_multiple_sensors=False,
         )
 
-        unique_sensor_ids = {obs.metadata["sensor_id"] for flight in result for obs in flight}
+        unique_sensor_ids = {obs.metadata["sensor_id"] for obs in result}
         assert len(unique_sensor_ids) == 1, f"Expected 1 sensor ID in single mode, got {len(unique_sensor_ids)}: {unique_sensor_ids}"
         assert unique_sensor_ids == {str(sensor_ids[0])}
 
@@ -179,7 +178,7 @@ class TestGeoJSONAirtrafficSimulator:
             use_multiple_sensors=True,
         )
 
-        unique_sensor_ids = {obs.metadata["sensor_id"] for flight in result for obs in flight}
+        unique_sensor_ids = {obs.metadata["sensor_id"] for obs in result}
         assert len(unique_sensor_ids) > 1, (
             f"Expected multiple distinct sensor IDs in multiple mode, got {len(unique_sensor_ids)}: {unique_sensor_ids}"
         )
@@ -288,7 +287,7 @@ class TestVisualizationAltitudeConversion:
             timestamp=1234567890,
         )
 
-        air_traffic_data = [[obs]]
+        air_traffic_data = [obs]
         result = _reorganize_air_traffic_by_aircraft(air_traffic_data)
 
         assert "TEST01" in result

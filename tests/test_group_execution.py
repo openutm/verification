@@ -50,7 +50,10 @@ groups:
   fetch_data:
     steps:
       - id: fetch
-        step: Fetch OpenSky Data
+        step: Stream Air Traffic
+        arguments:
+          provider: opensky
+          target: flight_blender
       - id: wait
         step: Wait X seconds
         arguments:
@@ -85,12 +88,20 @@ description: Test scenario with group internal references
 groups:
   process_data:
     steps:
-      - id: fetch
-        step: Fetch OpenSky Data
-      - id: submit
-        step: Submit Air Traffic
+      - id: stream
+        step: Stream Air Traffic
         arguments:
-          observations: ${{ group.fetch.result }}
+          provider: opensky
+          target: flight_blender
+      - id: generate
+        step: Generate Random Number
+        arguments:
+          min: 1
+          max: 5
+      - id: wait
+        step: Wait X seconds
+        arguments:
+          duration: ${{ group.generate.result }}
 
 steps:
   - step: process_data
@@ -103,8 +114,8 @@ steps:
     assert "process_data" in scenario.groups
     group = scenario.groups["process_data"]
 
-    # Verify the submit step has a reference to fetch
-    assert group.steps[1].arguments["observations"] == "${{ group.fetch.result }}"
+    # Verify the submit step has correct arguments
+    assert group.steps[2].arguments["duration"] == "${{ group.generate.result }}"
 
 
 @pytest.mark.asyncio

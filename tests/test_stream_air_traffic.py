@@ -6,11 +6,18 @@ import pytest
 
 from openutm_verification.core.providers import ProviderType, create_provider
 from openutm_verification.core.providers.geojson_provider import GeoJSONProvider
+from openutm_verification.core.providers.latency import shift_timestamps
 from openutm_verification.core.providers.opensky_provider import OpenSkyProvider
+from openutm_verification.core.reporting.reporting_models import Status, StepResult
 from openutm_verification.core.steps import AirTrafficStepClient
 from openutm_verification.core.streamers import StreamResult, TargetType, create_streamer
 from openutm_verification.core.streamers.null_streamer import NullStreamer
 from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
+
+
+def _wrap_step_result(result, step_name="test"):
+    """Wrap a raw result in a StepResult as the @scenario_step decorator would."""
+    return StepResult(name=step_name, status=Status.PASS, duration=0.0, result=result)
 
 
 class TestProviderFactory:
@@ -42,6 +49,30 @@ class TestProviderFactory:
         """Test that unknown provider name raises ValueError."""
         with pytest.raises(ValueError, match="Unknown provider"):
             create_provider(name="unknown")  # type: ignore
+
+    def test_create_provider_with_latency_wraps_in_latency_provider(self):
+        """Test that data_quality='latency' wraps the provider with LatencyProviderWrapper."""
+        from openutm_verification.core.providers.latency import LatencyProviderWrapper
+
+        provider = create_provider(
+            name="geojson",
+            config_path="/some/path.geojson",
+            data_quality="latency",
+        )
+        assert isinstance(provider, LatencyProviderWrapper)
+        assert provider.name == "geojson"
+
+    def test_create_provider_nominal_does_not_wrap(self):
+        """Test that data_quality='nominal' returns unwrapped provider."""
+        from openutm_verification.core.providers.latency import LatencyProviderWrapper
+
+        provider = create_provider(
+            name="geojson",
+            config_path="/some/path.geojson",
+            data_quality="nominal",
+        )
+        assert isinstance(provider, GeoJSONProvider)
+        assert not isinstance(provider, LatencyProviderWrapper)
 
 
 class TestStreamerFactory:
@@ -92,6 +123,55 @@ class TestStreamResult:
         )
         assert result.success is False
         assert len(result.errors) == 2
+
+
+class TestLatencySimulation:
+    """Tests for the apply_latency function and LatencyProviderWrapper."""
+
+    def test_apply_latency_does_not_mutate_originals(self):
+        """Test that apply_latency creates copies instead of mutating original observations."""
+
+        original_obs = FlightObservationSchema(
+            lat_dd=46.9,
+            lon_dd=7.4,
+            altitude_mm=1000000,
+            traffic_source=0,
+            source_type=0,
+            icao_address="TEST1",
+            timestamp=1000000,
+        )
+        observations = [original_obs]
+
+        # Force all observations to be shifted (100% probability, fixed shift)
+        shift_timestamps(observations, probability=1.0, shift_range=(1.0, 1.0))
+
+        # Original should be unchanged
+        assert original_obs.timestamp == 1000000
+
+    def test_apply_latency_shifts_in_seconds_not_milliseconds(self):
+        """Test that timestamp shifts are applied in seconds, not milliseconds."""
+        obs = FlightObservationSchema(
+            lat_dd=46.9,
+            lon_dd=7.4,
+            altitude_mm=1000000,
+            traffic_source=0,
+            source_type=0,
+            icao_address="TEST1",
+            timestamp=1000000,
+        )
+        observations = [obs]
+
+        # Use 100% probability and fixed shift of exactly 2 seconds.
+        # Calling shift_timestamps directly guarantees the shift path
+        # is always taken (no random drop/shift branching).
+        result, total_shifted = shift_timestamps(observations, probability=1.0, shift_range=(2.0, 2.0))
+
+        assert total_shifted == 1
+        assert len(result) == 1
+        shifted_obs = result[0]
+        # Shift should be 2 seconds, not 2000 milliseconds
+        shift = abs(shifted_obs.timestamp - 1000000)
+        assert shift == 2, f"Timestamp shift {shift} is not 2 seconds"
 
 
 class TestAirTrafficStepClient:
@@ -166,18 +246,14 @@ class TestAirTrafficStepClient:
 
     def test_provider_type_literal(self):
         """Test that ProviderType includes expected values."""
-        from typing import get_args
-
         expected = {"geojson", "bluesky", "bayesian", "opensky"}
-        actual = set(get_args(ProviderType))
+        actual = set(item.value for item in ProviderType)
         assert actual == expected
 
     def test_target_type_literal(self):
         """Test that TargetType includes expected values."""
-        from typing import get_args
-
         expected = {"flight_blender", "amqp", "none"}
-        actual = set(get_args(TargetType))
+        actual = set(item.value for item in TargetType)
         assert actual == expected
 
 
@@ -189,28 +265,24 @@ class TestAirTrafficStepClient:
 def _create_mock_observations():
     """Helper to create mock flight observations."""
     return [
-        [
-            FlightObservationSchema(
-                lat_dd=46.9,
-                lon_dd=7.4,
-                altitude_mm=1000000,
-                traffic_source=0,
-                source_type=0,
-                icao_address="ABC123",
-                timestamp=1234567890,
-            ),
-        ],
-        [
-            FlightObservationSchema(
-                lat_dd=46.95,
-                lon_dd=7.45,
-                altitude_mm=1100000,
-                traffic_source=0,
-                source_type=0,
-                icao_address="DEF456",
-                timestamp=1234567891,
-            ),
-        ],
+        FlightObservationSchema(
+            lat_dd=46.9,
+            lon_dd=7.4,
+            altitude_mm=1000000,
+            traffic_source=0,
+            source_type=0,
+            icao_address="ABC123",
+            timestamp=1234567890,
+        ),
+        FlightObservationSchema(
+            lat_dd=46.95,
+            lon_dd=7.45,
+            altitude_mm=1100000,
+            traffic_source=0,
+            source_type=0,
+            icao_address="DEF456",
+            timestamp=1234567891,
+        ),
     ]
 
 
@@ -225,7 +297,9 @@ class TestGeoJSONProviderIntegration:
 
         # Setup mock client instance
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(mock_observations, "Generate Simulated Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -268,7 +342,9 @@ class TestGeoJSONProviderIntegration:
         mock_observations = _create_mock_observations()
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(mock_observations, "Generate Simulated Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -292,21 +368,21 @@ class TestBlueSkyProviderIntegration:
         from openutm_verification.core.providers.bluesky_provider import BlueSkyProvider
 
         mock_observations = [
-            [
-                FlightObservationSchema(
-                    lat_dd=46.9,
-                    lon_dd=7.4,
-                    altitude_mm=5000000,
-                    traffic_source=0,
-                    source_type=0,
-                    icao_address="BLUESKY1",
-                    timestamp=1234567890,
-                ),
-            ],
+            FlightObservationSchema(
+                lat_dd=46.9,
+                lon_dd=7.4,
+                altitude_mm=5000000,
+                traffic_source=0,
+                source_type=0,
+                icao_address="BLUESKY1",
+                timestamp=1234567890,
+            ),
         ]
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_bluesky_sim_air_traffic_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.generate_bluesky_sim_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(mock_observations, "Generate BlueSky Simulation Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -325,7 +401,7 @@ class TestBlueSkyProviderIntegration:
         settings = mock_client_class.call_args[0][0]
 
         assert settings.simulation_config_path == "/path/to/scenario.scn"
-        assert settings.simulation_duration_seconds == 25
+        assert settings.simulation_duration == 25
         assert settings.number_of_aircraft == 2
         assert settings.sensor_ids == ["sensor-1"]
         assert settings.session_ids == ["session-1"]
@@ -349,21 +425,21 @@ class TestBayesianProviderIntegration:
         from openutm_verification.core.providers.bayesian_provider import BayesianProvider
 
         mock_observations = [
-            [
-                FlightObservationSchema(
-                    lat_dd=47.0,
-                    lon_dd=8.0,
-                    altitude_mm=3000000,
-                    traffic_source=0,
-                    source_type=0,
-                    icao_address="BAYES1",
-                    timestamp=1234567890,
-                ),
-            ],
+            FlightObservationSchema(
+                lat_dd=47.0,
+                lon_dd=8.0,
+                altitude_mm=3000000,
+                traffic_source=0,
+                source_type=0,
+                icao_address="BAYES1",
+                timestamp=1234567890,
+            ),
         ]
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_bayesian_sim_air_traffic_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.generate_bayesian_sim_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(mock_observations, "Generate Bayesian Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -382,7 +458,7 @@ class TestBayesianProviderIntegration:
         settings = mock_client_class.call_args[0][0]
 
         assert settings.simulation_config_path == "/path/to/model.mat"
-        assert settings.simulation_duration_seconds == 80
+        assert settings.simulation_duration == 80
         assert settings.number_of_aircraft == 5
         assert settings.sensor_ids == ["sensor-bayesian"]
         assert settings.session_ids == ["session-bayesian"]
@@ -396,7 +472,9 @@ class TestBayesianProviderIntegration:
         from openutm_verification.core.providers.bayesian_provider import BayesianProvider
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_bayesian_sim_air_traffic_data = AsyncMock(return_value=None)
+        mock_client_instance.generate_bayesian_sim_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(None, "Generate Bayesian Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -442,7 +520,7 @@ class TestOpenSkyProviderIntegration:
         mock_get_settings.return_value = mock_config
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.fetch_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.fetch_data = AsyncMock(return_value=_wrap_step_result(mock_observations, "Fetch OpenSky Data"))
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -462,8 +540,8 @@ class TestOpenSkyProviderIntegration:
         # Verify fetch_data was called
         mock_client_instance.fetch_data.assert_called_once()
 
-        # Result should be wrapped in outer list for consistency
-        assert result == [mock_observations]
+        # Result should be the flat list directly
+        assert result == mock_observations
 
     @pytest.mark.asyncio
     @patch("openutm_verification.core.providers.opensky_provider.OpenSkyClient")
@@ -476,7 +554,7 @@ class TestOpenSkyProviderIntegration:
         mock_get_settings.return_value = mock_config
 
         mock_client_instance = AsyncMock()
-        mock_client_instance.fetch_data = AsyncMock(return_value=None)
+        mock_client_instance.fetch_data = AsyncMock(return_value=_wrap_step_result(None, "Fetch OpenSky Data"))
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -491,8 +569,9 @@ class TestFlightBlenderStreamerIntegration:
 
     @pytest.mark.asyncio
     @patch("openutm_verification.core.streamers.flight_blender_streamer.FlightBlenderClient")
+    @patch("openutm_verification.core.streamers.flight_blender_streamer.get_auth_provider")
     @patch("openutm_verification.core.streamers.flight_blender_streamer.get_settings")
-    async def test_flight_blender_streamer_submits_to_client(self, mock_get_settings, mock_fb_class):
+    async def test_flight_blender_streamer_submits_to_client(self, mock_get_settings, mock_get_auth, mock_fb_class):
         """Test that FlightBlenderStreamer properly submits observations to FlightBlenderClient."""
         from openutm_verification.core.streamers.flight_blender_streamer import FlightBlenderStreamer
 
@@ -501,12 +580,19 @@ class TestFlightBlenderStreamerIntegration:
         # Mock get_settings
         mock_config = MagicMock()
         mock_config.flight_blender.url = "http://test-flight-blender:8080"
-        mock_config.flight_blender.auth.username = "test-user"
-        mock_config.flight_blender.auth.password = "test-pass"
+        mock_config.flight_blender.auth.audience = "test-audience"
+        mock_config.flight_blender.auth.scopes = []
         mock_get_settings.return_value = mock_config
 
+        # Mock auth provider
+        mock_auth = MagicMock()
+        mock_auth.get_cached_credentials.return_value = {"token": "test-token"}
+        mock_get_auth.return_value = mock_auth
+
         mock_fb_client = AsyncMock()
-        mock_fb_client.submit_simulated_air_traffic = AsyncMock(return_value={"success": True, "observations_submitted": 1})
+        mock_fb_client.submit_simulated_air_traffic = AsyncMock(
+            return_value=_wrap_step_result({"success": True, "observations_submitted": 1}, "Submit Simulated Air Traffic")
+        )
         mock_fb_class.return_value.__aenter__ = AsyncMock(return_value=mock_fb_client)
         mock_fb_class.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -522,8 +608,7 @@ class TestFlightBlenderStreamerIntegration:
         mock_fb_class.assert_called_once()
         call_kwargs = mock_fb_class.call_args[1]
         assert call_kwargs["base_url"] == "http://test-flight-blender:8080"
-        assert call_kwargs["credentials"]["username"] == "test-user"
-        assert call_kwargs["credentials"]["password"] == "test-pass"
+        assert call_kwargs["credentials"] == {"token": "test-token"}
 
         # Verify submit was called with observations
         mock_fb_client.submit_simulated_air_traffic.assert_called_once()
@@ -534,7 +619,7 @@ class TestFlightBlenderStreamerIntegration:
         assert result.success is True
         assert result.provider == "geojson"
         assert result.target == "flight_blender"
-        assert result.total_batches == 2
+        assert result.total_batches == 1
 
     @pytest.mark.asyncio
     async def test_flight_blender_streamer_handles_empty_observations(self):
@@ -555,8 +640,9 @@ class TestFlightBlenderStreamerIntegration:
 
     @pytest.mark.asyncio
     @patch("openutm_verification.core.streamers.flight_blender_streamer.FlightBlenderClient")
+    @patch("openutm_verification.core.streamers.flight_blender_streamer.get_auth_provider")
     @patch("openutm_verification.core.streamers.flight_blender_streamer.get_settings")
-    async def test_flight_blender_streamer_handles_client_error(self, mock_get_settings, mock_fb_class):
+    async def test_flight_blender_streamer_handles_client_error(self, mock_get_settings, mock_get_auth, mock_fb_class):
         """Test that FlightBlenderStreamer handles client errors gracefully."""
         from openutm_verification.core.streamers.flight_blender_streamer import FlightBlenderStreamer
 
@@ -564,9 +650,13 @@ class TestFlightBlenderStreamerIntegration:
 
         mock_config = MagicMock()
         mock_config.flight_blender.url = "http://test:8080"
-        mock_config.flight_blender.auth.username = "user"
-        mock_config.flight_blender.auth.password = "pass"
+        mock_config.flight_blender.auth.audience = "test-audience"
+        mock_config.flight_blender.auth.scopes = []
         mock_get_settings.return_value = mock_config
+
+        mock_auth = MagicMock()
+        mock_auth.get_cached_credentials.return_value = {"token": "test-token"}
+        mock_get_auth.return_value = mock_auth
 
         mock_fb_client = AsyncMock()
         mock_fb_client.submit_simulated_air_traffic = AsyncMock(side_effect=Exception("Connection refused"))
@@ -580,7 +670,9 @@ class TestFlightBlenderStreamerIntegration:
         streamer = FlightBlenderStreamer()
         result = await streamer.stream_from_provider(mock_provider, duration_seconds=30)
 
+        # Protocol-compliant: returns StreamResult with success=False instead of raising
         assert result.success is False
+        assert len(result.errors) == 1
         assert "Connection refused" in result.errors[0]
 
 
@@ -591,28 +683,24 @@ class TestNullStreamerIntegration:
     async def test_null_streamer_collects_observations_without_sending(self):
         """Test that NullStreamer collects all observations and returns them."""
         mock_observations = [
-            [
-                FlightObservationSchema(
-                    lat_dd=46.9,
-                    lon_dd=7.4,
-                    altitude_mm=1000000,
-                    traffic_source=0,
-                    source_type=0,
-                    icao_address="NULL1",
-                    timestamp=1234567890,
-                ),
-            ],
-            [
-                FlightObservationSchema(
-                    lat_dd=47.0,
-                    lon_dd=7.5,
-                    altitude_mm=1100000,
-                    traffic_source=0,
-                    source_type=0,
-                    icao_address="NULL2",
-                    timestamp=1234567891,
-                ),
-            ],
+            FlightObservationSchema(
+                lat_dd=46.9,
+                lon_dd=7.4,
+                altitude_mm=1000000,
+                traffic_source=0,
+                source_type=0,
+                icao_address="NULL1",
+                timestamp=1234567890,
+            ),
+            FlightObservationSchema(
+                lat_dd=47.0,
+                lon_dd=7.5,
+                altitude_mm=1100000,
+                traffic_source=0,
+                source_type=0,
+                icao_address="NULL2",
+                timestamp=1234567891,
+            ),
         ]
 
         mock_provider = AsyncMock()
@@ -628,7 +716,7 @@ class TestNullStreamerIntegration:
         # Verify result contains all observations
         assert result.success is True
         assert result.target == "none"
-        assert result.total_batches == 2
+        assert result.total_batches == 1
         assert result.total_observations == 2
         assert result.observations == mock_observations
 
@@ -643,22 +731,22 @@ class TestEndToEndStreamAirTraffic:
         from openutm_verification.core.reporting.reporting_models import Status
 
         mock_observations = [
-            [
-                FlightObservationSchema(
-                    lat_dd=46.9,
-                    lon_dd=7.4,
-                    altitude_mm=1000000,
-                    traffic_source=0,
-                    source_type=0,
-                    icao_address="E2E1",
-                    timestamp=1234567890,
-                ),
-            ],
+            FlightObservationSchema(
+                lat_dd=46.9,
+                lon_dd=7.4,
+                altitude_mm=1000000,
+                traffic_source=0,
+                source_type=0,
+                icao_address="E2E1",
+                timestamp=1234567890,
+            ),
         ]
 
         # Mock the AirTrafficClient used by GeoJSONProvider
         mock_client_instance = AsyncMock()
-        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(return_value=mock_observations)
+        mock_client_instance.generate_simulated_air_traffic_data = AsyncMock(
+            return_value=_wrap_step_result(mock_observations, "Generate Simulated Air Traffic Data")
+        )
         mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
         mock_client_class.return_value.__aexit__ = AsyncMock(return_value=None)
 

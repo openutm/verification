@@ -10,6 +10,7 @@ from openutm_verification.core.clients.air_traffic.air_traffic_client import (
 from openutm_verification.core.clients.air_traffic.base_client import (
     AirTrafficSettings,
 )
+from openutm_verification.core.reporting.reporting_models import Status
 
 if TYPE_CHECKING:
     from openutm_verification.simulator.models.flight_data_types import (
@@ -73,14 +74,14 @@ class GeoJSONProvider:
     async def get_observations(
         self,
         duration: int | None = None,
-    ) -> list[list["FlightObservationSchema"]]:
+    ) -> list["FlightObservationSchema"]:
         """Generate observations using the underlying AirTrafficClient.
 
         Args:
             duration: Override duration in seconds.
 
         Returns:
-            List of observation lists per aircraft.
+            Flat list of observations across all aircraft.
         """
         effective_duration = duration or self._duration
 
@@ -93,7 +94,10 @@ class GeoJSONProvider:
         )
 
         async with AirTrafficClient(settings) as client:
-            return await client.generate_simulated_air_traffic_data(
+            step_result = await client.generate_simulated_air_traffic_data(
                 config_path=self._config_path,
                 duration=effective_duration,
             )
+            if step_result.status == Status.FAIL:
+                raise RuntimeError(step_result.error_message or "GeoJSON generation failed")
+            return step_result.result

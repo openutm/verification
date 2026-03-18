@@ -33,7 +33,7 @@ class StreamResult:
     errors: list[str] = field(default_factory=list)
 
     # For downstream steps - stores the observations that were streamed
-    observations: list[list["FlightObservationSchema"]] | None = None
+    observations: list["FlightObservationSchema"] | None = None
 
 
 @runtime_checkable

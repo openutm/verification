@@ -695,22 +695,25 @@ class SessionManager:
         )
         await self.initialize_session()
 
-        # Set up logging to file for this run
-        run_timestamp = datetime.now(timezone.utc)
-        self.current_start_time = run_timestamp
-        self.current_timestamp_str = get_run_timestamp_str(run_timestamp)
-        base_output_dir = Path(self.config.reporting.output_dir)
-        self.current_output_dir = base_output_dir / self.current_timestamp_str
-        self.current_output_dir.mkdir(parents=True, exist_ok=True)
+        # Set up logging to file for this run (skip if already configured,
+        # e.g. when called from CLI mode which sets up a shared output dir)
+        if not self.current_start_time:
+            self.current_start_time = datetime.now(timezone.utc)
+        if not self.current_output_dir:
+            run_timestamp = datetime.now(timezone.utc)
+            self.current_timestamp_str = get_run_timestamp_str(run_timestamp)
+            base_output_dir = Path(self.config.reporting.output_dir)
+            self.current_output_dir = base_output_dir / self.current_timestamp_str
+            self.current_output_dir.mkdir(parents=True, exist_ok=True)
 
-        log_file = setup_logging(
-            self.current_output_dir,
-            "report",
-            self.config.reporting.formats,
-            debug=False,
-        )
-        if log_file:
-            logger.info(f"Logging to file: {log_file}")
+            log_file = setup_logging(
+                self.current_output_dir,
+                "report",
+                self.config.reporting.formats,
+                debug=False,
+            )
+            if log_file:
+                logger.info(f"Logging to file: {log_file}")
 
         # Validate and prepare steps
         seen_ids = set()
