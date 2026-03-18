@@ -12,7 +12,7 @@ from openutm_verification.core.reporting.reporting_models import Status
 from openutm_verification.server.runner import SessionManager
 
 SCENARIOS_DIR = Path(os.getenv("SCENARIOS_PATH", Path(__file__).parent.parent / "scenarios"))
-YAML_FILES = list(SCENARIOS_DIR.glob("*.yaml"))
+YAML_FILES = sorted(SCENARIOS_DIR.rglob("*.yaml"))
 
 
 @pytest.fixture
@@ -68,7 +68,7 @@ def mock_data_files():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("yaml_file", YAML_FILES, ids=[f.name for f in YAML_FILES])
+@pytest.mark.parametrize("yaml_file", YAML_FILES, ids=[str(f.relative_to(SCENARIOS_DIR)) for f in YAML_FILES])
 async def test_yaml_scenario_execution(yaml_file, mock_clients, mock_data_files):
     """Verify that each YAML scenario can be loaded and executed with mocked clients."""
 
