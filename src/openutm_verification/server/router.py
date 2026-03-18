@@ -39,7 +39,10 @@ async def list_scenarios():
     path = get_scenarios_directory()
     if not path.exists():
         return []
-    return [str(f.relative_to(path).with_suffix("")) for f in sorted(path.rglob("*.yaml"))]
+    return [
+        f.relative_to(path).with_suffix("").as_posix()
+        for f in sorted(path.rglob("*.yaml"))
+    ]
 
 
 @scenario_router.get("/api/suites")
@@ -50,7 +53,7 @@ async def list_suites(runner: Any = Depends(get_runner)):
     stem_to_ids: dict[str, list[str]] = {}
     for f in scenarios_path.rglob("*.yaml"):
         stem = f.stem
-        scenario_id = str(f.relative_to(scenarios_path).with_suffix(""))
+        scenario_id = f.relative_to(scenarios_path).with_suffix("").as_posix()
         stem_to_ids.setdefault(stem, []).append(scenario_id)
 
     def resolve_scenario_name(name: str) -> str:
