@@ -32,7 +32,8 @@ def mock_clients():
     # Mock methods that return values used in other steps
     fb_client.upload_geo_fence.return_value = {"id": "geo_fence_123"}
     fb_client.upload_flight_declaration.return_value = {"id": "flight_decl_123", "is_approved": True}
-    fb_client.start_stop_sdsp_session.return_value = "Session Started"
+    fb_client.start_sdsp_session.return_value = "Session Started"
+    fb_client.stop_sdsp_session.return_value = "Session Stopped"
 
     # Mock methods that return objects with attributes accessed in YAML
     # e.g. ${{ steps.stream_air_traffic.result.observations }}

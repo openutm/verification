@@ -8,7 +8,6 @@ from openutm_verification.core.clients.flight_blender.flight_blender_client impo
     FlightBlenderClient,
 )
 from openutm_verification.core.reporting.reporting_models import StepResult
-from openutm_verification.models import SDSPSessionAction
 from openutm_verification.scenarios.registry import register_scenario
 
 
@@ -23,8 +22,7 @@ async def sdsp_track_with_bluesky_sim(
     session_id = str(uuid.uuid4())
     logger.info(f"Starting SDSP track scenario with session ID: {session_id}")
 
-    await fb_client.start_stop_sdsp_session(
-        action=SDSPSessionAction.START,
+    await fb_client.start_sdsp_session(
         session_id=session_id,
     )
 
@@ -47,8 +45,7 @@ async def sdsp_track_with_bluesky_sim(
 
     await asyncio.sleep(5)
 
-    await fb_client.start_stop_sdsp_session(
-        action=SDSPSessionAction.STOP,
+    await fb_client.stop_sdsp_session(
         session_id=session_id,
     )
 
