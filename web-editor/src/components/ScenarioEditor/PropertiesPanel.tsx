@@ -65,6 +65,7 @@ interface PropertiesPanelProps {
     onUpdateIfCondition: (nodeId: string, condition: string) => void;
     onUpdateLoop: (nodeId: string, loopConfig: { count?: number; items?: unknown[]; while?: string } | undefined) => void;
     onUpdateNeeds: (nodeId: string, needs: string[]) => void;
+    onUpdateOnStepResultFail: (nodeId: string, value: 'stop' | 'continue') => void;
     onUpdateGroupDescription?: (groupName: string, description: string) => void;
 }
 
@@ -78,7 +79,7 @@ const parseRefString = (value: unknown) => {
     };
 };
 
-export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId, onUpdateIfCondition, onUpdateLoop, onUpdateNeeds, onUpdateGroupDescription }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId, onUpdateIfCondition, onUpdateLoop, onUpdateNeeds, onUpdateOnStepResultFail, onUpdateGroupDescription }: PropertiesPanelProps) => {
     const { sidebarWidth: width, isResizing, startResizing } = useSidebarResize(480, 300, 800);
 
     // Compute loop type from node data
@@ -216,6 +217,20 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     </div>
 
                     <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={selectedNode.data.onStepResultFail === 'continue'}
+                                onChange={(e) => onUpdateOnStepResultFail(selectedNode.id, e.target.checked ? 'continue' : 'stop')}
+                            />
+                            Continue on Failure
+                        </label>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                            If checked, subsequent steps will still execute even if this step fails.
+                        </div>
+                    </div>
+
+                    <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
                         <label>Needs (wait for background tasks)</label>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', padding: '6px', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
                             {allNodes
@@ -258,11 +273,12 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                             className={styles.paramInput}
                             value={selectedNode.data.ifCondition || ''}
                             onChange={(e) => onUpdateIfCondition(selectedNode.id, e.target.value)}
-                            placeholder="e.g., success() or steps.step1.status == 'pass'"
+                            placeholder="success()"
                         />
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                            Conditional expression (GitHub Actions-style). Examples:<br />
-                            • <code style={{ fontSize: '10px' }}>success()</code> - run if previous step succeeded<br />
+                            Default: <code style={{ fontSize: '10px' }}>success()</code> — steps only run if no previous step failed.<br />
+                            GitHub Actions-style expressions:<br />
+                            • <code style={{ fontSize: '10px' }}>success()</code> - run if previous step succeeded (default)<br />
                             • <code style={{ fontSize: '10px' }}>failure()</code> - run if previous step failed<br />
                             • <code style={{ fontSize: '10px' }}>always()</code> - always run<br />
                             • <code style={{ fontSize: '10px' }}>steps.step1.status == 'pass'</code> - check specific step

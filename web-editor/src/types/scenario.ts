@@ -28,6 +28,7 @@ export interface NodeData extends Record<string, unknown> {
     ifCondition?: string;
     loop?: LoopConfig;
     needs?: string[];
+    onStepResultFail?: 'stop' | 'continue';
     isGroupReference?: boolean;
     isGroupContainer?: boolean;
     isPhaseContainer?: boolean;
@@ -61,6 +62,7 @@ export interface ScenarioStep {
     description?: string;
     if?: string;
     loop?: LoopConfig;
+    on_step_result_fail?: 'stop' | 'continue';
 }
 
 export interface ScenarioDefinition {

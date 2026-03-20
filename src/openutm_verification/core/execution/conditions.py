@@ -32,9 +32,9 @@ class ConditionEvaluator:
         self.loop_context = loop_context or {}
         self.last_step_status: Status | None = None
 
-        # Determine last step status (excluding skipped steps)
+        # Determine last step status (excluding skipped steps and steps with continue_on_fail that failed)
         if steps:
-            completed_steps = [s for s in steps.values() if s.status != Status.SKIP]
+            completed_steps = [s for s in steps.values() if s.status != Status.SKIP and not (s.continue_on_fail and s.status == Status.FAIL)]
             if completed_steps:
                 self.last_step_status = completed_steps[-1].status
 

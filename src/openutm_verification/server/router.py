@@ -105,7 +105,7 @@ async def get_scenario(scenario: str):
     """Get the content of a specific scenario."""
     try:
         scenario_def = load_yaml_scenario_definition(scenario)
-        return scenario_def.model_dump()
+        return scenario_def.model_dump(by_alias=True)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Scenario not found")
     except Exception as e:

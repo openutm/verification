@@ -120,7 +120,8 @@
 
 .loopBadge,
 .conditionBadge,
-.backgroundBadge {
+.backgroundBadge,
+.continueOnFailBadge {
   display: flex;
   align-items: center;
   gap: 3px;
@@ -159,6 +160,37 @@
 
 .backgroundBadge:hover {
   background-color: rgba(59, 130, 246, 0.28);
+}
+
+.continueOnFailBadge {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.continueOnFailBadge:hover {
+  background-color: rgba(245, 158, 11, 0.3);
+}
+
+.conditionText {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #22c55e;
+  padding: 2px 4px;
+  margin-top: -4px;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.conditionText span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Group container label */

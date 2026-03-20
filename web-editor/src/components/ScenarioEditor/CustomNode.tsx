@@ -1,9 +1,17 @@
 
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass, Plane } from 'lucide-react';
+import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass, Plane, ShieldAlert, CircleDot, Infinity as InfinityIcon } from 'lucide-react';
 import styles from '../../styles/Node.module.css';
 import { getPhaseColor, PHASE_LABELS } from '../../utils/phaseColors';
 import type { NodeData } from '../../types/scenario';
+
+const ConditionIcon = ({ condition }: { condition: string }) => {
+    const trimmed = condition.trim();
+    if (trimmed === 'success()') return <CheckCircle size={12} />;
+    if (trimmed === 'failure()') return <XCircle size={12} />;
+    if (trimmed === 'always()') return <InfinityIcon size={12} />;
+    return <CircleDot size={12} />;
+};
 
 const ModifierBadges = ({ data }: { data: NodeData }) => (
     <div className={styles.modifierBadges}>
@@ -23,6 +31,12 @@ const ModifierBadges = ({ data }: { data: NodeData }) => (
             <div className={styles.loopBadge} title={`Loop: ${JSON.stringify(data.loop)}`}>
                 <RotateCw size={14} />
                 <span>loop</span>
+            </div>
+        )}
+        {data.onStepResultFail === 'continue' && (
+            <div className={styles.continueOnFailBadge} title="Continue on failure">
+                <ShieldAlert size={14} />
+                <span>continue</span>
             </div>
         )}
     </div>
@@ -73,6 +87,12 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                     <span>{data.label}</span>
                     <ModifierBadges data={data} />
                 </div>
+                {data.ifCondition && data.ifCondition.trim() !== '' && (
+                    <div className={styles.conditionText} title={data.ifCondition}>
+                        <ConditionIcon condition={data.ifCondition} />
+                        <span>if: {data.ifCondition}</span>
+                    </div>
+                )}
             </div>
         );
     }
@@ -123,6 +143,12 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                     </div>
                 )}
             </div>
+            {data.ifCondition && data.ifCondition.trim() !== '' && (
+                <div className={styles.conditionText} title={data.ifCondition}>
+                    <ConditionIcon condition={data.ifCondition} />
+                    <span>if: {data.ifCondition}</span>
+                </div>
+            )}
             <Handle type="source" position={Position.Bottom} style={{ background: 'var(--rf-handle)' }} />
         </div>
     );

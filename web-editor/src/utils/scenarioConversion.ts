@@ -79,6 +79,7 @@ export const convertYamlToGraph = (
                     runInBackground: step.background,
                     ifCondition: step.if,
                     loop: step.loop,
+                    onStepResultFail: step.on_step_result_fail,
                     isGroupReference: true,
                     isGroupContainer: true
                 },
@@ -187,6 +188,7 @@ export const convertYamlToGraph = (
                     ifCondition: step.if,
                     loop: step.loop,
                     needs: needsList,
+                    onStepResultFail: step.on_step_result_fail,
                     isGroupReference: false
                 }
             };
@@ -313,6 +315,10 @@ export const convertGraphToYaml = (
                 step.loop = node.data.loop;
             }
 
+            if (node.data.onStepResultFail === 'continue') {
+                step.on_step_result_fail = 'continue';
+            }
+
             return step;
         }
 
@@ -388,6 +394,10 @@ export const convertGraphToYaml = (
 
         if (node.data.loop) {
             step.loop = node.data.loop;
+        }
+
+        if (node.data.onStepResultFail === 'continue') {
+            step.on_step_result_fail = 'continue';
         }
 
         // Dependencies (needs) come from dotted edges into this node

@@ -181,3 +181,65 @@ steps:
     # Verify groups is empty dict
     assert scenario.groups == {}
     assert len(scenario.steps) == 1
+
+
+@pytest.mark.asyncio
+async def test_on_step_result_fail_parsing():
+    """Test that on_step_result_fail is correctly parsed from YAML."""
+    yaml_content = """
+name: test_continue_on_fail
+description: Test scenario with on_step_result_fail
+
+steps:
+  - step: Setup Flight Declaration
+  - step: Validate Metrics
+    on_step_result_fail: continue
+  - step: Teardown Flight Declaration
+"""
+
+    data = yaml.safe_load(yaml_content)
+    scenario = ScenarioDefinition.model_validate(data)
+
+    assert scenario.steps[0].on_step_result_fail == "stop"  # default
+    assert scenario.steps[1].on_step_result_fail == "continue"
+    assert scenario.steps[2].on_step_result_fail == "stop"  # default
+
+
+@pytest.mark.asyncio
+async def test_on_step_result_fail_default():
+    """Test that on_step_result_fail defaults to 'stop'."""
+    yaml_content = """
+name: test_default_fail_action
+description: Test default on_step_result_fail
+
+steps:
+  - step: Setup Flight Declaration
+"""
+
+    data = yaml.safe_load(yaml_content)
+    scenario = ScenarioDefinition.model_validate(data)
+    assert scenario.steps[0].on_step_result_fail == "stop"
+
+
+@pytest.mark.asyncio
+async def test_on_step_result_fail_in_group():
+    """Test that on_step_result_fail works inside groups."""
+    yaml_content = """
+name: test_continue_on_fail_group
+description: Test scenario with on_step_result_fail inside a group
+
+groups:
+  my_group:
+    steps:
+      - step: Validate Metrics
+        on_step_result_fail: continue
+      - step: Teardown Flight Declaration
+
+steps:
+  - step: my_group
+"""
+
+    data = yaml.safe_load(yaml_content)
+    scenario = ScenarioDefinition.model_validate(data)
+    assert scenario.groups["my_group"].steps[0].on_step_result_fail == "continue"
+    assert scenario.groups["my_group"].steps[1].on_step_result_fail == "stop"

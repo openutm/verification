@@ -955,6 +955,23 @@ const ScenarioEditorContent = () => {
         });
     }, [setNodes]);
 
+    const updateNodeOnStepResultFail = useCallback((nodeId: string, value: 'stop' | 'continue') => {
+        setIsDirty(true);
+        setNodes((nds) => nds.map((node) => (
+            node.id === nodeId
+                ? { ...node, data: { ...node.data, onStepResultFail: value } }
+                : node
+        )));
+
+        setSelectedNode((prev) => {
+            if (!prev || prev.id !== nodeId) return prev;
+            return {
+                ...prev,
+                data: { ...prev.data, onStepResultFail: value },
+            };
+        });
+    }, [setNodes]);
+
     const updateNodeNeeds = useCallback((nodeId: string, needs: string[]) => {
         setIsDirty(true);
         const cleanedNeeds = needs.filter(Boolean);
@@ -1239,6 +1256,7 @@ const ScenarioEditorContent = () => {
                         onUpdateStepId={updateNodeStepId}
                         onUpdateIfCondition={updateNodeIfCondition}
                         onUpdateLoop={updateNodeLoop}
+                        onUpdateOnStepResultFail={updateNodeOnStepResultFail}
                         onUpdateGroupDescription={updateGroupDescription}
                     />
                 ) : (
