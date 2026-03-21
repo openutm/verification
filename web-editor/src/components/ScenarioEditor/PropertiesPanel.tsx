@@ -5,7 +5,7 @@ import layoutStyles from '../../styles/EditorLayout.module.css';
 import styles from '../../styles/SidebarPanel.module.css';
 import type { NodeData } from '../../types/scenario';
 import { useSidebarResize } from '../../hooks/useSidebarResize';
-import { getPhaseColor } from '../../utils/phaseColors';
+import { getPhaseColor, PHASE_LABELS } from '../../utils/phaseColors';
 
 const DocstringViewer = ({ text }: { text: string }) => {
     const [expanded, setExpanded] = useState(false);
@@ -179,7 +179,7 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                                     fontWeight: 600
                                 }}>
                                     <Plane size={12} aria-hidden />
-                                    {selectedNode.data.phase}
+                                    {PHASE_LABELS[selectedNode.data.phase!] || selectedNode.data.phase}
                                 </span>
                             </div>
                         )}

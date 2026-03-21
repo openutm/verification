@@ -11,58 +11,58 @@ from enum import StrEnum
 class FlightPhase(StrEnum):
     """Flight phase categories for annotating verification steps."""
 
-    FLIGHT_PLANNING = "FPL"
+    FLIGHT_PLANNING = "FLIGHT PLANNING"
     """Flight planning phase."""
 
-    PRE_FLIGHT = "PRF"
+    PRE_FLIGHT = "PRE FLIGHT"
     """Pre-flight checks and setup."""
 
-    ENGINE_START = "ESD"
+    ENGINE_START = "ENGINE START"
     """Engine start / depart phase."""
 
-    TAXI_OUT = "TXO"
+    TAXI_OUT = "TAXI OUT"
     """Taxi-out phase."""
 
-    TAKEOFF = "TOF"
+    TAKEOFF = "TAKEOFF"
     """Takeoff phase."""
 
-    REJECTED_TAKEOFF = "RTO"
+    REJECTED_TAKEOFF = "REJECTED TAKEOFF"
     """Rejected takeoff phase."""
 
-    INITIAL_CLIMB = "ICL"
+    INITIAL_CLIMB = "INITIAL CLIMB"
     """Initial climb phase."""
 
-    EN_ROUTE_CLIMB = "ERC"
+    EN_ROUTE_CLIMB = "EN ROUTE CLIMB"
     """En route climb phase."""
 
-    CRUISE = "CRZ"
+    CRUISE = "CRUISE"
     """Cruise phase."""
 
-    DESCENT = "DES"
+    DESCENT = "DESCENT"
     """Descent phase."""
 
-    APPROACH = "APR"
+    APPROACH = "APPROACH"
     """Approach phase."""
 
-    GO_AROUND = "GAR"
+    GO_AROUND = "GO AROUND"
     """Go-around phase."""
 
-    LANDING = "LDG"
+    LANDING = "LANDING"
     """Landing phase."""
 
-    TAXI_IN = "TXI"
+    TAXI_IN = "TAXI IN"
     """Taxi-in phase."""
 
-    ARRIVAL = "AES"
+    ARRIVAL = "ARRIVAL"
     """Arrival / engine shutdown phase."""
 
-    POST_FLIGHT = "PST"
+    POST_FLIGHT = "POST FLIGHT"
     """Post-flight phase."""
 
-    FLIGHT_CLOSE = "FCL"
+    FLIGHT_CLOSE = "FLIGHT CLOSE"
     """Flight close phase."""
 
-    GROUND_SERVICES = "GND"
+    GROUND_SERVICES = "GROUND SERVICES"
     """Ground services phase."""
 
 

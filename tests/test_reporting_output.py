@@ -136,10 +136,10 @@ def test_report_html_groups_steps_by_phase(tmp_path: Path):
     assert "Cruise" in html
     assert "Post-flight" in html
 
-    # Phase badges should contain the codes
-    assert ">PRF<" in html
-    assert ">CRZ<" in html
-    assert ">PST<" in html
+    # Phase badges should contain the phase values
+    assert ">PRE FLIGHT<" in html
+    assert ">CRUISE<" in html
+    assert ">POST FLIGHT<" in html
 
     # All steps should be present
     assert "Setup geo fence" in html

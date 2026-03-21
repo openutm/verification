@@ -2,7 +2,7 @@
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass, Plane } from 'lucide-react';
 import styles from '../../styles/Node.module.css';
-import { getPhaseColor } from '../../utils/phaseColors';
+import { getPhaseColor, PHASE_LABELS } from '../../utils/phaseColors';
 import type { NodeData } from '../../types/scenario';
 
 const ModifierBadges = ({ data }: { data: NodeData }) => (
@@ -96,7 +96,7 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                         }}
                     >
                         <Plane size={12} />
-                        <span>{data.phase}</span>
+                        <span>{PHASE_LABELS[data.phase as string] || data.phase}</span>
                     </div>
                 )}
                 <ModifierBadges data={data} />

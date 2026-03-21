@@ -27,7 +27,7 @@ const ToolboxGroup = ({ title, ops, badge }: { title: string, ops: Operation[], 
                             color: getPhaseColor(badge.code).text,
                             border: `1px solid ${getPhaseColor(badge.code).border}`,
                         }}
-                    >{badge.code}</span>
+                    >{PHASE_LABELS[badge.code] || badge.code}</span>
                 )}
                 {title}
             </button>
@@ -57,7 +57,7 @@ const ToolboxGroup = ({ title, ops, badge }: { title: string, ops: Operation[], 
                                             color: getPhaseColor(op.phase).text,
                                             border: `1px solid ${getPhaseColor(op.phase).border}`,
                                         }}
-                                    >{op.phase}</span>
+                                    >{PHASE_LABELS[op.phase] || op.phase}</span>
                                 )}
                             </div>
                         </div>
