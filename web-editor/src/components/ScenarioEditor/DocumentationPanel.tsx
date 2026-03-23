@@ -82,7 +82,9 @@ export const DocumentationPanel = ({
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <span className={styles.docSectionLabel}>Documentation</span>
                     {isCollapsed && firstParagraph && (
-                        <div className={styles.collapsedPreview}>{firstParagraph}</div>
+                        <div className={styles.collapsedPreview}>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{firstParagraph}</ReactMarkdown>
+                        </div>
                     )}
                 </div>
                 <button
