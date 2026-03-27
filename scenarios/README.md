@@ -20,7 +20,7 @@ steps:
     step: Start / Stop SDSP Session
     arguments:
       action: START
-      session_id: ${{ steps.Generate UUID.result }}
+      surveillance_session_id: ${{ steps.Generate UUID.result }}
 
   - step: Wait X seconds
     arguments:
@@ -28,7 +28,7 @@ steps:
 
   - step: Verify SDSP Heartbeat
     arguments:
-      session_id: ${{ steps.Generate UUID.result }}
+      surveillance_session_id: ${{ steps.Generate UUID.result }}
       expected_heartbeat_interval_seconds: 1
       expected_heartbeat_count: 3
 
@@ -40,7 +40,7 @@ steps:
   - step: Start / Stop SDSP Session
     arguments:
       action: STOP
-      session_id: ${{ steps.Generate UUID.result }}
+      surveillance_session_id: ${{ steps.Generate UUID.result }}
 ```
 
 ## Step Groups (Reusable Step Collections)

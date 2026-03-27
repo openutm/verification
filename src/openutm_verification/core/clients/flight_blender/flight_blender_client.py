@@ -1146,7 +1146,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         )
 
     @scenario_step("Start / Stop SDSP Session")
-    async def start_stop_sdsp_session(self, session_id: str, action: SDSPSessionAction) -> str:
+    async def start_stop_sdsp_session(self, surveillance_session_id: str, action: SDSPSessionAction) -> str:
         """
         Starts or stops an SDSP (Strategic Deconfliction Service Provider) session based on the specified action.
         This method interacts with the Flight Blender service to manage the lifecycle of an SDSP session.
@@ -1162,26 +1162,26 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             FlightBlenderError: If the action fails due to service errors.
         """
 
-        endpoint = f"/surveillance_monitoring_ops/start_stop_surveillance_heartbeat_track/{session_id}"
+        endpoint = f"/surveillance_monitoring_ops/start_stop_surveillance_heartbeat_track/{surveillance_session_id}"
 
         payload = {"action": action.value}
         response = await self.put(endpoint, json=payload)
-        logger.info(f"SDSP session {session_id} action {action.value} response: {response.status_code}")
+        logger.info(f"SDSP session {surveillance_session_id} action {action.value} response: {response.status_code}")
         if response.status_code == 200:
-            logger.info(f"SDSP session {session_id} action {action.value} completed successfully.")
-            return f"{action.value} Heartbeat Track message received for {session_id}"
+            logger.info(f"SDSP session {surveillance_session_id} action {action.value} completed successfully.")
+            return f"{action.value} Heartbeat Track message received for {surveillance_session_id}"
 
         else:
-            logger.error(f"Failed to perform action {action.value} on SDSP session {session_id}. Response: {response.text}")
-            raise FlightBlenderError(f"{action.value} Heartbeat Track message not received for {session_id}")
+            logger.error(f"Failed to perform action {action.value} on SDSP session {surveillance_session_id}. Response: {response.text}")
+            raise FlightBlenderError(f"{action.value} Heartbeat Track message not received for {surveillance_session_id}")
 
-    async def initialize_heartbeat_websocket_connection(self, session_id: str) -> ClientConnection:
-        endpoint = f"/ws/surveillance/heartbeat/{session_id}"
+    async def initialize_heartbeat_websocket_connection(self, surveillance_session_id: str) -> ClientConnection:
+        endpoint = f"/ws/surveillance/heartbeat/{surveillance_session_id}"
         ws = await self.create_websocket_connection(endpoint=endpoint)
         return ws
 
-    async def initialize_track_websocket_connection(self, session_id: str) -> ClientConnection:
-        endpoint = f"/ws/surveillance/track/{session_id}"
+    async def initialize_track_websocket_connection(self, surveillance_session_id: str) -> ClientConnection:
+        endpoint = f"/ws/surveillance/track/{surveillance_session_id}"
         ws = await self.create_websocket_connection(endpoint=endpoint)
         return ws
 
@@ -1190,9 +1190,9 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self,
         expected_track_interval_seconds: int,
         expected_track_count: int,
-        session_id: str,
+        surveillance_session_id: str,
     ) -> StepResult:
-        ws_connection = await self.initialize_track_websocket_connection(session_id=session_id)
+        ws_connection = await self.initialize_track_websocket_connection(surveillance_session_id=surveillance_session_id)
         start_time = time.time()
 
         all_received_messages = []
@@ -1252,9 +1252,9 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self,
         expected_heartbeat_interval_seconds: int,
         expected_heartbeat_count: int,
-        session_id: str,
+        surveillance_session_id: str,
     ) -> StepResult:
-        ws_connection = await self.initialize_heartbeat_websocket_connection(session_id=session_id)
+        ws_connection = await self.initialize_heartbeat_websocket_connection(surveillance_session_id=surveillance_session_id)
         start_time = time.time()
 
         all_received_messages = []

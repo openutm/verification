@@ -18,7 +18,7 @@ steps:
 - id: start_sdsp_session
   step: Start / Stop SDSP Session
   arguments:
-    session_id: ${{ steps.generated_sdsp_session_id.result }}
+    surveillance_session_id: ${{ steps.generated_sdsp_session_id.result }}
     action: START
 - id: wait_10_seconds
   step: Wait X seconds
@@ -33,7 +33,7 @@ steps:
 - id: stop_sdsp_session
   step: Start / Stop SDSP Session
   arguments:
-    session_id: ${{ steps.generated_sdsp_session_id.result }}
+    surveillance_session_id: ${{ steps.generated_sdsp_session_id.result }}
     action: STOP
   needs:
   - stream_air_traffic
