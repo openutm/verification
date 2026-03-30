@@ -5,9 +5,8 @@ steps:
   - step: Generate UUID
 
   - id: start_session
-    step: Start / Stop SDSP Session
+    step: Start SDSP Session
     arguments:
-      action: START
       session_id: ${{ steps.Generate UUID.result }}
 
   - step: Wait X seconds
@@ -25,7 +24,6 @@ steps:
     arguments:
       duration: 5
 
-  - step: Start / Stop SDSP Session
+  - step: Stop SDSP Session
     arguments:
-      action: STOP
       session_id: ${{ steps.Generate UUID.result }}

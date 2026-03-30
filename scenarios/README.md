@@ -17,9 +17,8 @@ steps:
   - step: Generate UUID
 
   - id: start_session
-    step: Start / Stop SDSP Session
+    step: Start SDSP Session
     arguments:
-      action: START
       session_id: ${{ steps.Generate UUID.result }}
 
   - step: Wait X seconds
@@ -37,9 +36,8 @@ steps:
     arguments:
       duration: 5
 
-  - step: Start / Stop SDSP Session
+  - step: Stop SDSP Session
     arguments:
-      action: STOP
       session_id: ${{ steps.Generate UUID.result }}
 ```
 
@@ -134,7 +132,7 @@ python -m pytest tests/test_yaml_scenarios.py -q --tb=no
 ```
 
 ## Discovering Available Operations
-The system exposes registered operations used in YAML (e.g., `Generate UUID`, `Wait X seconds`, `Start / Stop SDSP Session`). These are provided by clients and discovered at runtime. In the web editor, you can browse and insert these operations directly.
+The system exposes registered operations used in YAML (e.g., `Generate UUID`, `Wait X seconds`, `Start SDSP Session`, `Stop SDSP Session`). These are provided by clients and discovered at runtime. In the web editor, you can browse and insert these operations directly.
 
 ## Tips
 - Keep `id` short and unique if you plan to reference a step later.

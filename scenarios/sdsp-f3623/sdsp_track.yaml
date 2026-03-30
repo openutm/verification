@@ -3,10 +3,9 @@ description: Runs the SDSP track scenario.
 steps:
 - step: Generate UUID
 - id: start_sdsp_session
-  step: Start / Stop SDSP Session
+  step: Start SDSP Session
   arguments:
     session_id: ${{ steps.Generate UUID.result }}
-    action: START
 - id: stream_air_traffic
   step: Stream Air Traffic
   arguments:
@@ -27,9 +26,8 @@ steps:
   arguments:
     duration: 5
 - id: stop_sdsp_session
-  step: Start / Stop SDSP Session
+  step: Stop SDSP Session
   arguments:
     session_id: ${{ steps.Generate UUID.result }}
-    action: STOP
   needs:
   - stream_air_traffic
