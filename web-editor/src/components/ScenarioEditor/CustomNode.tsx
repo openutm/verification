@@ -13,6 +13,17 @@ const ConditionIcon = ({ condition }: { condition: string }) => {
     return <CircleDot size={12} />;
 };
 
+const CONDITION_LABELS: Record<string, string> = {
+    'success()': 'Runs on success',
+    'failure()': 'Runs on failure',
+    'always()': 'Always runs',
+};
+
+const getConditionLabel = (condition: string): string => {
+    const trimmed = condition.trim();
+    return CONDITION_LABELS[trimmed] || trimmed;
+};
+
 const ModifierBadges = ({ data }: { data: NodeData }) => (
     <div className={styles.modifierBadges}>
         {data.runInBackground && (
@@ -33,8 +44,8 @@ const ModifierBadges = ({ data }: { data: NodeData }) => (
                 <span>loop</span>
             </div>
         )}
-        {data.onStepResultFail === 'continue' && (
-            <div className={styles.continueOnFailBadge} title="Continue on failure">
+        {data.continueOnError && (
+            <div className={styles.continueOnErrorBadge} title="Continue on error">
                 <ShieldAlert size={14} />
                 <span>continue</span>
             </div>
@@ -87,10 +98,10 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                     <span>{data.label}</span>
                     <ModifierBadges data={data} />
                 </div>
-                {data.ifCondition && data.ifCondition.trim() !== '' && (
+                {data.ifCondition && data.ifCondition.trim() !== '' && data.ifCondition.trim() !== 'success()' && (
                     <div className={styles.conditionText} title={data.ifCondition}>
                         <ConditionIcon condition={data.ifCondition} />
-                        <span>if: {data.ifCondition}</span>
+                        <span>{getConditionLabel(data.ifCondition)}</span>
                     </div>
                 )}
             </div>
@@ -143,10 +154,10 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                     </div>
                 )}
             </div>
-            {data.ifCondition && data.ifCondition.trim() !== '' && (
+            {data.ifCondition && data.ifCondition.trim() !== '' && data.ifCondition.trim() !== 'success()' && (
                 <div className={styles.conditionText} title={data.ifCondition}>
                     <ConditionIcon condition={data.ifCondition} />
-                    <span>if: {data.ifCondition}</span>
+                    <span>{getConditionLabel(data.ifCondition)}</span>
                 </div>
             )}
             <Handle type="source" position={Position.Bottom} style={{ background: 'var(--rf-handle)' }} />

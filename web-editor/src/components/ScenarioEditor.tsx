@@ -955,11 +955,11 @@ const ScenarioEditorContent = () => {
         });
     }, [setNodes]);
 
-    const updateNodeOnStepResultFail = useCallback((nodeId: string, value: 'stop' | 'continue') => {
+    const updateNodeContinueOnError = useCallback((nodeId: string, value: boolean) => {
         setIsDirty(true);
         setNodes((nds) => nds.map((node) => (
             node.id === nodeId
-                ? { ...node, data: { ...node.data, onStepResultFail: value } }
+                ? { ...node, data: { ...node.data, continueOnError: value } }
                 : node
         )));
 
@@ -967,7 +967,7 @@ const ScenarioEditorContent = () => {
             if (!prev || prev.id !== nodeId) return prev;
             return {
                 ...prev,
-                data: { ...prev.data, onStepResultFail: value },
+                data: { ...prev.data, continueOnError: value },
             };
         });
     }, [setNodes]);
@@ -1256,7 +1256,7 @@ const ScenarioEditorContent = () => {
                         onUpdateStepId={updateNodeStepId}
                         onUpdateIfCondition={updateNodeIfCondition}
                         onUpdateLoop={updateNodeLoop}
-                        onUpdateOnStepResultFail={updateNodeOnStepResultFail}
+                        onUpdateContinueOnError={updateNodeContinueOnError}
                         onUpdateGroupDescription={updateGroupDescription}
                     />
                 ) : (

@@ -131,7 +131,7 @@ async def save_scenario(name: str, scenario: ScenarioDefinition):
 
     try:
         # Convert Pydantic model to dict, excluding None values to keep YAML clean
-        data = scenario.model_dump(exclude_none=True, exclude_defaults=True)
+        data = scenario.model_dump(by_alias=True, exclude_none=True, exclude_defaults=True)
 
         with open(file_path, "w") as f:
             yaml.dump(data, f, sort_keys=False, default_flow_style=False)

@@ -29,7 +29,7 @@ describe('PropertiesPanel', () => {
         onUpdateIfCondition: vi.fn(),
         onUpdateLoop: vi.fn(),
         onUpdateNeeds: vi.fn(),
-        onUpdateOnStepResultFail: vi.fn(),
+        onUpdateContinueOnError: vi.fn(),
     };
 
     it('renders correctly', () => {

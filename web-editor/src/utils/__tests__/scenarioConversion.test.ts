@@ -146,8 +146,8 @@ describe('YAML Conversion - Reference Normalization', () => {
     });
 });
 
-describe('YAML Conversion - on_step_result_fail', () => {
-    it('includes on_step_result_fail=continue in YAML output', () => {
+describe('YAML Conversion - continue-on-error', () => {
+    it('includes continue-on-error=true in YAML output', () => {
         const node: Node<NodeData> = {
             id: 'node1',
             position: { x: 0, y: 0 },
@@ -156,16 +156,16 @@ describe('YAML Conversion - on_step_result_fail', () => {
                 stepId: 'validate',
                 operationId: 'validate_op',
                 parameters: [],
-                onStepResultFail: 'continue'
+                continueOnError: true
             }
         };
 
         const scenario = convertGraphToYaml([node], [], [], 'test', 'test');
         const step = scenario.steps[0];
-        expect(step.on_step_result_fail).toBe('continue');
+        expect(step['continue-on-error']).toBe(true);
     });
 
-    it('omits on_step_result_fail when set to stop (default)', () => {
+    it('omits continue-on-error when set to false (default)', () => {
         const node: Node<NodeData> = {
             id: 'node1',
             position: { x: 0, y: 0 },
@@ -174,16 +174,16 @@ describe('YAML Conversion - on_step_result_fail', () => {
                 stepId: 'setup',
                 operationId: 'setup_op',
                 parameters: [],
-                onStepResultFail: 'stop'
+                continueOnError: false
             }
         };
 
         const scenario = convertGraphToYaml([node], [], [], 'test', 'test');
         const step = scenario.steps[0];
-        expect(step.on_step_result_fail).toBeUndefined();
+        expect(step['continue-on-error']).toBeUndefined();
     });
 
-    it('omits on_step_result_fail when not set', () => {
+    it('omits continue-on-error when not set', () => {
         const node: Node<NodeData> = {
             id: 'node1',
             position: { x: 0, y: 0 },
@@ -197,6 +197,6 @@ describe('YAML Conversion - on_step_result_fail', () => {
 
         const scenario = convertGraphToYaml([node], [], [], 'test', 'test');
         const step = scenario.steps[0];
-        expect(step.on_step_result_fail).toBeUndefined();
+        expect(step['continue-on-error']).toBeUndefined();
     });
 });

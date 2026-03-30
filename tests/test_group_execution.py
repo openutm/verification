@@ -184,33 +184,33 @@ steps:
 
 
 @pytest.mark.asyncio
-async def test_on_step_result_fail_parsing():
-    """Test that on_step_result_fail is correctly parsed from YAML."""
+async def test_continue_on_error_parsing():
+    """Test that continue-on-error is correctly parsed from YAML."""
     yaml_content = """
-name: test_continue_on_fail
-description: Test scenario with on_step_result_fail
+name: test_continue_on_error
+description: Test scenario with continue-on-error
 
 steps:
   - step: Setup Flight Declaration
   - step: Validate Metrics
-    on_step_result_fail: continue
+    continue-on-error: true
   - step: Teardown Flight Declaration
 """
 
     data = yaml.safe_load(yaml_content)
     scenario = ScenarioDefinition.model_validate(data)
 
-    assert scenario.steps[0].on_step_result_fail == "stop"  # default
-    assert scenario.steps[1].on_step_result_fail == "continue"
-    assert scenario.steps[2].on_step_result_fail == "stop"  # default
+    assert scenario.steps[0].continue_on_error is False  # default
+    assert scenario.steps[1].continue_on_error is True
+    assert scenario.steps[2].continue_on_error is False  # default
 
 
 @pytest.mark.asyncio
-async def test_on_step_result_fail_default():
-    """Test that on_step_result_fail defaults to 'stop'."""
+async def test_continue_on_error_default():
+    """Test that continue_on_error defaults to False."""
     yaml_content = """
-name: test_default_fail_action
-description: Test default on_step_result_fail
+name: test_default_error_action
+description: Test default continue-on-error
 
 steps:
   - step: Setup Flight Declaration
@@ -218,21 +218,21 @@ steps:
 
     data = yaml.safe_load(yaml_content)
     scenario = ScenarioDefinition.model_validate(data)
-    assert scenario.steps[0].on_step_result_fail == "stop"
+    assert scenario.steps[0].continue_on_error is False
 
 
 @pytest.mark.asyncio
-async def test_on_step_result_fail_in_group():
-    """Test that on_step_result_fail works inside groups."""
+async def test_continue_on_error_in_group():
+    """Test that continue-on-error works inside groups."""
     yaml_content = """
-name: test_continue_on_fail_group
-description: Test scenario with on_step_result_fail inside a group
+name: test_continue_on_error_group
+description: Test scenario with continue-on-error inside a group
 
 groups:
   my_group:
     steps:
       - step: Validate Metrics
-        on_step_result_fail: continue
+        continue-on-error: true
       - step: Teardown Flight Declaration
 
 steps:
@@ -241,5 +241,5 @@ steps:
 
     data = yaml.safe_load(yaml_content)
     scenario = ScenarioDefinition.model_validate(data)
-    assert scenario.groups["my_group"].steps[0].on_step_result_fail == "continue"
-    assert scenario.groups["my_group"].steps[1].on_step_result_fail == "stop"
+    assert scenario.groups["my_group"].steps[0].continue_on_error is True
+    assert scenario.groups["my_group"].steps[1].continue_on_error is False

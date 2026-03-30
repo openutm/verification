@@ -27,7 +27,7 @@ steps:
 - step: Verify Reported Metrics in Flight Blender
   needs:
     - stream_air_traffic
-  on_step_result_fail: continue
+  continue-on-error: true
   arguments:
     observations: ${{ steps.stream_air_traffic.result.observations }}
     # session_id: ${{ steps.generated_sdsp_session_id.result }}

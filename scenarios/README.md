@@ -125,6 +125,40 @@ steps:
 - Available status strings: `success`, `failure`, `running`, `skipped`.
 - You can use conditions like `always()`, `success()`, `failure()` and combined references (e.g., `steps.Upload Flight Declaration.status == 'success'`).
 
+### Run Conditions (`if`)
+
+Control when a step executes using the `if` field:
+
+```yaml
+steps:
+  - step: Cleanup Resources
+    if: always()    # Always runs, even after failures
+
+  - step: Deploy
+    if: success()   # Runs only if all previous steps succeeded
+
+  - step: Rollback
+    if: failure()   # Runs only if a previous step failed
+
+  - step: Custom Check
+    if: steps.test.status == 'success'  # Check a specific step
+```
+
+### Continue on Error (`continue-on-error`)
+
+By default, a failing step halts the scenario. Set `continue-on-error: true` to allow subsequent steps to execute even if this step fails:
+
+```yaml
+steps:
+  - step: Run Flaky Test
+    continue-on-error: true   # Scenario continues even if this fails
+
+  - step: Cleanup Resources
+    if: always()
+```
+
+This is useful for non-critical validation steps or cleanup flows where you want the scenario to keep going.
+
 ## Validation
 To validate scenarios locally:
 

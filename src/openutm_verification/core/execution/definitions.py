@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 
@@ -24,10 +24,10 @@ class StepDefinition(BaseModel):
     description: str | None = None
     if_condition: str | None = Field(default=None, alias="if", description="Conditional expression to determine if step should run")
     loop: LoopConfig | None = Field(default=None, description="Loop configuration for repeating the step")
-    on_step_result_fail: Literal["stop", "continue"] = Field(
-        default="stop",
-        alias="on_step_result_fail",
-        description="Action when this step fails: 'stop' halts the scenario (default), 'continue' allows subsequent steps to execute",
+    continue_on_error: bool = Field(
+        default=False,
+        alias="continue-on-error",
+        description="If true, subsequent steps will still execute even if this step fails. Default is false (stop on failure).",
     )
 
 

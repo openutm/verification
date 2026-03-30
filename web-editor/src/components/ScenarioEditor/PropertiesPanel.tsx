@@ -65,7 +65,7 @@ interface PropertiesPanelProps {
     onUpdateIfCondition: (nodeId: string, condition: string) => void;
     onUpdateLoop: (nodeId: string, loopConfig: { count?: number; items?: unknown[]; while?: string } | undefined) => void;
     onUpdateNeeds: (nodeId: string, needs: string[]) => void;
-    onUpdateOnStepResultFail: (nodeId: string, value: 'stop' | 'continue') => void;
+    onUpdateContinueOnError: (nodeId: string, value: boolean) => void;
     onUpdateGroupDescription?: (groupName: string, description: string) => void;
 }
 
@@ -79,7 +79,7 @@ const parseRefString = (value: unknown) => {
     };
 };
 
-export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId, onUpdateIfCondition, onUpdateLoop, onUpdateNeeds, onUpdateOnStepResultFail, onUpdateGroupDescription }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId, onUpdateIfCondition, onUpdateLoop, onUpdateNeeds, onUpdateContinueOnError, onUpdateGroupDescription }: PropertiesPanelProps) => {
     const { sidebarWidth: width, isResizing, startResizing } = useSidebarResize(480, 300, 800);
 
     // Compute loop type from node data
@@ -93,14 +93,17 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
 
     // Local state for JSON items textarea to allow invalid JSON while typing
     const [jsonItemsText, setJsonItemsText] = useState<string | null>(null);
+    // Local state to track when "Custom expression…" is explicitly selected
+    const [isCustomCondition, setIsCustomCondition] = useState(false);
     const [prevNodeId, setPrevNodeId] = useState(selectedNode.id);
     const [prevItems, setPrevItems] = useState(selectedNode.data.loop?.items);
 
-    // Sync local JSON text when node data changes externally
+    // Sync local state when node selection changes
     if (selectedNode.id !== prevNodeId || selectedNode.data.loop?.items !== prevItems) {
         setPrevNodeId(selectedNode.id);
         setPrevItems(selectedNode.data.loop?.items);
         setJsonItemsText(null);
+        setIsCustomCondition(false);
     }
 
     const getItemsText = () => {
@@ -220,8 +223,8 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                             <input
                                 type="checkbox"
-                                checked={selectedNode.data.onStepResultFail === 'continue'}
-                                onChange={(e) => onUpdateOnStepResultFail(selectedNode.id, e.target.checked ? 'continue' : 'stop')}
+                                checked={selectedNode.data.continueOnError === true}
+                                onChange={(e) => onUpdateContinueOnError(selectedNode.id, e.target.checked)}
                             />
                             Continue on Failure
                         </label>
@@ -267,21 +270,44 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     </div>
 
                     <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
-                        <label>If Condition</label>
-                        <input
-                            type="text"
+                        <label>Run Condition</label>
+                        <select
                             className={styles.paramInput}
-                            value={selectedNode.data.ifCondition || ''}
-                            onChange={(e) => onUpdateIfCondition(selectedNode.id, e.target.value)}
-                            placeholder="success()"
-                        />
+                            value={
+                                isCustomCondition ? 'custom'
+                                : !selectedNode.data.ifCondition || selectedNode.data.ifCondition.trim() === '' || selectedNode.data.ifCondition.trim() === 'success()' ? ''
+                                : selectedNode.data.ifCondition.trim() === 'failure()' ? 'failure()'
+                                : selectedNode.data.ifCondition.trim() === 'always()' ? 'always()'
+                                : 'custom'
+                            }
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === 'custom') {
+                                    setIsCustomCondition(true);
+                                    onUpdateIfCondition(selectedNode.id, selectedNode.data.ifCondition || '');
+                                } else {
+                                    setIsCustomCondition(false);
+                                    onUpdateIfCondition(selectedNode.id, val);
+                                }
+                            }}
+                        >
+                            <option value="">Default (runs on success)</option>
+                            <option value="failure()">Runs on failure</option>
+                            <option value="always()">Always runs</option>
+                            <option value="custom">Custom expression…</option>
+                        </select>
+                        {(isCustomCondition || (selectedNode.data.ifCondition && !['', 'success()', 'failure()', 'always()'].includes(selectedNode.data.ifCondition.trim()))) && (
+                            <input
+                                type="text"
+                                className={styles.paramInput}
+                                style={{ marginTop: '6px' }}
+                                value={selectedNode.data.ifCondition || ''}
+                                onChange={(e) => onUpdateIfCondition(selectedNode.id, e.target.value)}
+                                placeholder="steps.step1.status == 'success'"
+                            />
+                        )}
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                            Default: <code style={{ fontSize: '10px' }}>success()</code> — steps only run if no previous step failed.<br />
-                            GitHub Actions-style expressions:<br />
-                            • <code style={{ fontSize: '10px' }}>success()</code> - run if previous step succeeded (default)<br />
-                            • <code style={{ fontSize: '10px' }}>failure()</code> - run if previous step failed<br />
-                            • <code style={{ fontSize: '10px' }}>always()</code> - always run<br />
-                            • <code style={{ fontSize: '10px' }}>steps.step1.status == 'pass'</code> - check specific step
+                            Controls when this step executes. Steps marked "Continue on Error" are excluded from success/failure evaluation. Custom expressions support status checks like <code style={{ fontSize: '10px' }}>steps.step_id.status == 'success'</code>
                         </div>
                     </div>
 
