@@ -5,7 +5,7 @@ It reads flight telemetry data and a flight declaration, extracts the GPS
 coordinates and GeoJSON polygon, and uses the Folium library to plot them on an
 OpenStreetMap. The resulting map is saved as an HTML file.
 Usage:
-    - Ensure 'folium', 'pythreejs', 'ipywidgets', and 'numpy' are installed.
+    - Ensure 'folium' is installed.
     - Run the script from the command line:
         python flight_blender_e2e_integration/visualize_flight.py
     - Open the generated '..._3d.html' file in a web browser for an interactive 3D view.
@@ -14,18 +14,43 @@ Usage:
 import json
 import math
 from pathlib import Path
+from typing import Any
 
 import folium
-import numpy as np
-import pythreejs as three
-from ipywidgets import embed
 from loguru import logger
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
+from openutm_verification.core.reporting._viz_3d_template import REPLAY_3D_HTML_TEMPLATE
+from openutm_verification.core.reporting._viz_data import (
+    AIRPLANE_COLORS,
+    AIRPLANE_COLORS_3D,
+    DEFAULT_NMAC_HORIZONTAL_DISTANCE_M,
+    DEFAULT_NMAC_VERTICAL_DISTANCE_M,
+    DEFAULT_WELL_CLEAR_HORIZONTAL_DISTANCE_M,
+    DEFAULT_WELL_CLEAR_VERTICAL_DISTANCE_M,
+    OWNSHIP_COLORS_2D,
+    OWNSHIP_COLORS_3D,
+    extract_all_geofences,
+    extract_first_geofence,
+    extract_observation_coords,
+    extract_observation_timestamp,
+    get_env_float,
+    normalize_ownships_list,
+    parse_timestamp_seconds,
+    reorganize_air_traffic_by_aircraft,
+    to_relative_replay_second,
+)
+from openutm_verification.core.reporting._viz_events import (
+    derive_alert_events_from_incident_logs,
+    estimate_ownship_t_shift,
+    serialize_active_alert_events,
+    serialize_amqp_message_events,
+    serialize_incident_log_events,
+)
 from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
 
-# Color palette for airplane tracks (orange-based colors for distinction from drone blue)
-AIRPLANE_COLORS = ["#FF8C00", "#FF6347", "#FFA500", "#FF4500", "#FFD700", "#FF7F50", "#FF69B4", "#DC143C"]
+# Backward-compat re-export used by tests/test_altitude_units.py
+_reorganize_air_traffic_by_aircraft = reorganize_air_traffic_by_aircraft
 
 
 def visualize_flight_path_2d(
@@ -33,29 +58,63 @@ def visualize_flight_path_2d(
     declaration_data: dict,
     output_html_path: Path,
     air_traffic_data: list[list[FlightObservationSchema]] | None = None,
+    well_clear_horizontal_distance_m: float | None = None,
+    nmac_horizontal_distance_m: float | None = None,
+    ownships: list[dict[str, Any]] | None = None,
 ):
     """
     Creates an interactive 2D map from flight telemetry and declaration data.
 
+    Supports multiple ownships via the ``ownships`` parameter.  When provided,
+    each ownship is drawn with a distinct color.  When omitted, a single ownship
+    is derived from ``telemetry_data`` / ``declaration_data`` for backward
+    compatibility.
+
     Args:
-        telemetry_data (dict): The flight telemetry data as a dictionary.
-        declaration_data (dict): The flight declaration data as a dictionary.
-        output_html_path (Path): The full path where the output HTML map will be saved.
-        air_traffic_data (list[list[FlightObservationSchema]] | None): Optional air traffic data from simulators.
+        telemetry_data: The flight telemetry data (used when ``ownships`` is not provided).
+        declaration_data: The flight declaration data (used when ``ownships`` is not provided).
+        output_html_path: The full path where the output HTML map will be saved.
+        air_traffic_data: Optional air traffic data from simulators.
+        well_clear_horizontal_distance_m: Well-clear horizontal boundary radius in meters.
+        nmac_horizontal_distance_m: NMAC horizontal boundary radius in meters.
+        ownships: Optional list of ownship dicts, each with ``label``, ``telemetry_data``,
+            and ``declaration_data`` keys.  Defaults to a single-item list built from
+            the legacy ``telemetry_data`` / ``declaration_data`` parameters.
     """
     logger.info("Starting 2D flight path visualization")
 
-    states = telemetry_data
-    path_points_with_alt = [
-        (s["position"]["lat"], s["position"]["lng"], s["position"]["alt"]) for s in states if "position" in s and "alt" in s["position"]
-    ]
-    coordinates = [(p[0], p[1]) for p in path_points_with_alt]
-    geofence = declaration_data.get("flight_declaration_geo_json")
+    wc_boundary_m = (
+        float(well_clear_horizontal_distance_m)
+        if well_clear_horizontal_distance_m is not None
+        else get_env_float("WELL_CLEAR_HORIZONTAL_DISTANCE_M", DEFAULT_WELL_CLEAR_HORIZONTAL_DISTANCE_M)
+    )
+    nmac_boundary_m = (
+        float(nmac_horizontal_distance_m)
+        if nmac_horizontal_distance_m is not None
+        else get_env_float("NMAC_HORIZONTAL_DISTANCE_M", DEFAULT_NMAC_HORIZONTAL_DISTANCE_M)
+    )
 
-    logger.debug(f"Extracted {len(coordinates)} coordinate points from telemetry data")
+    ownships_list = normalize_ownships_list(ownships, telemetry_data, declaration_data)
+    geofence = extract_first_geofence(ownships_list)
+
+    # Pre-process each ownship: extract coordinates
+    all_coordinates: list[tuple[float, float]] = []
+    ownship_paths: list[tuple[str, str, list[tuple[float, float, float]], list[tuple[float, float]]]] = []
+
+    for idx, own in enumerate(ownships_list):
+        color = OWNSHIP_COLORS_2D[idx % len(OWNSHIP_COLORS_2D)]
+        states = own.get("telemetry_data") or []
+        path_points = [
+            (s["position"]["lat"], s["position"]["lng"], s["position"]["alt"]) for s in states if "position" in s and "alt" in s.get("position", {})
+        ]
+        coords = [(p[0], p[1]) for p in path_points]
+        ownship_paths.append((own.get("label") or f"Ownship {idx + 1}", color, path_points, coords))
+        all_coordinates.extend(coords)
+
+    logger.debug(f"Extracted {len(all_coordinates)} total coordinate points across {len(ownships)} ownship(s)")
     logger.debug(f"Geofence data present: {geofence is not None}")
 
-    if not coordinates and not geofence:
+    if not all_coordinates and not geofence:
         logger.warning("No coordinates or geofence found in the data.")
         return
 
@@ -63,8 +122,8 @@ def visualize_flight_path_2d(
         first_coord = geofence["features"][0]["geometry"]["coordinates"][0][1]
         map_center = [first_coord[1], first_coord[0]]
         logger.debug(f"Using geofence center for map: {map_center}")
-    elif coordinates:
-        lat, lng = coordinates[0]
+    elif all_coordinates:
+        lat, lng = all_coordinates[0]
         map_center = [lat, lng]
         logger.debug(f"Using first coordinate for map center: {map_center}")
     else:
@@ -88,28 +147,50 @@ def visualize_flight_path_2d(
         g.add_to(flight_map)
         logger.debug("Added geofence to map")
 
-    if coordinates:
-        folium.PolyLine(locations=coordinates, color="blue", weight=3, opacity=0.8, tooltip="Flight Path").add_to(flight_map)
+    # Draw each ownship path with a distinct color
+    for label, color, path_points_with_alt, coordinates in ownship_paths:
+        if not coordinates:
+            continue
+
+        folium.PolyLine(locations=coordinates, color=color, weight=3, opacity=0.8, tooltip=f"{label} Flight Path").add_to(flight_map)
         for lat, lng, alt in path_points_with_alt:
+            folium.Circle(
+                location=(lat, lng),
+                radius=wc_boundary_m,
+                color="#1f77b4",
+                weight=1,
+                opacity=0.35,
+                fill=False,
+                tooltip=f"WC boundary: {wc_boundary_m:.0f}m",
+            ).add_to(flight_map)
+            folium.Circle(
+                location=(lat, lng),
+                radius=nmac_boundary_m,
+                color="#d62728",
+                weight=2,
+                opacity=0.55,
+                fill=False,
+                tooltip=f"NMAC boundary: {nmac_boundary_m:.0f}m",
+            ).add_to(flight_map)
             folium.CircleMarker(
                 location=(lat, lng),
                 radius=2,
-                color="blue",
+                color=color,
                 fill=True,
-                fill_color="blue",
-                tooltip=f"Altitude: {alt:.2f}m",
+                fill_color=color,
+                tooltip=f"{label}: Alt={alt:.2f}m",
             ).add_to(flight_map)
         folium.Marker(
             location=coordinates[0],
-            popup=f"Start Point: Lat={coordinates[0][0]}, Lng={coordinates[0][1]}",
+            popup=f"{label} Start: Lat={coordinates[0][0]}, Lng={coordinates[0][1]}",
             icon=folium.Icon(color="green", icon="play"),
         ).add_to(flight_map)
         folium.Marker(
             location=coordinates[-1],
-            popup=f"End Point: Lat={coordinates[-1][0]}, Lng={coordinates[-1][1]}",
+            popup=f"{label} End: Lat={coordinates[-1][0]}, Lng={coordinates[-1][1]}",
             icon=folium.Icon(color="red", icon="stop"),
         ).add_to(flight_map)
-        logger.debug("Added flight path and markers to map")
+        logger.debug(f"Added {label} flight path with {len(coordinates)} points")
 
     # Add airplane/air traffic paths if available
     if air_traffic_data:
@@ -117,39 +198,6 @@ def visualize_flight_path_2d(
 
     flight_map.save(output_html_path)
     logger.info(f"2D flight path visualization saved to: {output_html_path}")
-
-
-def _reorganize_air_traffic_by_aircraft(
-    air_traffic_data: list[list[FlightObservationSchema]],
-) -> dict[str, list]:
-    """
-    Reorganizes air traffic data from timestamp-based to aircraft-based grouping.
-
-    The input data may be organized as list of timestamps, where each timestamp
-    contains observations from multiple aircraft. This function reorganizes it
-    into a dict keyed by ICAO address with all observations for that aircraft.
-
-    Args:
-        air_traffic_data: Air traffic data (may be organized by timestamp or aircraft).
-
-    Returns:
-        Dict mapping ICAO address to list of observations for that aircraft.
-    """
-    aircraft_tracks: dict[str, list] = {}
-
-    for observations in air_traffic_data:
-        for obs in observations:
-            # Handle both dict and Pydantic model
-            if isinstance(obs, dict):
-                icao = obs.get("icao_address", "UNKNOWN")
-            else:
-                icao = obs.icao_address
-
-            if icao not in aircraft_tracks:
-                aircraft_tracks[icao] = []
-            aircraft_tracks[icao].append(obs)
-
-    return aircraft_tracks
 
 
 def _add_air_traffic_to_2d_map(
@@ -164,7 +212,7 @@ def _add_air_traffic_to_2d_map(
         air_traffic_data: Air traffic data as list of aircraft, each with list of observations.
     """
     # Reorganize data by aircraft ICAO address
-    aircraft_tracks = _reorganize_air_traffic_by_aircraft(air_traffic_data)
+    aircraft_tracks = reorganize_air_traffic_by_aircraft(air_traffic_data)
     logger.debug(f"Adding {len(aircraft_tracks)} airplane tracks to 2D map")
 
     for idx, (icao_address, aircraft_observations) in enumerate(sorted(aircraft_tracks.items())):
@@ -174,17 +222,10 @@ def _add_air_traffic_to_2d_map(
         # Get color from palette (cycle if more aircraft than colors)
         color = AIRPLANE_COLORS[idx % len(AIRPLANE_COLORS)]
 
-        # Extract path coordinates - handle both dict and Pydantic model
+        # Extract path coordinates using shared helper
         path_points_with_alt = []
         for obs in aircraft_observations:
-            if isinstance(obs, dict):
-                lat = obs.get("lat_dd")
-                lon = obs.get("lon_dd")
-                alt = obs.get("altitude_mm", 0) / 1000  # Convert mm to meters
-            else:
-                lat = obs.lat_dd
-                lon = obs.lon_dd
-                alt = obs.altitude_mm / 1000  # Convert mm to meters
+            lat, lon, alt = extract_observation_coords(obs)
             if lat is not None and lon is not None:
                 path_points_with_alt.append((lat, lon, alt))
 
@@ -245,328 +286,237 @@ def _add_air_traffic_to_2d_map(
         logger.debug(f"Added airplane track for {icao_address} with {len(coordinates)} points")
 
 
-# ==============================================================================
-# 3D Visualization (pythreejs) - Refactored into Helper Functions
-# ==============================================================================
-
-
-def _setup_3d_scene():
-    """Initializes and configures the three.js scene, camera, and lighting."""
-    # Set a default camera position; it will be overridden by auto-framing logic.
-    camera = three.PerspectiveCamera(position=[0, 500, 1500], fov=50, aspect=1000 / 800)
-    scene = three.Scene(background="lightgray")
-    scene.add(three.AmbientLight(color="#cccccc"))
-    scene.add(three.DirectionalLight(color="white", position=[0, 1, 1], intensity=0.6))
-    scene.add(three.AxesHelper(200))
-    scene.add(three.GridHelper(size=3000, divisions=20, colorCenterLine="gray", colorGrid="darkgray"))
-    return camera, scene
-
-
-def _create_flight_path_group(projected_path):
-    """Creates a three.js group containing the flight path and markers."""
-    if not projected_path:
-        return None
-    path_group = three.Group()
-    path_geometry = three.BufferGeometry(attributes={"position": three.BufferAttribute(np.array(projected_path, dtype="float32"))})
-    path_material = three.LineBasicMaterial(color="blue", linewidth=3)
-    path_group.add(three.Line(path_geometry, path_material))
-
-    # Add small dots for each coordinate
-    points_material = three.PointsMaterial(color="blue", size=3, sizeAttenuation=False)
-    path_group.add(three.Points(path_geometry, points_material))
-    start_marker = three.Mesh(three.SphereBufferGeometry(15), three.MeshBasicMaterial(color="green"))
-    start_marker.position = projected_path[0]
-    path_group.add(start_marker)
-    end_marker = three.Mesh(three.SphereBufferGeometry(15), three.MeshBasicMaterial(color="red"))
-    end_marker.position = projected_path[-1]
-    path_group.add(end_marker)
-    return path_group
-
-
-def _create_geofence_box_group(projected_geofence_corners_2d, min_alt, max_alt):
-    """Creates a three.js group for the geofence box (wireframe and faces)."""
-    if not projected_geofence_corners_2d:
-        return None
-
-    bottom_verts = [[x, min_alt, z] for x, z in projected_geofence_corners_2d]
-    top_verts = [[x, max_alt, z] for x, z in projected_geofence_corners_2d]
-    geofence_group = three.Group()
-
-    line_mat = three.LineBasicMaterial(color="red", linewidth=2)
-    geofence_group.add(
-        three.Line(
-            three.BufferGeometry(attributes={"position": three.BufferAttribute(np.array(bottom_verts + [bottom_verts[0]], dtype="float32"))}),
-            line_mat,
-        )
-    )
-    geofence_group.add(
-        three.Line(
-            three.BufferGeometry(attributes={"position": three.BufferAttribute(np.array(top_verts + [top_verts[0]], dtype="float32"))}), line_mat
-        )
-    )
-    for bv, tv in zip(bottom_verts, top_verts):
-        geofence_group.add(
-            three.Line(three.BufferGeometry(attributes={"position": three.BufferAttribute(np.array([bv, tv], dtype="float32"))}), line_mat)
-        )
-
-    side_face_mat = three.MeshBasicMaterial(color="red", side="DoubleSide", opacity=0.1, transparent=True)
-    floor_mat = three.MeshBasicMaterial(color="green", side="DoubleSide", opacity=0.2, transparent=True)
-    ceiling_mat = three.MeshBasicMaterial(color="blue", side="DoubleSide", opacity=0.2, transparent=True)
-
-    for i in range(len(bottom_verts)):
-        p1_b, p2_b = bottom_verts[i], bottom_verts[(i + 1) % len(bottom_verts)]
-        p1_t, p2_t = top_verts[i], top_verts[(i + 1) % len(top_verts)]
-        face_verts = np.array([p1_b, p2_b, p1_t, p2_b, p2_t, p1_t], dtype="float32")
-        face_geom = three.BufferGeometry(attributes={"position": three.BufferAttribute(face_verts)})
-        geofence_group.add(three.Mesh(face_geom, side_face_mat))
-
-    def create_cap_mesh(vertices_2d_xz, altitude, material):
-        """Creates a cap mesh (floor or ceiling) on the XZ plane at a given altitude (y)."""
-        if len(vertices_2d_xz) < 3:
-            return None
-        # pythreejs Shape works in 2D (x, y). We provide our (x, z) coordinates.
-        shape = three.Shape(points=vertices_2d_xz)
-        geom = three.ShapeGeometry(shapes=[shape])
-        mesh = three.Mesh(geom, material)
-        # The shape is created on the XY plane. We need to rotate it to the XZ plane.
-        mesh.rotation = [-math.pi / 2, 0, 0, "XYZ"]
-        # Then, we position it at the correct altitude (y-coordinate).
-        # mesh.position.y = altitude
-        return mesh
-
-    if floor_mesh := create_cap_mesh(projected_geofence_corners_2d, min_alt, floor_mat):
-        geofence_group.add(floor_mesh)
-    if ceiling_mesh := create_cap_mesh(projected_geofence_corners_2d, max_alt, ceiling_mat):
-        geofence_group.add(ceiling_mesh)
-
-    return geofence_group
-
-
-# Color palette for airplane tracks in 3D (hex colors for pythreejs)
-AIRPLANE_COLORS_3D = ["#FF8C00", "#FF6347", "#FFA500", "#FF4500", "#FFD700", "#FF7F50", "#FF69B4", "#DC143C"]
-
-
-def _create_airplane_path_group(projected_path: list[tuple[float, float, float]], color: str) -> three.Group | None:
-    """Creates a three.js group containing an airplane flight path with distinct color.
-
-    Args:
-        projected_path: List of (x, y, z) projected coordinates.
-        color: Hex color string for the path.
-
-    Returns:
-        three.Group containing the airplane path visualization, or None if no path.
-    """
-    if not projected_path:
-        return None
-
-    path_group = three.Group()
-
-    # Create the line path
-    path_geometry = three.BufferGeometry(attributes={"position": three.BufferAttribute(np.array(projected_path, dtype="float32"))})
-    path_material = three.LineBasicMaterial(color=color, linewidth=2)
-    path_group.add(three.Line(path_geometry, path_material))
-
-    # Add small dots for each coordinate
-    points_material = three.PointsMaterial(color=color, size=2, sizeAttenuation=False)
-    path_group.add(three.Points(path_geometry, points_material))
-
-    # Add start marker (small sphere)
-    start_marker = three.Mesh(three.SphereBufferGeometry(10), three.MeshBasicMaterial(color=color))
-    start_marker.position = projected_path[0]
-    path_group.add(start_marker)
-
-    # Add end marker (slightly larger sphere)
-    if len(projected_path) > 1:
-        end_marker = three.Mesh(three.SphereBufferGeometry(12), three.MeshBasicMaterial(color="#8B0000"))  # Dark red
-        end_marker.position = projected_path[-1]
-        path_group.add(end_marker)
-
-    return path_group
-
-
-def _add_air_traffic_to_3d_scene(
-    scene: three.Scene,
-    air_traffic_data: list[list[FlightObservationSchema]],
-    project_fn,
-) -> list[tuple[float, float, float]]:
-    """
-    Adds airplane/air traffic paths to the 3D scene with distinct colors.
-
-    Args:
-        scene: The pythreejs Scene to add paths to.
-        air_traffic_data: Air traffic data as list of aircraft, each with list of observations.
-        project_fn: Projection function (lon, lat, alt) -> (x, y, z).
-
-    Returns:
-        List of all projected points added to the scene (useful for auto-framing if needed).
-    """
-    all_plane_points = []
-    # Reorganize data by aircraft ICAO address
-    aircraft_tracks = _reorganize_air_traffic_by_aircraft(air_traffic_data)
-    logger.debug(f"Adding {len(aircraft_tracks)} airplane tracks to 3D scene")
-
-    for idx, (icao_address, aircraft_observations) in enumerate(sorted(aircraft_tracks.items())):
-        if not aircraft_observations:
-            continue
-
-        # Get color from palette (cycle if more aircraft than colors)
-        color = AIRPLANE_COLORS_3D[idx % len(AIRPLANE_COLORS_3D)]
-
-        # Extract and project path coordinates - handle both dict and Pydantic model
-        projected_airplane_path = []
-        for obs in aircraft_observations:
-            if isinstance(obs, dict):
-                lon = obs.get("lon_dd")
-                lat = obs.get("lat_dd")
-                alt = obs.get("altitude_mm", 0) / 1000  # Convert mm to meters
-            else:
-                lon = obs.lon_dd
-                lat = obs.lat_dd
-                alt = obs.altitude_mm / 1000  # Convert mm to meters
-
-            if lat is not None and lon is not None:
-                projected_point = project_fn(lon, lat, alt)
-                projected_airplane_path.append(projected_point)
-                all_plane_points.append(projected_point)
-
-        if not projected_airplane_path:
-            continue
-
-        # Create and add the airplane path group (icao_address already from loop)
-        if airplane_group := _create_airplane_path_group(projected_airplane_path, color):
-            scene.add(airplane_group)
-            logger.debug(f"Added airplane track for {icao_address} with {len(projected_airplane_path)} points")
-
-    return all_plane_points
-
-
 def visualize_flight_path_3d(
     telemetry_data: list[RIDAircraftState],
     declaration_data: dict,
     output_html_path: Path,
     air_traffic_data: list[list[FlightObservationSchema]] | None = None,
+    active_alerts: list[dict[str, Any]] | None = None,
+    incident_logs: list[dict[str, Any]] | None = None,
+    amqp_messages: list[dict[str, Any]] | None = None,
+    ownships: list[dict[str, Any]] | None = None,
+    declaration_map: dict[str, str] | None = None,
 ):
-    """Creates an interactive 3D visualization of the flight path and geofence.
+    """Creates a replayable interactive 3D visualization with second-by-second controls.
 
-    Args:
-        telemetry_data: The flight telemetry data as a list of RID aircraft states.
-        declaration_data: The flight declaration data as a dictionary.
-        output_html_path: The full path where the output HTML will be saved.
-        air_traffic_data: Optional air traffic data from simulators.
+    Supports multiple ownships via the ``ownships`` parameter.  When provided,
+    each ownship gets a distinct color and its own 3D track.  The HUD includes
+    an ownship filter when more than one ownship is present.
     """
-    logger.info("Starting 3D flight path visualization")
+    logger.info("Starting replay-capable 3D flight path visualization")
 
-    states = telemetry_data
-    path_coords_ll = [[s["position"]["lng"], s["position"]["lat"], s["position"]["alt"]] for s in states if "position" in s]
-    geofence = declaration_data.get("flight_declaration_geo_json")
-    geofence_coords_ll, min_alt, max_alt = [], 0, 0
+    ownships_list = normalize_ownships_list(ownships, telemetry_data, declaration_data)
+
+    # Build per-ownship samples
+    per_ownship_samples: list[tuple[str, str, list[dict[str, Any]]]] = []
+    all_ownship_timestamps: list[float] = []
+
+    for idx, own in enumerate(ownships_list):
+        color = OWNSHIP_COLORS_3D[idx % len(OWNSHIP_COLORS_3D)]
+        label = str(own.get("label") or f"Ownship {idx + 1}")
+        samples: list[dict[str, Any]] = []
+        for state_idx, state in enumerate(own.get("telemetry_data") or []):
+            position = state.get("position")
+            if not position:
+                continue
+            lat = position.get("lat")
+            lon = position.get("lng")
+            alt = position.get("alt")
+            if lat is None or lon is None or alt is None:
+                continue
+            ts = parse_timestamp_seconds(state.get("timestamp"))
+            samples.append(
+                {
+                    "index_t": float(state_idx),
+                    "timestamp_s": ts,
+                    "lat": float(lat),
+                    "lon": float(lon),
+                    "alt": float(alt),
+                }
+            )
+            if ts is not None:
+                all_ownship_timestamps.append(ts)
+        per_ownship_samples.append((label, color, samples))
+
+    timeline_start_s = min(all_ownship_timestamps) if all_ownship_timestamps else None
+
+    intruder_tracks: list[dict[str, Any]] = []
+    if air_traffic_data:
+        aircraft_tracks = reorganize_air_traffic_by_aircraft(air_traffic_data)
+        for color_idx, (icao_address, observations) in enumerate(sorted(aircraft_tracks.items())):
+            track_points: list[dict[str, float]] = []
+            for idx, obs in enumerate(observations):
+                lat, lon, alt = extract_observation_coords(obs)
+                timestamp_s = extract_observation_timestamp(obs)
+                if lat is None or lon is None:
+                    continue
+                track_points.append(
+                    {
+                        "t": float(to_relative_replay_second(timestamp_s, timeline_start_s, fallback_second=idx)),
+                        "lat": float(lat),
+                        "lon": float(lon),
+                        "alt": alt,
+                    }
+                )
+            if track_points:
+                intruder_tracks.append(
+                    {
+                        "icao": icao_address,
+                        "color": AIRPLANE_COLORS_3D[color_idx % len(AIRPLANE_COLORS_3D)],
+                        "samples": track_points,
+                    }
+                )
+
+    geofence = extract_first_geofence(ownships_list, declaration_data)
+    all_geofences = extract_all_geofences(ownships_list, declaration_data)
+
+    geofence_coords: list[list[float]] = []
+    geofence_min_alt = 0.0
+    geofence_max_alt = 0.0
     if geofence and geofence.get("features"):
         feature = geofence["features"][0]
-        geofence_coords_ll = feature["geometry"]["coordinates"][0][:-1]
-        min_alt = feature["properties"]["min_altitude"]["meters"]
-        max_alt = feature["properties"]["max_altitude"]["meters"]
-        logger.debug(f"Extracted geofence with {len(geofence_coords_ll)} corners, min_alt={min_alt}, max_alt={max_alt}")
+        geofence_coords = feature["geometry"]["coordinates"][0][:-1]
+        geofence_min_alt = float(feature["properties"]["min_altitude"]["meters"])
+        geofence_max_alt = float(feature["properties"]["max_altitude"]["meters"])
 
-    logger.debug(f"Extracted {len(path_coords_ll)} path coordinates from telemetry data")
-
-    # Check if we have any data to visualize (including air traffic)
-    has_drone_data = bool(path_coords_ll) or bool(geofence_coords_ll)
-    has_air_traffic = bool(air_traffic_data)
-
-    if not has_drone_data and not has_air_traffic:
+    all_ownship_samples = [s for _, _, samples in per_ownship_samples for s in samples]
+    all_points = all_ownship_samples + [pt for track in intruder_tracks for pt in track["samples"]]
+    if not all_points and not geofence_coords:
         logger.warning("No data to visualize in 3D.")
         return
 
-    # Calculate center from available data
-    all_lons = [p[0] for p in path_coords_ll] + [p[0] for p in geofence_coords_ll]
-    all_lats = [p[1] for p in path_coords_ll] + [p[1] for p in geofence_coords_ll]
-
-    # If we only have air traffic data, get center from that
-    if not all_lons and air_traffic_data:
-        aircraft_tracks = _reorganize_air_traffic_by_aircraft(air_traffic_data)
-        for observations in aircraft_tracks.values():
-            for obs in observations:
-                if isinstance(obs, dict):
-                    lon, lat = obs.get("lon_dd"), obs.get("lat_dd")
-                else:
-                    lon, lat = obs.lon_dd, obs.lat_dd
-                if lon is not None and lat is not None:
-                    all_lons.append(lon)
-                    all_lats.append(lat)
-
-    if not all_lons:
-        logger.warning("No longitude data available for centering.")
+    all_lons = [point["lon"] for point in all_points] + [coord[0] for coord in geofence_coords]
+    all_lats = [point["lat"] for point in all_points] + [coord[1] for coord in geofence_coords]
+    if not all_lons or not all_lats:
+        logger.warning("No coordinate data available for 3D centering.")
         return
-    center_lon, center_lat = sum(all_lons) / len(all_lons), sum(all_lats) / len(all_lats)
-    logger.debug(f"Calculated map center: lon={center_lon}, lat={center_lat}")
 
-    def project(lon, lat, alt):
-        R = 6371000
-        x = (math.radians(lon) - math.radians(center_lon)) * R * math.cos(math.radians(center_lat))
+    center_lon = sum(all_lons) / len(all_lons)
+    center_lat = sum(all_lats) / len(all_lats)
+
+    def project(lon: float, lat: float, alt: float) -> tuple[float, float, float]:
+        earth_radius_m = 6_371_000
+        x = (math.radians(lon) - math.radians(center_lon)) * earth_radius_m * math.cos(math.radians(center_lat))
         y = alt
-        z = -(math.radians(lat) - math.radians(center_lat)) * R
+        z = -(math.radians(lat) - math.radians(center_lat)) * earth_radius_m
         return x, y, z
 
-    projected_path = [project(lon, lat, alt) for lon, lat, alt in path_coords_ll]
-    projected_geofence_corners_2d = [project(lon, lat, 0)[::2] for lon, lat in geofence_coords_ll]
-    logger.debug(f"Projected {len(projected_path)} path points and {len(projected_geofence_corners_2d)} geofence corners")
+    # Build projected tracks per ownship
+    ownships_payload: list[dict[str, Any]] = []
+    for label, color, samples in per_ownship_samples:
+        track = []
+        for sample in samples:
+            x, y, z_val = project(sample["lon"], sample["lat"], sample["alt"])
+            track.append(
+                {
+                    "t": to_relative_replay_second(sample.get("timestamp_s"), timeline_start_s, fallback_second=int(sample["index_t"])),
+                    "x": x,
+                    "y": y,
+                    "z": z_val,
+                }
+            )
+        ownships_payload.append({"label": label, "color": color, "track": track})
 
-    camera, scene = _setup_3d_scene()
-    logger.debug("Initialized 3D scene and camera")
+    intruders_payload = []
+    for track in intruder_tracks:
+        projected_points = []
+        for sample in track["samples"]:
+            x, y, z = project(sample["lon"], sample["lat"], sample["alt"])
+            projected_points.append({"t": int(sample["t"]), "x": x, "y": y, "z": z})
+        intruders_payload.append({"icao": track["icao"], "color": track["color"], "points": projected_points})
 
-    if flight_path_group := _create_flight_path_group(projected_path):
-        scene.add(flight_path_group)
-        logger.debug("Added flight path group to scene")
-    if geofence_box_group := _create_geofence_box_group(projected_geofence_corners_2d, min_alt, max_alt):
-        scene.add(geofence_box_group)
-        logger.debug("Added geofence box group to scene")
+    geofence_payload = None
+    if geofence_coords:
+        corners = []
+        for lon, lat in geofence_coords:
+            x, _, z = project(float(lon), float(lat), 0.0)
+            corners.append({"x": x, "z": z})
+        geofence_payload = {"corners": corners, "min_alt": geofence_min_alt, "max_alt": geofence_max_alt}
 
-    # Add airplane/air traffic paths if available
-    plane_points = []
-    if air_traffic_data:
-        plane_points = _add_air_traffic_to_3d_scene(scene, air_traffic_data, project)
+    # Build per-ownship geofence payloads for multi-geofence rendering
+    geofences_payload: list[dict[str, Any]] = []
+    for label, geo in all_geofences:
+        if not geo or not geo.get("features"):
+            continue
+        feat = geo["features"][0]
+        coords = feat["geometry"]["coordinates"][0][:-1]
+        projected_corners = []
+        for lon, lat in coords:
+            x, _, z = project(float(lon), float(lat), 0.0)
+            projected_corners.append({"x": x, "z": z})
+        geofences_payload.append(
+            {
+                "label": label,
+                "corners": projected_corners,
+                "min_alt": float(feat["properties"]["min_altitude"]["meters"]),
+                "max_alt": float(feat["properties"]["max_altitude"]["meters"]),
+            }
+        )
 
-    # --- Auto-framing logic ---
-    framing_points = []
-    if projected_path:
-        framing_points.extend(projected_path)
-    if projected_geofence_corners_2d:
-        bottom_verts = [[x, min_alt, z] for x, z in projected_geofence_corners_2d]
-        top_verts = [[x, max_alt, z] for x, z in projected_geofence_corners_2d]
-        framing_points.extend(bottom_verts)
-        framing_points.extend(top_verts)
+    max_t = 0
+    for own_p in ownships_payload:
+        if own_p["track"]:
+            max_t = max(max_t, max(int(point["t"]) for point in own_p["track"]))
+    for intr in intruders_payload:
+        if intr["points"]:
+            max_t = max(max_t, max(int(point["t"]) for point in intr["points"]))
 
-    # Only use plane points for framing if we have no drone/geofence data
-    # This prevents distant air traffic from ruining the scale of the drone visualization
-    if not framing_points and plane_points:
-        framing_points = plane_points
-
-    if framing_points:
-        points_arr = np.array(framing_points)
-        min_coords = points_arr.min(axis=0)
-        max_coords = points_arr.max(axis=0)
-
-        scene_center = (min_coords + max_coords) / 2
-        scene_size = max_coords - min_coords
-        max_dimension = max(scene_size)
-
-        # Position camera for a side view, looking at the center of the scene
-        # Ensure a minimum distance to avoid camera being inside the object if dimension is small
-        distance = max(max_dimension, 200)
-        camera.position = (scene_center[0] + distance, scene_center[1] + distance * 0.5, scene_center[2])
-
-        # The OrbitControls will orbit around this target
-        controls = [three.OrbitControls(controlling=camera, target=scene_center.tolist())]
-        logger.debug(f"Auto-framed scene: center={scene_center}, max_dimension={max_dimension}")
+    incident_log_events = serialize_incident_log_events(incident_logs, timeline_start_s, fallback_second=max_t)
+    if active_alerts:
+        alert_events = serialize_active_alert_events(active_alerts, timeline_start_s, fallback_second=max_t)
     else:
-        controls = [three.OrbitControls(controlling=camera)]
-        logger.debug("No points for auto-framing, using default controls")
+        alert_events = derive_alert_events_from_incident_logs(incident_log_events)
 
-    renderer = three.Renderer(camera=camera, scene=scene, controls=controls, width=1000, height=800)
-    logger.debug("Created renderer")
+    # Time-shift estimation for the first (or only) ownship
+    if ownships_payload:
+        first_track = ownships_payload[0]["track"]
+        ownship_t_shift = estimate_ownship_t_shift(first_track, intruders_payload, incident_log_events)
+        if ownship_t_shift:
+            for own_p in ownships_payload:
+                for point in own_p["track"]:
+                    point["t"] = max(0, int(point.get("t", 0)) + ownship_t_shift)
 
-    embed.embed_minimal_html(output_html_path, views=[renderer], title="3D Flight Visualization")
-    logger.info(f"3D flight path visualization saved to: {output_html_path}")
+    if alert_events:
+        max_t = max(max_t, max(int(event["t"]) for event in alert_events))
+    if incident_log_events:
+        max_t = max(max_t, max(int(event["t"]) for event in incident_log_events))
+
+    amqp_message_events = serialize_amqp_message_events(amqp_messages, timeline_start_s, fallback_second=max_t)
+    if amqp_message_events:
+        max_t = max(max_t, max(int(event["t"]) for event in amqp_message_events))
+
+    # Build unified timeline for log-index playback (proposal §1)
+    unified_timeline = sorted(
+        [{**e, "_source": "incident", "_log_index": i} for i, e in enumerate(incident_log_events)]
+        + [{**e, "_source": "amqp", "_log_index": i + len(incident_log_events)} for i, e in enumerate(amqp_message_events)],
+        key=lambda e: (e.get("t", 0), {"alert": 0, "amqp": 1, "incident": 2}.get(e.get("_source", ""), 3)),
+    )
+
+    payload = {
+        "timeline": {"max_t": max_t, "log_count": len(unified_timeline)},
+        "ownships": ownships_payload,
+        "intruders": intruders_payload,
+        "geofence": geofence_payload,
+        "geofences": geofences_payload,
+        "daa_events": {
+            "alerts": alert_events,
+            "incident_logs": incident_log_events,
+        },
+        "amqp_messages": amqp_message_events,
+        "unified_timeline": unified_timeline,
+        "ownship_labels": [own["label"] for own in ownships_payload],
+        "routing_key_to_ownship": declaration_map or {},
+        "volumes": {
+            "wc_horizontal_m": get_env_float("WELL_CLEAR_HORIZONTAL_DISTANCE_M", DEFAULT_WELL_CLEAR_HORIZONTAL_DISTANCE_M),
+            "wc_vertical_m": get_env_float("WELL_CLEAR_VERTICAL_DISTANCE_M", DEFAULT_WELL_CLEAR_VERTICAL_DISTANCE_M),
+            "nmac_horizontal_m": get_env_float("NMAC_HORIZONTAL_DISTANCE_M", DEFAULT_NMAC_HORIZONTAL_DISTANCE_M),
+            "nmac_vertical_m": get_env_float("NMAC_VERTICAL_DISTANCE_M", DEFAULT_NMAC_VERTICAL_DISTANCE_M),
+        },
+    }
+
+    html_content = REPLAY_3D_HTML_TEMPLATE.replace("__DATA__", json.dumps(payload))
+    output_html_path.write_text(html_content, encoding="utf-8")
+    logger.info(f"Replay-capable 3D flight path visualization saved to: {output_html_path}")
 
 
 if __name__ == "__main__":

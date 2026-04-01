@@ -127,6 +127,7 @@ async def test_submit_telemetry_from_file(fb_client):
     mock_response = MagicMock()
     mock_response.status_code = 201
     mock_response.json.return_value = {"status": "ok"}
+    mock_response.elapsed.total_seconds.return_value = 0.1
     fb_client.put.return_value = mock_response
 
     telemetry_data = {
@@ -171,6 +172,7 @@ async def test_submit_telemetry(fb_client):
     mock_response = MagicMock()
     mock_response.status_code = 201
     mock_response.json.return_value = {"status": "ok"}
+    mock_response.elapsed.total_seconds.return_value = 0.1
     fb_client.put.return_value = mock_response
 
     states = [
@@ -265,6 +267,241 @@ async def test_submit_air_traffic(fb_client):
 
     assert result.status == Status.PASS
     fb_client.post.assert_called_once()
+
+
+async def test_verify_daa_encounter_criteria_checks_1hz_per_alert_lifecycle(fb_client):
+    incident_logs = [
+        {
+            "alert_id": "alpha",
+            "timestamp": "2026-03-06T22:00:00Z",
+            "event_type": "alert_triggered",
+            "alert_level": 1,
+            "range_m": 300.0,
+            "cpa_time_seconds": 12.0,
+        },
+        {
+            "alert_id": "alpha",
+            "timestamp": "2026-03-06T22:00:01Z",
+            "event_type": "periodic_update",
+            "alert_level": 0,
+            "range_m": 290.0,
+            "cpa_time_seconds": 11.0,
+        },
+        {
+            "alert_id": "alpha",
+            "timestamp": "2026-03-06T22:00:02Z",
+            "event_type": "alert_resolved",
+            "alert_level": 1,
+            "range_m": 280.0,
+            "cpa_time_seconds": 10.0,
+        },
+        {
+            "alert_id": "bravo",
+            "timestamp": "2026-03-06T22:00:12Z",
+            "event_type": "alert_triggered",
+            "alert_level": 1,
+            "range_m": 500.0,
+            "cpa_time_seconds": 20.0,
+        },
+        {
+            "alert_id": "bravo",
+            "timestamp": "2026-03-06T22:00:13Z",
+            "event_type": "periodic_update",
+            "alert_level": 0,
+            "range_m": 490.0,
+            "cpa_time_seconds": 19.0,
+        },
+        {
+            "alert_id": "bravo",
+            "timestamp": "2026-03-06T22:00:14Z",
+            "event_type": "alert_resolved",
+            "alert_level": 1,
+            "range_m": 480.0,
+            "cpa_time_seconds": 18.0,
+        },
+    ]
+
+    result = await fb_client.verify_daa_encounter_criteria(
+        incident_logs=incident_logs,
+        expected_alert_levels=[1],
+        require_escalation=False,
+        require_cpa=True,
+        require_lifecycle=True,
+        max_1hz_gap_seconds=2.0,
+    )
+
+    assert result.status == Status.PASS
+    assert result.result["checks"]["hz_compliant"] is True
+    assert result.result["hz_violation_count"] == 0
+
+
+async def test_shared_intruder_prefers_pair_passing_both_thresholds(fb_client):
+    """Regression: best candidate must pass BOTH range and CPA thresholds when such a pair exists."""
+    # 3 overlapping alerts for the same intruder:
+    #   A: range=30m, CPA=47s  \  A+B range_delta=390m (best range) but CPA_delta=2s (FAIL)
+    #   B: range=420m, CPA=45s  } A+C range_delta=355m, CPA_delta=10s -> BOTH PASS
+    #   C: range=385m, CPA=37s /  B+C range_delta=35m, CPA_delta=8s -> BOTH PASS
+    incident_logs = [
+        {
+            "alert_id": "a",
+            "intruder_icao": "INT1",
+            "timestamp": "2026-01-01T00:00:00Z",
+            "event_type": "alert_triggered",
+            "alert_level": 1,
+            "range_m": 30.0,
+            "cpa_time_seconds": 47.0,
+        },
+        {
+            "alert_id": "b",
+            "intruder_icao": "INT1",
+            "timestamp": "2026-01-01T00:00:00Z",
+            "event_type": "alert_triggered",
+            "alert_level": 1,
+            "range_m": 420.0,
+            "cpa_time_seconds": 45.0,
+        },
+        {
+            "alert_id": "c",
+            "intruder_icao": "INT1",
+            "timestamp": "2026-01-01T00:00:00Z",
+            "event_type": "alert_triggered",
+            "alert_level": 1,
+            "range_m": 385.0,
+            "cpa_time_seconds": 37.0,
+        },
+        {
+            "alert_id": "a",
+            "intruder_icao": "INT1",
+            "timestamp": "2026-01-01T00:00:10Z",
+            "event_type": "alert_resolved",
+            "alert_level": 1,
+            "range_m": 30.0,
+            "cpa_time_seconds": 47.0,
+        },
+        {
+            "alert_id": "b",
+            "intruder_icao": "INT1",
+            "timestamp": "2026-01-01T00:00:10Z",
+            "event_type": "alert_resolved",
+            "alert_level": 1,
+            "range_m": 420.0,
+            "cpa_time_seconds": 45.0,
+        },
+        {
+            "alert_id": "c",
+            "intruder_icao": "INT1",
+            "timestamp": "2026-01-01T00:00:10Z",
+            "event_type": "alert_resolved",
+            "alert_level": 1,
+            "range_m": 385.0,
+            "cpa_time_seconds": 37.0,
+        },
+    ]
+
+    result = await fb_client.verify_daa_shared_intruder_independence(
+        incident_logs=incident_logs,
+        expected_intruder_icao="INT1",
+        expected_alert_count=2,
+        min_distinct_range_m=20.0,
+        min_distinct_initial_cpa_seconds=5.0,
+    )
+
+    assert result.status == Status.PASS, f"Expected PASS but got {result.status}: {result.error_message}"
+    best = result.result["best_overlap_candidate"]
+    # Must pick a pair that passes both, not A+B which maximizes range but fails CPA
+    assert best["initial_cpa_delta_seconds"] >= 5.0
+    assert best["range_delta_m"] >= 20.0
+
+
+async def test_verify_daa_shared_intruder_independence_uses_overlapping_alerts(fb_client):
+    incident_logs = [
+        {
+            "alert_id": "alpha-1",
+            "intruder_icao": "INTC1",
+            "timestamp": "2026-03-06T22:00:00Z",
+            "event_type": "alert_triggered",
+            "alert_level": 1,
+            "range_m": 900.0,
+            "cpa_time_seconds": 25.0,
+        },
+        {
+            "alert_id": "alpha-1",
+            "intruder_icao": "INTC1",
+            "timestamp": "2026-03-06T22:00:01Z",
+            "event_type": "periodic_update",
+            "alert_level": 0,
+            "range_m": 850.0,
+            "cpa_time_seconds": 24.0,
+        },
+        {
+            "alert_id": "bravo-1",
+            "intruder_icao": "INTC1",
+            "timestamp": "2026-03-06T22:00:01Z",
+            "event_type": "alert_triggered",
+            "alert_level": 2,
+            "range_m": 300.0,
+            "cpa_time_seconds": 8.0,
+        },
+        {
+            "alert_id": "bravo-1",
+            "intruder_icao": "INTC1",
+            "timestamp": "2026-03-06T22:00:02Z",
+            "event_type": "periodic_update",
+            "alert_level": 2,
+            "range_m": 260.0,
+            "cpa_time_seconds": 7.0,
+        },
+        {
+            "alert_id": "alpha-1",
+            "intruder_icao": "INTC1",
+            "timestamp": "2026-03-06T22:00:03Z",
+            "event_type": "alert_resolved",
+            "alert_level": 1,
+            "range_m": 800.0,
+            "cpa_time_seconds": 23.0,
+        },
+        {
+            "alert_id": "bravo-1",
+            "intruder_icao": "INTC1",
+            "timestamp": "2026-03-06T22:00:04Z",
+            "event_type": "alert_resolved",
+            "alert_level": 2,
+            "range_m": 250.0,
+            "cpa_time_seconds": 6.0,
+        },
+        {
+            "alert_id": "alpha-2",
+            "intruder_icao": "INTC1",
+            "timestamp": "2026-03-06T22:00:10Z",
+            "event_type": "alert_triggered",
+            "alert_level": 1,
+            "range_m": 950.0,
+            "cpa_time_seconds": 22.0,
+        },
+        {
+            "alert_id": "alpha-2",
+            "intruder_icao": "INTC1",
+            "timestamp": "2026-03-06T22:00:11Z",
+            "event_type": "alert_resolved",
+            "alert_level": 1,
+            "range_m": 940.0,
+            "cpa_time_seconds": 21.0,
+        },
+    ]
+
+    result = await fb_client.verify_daa_shared_intruder_independence(
+        incident_logs=incident_logs,
+        expected_intruder_icao="INTC1",
+        expected_alert_count=2,
+        min_distinct_range_m=25.0,
+        min_distinct_initial_cpa_seconds=10.0,
+    )
+
+    assert result.status == Status.PASS
+    assert result.result["distinct_alert_count"] == 3
+    assert result.result["max_concurrent_alert_count"] == 2
+    assert result.result["best_overlap_candidate"]["range_delta_m"] == pytest.approx(550.0)
+    assert result.result["best_overlap_candidate"]["initial_cpa_delta_seconds"] == pytest.approx(17.0)
 
 
 async def test_start_stop_sdsp_session(fb_client):
@@ -401,6 +638,10 @@ async def test_submit_simulated_air_traffic(fb_client):
         def __abs__(self):
             return MockArrow(abs(self.time_val))
 
+        @property
+        def float_timestamp(self):
+            return float(self.time_val)
+
         # For subtraction result (timedelta-like)
         def total_seconds(self):
             return self.time_val
@@ -436,9 +677,10 @@ async def test_submit_simulated_air_traffic(fb_client):
 
         mock_now.side_effect = [
             MockArrow(0),  # start_time
-            MockArrow(0),  # check loop wait
-            MockArrow(2),  # check loop wait (exit wait)
-            MockArrow(3),  # next call
+            MockArrow(0),  # while arrow.now() < target_real_time → 0 < 0 → exit
+            MockArrow(0),  # wall_clock_us for aircraft 1
+            MockArrow(0),  # wall_clock_us for aircraft 2
+            MockArrow(2),  # final elapsed-time call
         ]
 
         result = await fb_client.submit_simulated_air_traffic(observations=obs)
@@ -508,7 +750,7 @@ async def test_setup_flight_declaration(fb_client):
         await fb_client.setup_flight_declaration("fd_path", "traj_path")
 
         mock_gen_fd.assert_called_with("fd_path")
-        mock_gen_tel.assert_called_with("traj_path", reference_time=ANY)
+        mock_gen_tel.assert_called_with("traj_path", duration=30, reference_time=ANY)
         mock_context.set_flight_declaration_data.assert_called_with(mock_fd)
         mock_context.set_telemetry_data.assert_called_with([{"tel": "data"}])
         fb_client.upload_flight_declaration.assert_called_with(mock_fd)
@@ -743,3 +985,29 @@ async def test_verify_reported_metrics_no_observations(fb_client):
 
     assert result.status == Status.FAIL
     assert "No valid start/end times" in result.error_message
+
+
+# ---------------------------------------------------------------------------
+# _create_rid_operator_details: unique serial_number per ownship
+# ---------------------------------------------------------------------------
+
+
+def test_rid_operator_details_serial_number_is_operation_id():
+    """serial_number must equal the operation_id so each ownship gets a unique ICAO."""
+    from openutm_verification.core.clients.flight_blender.flight_blender_client import (
+        _create_rid_operator_details,
+    )
+
+    details = _create_rid_operator_details("fd-alpha-001")
+    assert details.uas_id.serial_number == "fd-alpha-001"
+
+
+def test_rid_operator_details_distinct_serial_numbers_for_multi_ownship():
+    """Two ownships must have different serial_numbers to avoid ICAO collision in DAA."""
+    from openutm_verification.core.clients.flight_blender.flight_blender_client import (
+        _create_rid_operator_details,
+    )
+
+    alpha = _create_rid_operator_details("fd-alpha-001")
+    bravo = _create_rid_operator_details("fd-bravo-002")
+    assert alpha.uas_id.serial_number != bravo.uas_id.serial_number

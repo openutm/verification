@@ -10,13 +10,18 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 
 from openutm_verification.core.execution.config_models import AppConfig, ReportingConfig
+from openutm_verification.core.reporting._viz_engine import (
+    extract_step_payload,
+    label_from_step_id,
+    render_scenario_visualizations,
+    try_load_declarations_for_scenario,
+)
 from openutm_verification.core.reporting.reporting_models import (
     ReportData,
     ReportSummary,
     ScenarioResult,
     Status,
 )
-from openutm_verification.core.reporting.visualize_flight import visualize_flight_path_2d, visualize_flight_path_3d
 from openutm_verification.utils.time_utils import get_run_timestamp_str
 
 T = TypeVar("T")
@@ -199,39 +204,45 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
     return report_path
 
 
-def _generate_scenario_visualizations(result: ScenarioResult, output_dir: Path):
-    """
-    Generates 2D and 3D visualizations for a single scenario.
+def _steps_to_dicts(steps: list[Any]) -> list[dict[str, Any]]:
+    """Normalize StepResult models to plain dicts for the shared engine."""
+    out: list[dict[str, Any]] = []
+    for step in steps:
+        if isinstance(step, dict):
+            out.append(step)
+        elif hasattr(step, "model_dump"):
+            out.append(step.model_dump(mode="json"))
+        else:
+            out.append({"id": getattr(step, "id", None), "name": getattr(step, "name", None), "result": getattr(step, "result", None)})
+    return out
 
-    Args:
-        result: ScenarioResult to update with visualization paths.
-        telemetry_data: Loaded telemetry data.
-        declaration_data: Loaded declaration data.
-        output_dir: Directory to save visualizations.
-    """
+
+def _generate_scenario_visualizations(result: ScenarioResult, output_dir: Path):
+    """Generate 2D and 3D visualizations for a single scenario."""
     if result.flight_declaration_data is None or result.telemetry_data is None:
         return
 
     flight_declaration_dict = result.flight_declaration_data.model_dump()
+    steps_dicts = _steps_to_dicts(result.steps)
 
-    # Create scenario directory
-    scenario_dir = output_dir / result.name
-    scenario_dir.mkdir(parents=True, exist_ok=True)
+    # Build per-ownship declaration dicts
+    all_declarations_dicts: list[dict[str, Any]] | None = None
+    if result.flight_declarations_data:
+        all_declarations_dicts = [d.model_dump() for d in result.flight_declarations_data]
+    if not all_declarations_dicts:
+        all_declarations_dicts = try_load_declarations_for_scenario(result.name)
 
-    # Get air traffic data if available
-    air_traffic_data = result.air_traffic_data
-
-    # Generate 2D visualization
-    vis_2d_filename = "visualization_2d.html"
-    vis_2d_path = scenario_dir / vis_2d_filename
-    visualize_flight_path_2d(result.telemetry_data, flight_declaration_dict, vis_2d_path, air_traffic_data)
-    result.visualization_2d_path = str(vis_2d_path.relative_to(output_dir))
-
-    # Generate 3D visualization
-    vis_3d_filename = "visualization_3d.html"
-    vis_3d_path = scenario_dir / vis_3d_filename
-    visualize_flight_path_3d(result.telemetry_data, flight_declaration_dict, vis_3d_path, air_traffic_data)
-    result.visualization_3d_path = str(vis_3d_path.relative_to(output_dir))
+    vis_2d, vis_3d = render_scenario_visualizations(
+        scenario_name=result.name,
+        steps=steps_dicts,
+        telemetry_data=result.telemetry_data,
+        declaration_data=flight_declaration_dict,
+        output_dir=output_dir,
+        air_traffic_data=result.air_traffic_data,
+        flight_declarations_data=all_declarations_dicts,
+    )
+    result.visualization_2d_path = str(vis_2d.relative_to(output_dir))
+    result.visualization_3d_path = str(vis_3d.relative_to(output_dir))
 
 
 def _generate_visualizations(report_data: ReportData, output_dir: Path):
@@ -257,27 +268,73 @@ def _generate_visualizations(report_data: ReportData, output_dir: Path):
                 logger.warning(f"Failed to generate visualizations for scenario '{result.name}': {e}")
 
 
+def _write_json(directory: Path, filename: str, data: Any) -> None:
+    """Write *data* as indented JSON to *directory/filename*."""
+    path = directory / filename
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    logger.debug(f"Saved {filename} to {path}")
+
+
+def _save_per_ownship_telemetry(steps: list[dict[str, Any]], scenario_dir: Path) -> None:
+    """Extract and persist per-ownship telemetry from Generate Telemetry steps."""
+    telem_idx = 0
+    for step in steps:
+        result = step.get("result")
+        if step.get("name") != "Generate Telemetry" or not isinstance(result, list) or not result:
+            continue
+        step_id = step.get("id") or ""
+        label = label_from_step_id(step_id, telem_idx).lower().replace(" ", "_")
+        _write_json(scenario_dir, f"telemetry_{label}.json", result)
+        telem_idx += 1
+
+
 def _save_scenario_data(report_data: ReportData, output_dir: Path):
-    """
-    Saves generated data for each scenario in a subdirectory.
+    """Save generated data for each scenario in a subdirectory.
+
+    Produces:
+      - ``flight_declaration.json`` – primary (first) declaration
+      - ``flight_declaration_<idx>.json`` – each declaration for multi-ownship
+      - ``telemetry.json`` – primary (combined) telemetry
+      - ``telemetry_<label>.json`` – per-ownship telemetry from Generate Telemetry steps
+      - ``air_traffic.json`` – intruder / air-traffic observations
+      - ``incident_logs.json`` – DAA incident logs (if present)
+      - ``active_alerts.json`` – active DAA alerts snapshot (if present)
     """
     for result in report_data.results:
         scenario_dir = output_dir / result.name
         scenario_dir.mkdir(parents=True, exist_ok=True)
 
         json_result = result.model_dump(mode="json")
+        steps_dicts = _steps_to_dicts(result.steps)
 
+        # Flight declarations
         if json_result.get("flight_declaration_data"):
-            file_path = scenario_dir / "flight_declaration.json"
-            file_path.write_text(json.dumps(json_result["flight_declaration_data"], indent=2), encoding="utf-8")
-            logger.debug(f"Saved flight declaration data to {file_path}")
+            _write_json(scenario_dir, "flight_declaration.json", json_result["flight_declaration_data"])
 
+        declarations_list = json_result.get("flight_declarations_data")
+        if not isinstance(declarations_list, list) or not declarations_list:
+            declarations_list = try_load_declarations_for_scenario(result.name)
+        if isinstance(declarations_list, list):
+            for idx, decl in enumerate(declarations_list):
+                _write_json(scenario_dir, f"flight_declaration_{idx}.json", decl)
+
+        # Telemetry (primary / combined)
         if json_result.get("telemetry_data"):
-            file_path = scenario_dir / "telemetry.json"
-            file_path.write_text(json.dumps(json_result["telemetry_data"], indent=2), encoding="utf-8")
-            logger.debug(f"Saved telemetry data to {file_path}")
+            _write_json(scenario_dir, "telemetry.json", json_result["telemetry_data"])
 
+        # Per-ownship telemetry from Generate Telemetry steps
+        _save_per_ownship_telemetry(steps_dicts, scenario_dir)
+
+        # Air traffic
         if json_result.get("air_traffic_data"):
-            file_path = scenario_dir / "air_traffic.json"
-            file_path.write_text(json.dumps(json_result["air_traffic_data"], indent=2), encoding="utf-8")
-            logger.debug(f"Saved air traffic data to {file_path}")
+            _write_json(scenario_dir, "air_traffic.json", json_result["air_traffic_data"])
+
+        # DAA incident logs
+        incident_logs = extract_step_payload(steps_dicts, "get_daa_incident_logs", "Get DAA Incident Logs")
+        if isinstance(incident_logs, list) and incident_logs:
+            _write_json(scenario_dir, "incident_logs.json", incident_logs)
+
+        # DAA active alerts snapshot
+        active_alerts = extract_step_payload(steps_dicts, "get_daa_active_alerts", "Get Active DAA Alerts")
+        if isinstance(active_alerts, list) and active_alerts:
+            _write_json(scenario_dir, "active_alerts.json", active_alerts)

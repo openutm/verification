@@ -59,6 +59,16 @@ def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURAT
         raise
 
 
+@scenario_step("Generate Telemetry")
+async def generate_telemetry_step(
+    config_path: str,
+    duration: int = DEFAULT_TELEMETRY_DURATION,
+    reference_time: str | None = None,
+) -> list[RIDAircraftState]:
+    """Generate telemetry states from a trajectory file for scenario reuse."""
+    return generate_telemetry(config_path=config_path, duration=duration, reference_time=reference_time)
+
+
 def get_geo_fence_path(geo_fence_filename: str) -> str:
     """Helper to get the full path to a geo-fence file."""
     parent_dir = Path(__file__).parent.resolve()

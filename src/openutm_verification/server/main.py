@@ -86,7 +86,7 @@ def start_server_mode(config_path: str | None = None, reload: bool = False):
             port=8989,
             reload=True,
             # Only watch the src directory for changes - dramatically reduces CPU usage
-            reload_dirs=["src"],
+            reload_dirs=["src", "config"],
             # Explicitly exclude heavy directories
             reload_excludes=[
                 "node_modules",

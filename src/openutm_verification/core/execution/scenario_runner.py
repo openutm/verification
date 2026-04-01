@@ -53,6 +53,7 @@ class ScenarioState:
     steps: list[StepResult[Any]] = field(default_factory=list)
     active: bool = False
     flight_declaration_data: FlightDeclaration | None = None
+    flight_declarations_data: list[FlightDeclaration] = field(default_factory=list)
     flight_declaration_via_operational_intent_data: FlightDeclarationViaOperationalIntent | None = None
     telemetry_data: list[RIDAircraftState] | None = None
     air_traffic_data: list[list[FlightObservationSchema]] = field(default_factory=list)
@@ -131,6 +132,12 @@ class ScenarioContext:
             state.flight_declaration_data = data
 
     @classmethod
+    def set_all_flight_declaration_data(cls, data: list[FlightDeclaration]) -> None:
+        state = _scenario_state.get()
+        if state and state.active:
+            state.flight_declarations_data = list(data)
+
+    @classmethod
     def set_flight_declaration_via_operational_intent_data(cls, data: FlightDeclarationViaOperationalIntent) -> None:
         state = _scenario_state.get()
         if state and state.active:
@@ -165,6 +172,13 @@ class ScenarioContext:
             return self._state.flight_declaration_data
         state = _scenario_state.get()
         return state.flight_declaration_data if state else None
+
+    @property
+    def flight_declarations_data(self) -> list[FlightDeclaration]:
+        if self._state:
+            return self._state.flight_declarations_data
+        state = _scenario_state.get()
+        return state.flight_declarations_data if state else []
 
     @property
     def flight_declaration_via_operational_intent_data(
