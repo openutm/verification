@@ -1,0 +1,83 @@
+name: daa_b2_staggered_arrival_cooperative
+description: >
+  ASTM F3442 Category B2 - Three Intruders, Staggered Arrival (Cooperative).
+  Verifies alert prioritization when intruders arrive at different times and
+  reach different maximum alert levels.
+  Ownship hovering at 53.5500°N, -113.5500°W, 100m AGL.
+  INT-C01 (Cessna 172) from East at T=0, 190m AGL (90m offset) → ADVISORY only.
+  INT-C06 (Bell 429) from South at T=20, 150m AGL (50m offset) → CAUTION max.
+  INT-C02 (Piper PA-28) from North at T=40, 107m AGL (7m offset) → WARNING.
+  Vertical offsets cap max alert levels via ASTM F3442 thresholds.
+  Edmonton flight area (within inclusion zone, outside all exclusion zones).
+
+steps:
+  - step: Check AMQP Connection
+  - step: Cleanup Flight Declarations
+  - step: Setup Flight Declaration
+    arguments:
+      flight_declaration_path: config/edmonton/flight_declaration_b2_staggered.json
+      trajectory_path: config/edmonton/trajectory_b2_staggered_ownship.json
+      telemetry_duration: 170
+  - step: Start AMQP Queue Monitor
+    arguments:
+      routing_key: ${{ steps.Setup Flight Declaration.result.id }}
+      duration: 220
+    background: true
+  - step: Update Operation State
+    arguments:
+      state: ACTIVATED
+  - id: generate_b2_traffic
+    step: Generate BlueSky Simulation Air Traffic Data
+    arguments:
+      config_path: config/edmonton/bluesky_b2_staggered.scn
+      duration: 180
+  - step: Submit Simulated Air Traffic
+    arguments:
+      observations: ${{ steps.generate_b2_traffic.result }}
+    background: true
+  - id: wait_traffic_start
+    step: Wait X seconds
+    arguments:
+      duration: 5
+  - step: Submit Telemetry
+    arguments:
+      duration: 170
+    background: true
+  - id: update_state_ended
+    step: Update Operation State
+    arguments:
+      state: ENDED
+    needs:
+      - Submit Telemetry
+      - Submit Simulated Air Traffic
+  - step: Stop AMQP Queue Monitor
+    needs:
+      - update_state_ended
+  - id: get_daa_active_alerts
+    step: Get Active DAA Alerts
+  - id: get_daa_incident_logs
+    step: Get DAA Incident Logs
+    arguments:
+      start_date: ${{ steps.Setup Flight Declaration.result.start_datetime }}
+
+  - step: Get AMQP Messages
+    arguments:
+      routing_key_filter: ${{ steps.Setup Flight Declaration.result.id }}
+
+  # Schema validation: checks API payloads have required fields and correct types
+  - step: Verify DAA ASTM F3442 API Compliance
+    arguments:
+      incident_logs: ${{ steps.get_daa_incident_logs.result }}
+      active_alerts: ${{ steps.get_daa_active_alerts.result }}
+      min_incident_logs: 3
+      require_alert_events: true
+      require_periodic_updates: true
+
+  # B2 pass criteria: staggered arrival, prioritization, independent tracking
+  - step: Verify DAA Encounter Criteria
+    arguments:
+      incident_logs: ${{ steps.get_daa_incident_logs.result }}
+      active_alerts: ${{ steps.get_daa_active_alerts.result }}
+      expected_alert_levels: [1, 2, 3]
+      expected_geometry: any
+      max_1hz_gap_seconds: 3.0  # Three intruders increase Celery load; allow for scheduling jitter

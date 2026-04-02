@@ -1,0 +1,32 @@
+# BlueSky Scenario B1: Two Intruders, Different Directions (Cooperative)
+# Edmonton Area: Ownship hovering at 53.5300°N, -113.5600°W, 120m AGL (394 ft)
+# Intruder 1 (INT-C01, Cessna 172): from North, heading 180° (South), 130m AGL (427 ft), 40 m/s (78 kts)
+# Intruder 2 (INT-C03, Bell 206): from South, heading 000° (North), 110m AGL (361 ft), 30 m/s (58 kts)
+# Initial separations: ~4.0 km (INT-C01 from north), ~3.5 km (INT-C03 from south)
+# Vertical offsets: 10m above and 10m below ownship
+# Per ASTM F3442 integration test plan scenario B1
+
+00:00:00.00>POLY EDM_B1_BOX 53.4900,-113.5800 53.4900,-113.5400 53.5700,-113.5400 53.5700,-113.5800
+00:00:00.00>COLOR EDM_B1_BOX 0,255,0
+
+00:00:00.00>TRAILS ON
+00:00:00.00>RESO OFF
+00:00:00.00>RTF 10
+00:00:00.00>PAN 53.5300,-113.5600
+00:00:00.00>-
+
+# Intruder INT-C01: Cessna 172, ADS-B Out, heading 180 (South) at 427 ft, 78 kts
+# ICAO: C0A1B2, Call Sign: C-GABC
+# Starts ~4.0 km north of ownship at same longitude
+00:00:00.00>CRE INTB1A,C172,53.5660,-113.5600,180,427,78
+00:00:00.00>INTB1A ADDWPT 53.5300,-113.5600
+00:00:00.00>INTB1A ADDWPT 53.4900,-113.5600
+
+# Intruder INT-C03: Bell 206, heading 000 (North) at 361 ft, 58 kts
+# ICAO: C0F5G6, Call Sign: C-GHIJ
+# Starts ~3.5 km south of ownship at same longitude
+00:00:00.00>CRE INTB1B,B206,53.4986,-113.5600,000,361,58
+00:00:00.00>INTB1B ADDWPT 53.5300,-113.5600
+00:00:00.00>INTB1B ADDWPT 53.5700,-113.5600
+
+00:03:00.00>HOLD

@@ -10,6 +10,7 @@ All scenarios are defined as YAML files and executed via the runner. See the [sc
 
 ## Scenarios
 
+* [DAA Scenario Authoring Guide](daa_scenario_authoring_guide.md)
 * [Add Flight Declaration](scenarios/add_flight_declaration.md)
 * [F1 Happy Path](scenarios/F1_happy_path.md)
 * [F2 Contingent Path](scenarios/F2_contingent_path.md)

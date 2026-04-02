@@ -1,0 +1,52 @@
+# BlueSky Scenario B2: Three Intruders, Staggered Arrival (Cooperative)
+# Edmonton Area: Ownship hovering at 53.5500°N, -113.5500°W, 100m AGL (328 ft)
+#
+# Staggered creation to test prioritization with different alert levels:
+#   T=0:  INT-C01 (Cessna 172) from East  → ADVISORY only (90m vertical offset)
+#   T=20: INT-C06 (Bell 429)   from South → CAUTION max  (50m vertical offset)
+#   T=40: INT-C02 (Piper PA-28) from North → WARNING      (7m vertical offset)
+#
+# Vertical offsets cap alert levels via ASTM F3442 thresholds:
+#   ADVISORY: vert < 114.3m (90m  < 114.3 ✓, 90m  > 76.2 → no CAUTION)
+#   CAUTION:  vert < 76.2m  (50m  < 76.2  ✓, 50m  > 30.5 → no WARNING)
+#   WARNING:  vert < 30.5m  (7m   < 30.5  ✓)
+#
+# Per ASTM F3442 integration test plan scenario B2
+
+00:00:00.00>POLY EDM_B2_BOX 53.5100,-113.5800 53.5100,-113.4800 53.5900,-113.4800 53.5900,-113.5800
+00:00:00.00>COLOR EDM_B2_BOX 0,255,0
+
+00:00:00.00>TRAILS ON
+00:00:00.00>RESO OFF
+00:00:00.00>RTF 10
+00:00:00.00>PAN 53.5500,-113.5500
+00:00:00.00>-
+
+# === T=0: INT-C01 (Early arrival) ===
+# Cessna 172, ADS-B Out, from East heading 270° (West)
+# ICAO: C0A1B2, Call Sign: C-GABC
+# 190m AGL (623 ft) → 90m above ownship → ADVISORY only
+# Starts ~3.3 km east of ownship
+00:00:00.00>CRE INTB2A,C172,53.5500,-113.5000,270,623,78
+00:00:00.00>INTB2A ADDWPT 53.5500,-113.5500
+00:00:00.00>INTB2A ADDWPT 53.5500,-113.6000
+
+# === T=20: INT-C06 (Medium arrival) ===
+# Bell 429 (modeled as B206), ADS-B Out, from South heading 000° (North)
+# ICAO: C0J9K0, Call Sign: MEDEVAC
+# 150m AGL (492 ft) → 50m above ownship → CAUTION max
+# Starts ~3.3 km south of ownship
+00:00:20.00>CRE INTB2C,B206,53.5200,-113.5500,000,492,78
+00:00:20.00>INTB2C ADDWPT 53.5500,-113.5500
+00:00:20.00>INTB2C ADDWPT 53.5800,-113.5500
+
+# === T=40: INT-C02 (Late arrival) ===
+# Piper PA-28, Mode C, from North heading 180° (South)
+# ICAO: C0D3E4, Call Sign: C-GDEF
+# 107m AGL (351 ft) → 7m above ownship → WARNING
+# Starts ~3.3 km north of ownship
+00:00:40.00>CRE INTB2B,P28A,53.5800,-113.5500,180,351,97
+00:00:40.00>INTB2B ADDWPT 53.5500,-113.5500
+00:00:40.00>INTB2B ADDWPT 53.5200,-113.5500
+
+00:03:30.00>HOLD

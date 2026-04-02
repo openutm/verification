@@ -1,0 +1,46 @@
+# BlueSky Scenario C2: Three Ownships, Multiple Intruders (Complex)
+# Edmonton Area: Alpha & Bravo straddle INTC01 path (~400m each side), 800m apart.
+#   Alpha  (OWN-01) loiters at 53.5213,-113.5368 (ESE of INTC01 path)
+#   Bravo  (OWN-02) loiters at 53.5237,-113.5482 (WNW of INTC01 path)
+#   Charlie(OWN-03) loiters at 53.5350,-113.5350 (N, separate)
+# Four intruders approach from different directions:
+#   INTC01 Cessna 172 (NE→SW) → encounters Alpha+Bravo simultaneously, Charlie
+#   INTC02 Piper PA-28 (SE→NW) → encounters Charlie
+#   INTC03 Bell 206 (W→E)  → encounters Alpha+Bravo
+#   INTCN1 Ultralight (N→S) → encounters Charlie, Alpha
+
+00:00:00.00>POLY EDM_C2_BOX 53.4800,-113.5800 53.4800,-113.4900 53.5700,-113.4900 53.5700,-113.5800
+00:00:00.00>COLOR EDM_C2_BOX 0,255,0
+
+00:00:00.00>TRAILS ON
+00:00:00.00>RESO OFF
+00:00:00.00>RTF 10
+00:00:00.00>PAN 53.5230,-113.5425
+00:00:00.00>-
+
+# INTC01: Cessna 172 cooperative (ADS-B Out), 58 kts, 361 ft.
+# Path: NE → through Charlie → between Alpha+Bravo → exit SW.
+00:00:00.00>CRE INTC01,C172,53.5600,-113.5000,235,361,58
+00:00:00.00>INTC01 ADDWPT 53.5350,-113.5350
+00:00:00.00>INTC01 ADDWPT 53.5100,-113.5500
+00:00:00.00>INTC01 ADDWPT 53.4800,-113.5800
+
+# INTC02: Piper PA-28 cooperative (Mode C), 70 kts, 380 ft.
+# Path: SE → through Charlie → exit NW.
+00:00:20.00>CRE INTC02,P28A,53.4800,-113.4900,325,380,70
+00:00:20.00>INTC02 ADDWPT 53.5350,-113.5350
+00:00:20.00>INTC02 ADDWPT 53.5700,-113.5700
+
+# INTC03: Bell 206 cooperative (ADS-B Out), 48 kts, 460 ft.
+# Path: W → between Alpha+Bravo → exit E.
+00:00:40.00>CRE INTC03,B206,53.5225,-113.5900,090,460,48
+00:00:40.00>INTC03 ADDWPT 53.5225,-113.5425
+00:00:40.00>INTC03 ADDWPT 53.5225,-113.4900
+
+# INTCN1: Ultralight non-cooperative (no transponder), 40 kts, 400 ft.
+# Path: N → through Charlie → near Alpha → exit S.
+00:01:00.00>CRE INTCN1,C150,53.5600,-113.5350,180,400,40
+00:01:00.00>INTCN1 ADDWPT 53.5350,-113.5350
+00:01:00.00>INTCN1 ADDWPT 53.4700,-113.5350
+
+00:04:00.00>HOLD

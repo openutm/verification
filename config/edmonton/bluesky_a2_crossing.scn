@@ -1,0 +1,23 @@
+# BlueSky Scenario A2: Crossing Trajectory (Cooperative)
+# Edmonton Area B: Ownship at 53.5503, -113.5200 heading North (moves ~160m during telemetry)
+# Intruder INT-C02 (C-GDEF, Piper PA-28): starts at 53.5500, -113.5640 heading East
+# Initial separation: ~2.9 km (mainly longitudinal), 13m vertical
+# Crossing point: ~53.5500, -113.5200 at ~T+58s, CPA ~122m horizontal
+# Per ASTM F3442 integration test plan scenario A2
+
+00:00:00.00>POLY EDM_A2_BOX 53.5400,-113.5740 53.5400,-113.4660 53.5850,-113.4660 53.5850,-113.5740
+00:00:00.00>COLOR EDM_A2_BOX 0,255,0
+
+00:00:00.00>TRAILS ON
+00:00:00.00>RESO OFF
+00:00:00.00>RTF 10
+00:00:00.00>PAN 53.5510,-113.5200
+00:00:00.00>-
+
+# Intruder INT-C02: Piper PA-28, Mode C, heading 090 (East) at 350 ft, 97 kts
+# ICAO: C0D3E4, Call Sign: C-GDEF
+00:00:00.00>CRE INTA2,P28A,53.5500,-113.5640,090,350,97
+00:00:00.00>INTA2 ADDWPT 53.5500,-113.5200
+00:00:00.00>INTA2 ADDWPT 53.5500,-113.4760
+
+00:01:40.00>HOLD

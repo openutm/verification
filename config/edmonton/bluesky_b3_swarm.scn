@@ -1,0 +1,66 @@
+# BlueSky Scenario B3: Intruder Swarm — Stress Test (5 Cooperative Intruders)
+# Edmonton Area: Ownship hovering at 53.5600°N, -113.5400°W, 100m AGL (328 ft)
+#
+# All 5 intruders created at T=0 to maximise concurrent load:
+#   INT-C01 (Cessna 172)     from North at 40 m/s (78 kts),  110m AGL (361 ft)  — 10m offset → WARNING
+#   INT-C02 (Piper PA-28)    from East  at 45 m/s (87 kts),  120m AGL (394 ft)  — 20m offset → WARNING
+#   INT-C03 (Bell 206)       from South at 30 m/s (58 kts),  100m AGL (328 ft)  —  0m offset → WARNING
+#   INT-C04 (Cirrus SR22)    from West  at 55 m/s (107 kts), 130m AGL (427 ft)  — 30m offset → WARNING
+#   INT-C05 (Air Tractor)    from NE    at 35 m/s (68 kts),  115m AGL (377 ft)  — 15m offset → WARNING
+#
+# All vertical offsets ≤ 30.5m (NMAC vertical) so all intruders reach WARNING.
+# Objective: verify system handles 5 simultaneous alerts at 1Hz processing rate
+# with stable memory and correct lifecycle resolution per ASTM F3442.
+#
+# Per ASTM F3442 integration test plan scenario B3
+
+00:00:00.00>POLY EDM_B3_BOX 53.5200,-113.6000 53.5200,-113.4800 53.6000,-113.4800 53.6000,-113.6000
+00:00:00.00>COLOR EDM_B3_BOX 0,255,0
+
+00:00:00.00>TRAILS ON
+00:00:00.00>RESO OFF
+00:00:00.00>RTF 10
+00:00:00.00>PAN 53.5600,-113.5400
+00:00:00.00>-
+
+# === INT-C01: Cessna 172 from North ===
+# ICAO: C0A1B2, Call Sign: C-GABC
+# 110m AGL (361 ft), heading 180° (South), 40 m/s (78 kts)
+# Starts ~3.3 km north of ownship
+00:00:00.00>CRE INTB3A,C172,53.5900,-113.5400,180,361,78
+00:00:00.00>INTB3A ADDWPT 53.5600,-113.5400
+00:00:00.00>INTB3A ADDWPT 53.5300,-113.5400
+
+# === INT-C02: Piper PA-28 from East ===
+# ICAO: C0D3E4, Call Sign: C-GDEF
+# 120m AGL (394 ft), heading 270° (West), 45 m/s (87 kts)
+# Starts ~3.3 km east of ownship
+00:00:00.00>CRE INTB3B,P28A,53.5600,-113.4900,270,394,87
+00:00:00.00>INTB3B ADDWPT 53.5600,-113.5400
+00:00:00.00>INTB3B ADDWPT 53.5600,-113.5900
+
+# === INT-C03: Bell 206 from South ===
+# ICAO: C0F5G6, Call Sign: C-GHIJ
+# 100m AGL (328 ft), heading 000° (North), 30 m/s (58 kts)
+# Starts ~3.3 km south of ownship — same altitude as ownship
+00:00:00.00>CRE INTB3C,B206,53.5300,-113.5400,000,328,58
+00:00:00.00>INTB3C ADDWPT 53.5600,-113.5400
+00:00:00.00>INTB3C ADDWPT 53.5900,-113.5400
+
+# === INT-C04: Cirrus SR22 from West ===
+# ICAO: A1B2C3, Call Sign: N12345
+# 130m AGL (427 ft), heading 090° (East), 55 m/s (107 kts)
+# Starts ~3.3 km west of ownship
+00:00:00.00>CRE INTB3D,SR22,53.5600,-113.5900,090,427,107
+00:00:00.00>INTB3D ADDWPT 53.5600,-113.5400
+00:00:00.00>INTB3D ADDWPT 53.5600,-113.4900
+
+# === INT-C05: Air Tractor AT-502 from NE ===
+# ICAO: C0H7I8, Call Sign: C-FXYZ
+# 115m AGL (377 ft), heading 225° (SW), 35 m/s (68 kts)
+# Starts ~3.3 km NE of ownship (~2.3 km N, ~2.3 km E)
+00:00:00.00>CRE INTB3E,C208,53.5810,-113.5050,225,377,68
+00:00:00.00>INTB3E ADDWPT 53.5600,-113.5400
+00:00:00.00>INTB3E ADDWPT 53.5390,-113.5750
+
+00:03:30.00>HOLD
