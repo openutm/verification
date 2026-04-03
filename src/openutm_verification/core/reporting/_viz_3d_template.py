@@ -164,13 +164,20 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         scene.background = new THREE.Color(0x121212);
 
         const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 50000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', stencil: false });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio || 1);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         root.appendChild(renderer.domElement);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
+        controls.dampingFactor = 0.01;
+        controls.minDistance = 1;
+        controls.maxDistance = 50000;
+        controls.zoomSpeed = 1.2;
+        controls.rotateSpeed = 0.35;
+        controls.minPolarAngle = 0.3;
+        controls.maxPolarAngle = Math.PI * 0.48;
 
         scene.add(new THREE.AmbientLight(0xffffff, 0.55));
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
@@ -180,6 +187,29 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         scene.add(new THREE.AxesHelper(120));
 
         /* ── Helpers ── */
+        /* Binary search: returns count of points with t <= tSec (O(log N), zero alloc) */
+        function getTrailEndIndex(track, tSec) {
+            let lo = 0, hi = track.length;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                track[mid].t <= tSec ? lo = mid + 1 : hi = mid;
+            }
+            return lo;
+        }
+        /* Pre-allocate a Float32Array position buffer for a track */
+        function buildTrackGeometry(track) {
+            const positions = new Float32Array(track.length * 3);
+            for (let i = 0; i < track.length; i++) {
+                positions[i * 3] = track[i].x;
+                positions[i * 3 + 1] = track[i].y;
+                positions[i * 3 + 2] = track[i].z;
+            }
+            const geom = new THREE.BufferGeometry();
+            geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geom.setDrawRange(0, 0);
+            return geom;
+        }
+        /* Legacy helpers kept for one-off use (velocity calc) */
         const getTrail = (track, tSec) => track.filter((p) => p.t <= tSec);
         const pointsToVectors = (points) => points.map((p) => new THREE.Vector3(p.x, p.y, p.z));
 
@@ -187,7 +217,8 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         let activeOwnshipIdx = 0;
         const ownshipObjects = DATA.ownships.map((ownship, idx) => {
             const color = new THREE.Color(ownship.color);
-            const line = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color }));
+            const geom = buildTrackGeometry(ownship.track);
+            const line = new THREE.Line(geom, new THREE.LineBasicMaterial({ color }));
             scene.add(line);
             const marker = new THREE.Mesh(new THREE.SphereGeometry(9, 20, 20), new THREE.MeshStandardMaterial({ color }));
             marker.visible = false;
@@ -232,7 +263,8 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         const ALERT_COLORS = { 3: 0xff5252, 2: 0xff9800, 1: 0x82b1ff, 0: 0xb0bec5 };
         const intruderObjects = DATA.intruders.map((intruder) => {
             const color = new THREE.Color(intruder.color);
-            const line = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color }));
+            const geom = buildTrackGeometry(intruder.points);
+            const line = new THREE.Line(geom, new THREE.LineBasicMaterial({ color }));
             const marker = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 16), new THREE.MeshStandardMaterial({ color }));
             marker.visible = false;
             scene.add(line);
@@ -249,7 +281,7 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
             sprite.visible = false;
             scene.add(sprite);
 
-            return { intruder, line, marker, sprite, labelCanvas: canvas, labelCtx: ctx, labelTexture: texture, defaultColor: color.clone() };
+            return { intruder, line, marker, sprite, labelCanvas: canvas, labelCtx: ctx, labelTexture: texture, defaultColor: color.clone(), _lastAlertLevel: null, _lastEventType: null };
         });
 
         /* ── WC / NMAC volumes (one pair per ownship — always visible) ── */
@@ -320,20 +352,20 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         });
 
         function getOneSecVelocity(track, currentT) {
-            const trail = getTrail(track, currentT);
-            if (trail.length === 0) return null;
-            const p0 = trail[trail.length - 1];
-            const ahead = getTrail(track, currentT + 1);
-            if (ahead.length > trail.length) {
-                const p1 = ahead[ahead.length - 1];
+            const endIdx = getTrailEndIndex(track, currentT);
+            if (endIdx === 0) return null;
+            const p0 = track[endIdx - 1];
+            const aheadIdx = getTrailEndIndex(track, currentT + 1);
+            if (aheadIdx > endIdx) {
+                const p1 = track[aheadIdx - 1];
                 const dt = p1.t - p0.t;
                 if (dt > 0) {
                     const s = 1 / dt;
                     return new THREE.Vector3((p1.x - p0.x) * s, (p1.y - p0.y) * s, (p1.z - p0.z) * s);
                 }
             }
-            if (trail.length >= 2) {
-                const pPrev = trail[trail.length - 2];
+            if (endIdx >= 2) {
+                const pPrev = track[endIdx - 2];
                 const dt = p0.t - pPrev.t;
                 if (dt > 0) {
                     const s = 1 / dt;
@@ -370,8 +402,8 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
             const minZ = Math.min(...zs), maxZ = Math.max(...zs);
             const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, cz = (minZ + maxZ) / 2;
             const size = Math.max(maxX - minX, maxY - minY, maxZ - minZ, 180);
-            camera.position.set(cx + size * 1.35, cy + size * 0.8, cz + size * 0.9);
-            controls.target.set(cx, cy, cz);
+            camera.position.set(cx + size * 0.09, cy + size * 0.07, cz + size * 0.08);
+            controls.target.set(cx - size * 0.1, cy, cz);
         }
 
         /* ── DOM refs ── */
@@ -399,7 +431,6 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         /* ── Playback state ── */
         let currentLogIndex = 0;
         let isPlaying = false;
-        let timer = null;
         let playSpeed = 300;
 
         /* ── Alert level helpers (ASTM F3442 §8.4.5 compliant) ── */
@@ -472,25 +503,28 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
             }
         });
 
-        /* ── §8.2.6 / §8.2.7: Per-intruder state accumulator (ownship-aware) ── */
+        /* ── §8.2.6 / §8.2.7: Per-intruder state accumulator (ownship-aware, incremental) ── */
+        let _stateCache = { logIndex: -1, ownFilter: null, states: new Map() };
+
         function getIntruderStates(logIndex) {
-            const states = new Map();
             const of = filterState.ownship;
-            for (let i = 0; i <= logIndex && i < unifiedTimeline.length; i++) {
+            /* Reset cache on seek-backward or filter change */
+            if (logIndex < _stateCache.logIndex || of !== _stateCache.ownFilter) {
+                _stateCache = { logIndex: -1, ownFilter: of, states: new Map() };
+            }
+            for (let i = _stateCache.logIndex + 1; i <= logIndex && i < unifiedTimeline.length; i++) {
                 const entry = unifiedTimeline[i];
                 if (entry._source !== 'incident') continue;
-                // Only lifecycle events contribute to intruder state — periodic_update
-                // entries carry instantaneous geometry that would overwrite predictive
-                // alert levels. See hud_data_alignment_plan.md Change 1.
                 if ((entry.event_type || '').toLowerCase() === 'periodic_update') continue;
                 const icao = entry.intruder_icao;
                 if (!icao) continue;
                 if (of !== null && entry.ownship_label && entry.ownship_label !== of) continue;
                 const ownLabel = entry.ownship_label || '';
                 const key = multiOwnship ? (icao + '|' + ownLabel) : icao;
-                states.set(key, { ...entry, _lastSeenIndex: i, _key: key, _ownLabel: ownLabel });
+                _stateCache.states.set(key, { ...entry, _lastSeenIndex: i, _key: key, _ownLabel: ownLabel });
             }
-            return states;
+            _stateCache.logIndex = logIndex;
+            return _stateCache.states;
         }
 
         /* ── Shared filter infrastructure (ownship row + intruder row) ── */
@@ -747,9 +781,11 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
             feed.innerHTML = html || '<div style="opacity:0.5;font-size:12px">No AMQP messages yet.</div>';
         }
 
-        /* ── Update intruder label sprite ── */
-        function updateIntruderLabel(obj, alertLevel, eventType) {
-            const meta = getLevelMeta(alertLevel, eventType);
+        /* ── Update intruder label sprite (cached — only redraws on alert level change) ── */
+        function updateIntruderLabel(obj) {
+            if (obj._labelDrawn) return;
+            obj._labelDrawn = true;
+
             const ctx = obj.labelCtx;
             const canvas = obj.labelCanvas;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -758,16 +794,16 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
             ctx.roundRect(0, 0, canvas.width, canvas.height, 8);
             ctx.fill();
             ctx.font = 'bold 22px Arial';
-            ctx.fillStyle = meta.color;
+            ctx.fillStyle = '#e0e0e0';
             ctx.textAlign = 'center';
-            ctx.fillText(meta.icon + ' ' + obj.intruder.icao, canvas.width / 2, 28);
-            ctx.font = '16px Arial';
-            ctx.fillText(meta.label, canvas.width / 2, 52);
+            ctx.fillText(obj.intruder.icao, canvas.width / 2, 38);
             obj.labelTexture.needsUpdate = true;
-
-            const colorVal = ALERT_COLORS[Number(alertLevel)] || obj.defaultColor.getHex();
-            obj.marker.material.color.set(colorVal);
         }
+
+        /* ── Dirty-flag tracking for HUD panels ── */
+        let _lastHudLogIndex = -1;
+        let _lastHudOwnFilter = undefined;
+        let _lastHudIntFilter = undefined;
 
         /* ── Main frame update (log-index based) ── */
         function updateFrame(logIndex) {
@@ -783,11 +819,11 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
             for (let i = 0; i < ownshipObjects.length; i++) {
                 const obj = ownshipObjects[i];
                 const isVisible = filterState.ownship === null || ownshipLabels[i] === filterState.ownship;
-                const trail = getTrail(obj.ownship.track, currentT);
-                const point = trail.length ? trail[trail.length - 1] : null;
+                const trailEnd = getTrailEndIndex(obj.ownship.track, currentT);
+                const point = trailEnd > 0 ? obj.ownship.track[trailEnd - 1] : null;
 
                 obj.line.visible = isVisible;
-                if (isVisible) obj.line.geometry.setFromPoints(pointsToVectors(trail));
+                if (isVisible) obj.line.geometry.setDrawRange(0, trailEnd);
 
                 if (point && isVisible) {
                     obj.marker.visible = true;
@@ -827,19 +863,18 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
             for (let iIdx = 0; iIdx < intruderObjects.length; iIdx++) {
                 const obj = intruderObjects[iIdx];
                 const isVisible = filterState.intruder === null || obj.intruder.icao === filterState.intruder;
-                const trail = getTrail(obj.intruder.points, currentT);
-                const point = trail.length ? trail[trail.length - 1] : null;
+                const trailEnd = getTrailEndIndex(obj.intruder.points, currentT);
+                const point = trailEnd > 0 ? obj.intruder.points[trailEnd - 1] : null;
 
                 obj.line.visible = isVisible;
-                if (isVisible) obj.line.geometry.setFromPoints(pointsToVectors(trail));
+                if (isVisible) obj.line.geometry.setDrawRange(0, trailEnd);
 
                 if (point && isVisible) {
                     obj.marker.visible = true;
                     obj.marker.position.set(point.x, point.y, point.z);
                     obj.sprite.visible = true;
                     obj.sprite.position.set(point.x, point.y + 25, point.z);
-                    const state = intruderStates.get(obj.intruder.icao);
-                    updateIntruderLabel(obj, state ? state.alert_level : 0, state ? state.event_type : null);
+                    updateIntruderLabel(obj);
                     const vel = getOneSecVelocity(obj.intruder.points, currentT);
                     setArrowFromVelocity(intruderArrows[iIdx], obj.marker.position, vel);
                 } else {
@@ -849,11 +884,19 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
                 }
             }
 
-            /* HUD updates */
-            updateIntruderRoster(currentLogIndex);
-            updateAlertTimeline(currentLogIndex);
-            updateIncidentFeed(currentLogIndex);
-            updateAmqpFeed(currentLogIndex);
+            /* HUD updates — only rebuild DOM when data actually changed */
+            const hudDirty = currentLogIndex !== _lastHudLogIndex
+                || filterState.ownship !== _lastHudOwnFilter
+                || filterState.intruder !== _lastHudIntFilter;
+            if (hudDirty) {
+                _lastHudLogIndex = currentLogIndex;
+                _lastHudOwnFilter = filterState.ownship;
+                _lastHudIntFilter = filterState.intruder;
+                updateIntruderRoster(currentLogIndex);
+                updateAlertTimeline(currentLogIndex);
+                updateIncidentFeed(currentLogIndex);
+                updateAmqpFeed(currentLogIndex);
+            }
         }
 
         /* ── Navigation: jump to next/previous second ── */
@@ -876,18 +919,10 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
             updateFrame(bestIdx);
         }
 
-        /* ── Playback controls ── */
+        /* ── Playback controls (rAF-driven, delta-time based) ── */
         function setPlaying(playing) {
             isPlaying = playing;
             playPauseBtn.textContent = isPlaying ? '\\u23f8 Pause' : '\\u25b6 Play';
-            if (timer) clearInterval(timer);
-            timer = null;
-            if (isPlaying) {
-                timer = setInterval(() => {
-                    if (currentLogIndex >= logCount - 1) { setPlaying(false); return; }
-                    updateFrame(currentLogIndex + 1);
-                }, playSpeed);
-            }
         }
 
         playPauseBtn.addEventListener('click', () => setPlaying(!isPlaying));
@@ -897,7 +932,6 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         nextSecBtn.addEventListener('click', () => jumpToNextSecond(1));
         speedSelect.addEventListener('change', (e) => {
             playSpeed = Number(e.target.value);
-            if (isPlaying) { setPlaying(false); setPlaying(true); }
         });
         slider.addEventListener('input', (e) => updateFrame(Number(e.target.value)));
         window.addEventListener('resize', () => {
@@ -909,12 +943,27 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         /* ── Initial render ── */
         updateFrame(0);
 
-        const renderLoop = () => {
+        let _lastRenderTime = 0;
+        let _accumulatedTime = 0;
+
+        const renderLoop = (timestamp) => {
+            const delta = timestamp - _lastRenderTime;
+            _lastRenderTime = timestamp;
+
+            if (isPlaying && delta < 500) {
+                _accumulatedTime += delta;
+                if (_accumulatedTime >= playSpeed) {
+                    _accumulatedTime -= playSpeed;
+                    if (currentLogIndex < logCount - 1) updateFrame(currentLogIndex + 1);
+                    else setPlaying(false);
+                }
+            }
+
             controls.update();
             renderer.render(scene, camera);
             requestAnimationFrame(renderLoop);
         };
-        renderLoop();
+        requestAnimationFrame(renderLoop);
     </script>
 </body>
 </html>
