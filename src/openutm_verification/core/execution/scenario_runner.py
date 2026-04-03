@@ -153,6 +153,8 @@ class ScenarioContext:
     @classmethod
     def add_air_traffic_data(cls, data: list[FlightObservationSchema]) -> None:
         state = _scenario_state.get()
+        # Intentionally skip state.active check — air traffic data should be
+        # recorded for the full flight path, including during teardown/background steps.
         if state:
             state.air_traffic_data.extend(data)
 

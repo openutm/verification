@@ -1,4 +1,5 @@
 import asyncio
+import random
 import uuid
 
 from loguru import logger
@@ -23,6 +24,11 @@ class CommonClient:
     ) -> list[RIDAircraftState]:
         """Generate telemetry states from a trajectory file for scenario reuse."""
         return generate_telemetry(config_path=config_path, duration=duration, reference_time=reference_time)
+
+    @scenario_step("Generate Random Number")
+    async def generate_random_number(self, min: int = 0, max: int = 5) -> int:
+        """Generates a random number."""
+        return random.randint(min, max)
 
     @scenario_step("Wait X seconds")
     async def wait(self, duration: int = 5) -> str:

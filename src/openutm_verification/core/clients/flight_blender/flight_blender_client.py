@@ -1,5 +1,6 @@
 import asyncio
 import bisect
+import copy
 import json
 import math
 import random
@@ -95,7 +96,7 @@ def _create_rid_operator_details(operation_id: str) -> RIDOperatorDetails:
 def _contextualize_telemetry_state(state: RIDAircraftState) -> RIDAircraftState:
     """Clone a telemetry state and replace its timestamp with the current wall clock."""
     wall_clock_iso = arrow.now().isoformat()
-    context_state = RIDAircraftState(**dict(state))
+    context_state = copy.copy(state)
     context_state.timestamp = Time(value=wall_clock_iso, format="RFC3339")
     return context_state
 
