@@ -1,0 +1,9 @@
+name: bluesky_sim_air_traffic_data_latency_issues
+description: F3623 Blue Sky dataset with latency issues test
+steps:
+- step: Stream Air Traffic
+  id: stream_air_traffic
+  arguments:
+    provider: bluesky
+    target: flight_blender
+    data_quality: latency

@@ -31,15 +31,12 @@ steps:
     arguments:
       declaration_id: ${{ steps.setup_c1_declarations.result.declarations[1].id }}
       state: ACTIVATED
-  - id: generate_c1_traffic
-    step: Generate BlueSky Simulation Air Traffic Data
+  - id: stream_c1_traffic
+    step: Stream Air Traffic
     arguments:
+      provider: bluesky
       config_path: config/edmonton/bluesky_c1_shared_intruder.scn
       duration: 210
-  - id: submit_c1_traffic
-    step: Submit Simulated Air Traffic
-    arguments:
-      observations: ${{ steps.generate_c1_traffic.result }}
     background: true
   - step: Wait X seconds
     arguments:
@@ -78,7 +75,7 @@ steps:
     needs:
       - submit_alpha_telemetry
       - submit_bravo_telemetry
-      - submit_c1_traffic
+      - stream_c1_traffic
   - id: end_bravo
     step: Update Operation State of declaration
     arguments:
@@ -87,7 +84,7 @@ steps:
     needs:
       - submit_alpha_telemetry
       - submit_bravo_telemetry
-      - submit_c1_traffic
+      - stream_c1_traffic
   - step: Stop AMQP Queue Monitor
     needs:
       - end_alpha

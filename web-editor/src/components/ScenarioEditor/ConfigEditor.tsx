@@ -483,8 +483,8 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                             <input
                                 type="number"
                                 className={styles.paramInput}
-                                value={config.blue_sky_air_traffic_simulator_settings?.simulation_duration_seconds || 30}
-                                onChange={(e) => updateBlueSkyAirTrafficSimulator('simulation_duration_seconds', parseInt(e.target.value))}
+                                value={config.blue_sky_air_traffic_simulator_settings?.simulation_duration || 30}
+                                onChange={(e) => updateBlueSkyAirTrafficSimulator('simulation_duration', parseInt(e.target.value))}
                                 min="1"
                                 max="3600"
                             />
@@ -561,8 +561,8 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                             <input
                                 type="number"
                                 className={styles.paramInput}
-                                value={config.bayesian_air_traffic_simulator_settings?.simulation_duration_seconds || 30}
-                                onChange={(e) => updateBayesianAirTrafficSimulator('simulation_duration_seconds', parseInt(e.target.value))}
+                                value={config.bayesian_air_traffic_simulator_settings?.simulation_duration || 30}
+                                onChange={(e) => updateBayesianAirTrafficSimulator('simulation_duration', parseInt(e.target.value))}
                                 min="1"
                                 max="3600"
                             />

@@ -81,7 +81,7 @@ class GeoJSONAirtrafficSimulator:
         sensor_ids: list[UUID],
         number_of_aircraft: int = 1,
         use_multiple_sensors: bool = False,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """Generate simulated air traffic observations for the specified duration.
 
         Creates random flight trajectories within the configured geographic bounds
@@ -94,9 +94,8 @@ class GeoJSONAirtrafficSimulator:
             use_multiple_sensors: If True, randomly assign sensor IDs from the list.
 
         Returns:
-            A list of flights, where each flight is a list of ``FlightObservationSchema``
-            instances containing position, altitude, and metadata for each generated
-            data point.
+            A flat list of ``FlightObservationSchema`` instances containing position,
+            altitude, and metadata for each generated data point across all aircraft.
         """
         logger.info(f"Generating air traffic data for {duration} seconds with {'multiple' if use_multiple_sensors else 'single'} sensor(s)")
         all_trajectories = []
@@ -106,11 +105,10 @@ class GeoJSONAirtrafficSimulator:
             trajectory_geojson = generate_random_geojson("LineString", boundingBox=self.box.bounds, numberVertices=duration)
             all_trajectories.append(trajectory_geojson)
 
-        all_air_traffic: list[list[FlightObservationSchema]] = []
+        all_air_traffic: list[FlightObservationSchema] = []
         for trajectory_geojson in all_trajectories:
             # A GeoJSON LineString has 'coordinates' as a list of [lon, lat] pairs
             coordinates = trajectory_geojson["coordinates"]
-            airtraffic: list[FlightObservationSchema] = []
             icao_address = "".join(random.choices("0123456789ABCDEF", k=6))
             # Each coordinate corresponds to one second of flight time
             for i, point in enumerate(coordinates):
@@ -122,7 +120,7 @@ class GeoJSONAirtrafficSimulator:
                 metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
                 # Convert altitude from meters to millimeters for altitude_mm field
                 altitude_m = self.config.altitude_of_ground_level_wgs_84
-                airtraffic.append(
+                all_air_traffic.append(
                     FlightObservationSchema(
                         lat_dd=point[1],
                         lon_dd=point[0],
@@ -134,8 +132,7 @@ class GeoJSONAirtrafficSimulator:
                         metadata=metadata,
                     )
                 )
-            all_air_traffic.append(airtraffic)
-        logger.info(f"Generated observations for {len(all_air_traffic)} aircraft")
+        logger.info(f"Generated {len(all_air_traffic)} observations for {number_of_aircraft} aircraft")
         return all_air_traffic
 
 

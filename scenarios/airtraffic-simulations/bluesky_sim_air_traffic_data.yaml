@@ -1,0 +1,8 @@
+name: bluesky_sim_air_traffic_data
+description: Blue Sky test
+steps:
+- step: Stream Air Traffic
+  id: stream_air_traffic
+  arguments:
+    provider: bluesky
+    target: flight_blender

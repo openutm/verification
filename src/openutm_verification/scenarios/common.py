@@ -1,4 +1,5 @@
 import json
+import random
 import uuid
 from pathlib import Path
 
@@ -79,3 +80,9 @@ def get_geo_fence_path(geo_fence_filename: str) -> str:
 async def generate_uuid() -> str:
     """Generates a random UUID."""
     return str(uuid.uuid4())
+
+
+@scenario_step("Generate Random Number")
+async def generate_random_number(min: int = 0, max: int = 5) -> int:
+    """Generates a random number."""
+    return random.randint(min, max)

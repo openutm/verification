@@ -22,6 +22,7 @@ from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 from openutm_verification.core.clients.opensky.base_client import OpenSkyError
 from openutm_verification.core.execution.dependency_resolution import DEPENDENCIES
+from openutm_verification.core.flight_phase import FlightPhase
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
     Status,
@@ -56,7 +57,7 @@ class ScenarioState:
     flight_declarations_data: list[FlightDeclaration] = field(default_factory=list)
     flight_declaration_via_operational_intent_data: FlightDeclarationViaOperationalIntent | None = None
     telemetry_data: list[RIDAircraftState] | None = None
-    air_traffic_data: list[list[FlightObservationSchema]] = field(default_factory=list)
+    air_traffic_data: list[FlightObservationSchema] = field(default_factory=list)
     added_results: Queue[StepResult[Any]] = field(default_factory=Queue)
 
     @property
@@ -153,7 +154,7 @@ class ScenarioContext:
     def add_air_traffic_data(cls, data: list[FlightObservationSchema]) -> None:
         state = _scenario_state.get()
         if state:
-            state.air_traffic_data.append(data)
+            state.air_traffic_data.extend(data)
 
     @property
     def state(self) -> ScenarioState | None:
@@ -197,7 +198,7 @@ class ScenarioContext:
         return state.telemetry_data if state else None
 
     @property
-    def air_traffic_data(self) -> list[list[FlightObservationSchema]]:
+    def air_traffic_data(self) -> list[FlightObservationSchema]:
         if self._state:
             return self._state.air_traffic_data
         state = _scenario_state.get()
@@ -205,10 +206,11 @@ class ScenarioContext:
 
 
 class ScenarioStepDescriptor:
-    def __init__(self, func: Callable[..., Awaitable[Any]], step_name: str):
+    def __init__(self, func: Callable[..., Awaitable[Any]], step_name: str, phase: FlightPhase | None = None):
         self.func = func
         self.step_name = step_name
-        self.wrapper = self._create_wrapper(func, step_name)
+        self.phase = phase
+        self.wrapper = self._create_wrapper(func, step_name, phase)
         self.param_model = self._create_param_model(func, step_name)
 
     def _create_param_model(self, func: Callable[..., Any], step_name: str) -> type[BaseModel]:
@@ -239,17 +241,20 @@ class ScenarioStepDescriptor:
             **fields,
         )
 
-    def _create_wrapper(self, func: Callable[..., Awaitable[Any]], step_name: str) -> Callable[..., Awaitable[Any]]:
+    def _create_wrapper(self, func: Callable[..., Awaitable[Any]], step_name: str, phase: FlightPhase | None = None) -> Callable[..., Awaitable[Any]]:
         def handle_result(result: Any, start_time: float) -> StepResult[Any]:
             duration = time.time() - start_time
             logger.info(f"Step '{step_name}' successful in {duration:.2f} seconds.")
 
             step_result: StepResult[Any]
             if isinstance(result, StepResult):
+                if result.phase is None and phase is not None:
+                    result.phase = phase
                 step_result = result
             else:
                 step_result = StepResult(
                     name=step_name,
+                    phase=phase,
                     status=Status.PASS,
                     duration=duration,
                     result=result,
@@ -265,6 +270,7 @@ class ScenarioStepDescriptor:
                 logger.error(f"Step '{step_name}' failed after {duration:.2f} seconds: {e}")
                 step_result = StepResult(
                     name=step_name,
+                    phase=phase,
                     status=Status.FAIL,
                     duration=duration,
                     error_message=str(e),
@@ -273,6 +279,7 @@ class ScenarioStepDescriptor:
                 logger.error(f"Step '{step_name}' encountered an unexpected error after {duration:.2f} seconds: {e}")
                 step_result = StepResult(
                     name=step_name,
+                    phase=phase,
                     status=Status.FAIL,
                     duration=duration,
                     error_message=f"Unexpected error: {e}",
@@ -317,6 +324,7 @@ class ScenarioStepDescriptor:
         # Attach metadata for introspection
         setattr(async_wrapper, "_is_scenario_step", True)
         setattr(async_wrapper, "_step_name", step_name)
+        setattr(async_wrapper, "_step_phase", phase)
 
         return async_wrapper
 
@@ -337,8 +345,8 @@ class ScenarioStepDescriptor:
         return self.wrapper(*args, **kwargs)
 
 
-def scenario_step(step_name: str) -> Callable[[Callable[..., Awaitable[Any]]], Any]:
+def scenario_step(step_name: str, phase: FlightPhase | None = None) -> Callable[[Callable[..., Awaitable[Any]]], Any]:
     def decorator(func: Callable[..., Awaitable[Any]]) -> Any:
-        return ScenarioStepDescriptor(func, step_name)
+        return ScenarioStepDescriptor(func, step_name, phase)
 
     return decorator

@@ -60,14 +60,14 @@ class OpenSkyProvider:
     async def get_observations(
         self,
         duration: int | None = None,
-    ) -> list[list["FlightObservationSchema"]]:
+    ) -> list["FlightObservationSchema"]:
         """Fetch observations from OpenSky Network.
 
         Args:
             duration: Override duration in seconds (currently single fetch).
 
         Returns:
-            List containing a single observation list (all aircraft in one batch).
+            Flat list of observations across all aircraft.
             Returns empty list if no data available.
         """
         # Get OpenSky config from application settings
@@ -80,9 +80,8 @@ class OpenSkyProvider:
         )
 
         async with OpenSkyClient(settings) as client:
-            observations = await client.fetch_data()
+            observations = (await client.fetch_data()).result
             if observations is None:
                 return []
-            # Wrap flat list in outer list for interface consistency
-            # OpenSky returns all aircraft in a single list, not grouped by aircraft
-            return [observations]
+            # OpenSky returns all aircraft in a single flat list
+            return observations

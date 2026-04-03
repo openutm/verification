@@ -1,0 +1,11 @@
+name: opensky_live_data
+description: Fetch live flight data from OpenSky and submit to Flight Blender.
+
+steps:
+  - step: Stream Air Traffic
+    id: stream_opensky
+    arguments:
+      provider: opensky
+      target: flight_blender
+    loop:
+      count: 5

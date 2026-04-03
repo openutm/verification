@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { X } from 'lucide-react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { X, Copy, Check } from 'lucide-react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
 import panelStyles from '../../styles/SidebarPanel.module.css';
 import styles from '../../styles/BottomPanel.module.css';
@@ -50,6 +50,17 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
     const { panelHeight, isResizing, startResizing } = useBottomPanelResize();
     const [activeTab, setActiveTab] = useState<'output' | 'logs'>('output');
     const [logLevel, setLogLevel] = useState<string>('ALL');
+    const [copied, setCopied] = useState(false);
+    const copyTimeoutRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (copyTimeoutRef.current !== null) {
+                clearTimeout(copyTimeoutRef.current);
+                copyTimeoutRef.current = null;
+            }
+        };
+    }, []);
 
     const result = selectedNode?.data?.result;
     const nodeLogs = (selectedNode?.data as { logs?: string[] } | undefined)?.logs;
@@ -66,9 +77,97 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
         });
     }, [logs, logLevel]);
 
+    const handleCopy = useCallback(() => {
+        let textToCopy = '';
+        if (activeTab === 'output' && result !== null && result !== undefined) {
+            textToCopy = JSON.stringify(result, null, 2);
+        } else if (activeTab === 'logs' && filteredLogs.length > 0) {
+            textToCopy = filteredLogs.join('\n');
+        }
+        if (!textToCopy) return;
+
+        const handleSuccess = () => {
+            if (copyTimeoutRef.current !== null) {
+                clearTimeout(copyTimeoutRef.current);
+                copyTimeoutRef.current = null;
+            }
+            setCopied(true);
+            copyTimeoutRef.current = window.setTimeout(() => {
+                setCopied(false);
+                copyTimeoutRef.current = null;
+            }, 2000);
+        };
+
+        const handleFailure = (message: string, error?: unknown) => {
+            if (copyTimeoutRef.current !== null) {
+                clearTimeout(copyTimeoutRef.current);
+                copyTimeoutRef.current = null;
+            }
+            if (error !== undefined) {
+                console.error(message, error);
+            } else {
+                console.error(message);
+            }
+        };
+
+        const fallbackCopy = () => {
+            try {
+                const textarea = document.createElement('textarea');
+                textarea.value = textToCopy;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'absolute';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                const selection = document.getSelection();
+                const selected = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+                textarea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                if (selected && selection) {
+                    selection.removeAllRanges();
+                    selection.addRange(selected);
+                }
+                if (successful) {
+                    handleSuccess();
+                } else {
+                    handleFailure('Fallback copy using document.execCommand("copy") reported failure.');
+                }
+            } catch (error) {
+                handleFailure('Exception during fallback copy.', error);
+            }
+        };
+
+        if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            navigator.clipboard.writeText(textToCopy)
+                .then(handleSuccess)
+                .catch((error) => {
+                    handleFailure('navigator.clipboard.writeText failed; attempting fallback.', error);
+                    fallbackCopy();
+                });
+        } else {
+            fallbackCopy();
+        }
+    }, [activeTab, result, filteredLogs]);
+
+    const canCopy = activeTab === 'output' ? result !== null && result !== undefined : filteredLogs.length > 0;
+
     if (!selectedNode) return null;
 
     const { status, label } = selectedNode.data;
+
+    // Extract background and text color based on status
+    let statusBgColor = 'var(--bg-secondary)';
+    let statusTextColor = 'var(--text-secondary)';
+    if (status === 'success') {
+        statusBgColor = 'rgba(34, 197, 94, 0.12)'; // soft green background
+        statusTextColor = 'var(--success)';
+    } else if (status === 'failure') {
+        statusBgColor = 'rgba(239, 68, 68, 0.12)'; // soft red background
+        statusTextColor = 'var(--danger)';
+    } else if (status === 'skipped') {
+        statusBgColor = 'var(--bg-tertiary)';
+        statusTextColor = 'var(--text-tertiary)';
+    }
 
     return (
         <div className={layoutStyles.bottomPanel} style={{ height: panelHeight, position: 'relative' }}>
@@ -87,14 +186,8 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
                                 fontSize: '10px',
                                 padding: '2px 6px',
                                 borderRadius: '4px',
-                                backgroundColor: status === 'success' ? 'var(--success-bg)' :
-                                                 status === 'failure' ? 'var(--danger-bg)' :
-                                                 status === 'skipped' ? 'var(--bg-tertiary)' :
-                                                 'var(--bg-secondary)',
-                                color: status === 'success' ? 'var(--success)' :
-                                       status === 'failure' ? 'var(--danger)' :
-                                       status === 'skipped' ? 'var(--text-tertiary)' :
-                                       'var(--text-secondary)',
+                                backgroundColor: statusBgColor,
+                                color: statusTextColor,
                                 border: '1px solid currentColor'
                             }}>
                                 {status.toUpperCase()}
@@ -111,18 +204,40 @@ export const BottomPanel = ({ selectedNode, onClose }: BottomPanelProps) => {
                 </div>
 
                 <div className={styles.tabContainer}>
-                    <button
-                        className={`${styles.tab} ${activeTab === 'output' ? styles.activeTab : ''}`}
-                        onClick={() => setActiveTab('output')}
-                    >
-                        Output Data
-                    </button>
-                    <button
-                        className={`${styles.tab} ${activeTab === 'logs' ? styles.activeTab : ''}`}
-                        onClick={() => setActiveTab('logs')}
-                    >
-                        Logs {logs && logs.length > 0 && `(${logs.length})`}
-                    </button>
+                    <div className={styles.tabGroup}>
+                        <button
+                            className={`${styles.tab} ${activeTab === 'output' ? styles.activeTab : ''}`}
+                            onClick={() => setActiveTab('output')}
+                        >
+                            Output Data
+                        </button>
+                        <button
+                            className={`${styles.tab} ${activeTab === 'logs' ? styles.activeTab : ''}`}
+                            onClick={() => setActiveTab('logs')}
+                        >
+                            Logs {logs && logs.length > 0 && `(${logs.length})`}
+                        </button>
+                    </div>
+                    {canCopy && (
+                        <button
+                            className={`${styles.copyButton} ${copied ? styles.copyButtonSuccess : ''}`}
+                            onClick={handleCopy}
+                            aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
+                            type="button"
+                        >
+                            {copied ? (
+                                <>
+                                    <Check size={14} />
+                                    <span>Copied!</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Copy size={14} />
+                                    <span>Copy</span>
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
 
                 <div className={styles.content}>

@@ -1,0 +1,37 @@
+name: verify_sdsp_metrics
+description: Verify that the SDSP is correctly reporting metrics based on submitted air traffic data.
+steps:
+- id: stream_air_traffic
+  step: Stream Air Traffic
+  description: Generate and submit Bayesian air traffic data in the background.
+  arguments:
+    provider: bayesian
+    target: flight_blender
+  background: true
+- id: wait_1_seconds
+  step: Wait X seconds
+  arguments:
+    duration: 1
+- id: generated_sdsp_session_id
+  description: Generate a unique session ID for this test run, this is used to create a SDSP session, the default.yaml config
+  step: Generate UUID
+- id: start_sdsp_session
+  step: Start SDSP Session
+  arguments:
+    session_id: ${{ steps.generated_sdsp_session_id.result }}
+- id: wait_10_seconds
+  step: Wait X seconds
+  arguments:
+    duration: 10
+- step: Verify Reported Metrics in Flight Blender
+  needs:
+    - stream_air_traffic
+  arguments:
+    observations: ${{ steps.stream_air_traffic.result.observations }}
+    # session_id: ${{ steps.generated_sdsp_session_id.result }}
+- id: stop_sdsp_session
+  step: Stop SDSP Session
+  arguments:
+    session_id: ${{ steps.generated_sdsp_session_id.result }}
+  needs:
+  - stream_air_traffic

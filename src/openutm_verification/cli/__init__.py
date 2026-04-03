@@ -65,6 +65,9 @@ def main():
     session_manager = SessionManager(config_path=str(config_path))
     session_manager.config = config
     session_manager.config_path = config_path
+    session_manager.current_output_dir = output_dir
+    session_manager.current_timestamp_str = timestamp_str
+    session_manager.current_start_time = run_timestamp
 
     # SessionManager._load_config() replaces ConfigProxy with a fresh config from
     # the file, discarding CLI overrides like target_suites. Re-apply them.

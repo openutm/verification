@@ -31,7 +31,7 @@ class AirTrafficProvider(Protocol):
     async def get_observations(
         self,
         duration: int | None = None,
-    ) -> list[list["FlightObservationSchema"]]:
+    ) -> list["FlightObservationSchema"]:
         """Get observation batches for the configured duration.
 
         Args:
@@ -39,7 +39,6 @@ class AirTrafficProvider(Protocol):
                 If None, uses provider's default configuration.
 
         Returns:
-            List of observation lists - outer list is per aircraft/track,
-            inner list is the time series of observations.
+            Flat list of flight observations across all aircraft/tracks.
         """
         ...

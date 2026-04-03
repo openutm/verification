@@ -26,14 +26,12 @@ steps:
   - step: Update Operation State
     arguments:
       state: ACTIVATED
-  - id: generate_b2_traffic
-    step: Generate BlueSky Simulation Air Traffic Data
+  - id: stream_b2_traffic
+    step: Stream Air Traffic
     arguments:
+      provider: bluesky
       config_path: config/edmonton/bluesky_b2_staggered.scn
       duration: 180
-  - step: Submit Simulated Air Traffic
-    arguments:
-      observations: ${{ steps.generate_b2_traffic.result }}
     background: true
   - id: wait_traffic_start
     step: Wait X seconds
@@ -49,7 +47,7 @@ steps:
       state: ENDED
     needs:
       - Submit Telemetry
-      - Submit Simulated Air Traffic
+      - stream_b2_traffic
   - step: Stop AMQP Queue Monitor
     needs:
       - update_state_ended

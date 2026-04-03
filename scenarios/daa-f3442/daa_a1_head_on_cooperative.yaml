@@ -1,38 +1,31 @@
-name: daa_b1_multi_intruder_cooperative
+name: daa_a1_head_on_cooperative
 description: >
-  ASTM F3442 Category B1 - Two Intruders, Different Directions (Cooperative).
-  Verifies handling of simultaneous intruders approaching from opposite bearings.
-  Ownship hovering at 53.5300°N, -113.5600°W, 120m AGL.
-  Intruder 1 (Cessna 172) from North at 40 m/s (78 kts), 130m AGL.
-  Intruder 2 (Bell 206) from South at 30 m/s (58 kts), 110m AGL.
-  Initial separations: ~4.0 km (north), ~3.5 km (south).
-  Expects two distinct ProximityAlert records with independent lifecycle.
-  Edmonton flight area (within inclusion zone, outside all exclusion zones).
+  ASTM F3442 Category A1 - Head-On Cooperative Encounter.
+  Verifies basic detection, alert escalation, CPA logging, and 1Hz incident logging
+  for a head-on geometry with a cooperative intruder (Cessna 172, ADS-B Out).
+  Edmonton Area B (suburban), ~4.2 km initial separation, 22m vertical offset.
 
 steps:
   - step: Check AMQP Connection
   - step: Cleanup Flight Declarations
   - step: Setup Flight Declaration
     arguments:
-      flight_declaration_path: config/edmonton/flight_declaration_b1_multi_intruder.json
-      trajectory_path: config/edmonton/trajectory_b1_multi_intruder_ownship.json
-      telemetry_duration: 140
+      flight_declaration_path: config/edmonton/flight_declaration_a1_head_on.json
+      trajectory_path: config/edmonton/trajectory_a1_head_on_ownship.json
   - step: Start AMQP Queue Monitor
     arguments:
       routing_key: ${{ steps.Setup Flight Declaration.result.id }}
-      duration: 180
+      duration: 130
     background: true
   - step: Update Operation State
     arguments:
       state: ACTIVATED
-  - id: generate_b1_traffic
-    step: Generate BlueSky Simulation Air Traffic Data
+  - id: stream_a1_traffic
+    step: Stream Air Traffic
     arguments:
-      config_path: config/edmonton/bluesky_b1_multi_intruder.scn
-      duration: 150
-  - step: Submit Simulated Air Traffic
-    arguments:
-      observations: ${{ steps.generate_b1_traffic.result }}
+      provider: bluesky
+      config_path: config/edmonton/bluesky_a1_head_on.scn
+      duration: 100
     background: true
   - id: wait_traffic_start
     step: Wait X seconds
@@ -40,7 +33,7 @@ steps:
       duration: 5
   - step: Submit Telemetry
     arguments:
-      duration: 140
+      duration: 95
     background: true
   - id: update_state_ended
     step: Update Operation State
@@ -48,7 +41,7 @@ steps:
       state: ENDED
     needs:
       - Submit Telemetry
-      - Submit Simulated Air Traffic
+      - stream_a1_traffic
   - step: Stop AMQP Queue Monitor
     needs:
       - update_state_ended
@@ -63,20 +56,20 @@ steps:
     arguments:
       routing_key_filter: ${{ steps.Setup Flight Declaration.result.id }}
 
-  # Schema validation: checks API payloads have required fields and correct types
+  # Schema validation: checks API payloads have required fields
   - step: Verify DAA ASTM F3442 API Compliance
     arguments:
       incident_logs: ${{ steps.get_daa_incident_logs.result }}
       active_alerts: ${{ steps.get_daa_active_alerts.result }}
-      min_incident_logs: 2
+      min_incident_logs: 1
       require_alert_events: true
       require_periodic_updates: true
 
-  # B1 pass criteria: multi-intruder detection, independent lifecycle, escalation
+  # A1 pass criteria: monotonic escalation, CPA accuracy, 1Hz logging, lifecycle, geometry
   - step: Verify DAA Encounter Criteria
     arguments:
       incident_logs: ${{ steps.get_daa_incident_logs.result }}
       active_alerts: ${{ steps.get_daa_active_alerts.result }}
       expected_alert_levels: [1, 2, 3]
-      expected_geometry: any
-      max_1hz_gap_seconds: 3.0  # Two intruders increase Celery load; allow for scheduling jitter
+      expected_geometry: head_on
+      max_1hz_gap_seconds: 2.0  # Relaxed from 1.0s: Celery Beat has inherent scheduling jitter

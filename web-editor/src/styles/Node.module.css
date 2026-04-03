@@ -106,6 +106,18 @@
   margin-left: auto;
 }
 
+/* Flight phase badge */
+.phaseBadge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .loopBadge,
 .conditionBadge,
 .backgroundBadge {
@@ -176,4 +188,14 @@
 .groupContainerLabel:hover {
   background-color: rgba(255, 255, 255, 0.98);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Phase container label override */
+.phaseContainerLabel {
+  border-width: 2px;
+  border-style: solid;
+}
+
+.phaseContainerLabel:hover {
+  filter: brightness(1.05);
 }

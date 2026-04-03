@@ -1,36 +1,34 @@
-name: daa_a3_overtake_cooperative
+name: daa_a2_crossing_cooperative
 description: >
-  ASTM F3442 Category A3 - Overtake from Behind (Cooperative).
-  Verifies detection when a faster intruder overtakes ownship from behind.
-  Both aircraft heading East (090°) along 53.6200°N. Ownship at ~15 m/s,
-  intruder (Cirrus SR22) at 117 kts from 3.5 km behind. Closure rate ~45 m/s.
-  CPA at minimum horizontal separation as intruder passes.
-  Edmonton Area A (rural), 7m vertical offset (100m vs 107m AGL).
+  ASTM F3442 Category A2 - Crossing Trajectory Cooperative Encounter.
+  Verifies detection for perpendicular crossing geometry with a cooperative
+  intruder (Piper PA-28, Mode C). Ownship starts south of intruder path at
+  53.5475°N heading North at ~12 m/s, intruder heading East at 53.5500°N
+  from 2.9 km west at ~77 m/s. Ownship converges toward crossing point.
+  CPA ~110m horizontal at T+32s. Edmonton Area B (suburban), 13m vertical offset.
 
 steps:
   - step: Check AMQP Connection
   - step: Cleanup Flight Declarations
   - step: Setup Flight Declaration
     arguments:
-      flight_declaration_path: config/edmonton/flight_declaration_a3_overtake.json
-      trajectory_path: config/edmonton/trajectory_a3_overtake_ownship.json
-      telemetry_duration: 110
+      flight_declaration_path: config/edmonton/flight_declaration_a2_crossing.json
+      trajectory_path: config/edmonton/trajectory_a2_crossing_ownship.json
+      telemetry_duration: 80
   - step: Start AMQP Queue Monitor
     arguments:
       routing_key: ${{ steps.Setup Flight Declaration.result.id }}
-      duration: 150
+      duration: 110
     background: true
   - step: Update Operation State
     arguments:
       state: ACTIVATED
-  - id: generate_a3_traffic
-    step: Generate BlueSky Simulation Air Traffic Data
+  - id: stream_a2_traffic
+    step: Stream Air Traffic
     arguments:
-      config_path: config/edmonton/bluesky_a3_overtake.scn
-      duration: 120
-  - step: Submit Simulated Air Traffic
-    arguments:
-      observations: ${{ steps.generate_a3_traffic.result }}
+      provider: bluesky
+      config_path: config/edmonton/bluesky_a2_crossing.scn
+      duration: 85
     background: true
   - id: wait_traffic_start
     step: Wait X seconds
@@ -38,7 +36,7 @@ steps:
       duration: 5
   - step: Submit Telemetry
     arguments:
-      duration: 115
+      duration: 90
     background: true
   - id: update_state_ended
     step: Update Operation State
@@ -46,7 +44,7 @@ steps:
       state: ENDED
     needs:
       - Submit Telemetry
-      - Submit Simulated Air Traffic
+      - stream_a2_traffic
   - step: Stop AMQP Queue Monitor
     needs:
       - update_state_ended
@@ -70,11 +68,11 @@ steps:
       require_alert_events: true
       require_periodic_updates: true
 
-  # A3 pass criteria: overtake geometry detection, CPA, lifecycle, escalation
+  # A2 pass criteria: crossing geometry detection, CPA, lifecycle, escalation
   - step: Verify DAA Encounter Criteria
     arguments:
       incident_logs: ${{ steps.get_daa_incident_logs.result }}
       active_alerts: ${{ steps.get_daa_active_alerts.result }}
       expected_alert_levels: [1, 2, 3]
-      expected_geometry: overtake
-      max_1hz_gap_seconds: 3.0  # Overtake has longer encounter; rare Celery gaps up to ~2.9s observed
+      expected_geometry: crossing
+      max_1hz_gap_seconds: 2.0  # Relaxed from 1.0s: Celery Beat has inherent scheduling jitter

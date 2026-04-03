@@ -1,0 +1,9 @@
+name: openutm_sim_air_traffic_data
+description: Generate simulated air traffic data using GeoJSON provider and submit to Flight Blender.
+
+steps:
+  - step: Stream Air Traffic
+    id: stream_air_traffic
+    arguments:
+      provider: geojson
+      target: flight_blender

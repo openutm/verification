@@ -1,7 +1,9 @@
 import inspect
 import re
+import types
+import typing
 from enum import Enum
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, Union, get_type_hints
 
 from openutm_verification.core.execution.dependency_resolution import DEPENDENCIES
 
@@ -13,6 +15,16 @@ def _get_type_info(annotation: Any) -> tuple[str, bool, list[dict[str, Any]] | N
     options = None
 
     if annotation != inspect.Parameter.empty:
+        # Check for union types (e.g. ProviderType | None) and extract the enum member
+        origin = typing.get_origin(annotation)
+        if origin is Union or isinstance(annotation, types.UnionType):
+            for arg in typing.get_args(annotation):
+                if inspect.isclass(arg) and issubclass(arg, Enum):
+                    is_enum = True
+                    type_str = arg.__name__
+                    options = [{"name": e.name, "value": e.value} for e in arg]
+                    return type_str, is_enum, options
+
         if inspect.isclass(annotation) and issubclass(annotation, Enum):
             is_enum = True
             type_str = annotation.__name__
@@ -72,13 +84,30 @@ def process_method(client_class: Type, method: Any) -> Dict[str, Any] | None:
 
     step_name = getattr(method, "_step_name")
     sig = inspect.signature(method)
+
+    # Resolve string annotations from `from __future__ import annotations`
+    resolved_hints: dict[str, Any] = {}
+    try:
+        unwrapped = inspect.unwrap(method)
+        resolved_hints = get_type_hints(unwrapped)
+    except Exception:
+        pass
+
     parameters = []
     for param_name, param in sig.parameters.items():
+        # Use resolved type hint if available (handles stringified annotations)
+        annotation = resolved_hints.get(param_name, param.annotation)
         # Skip dependencies that are automatically injected
-        if param.annotation in DEPENDENCIES:
+        if annotation in DEPENDENCIES:
             continue
 
-        param_info = process_parameter(param_name, param)
+        resolved_param = inspect.Parameter(
+            param_name,
+            param.kind,
+            default=param.default,
+            annotation=annotation,
+        )
+        param_info = process_parameter(param_name, resolved_param)
         if param_info:
             parameters.append(param_info)
 
@@ -88,4 +117,5 @@ def process_method(client_class: Type, method: Any) -> Dict[str, Any] | None:
         "category": client_class.__name__,
         "description": inspect.getdoc(method) or "",
         "parameters": parameters,
+        "phase": getattr(method, "_step_phase", None),
     }

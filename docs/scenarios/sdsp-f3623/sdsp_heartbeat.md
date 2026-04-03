@@ -10,7 +10,7 @@
 The scenario executes the following sequence of steps:
 
 ### 1. Start SDSP Session
-- **Step:** `Start/Stop SDSP Session (START)`
+- **Step:** `Start SDSP Session`
 - **Action:** Initiates a new SDSP session with a unique UUID.
 - **Context:** Signals the beginning of a data provision session.
 
@@ -33,6 +33,6 @@ The scenario executes the following sequence of steps:
 - **Context:** Provides the time window for the heartbeat verification to collect data and confirm the count.
 
 ### 5. Stop SDSP Session
-- **Step:** `Start/Stop SDSP Session (STOP)`
+- **Step:** `Stop SDSP Session`
 - **Action:** Terminates the SDSP session.
 - **Purpose:** Cleanly closes the connection.

@@ -12,39 +12,60 @@ import dagre from '@dagrejs/dagre';
 import type { Operation, NodeData } from '../types/scenario';
 import { LAYOUT_CONFIG, COMMON_NODE_DEFAULTS, COMMON_EDGE_OPTIONS, getGroupHeight, GROUP_CONFIG } from '../utils/layoutConfig';
 
-const getLayoutedElements = (nodes: Node<NodeData>[], edges: Edge[], direction = LAYOUT_CONFIG.direction) => {
+export const getLayoutedElements = (nodes: Node<NodeData>[], edges: Edge[], direction = LAYOUT_CONFIG.direction) => {
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
     dagreGraph.setGraph({ rankdir: direction, nodesep: LAYOUT_CONFIG.nodeSep, ranksep: LAYOUT_CONFIG.rankSep });
 
+    // Identify container IDs so we can exclude their children from dagre
+    const containerIds = new Set(nodes.filter(n => n.data.isGroupContainer).map(n => n.id));
+
+    // Pre-compute child counts for containers
+    const childCounts = new Map<string, number>();
+    for (const id of containerIds) {
+        childCounts.set(id, nodes.filter(n => n.parentId === id).length);
+    }
+
     for (const node of nodes) {
+        // Skip children of containers — they will be positioned relative to parent
+        if (node.parentId && containerIds.has(node.parentId)) continue;
+
         let width = LAYOUT_CONFIG.nodeWidth;
         let height = LAYOUT_CONFIG.nodeHeight;
 
         if (node.data.isGroupContainer) {
-            // Calculate dynamic height based on children
-            const childCount = nodes.filter(n => n.parentId === node.id).length;
-            height = getGroupHeight(childCount);
+            height = getGroupHeight(childCounts.get(node.id) ?? 0);
             width = GROUP_CONFIG.width;
         }
 
         dagreGraph.setNode(node.id, { width, height });
     }
 
+    // Only add edges between nodes that are in the dagre graph
     for (const edge of edges) {
-        dagreGraph.setEdge(edge.source, edge.target);
+        if (dagreGraph.hasNode(edge.source) && dagreGraph.hasNode(edge.target)) {
+            dagreGraph.setEdge(edge.source, edge.target);
+        }
     }
 
     dagre.layout(dagreGraph);
 
     const layoutedNodes = nodes.map((node) => {
+        // Children of containers keep their relative positions
+        if (node.parentId && containerIds.has(node.parentId)) {
+            return { ...node, ...COMMON_NODE_DEFAULTS };
+        }
+
         const nodeWithPosition = dagreGraph.node(node.id);
+        const isContainer = node.data.isGroupContainer;
+        const w = isContainer ? GROUP_CONFIG.width : LAYOUT_CONFIG.nodeWidth;
+        const h = isContainer ? getGroupHeight(childCounts.get(node.id) ?? 0) : LAYOUT_CONFIG.nodeHeight;
         return {
             ...node,
             ...COMMON_NODE_DEFAULTS,
             position: {
-                x: nodeWithPosition.x - (node.data.isGroupContainer ? GROUP_CONFIG.width : LAYOUT_CONFIG.nodeWidth) / 2,
-                y: nodeWithPosition.y - (node.data.isGroupContainer ? getGroupHeight(nodes.filter(n => n.parentId === node.id).length) : LAYOUT_CONFIG.nodeHeight) / 2,
+                x: nodeWithPosition.x - w / 2,
+                y: nodeWithPosition.y - h / 2,
             },
         };
     });
@@ -129,6 +150,7 @@ export const useScenarioGraph = (initialNodesParams: Node<NodeData>[] = [], init
                         label: type,
                         operationId: opId,
                         description: operation?.description,
+                        phase: operation?.phase,
                         parameters: operation?.parameters ? JSON.parse(JSON.stringify(operation.parameters)) : [], // Deep copy parameters
                     },
                 };

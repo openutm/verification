@@ -52,19 +52,21 @@ def main():
 
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
 
-    for yaml_file in SCENARIOS_DIR.glob("*.yaml"):
-        print(f"Processing {yaml_file.name}...")
+    for yaml_file in sorted(SCENARIOS_DIR.rglob("*.yaml")):
+        relative = yaml_file.relative_to(SCENARIOS_DIR)
+        print(f"Processing {relative}...")
         try:
             with open(yaml_file, "r") as f:
                 data = yaml.safe_load(f)
 
             if not data:
-                print(f"Skipping empty file: {yaml_file.name}")
+                print(f"Skipping empty file: {relative}")
                 continue
 
             md_content = generate_markdown(data)
 
-            md_filename = DOCS_DIR / yaml_file.with_suffix(".md").name
+            md_filename = (DOCS_DIR / relative).with_suffix(".md")
+            md_filename.parent.mkdir(parents=True, exist_ok=True)
             with open(md_filename, "w") as f:
                 f.write(md_content)
 

@@ -14,6 +14,7 @@ from openutm_verification.core.clients.flight_blender.base_client import (
     BaseBlenderAPIClient,
 )
 from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.core.flight_phase import FlightPhase
 from openutm_verification.simulator.geo_json_telemetry import (
     GeoJSONAirtrafficSimulator,
 )
@@ -33,7 +34,7 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
         # but we inherit from it. Ideally, we should refactor to composition over inheritance.
         BaseBlenderAPIClient.__init__(self, base_url="", credentials={})
 
-    @scenario_step("Fetch Session IDs")
+    @scenario_step("Fetch Session IDs", phase=FlightPhase.PRE_FLIGHT)
     async def get_configured_session_ids(
         self,
     ) -> list[UUID]:
@@ -54,12 +55,12 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
             raise
         return session_ids
 
-    @scenario_step("Generate Simulated Air Traffic Data")
+    @scenario_step("Generate Simulated Air Traffic Data", phase=FlightPhase.PRE_FLIGHT)
     async def generate_simulated_air_traffic_data(
         self,
         config_path: str | None = None,
         duration: int | None = None,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """Generate simulated air traffic data from GeoJSON configuration.
 
         Loads GeoJSON data from the specified config path and uses it to generate
@@ -105,28 +106,26 @@ class AirTrafficClient(BaseAirTrafficAPIClient, BaseBlenderAPIClient):
             logger.error(f"Failed to generate telemetry states from {config_path}: {exc}")
             raise
 
-    @scenario_step("Generate Simulated Air Traffic Data with Latency")
+    @scenario_step("Generate Simulated Air Traffic Data with Latency", phase=FlightPhase.PRE_FLIGHT)
     async def generate_simulated_air_traffic_data_with_latency(
         self,
         config_path: str | None = None,
         duration: int | None = None,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """This method, simulates a adding latency to the flight observations list"""
-        flight_observations = self.generate_simulated_air_traffic_data(config_path=config_path, duration=duration)
+        step_result = await self.generate_simulated_air_traffic_data(config_path=config_path, duration=duration)
+        flight_observations = step_result.result
         LATENCY_PROBABILITY = 0.1  # 10% chance to have latency issues
         TIMESTAMP_SHIFT_RANGE_SECONDS = (-1, 2.5)  # Shift timestamps by -5 to +5 seconds
 
         modified_flight_observations = []
-        for track_observations in flight_observations:
-            modified_track_observations = []
-            for obs in track_observations:
-                if random.random() < LATENCY_PROBABILITY:
-                    # Simulate latency by removing some observations
-                    if random.random() < 0.5:  # 50% chance to remove observation
-                        continue
-                    # Simulate timestamp shift
-                    shift_seconds = random.uniform(*TIMESTAMP_SHIFT_RANGE_SECONDS)
-                    obs.timestamp += int(shift_seconds * 1000)  # Convert seconds to milliseconds
-                modified_track_observations.append(obs)
-            modified_flight_observations.append(modified_track_observations)
+        for obs in flight_observations:
+            if random.random() < LATENCY_PROBABILITY:
+                # Simulate latency by removing some observations
+                if random.random() < 0.5:  # 50% chance to remove observation
+                    continue
+                # Simulate timestamp shift
+                shift_seconds = random.uniform(*TIMESTAMP_SHIFT_RANGE_SECONDS)
+                obs = obs.model_copy(update={"timestamp": obs.timestamp + int(shift_seconds * 1000)})
+            modified_flight_observations.append(obs)
         return modified_flight_observations

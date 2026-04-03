@@ -23,11 +23,12 @@ import { BottomPanel } from './ScenarioEditor/BottomPanel';
 import { Header } from './ScenarioEditor/Header';
 import { ScenarioInfoPanel } from './ScenarioEditor/ScenarioInfoPanel';
 
-import { useScenarioGraph } from '../hooks/useScenarioGraph';
+import { useScenarioGraph, getLayoutedElements } from '../hooks/useScenarioGraph';
 import { useScenarioRunner } from '../hooks/useScenarioRunner';
 import { useScenarioFile } from '../hooks/useScenarioFile';
 import { convertGraphToYaml, convertYamlToGraph } from '../utils/scenarioConversion';
 import { createWaitEdge } from '../utils/edgeStyles';
+import { applyPhaseGrouping } from '../utils/phaseGrouping';
 
 const nodeTypes: NodeTypes = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,7 +73,7 @@ const ScenarioEditorContent = () => {
         },
         blue_sky_air_traffic_simulator_settings: {
             number_of_aircraft: 3,
-            simulation_duration_seconds: 30,
+            simulation_duration: 30,
             single_or_multiple_sensors: "multiple",
             sensor_ids: ["562e6297036a4adebb4848afcd1ede90"]
         }
@@ -128,6 +129,12 @@ const ScenarioEditorContent = () => {
     const [scenarioListRefreshKey, setScenarioListRefreshKey] = useState(0);
     const [isDirty, setIsDirty] = useState(initialState.isDirty);
     const [reportError, setReportError] = useState<{ title: string; message: string } | null>(null);
+    const [groupedByPhase, setGroupedByPhase] = useState(false);
+    const groupedByPhaseRef = useRef(groupedByPhase);
+
+    useEffect(() => {
+        groupedByPhaseRef.current = groupedByPhase;
+    }, [groupedByPhase]);
 
     const incrementScenarioListRefreshKey = useCallback(() => {
         setScenarioListRefreshKey(prev => prev + 1);
@@ -202,8 +209,13 @@ const ScenarioEditorContent = () => {
     );
 
     const loadScenarioFromYaml = useCallback((newNodes: Node<NodeData>[], newEdges: Edge[], newConfig?: ScenarioConfig, newGroups?: Record<string, GroupDefinition>, newDescription?: string) => {
-        setNodes(newNodes);
         setEdges(newEdges);
+        // If phase grouping is active, apply it to the incoming nodes
+        if (groupedByPhaseRef.current) {
+            setNodes(applyPhaseGrouping(newNodes, newEdges));
+        } else {
+            setNodes(newNodes);
+        }
         if (newConfig) {
             setCurrentScenarioConfig(newConfig);
         }
@@ -676,6 +688,61 @@ const ScenarioEditorContent = () => {
         setIsDirty(true);
     }, [selectedNodes, edges, operations, nodes, setNodes, setEdges, setCurrentScenarioGroups]);
 
+    const toggleGroupByPhase = useCallback(() => {
+        setGroupedByPhase(prev => {
+            const willGroup = !prev;
+
+            if (willGroup) {
+                setNodes(currentNodes => {
+                    return applyPhaseGrouping(currentNodes, edgesRef.current);
+                });
+
+                globalThis.requestAnimationFrame(() => {
+                    reactFlowInstance?.fitView({ padding: 0.2, duration: 400 });
+                });
+            } else {
+                // Ungroup: remove phase containers, restore nodes to top-level
+                setNodes(currentNodes => {
+                    const phaseContainerIds = new Set(
+                        currentNodes.filter(n => n.data.isPhaseContainer).map(n => n.id)
+                    );
+
+                    if (phaseContainerIds.size === 0) return currentNodes;
+
+                    const result: Node<NodeData>[] = [];
+                    for (const node of currentNodes) {
+                        if (node.data.isPhaseContainer) continue; // remove phase containers
+
+                        if (node.parentId && phaseContainerIds.has(node.parentId)) {
+                            // Restore to top-level with absolute position
+                            const parent = currentNodes.find(n => n.id === node.parentId);
+                            const absX = (parent?.position.x ?? 0) + node.position.x;
+                            const absY = (parent?.position.y ?? 0) + node.position.y;
+                            result.push({
+                                ...node,
+                                parentId: undefined,
+                                position: { x: absX, y: absY },
+                            });
+                        } else {
+                            result.push(node);
+                        }
+                    }
+
+                    // Re-layout ungrouped nodes
+                    const currentEdges = edgesRef.current;
+                    const { nodes: layoutedNodes } = getLayoutedElements(result, currentEdges, 'TB');
+                    return layoutedNodes;
+                });
+
+                globalThis.requestAnimationFrame(() => {
+                    reactFlowInstance?.fitView({ padding: 0.2, duration: 400 });
+                });
+            }
+
+            return willGroup;
+        });
+    }, [setNodes, reactFlowInstance]);
+
     const onDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
@@ -1046,6 +1113,8 @@ const ScenarioEditorContent = () => {
                 onRun={handleRun}
                 onStop={handleStop}
                 isRunning={isRunning}
+                groupedByPhase={groupedByPhase}
+                onToggleGroupByPhase={toggleGroupByPhase}
             />
 
             <div className={layoutStyles.workspace}>
@@ -1124,7 +1193,7 @@ const ScenarioEditorContent = () => {
                                             Group Selection
                                         </button>
                                     )}
-                                    {selectedNode?.data.isGroupContainer && (
+                                    {selectedNode?.data.isGroupContainer && !selectedNode?.data.isPhaseContainer && (
                                         <button
                                             onClick={ungroupSelectedNode}
                                             style={{

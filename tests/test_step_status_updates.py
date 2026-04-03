@@ -43,7 +43,7 @@ class TestStepStatusOnException:
         session_manager.session_context = mock_context
         session_manager.session_resolver = MagicMock()
 
-        step = StepDefinition(id="test_step", step="Submit Air Traffic", arguments={"observations": None})
+        step = StepDefinition(id="test_step", step="Stream Air Traffic", arguments={"provider": "opensky", "target": "flight_blender"})
 
         # Simulate a validation error by making _execute_step raise
         with patch.object(session_manager, "_execute_step") as mock_execute:
@@ -117,8 +117,8 @@ class TestGroupStepStatusUpdates:
                 "my_group": GroupDefinition(
                     description="Test group",
                     steps=[
-                        StepDefinition(id="step1", step="Fetch OpenSky Data"),
-                        StepDefinition(id="step2", step="Submit Air Traffic", arguments={"observations": []}),
+                        StepDefinition(id="step1", step="Stream Air Traffic", arguments={"provider": "opensky", "target": "flight_blender"}),
+                        StepDefinition(id="step2", step="Wait X seconds", arguments={"duration": 1}),
                         StepDefinition(id="step3", step="Wait X seconds", arguments={"duration": 1}),
                     ],
                 )
@@ -201,11 +201,11 @@ class TestGroupStepStatusUpdates:
                 "my_group": GroupDefinition(
                     description="Test group",
                     steps=[
-                        StepDefinition(id="fetch", step="Fetch OpenSky Data"),
+                        StepDefinition(id="fetch", step="Stream Air Traffic", arguments={"provider": "opensky", "target": "flight_blender"}),
                         StepDefinition(
                             id="submit",
-                            step="Submit Air Traffic",
-                            arguments={"observations": []},
+                            step="Wait X seconds",
+                            arguments={"duration": 1},
                             if_condition="steps.fetch.result != None",
                         ),
                         StepDefinition(id="wait", step="Wait X seconds", arguments={"duration": 1}),
@@ -290,11 +290,11 @@ class TestGroupContextReferenceResolution:
                 "my_group": GroupDefinition(
                     description="Test group",
                     steps=[
-                        StepDefinition(id="fetch", step="Fetch OpenSky Data"),
+                        StepDefinition(id="fetch", step="Stream Air Traffic", arguments={"provider": "opensky", "target": "flight_blender"}),
                         StepDefinition(
                             id="submit",
-                            step="Submit Air Traffic",
-                            arguments={"observations": "${{ steps.fetch.result }}"},
+                            step="Wait X seconds",
+                            arguments={"duration": 1},
                         ),
                     ],
                 )

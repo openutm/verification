@@ -9,20 +9,6 @@ from typing import (
 from loguru import logger
 
 from openutm_verification.auth.providers import get_auth_provider
-from openutm_verification.core.clients.air_traffic.air_traffic_client import (
-    AirTrafficClient,
-)
-from openutm_verification.core.clients.air_traffic.base_client import (
-    AirTrafficSettings,
-    BayesianAirTrafficSettings,
-    BlueSkyAirTrafficSettings,
-)
-from openutm_verification.core.clients.air_traffic.bayesian_air_traffic_client import (
-    BayesianTrafficClient,
-)
-from openutm_verification.core.clients.air_traffic.blue_sky_client import (
-    BlueSkyClient,
-)
 from openutm_verification.core.clients.amqp import (
     AMQPClient,
     AMQPSettings,
@@ -31,10 +17,6 @@ from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import (
     FlightBlenderClient,
 )
-from openutm_verification.core.clients.opensky.base_client import (
-    OpenSkySettings,
-)
-from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
 from openutm_verification.core.execution.config_models import (
     AppConfig,
     DataFiles,
@@ -174,25 +156,6 @@ async def flight_blender_client(config: AppConfig, data_files: DataFiles) -> Asy
         yield fb_client
 
 
-@dependency(OpenSkyClient)
-async def opensky_client(config: AppConfig) -> AsyncGenerator[OpenSkyClient, None]:
-    """Provides an OpenSkyClient instance for dependency injection."""
-    settings = OpenSkySettings.from_config(config.opensky)
-    async with OpenSkyClient(settings) as client:
-        yield client
-
-
-@dependency(AirTrafficClient)
-async def air_traffic_client(config: AppConfig, data_files: DataFiles) -> AsyncGenerator[AirTrafficClient, None]:
-    """Provides an AirTrafficClient instance for dependency injection."""
-    settings = AirTrafficSettings.from_config(
-        config.air_traffic_simulator_settings,
-        trajectory_path=data_files.trajectory,
-    )
-    async with AirTrafficClient(settings) as client:
-        yield client
-
-
 @dependency(SessionManager)
 async def session_manager() -> AsyncGenerator[SessionManager, None]:
     yield SessionManager()
@@ -201,28 +164,6 @@ async def session_manager() -> AsyncGenerator[SessionManager, None]:
 @dependency(CommonClient)
 async def common_client() -> AsyncGenerator[CommonClient, None]:
     yield CommonClient()
-
-
-@dependency(BlueSkyClient)
-async def bluesky_client(config: AppConfig, data_files: DataFiles) -> AsyncGenerator[BlueSkyClient, None]:
-    """Provides a BlueSkyClient instance for dependency injection."""
-    settings = BlueSkyAirTrafficSettings.from_config(
-        config.blue_sky_air_traffic_simulator_settings,
-        simulation_path=data_files.simulation,
-    )
-    async with BlueSkyClient(settings) as client:
-        yield client
-
-
-@dependency(BayesianTrafficClient)
-async def bayesian_air_traffic_client(config: AppConfig, data_files: DataFiles) -> AsyncGenerator[BayesianTrafficClient, None]:
-    """Provides a BayesianTrafficClient instance for dependency injection."""
-    settings = BayesianAirTrafficSettings.from_config(
-        config.bayesian_air_traffic_simulator_settings,
-        simulation_path=data_files.simulation,
-    )
-    async with BayesianTrafficClient(settings) as client:
-        yield client
 
 
 @dependency(AMQPClient)

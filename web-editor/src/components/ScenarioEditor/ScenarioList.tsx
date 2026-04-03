@@ -54,6 +54,21 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
 
     const hasSuites = Object.keys(suites).length > 0;
 
+    const folderGroups = useMemo(() => {
+        const map: Record<string, string[]> = {};
+        for (const scenario of scenarios) {
+            const parts = scenario.split('/');
+            const folder = parts.length > 1 ? parts.slice(0, -1).join('/') : '';
+            if (!map[folder]) map[folder] = [];
+            map[folder].push(scenario);
+        }
+        return Object.entries(map).sort(([a], [b]) => {
+            if (a === '') return -1;
+            if (b === '') return 1;
+            return a.localeCompare(b);
+        });
+    }, [scenarios]);
+
     const groupedScenarios = useMemo(() => {
         const suiteNames = Object.keys(suites).sort((a, b) => a.localeCompare(b));
         const scenarioSet = new Set(scenarios);
@@ -109,25 +124,28 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
         }
     };
 
-    const renderScenarioItem = (name: string) => (
-        <div
-            key={name}
-            className={styles.nodeItem}
-            onClick={() => handleLoad(name)}
-            role="button"
-            tabIndex={0}
-            title={name}
-            style={{
-                cursor: 'pointer',
-                opacity: loading ? 0.5 : 1,
-                borderColor: name === currentScenarioName ? 'var(--accent-primary)' : 'var(--border-color)',
-                backgroundColor: name === currentScenarioName ? 'var(--bg-secondary)' : 'var(--bg-primary)'
-            }}
-        >
-            <FileText size={16} color={name === currentScenarioName ? "var(--accent-primary)" : "#8b949e"} />
-            <span>{name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-        </div>
-    );
+    const renderScenarioItem = (name: string) => {
+        const displayName = name.split('/').pop() ?? name;
+        return (
+            <button
+                key={name}
+                type="button"
+                className={styles.nodeItem}
+                onClick={() => handleLoad(name)}
+                title={name}
+                disabled={loading}
+                style={{
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.5 : 1,
+                    borderColor: name === currentScenarioName ? 'var(--accent-primary)' : 'var(--border-color)',
+                    backgroundColor: name === currentScenarioName ? 'var(--bg-secondary)' : 'var(--bg-primary)'
+                }}
+            >
+                <FileText size={16} color={name === currentScenarioName ? "var(--accent-primary)" : "#8b949e"} />
+                <span>{displayName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+            </button>
+        );
+    };
 
     return (
         <div>
@@ -146,6 +164,40 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
                                     type="button"
                                     className={styles.groupHeader}
                                     onClick={() => toggleSuite(suite)}
+                                    aria-expanded={!isCollapsed}
+                                    style={{ padding: '6px 4px', marginTop: 4, marginBottom: 4, background: 'none', border: 'none', width: '100%' }}
+                                >
+                                    {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                                    <FolderOpen size={14} />
+                                    {label}
+                                    <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 400, opacity: 0.7 }}>
+                                        {items.length}
+                                    </span>
+                                </button>
+                                {!isCollapsed && (
+                                    <div style={{ paddingLeft: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {items.map(renderScenarioItem)}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })
+                ) : folderGroups.some(([folder]) => folder !== '') ? (
+                    folderGroups.map(([folder, items]) => {
+                        const isCollapsed = collapsedSuites.has(`__folder__${folder}`);
+                        const label = folder === ''
+                            ? 'Root'
+                            : folder.replace(/\//g, ' / ').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        return folder === '' ? (
+                            <div key="root" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {items.map(renderScenarioItem)}
+                            </div>
+                        ) : (
+                            <div key={folder} style={{ marginBottom: '4px' }}>
+                                <button
+                                    type="button"
+                                    className={styles.groupHeader}
+                                    onClick={() => toggleSuite(`__folder__${folder}`)}
                                     aria-expanded={!isCollapsed}
                                     style={{ padding: '6px 4px', marginTop: 4, marginBottom: 4, background: 'none', border: 'none', width: '100%' }}
                                 >

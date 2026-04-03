@@ -167,7 +167,7 @@ def extract_all_geofences(
 # Air-traffic helpers
 # ---------------------------------------------------------------------------
 def reorganize_air_traffic_by_aircraft(
-    air_traffic_data: list[list[Any]],
+    air_traffic_data: list[Any],
 ) -> dict[str, list]:
     """Reorganize air traffic from timestamp-based to aircraft-based grouping.
 
@@ -175,18 +175,26 @@ def reorganize_air_traffic_by_aircraft(
     """
     aircraft_tracks: dict[str, list] = {}
 
-    for observations in air_traffic_data:
-        for obs in observations:
-            if isinstance(obs, dict):
-                icao = obs.get("icao_address", "UNKNOWN")
-            else:
-                icao = obs.icao_address
-
-            if icao not in aircraft_tracks:
-                aircraft_tracks[icao] = []
-            aircraft_tracks[icao].append(obs)
+    for obs in air_traffic_data:
+        # Flatten nested lists from legacy report format (list[list[dict]])
+        if isinstance(obs, list):
+            for inner_obs in obs:
+                _add_observation_to_tracks(aircraft_tracks, inner_obs)
+        else:
+            _add_observation_to_tracks(aircraft_tracks, obs)
 
     return aircraft_tracks
+
+
+def _add_observation_to_tracks(tracks: dict[str, list], obs: Any) -> None:
+    """Add a single observation to the aircraft tracks dict."""
+    if isinstance(obs, dict):
+        icao = obs.get("icao_address", "UNKNOWN")
+    else:
+        icao = obs.icao_address
+    if icao not in tracks:
+        tracks[icao] = []
+    tracks[icao].append(obs)
 
 
 def extract_observation_coords(obs: Any) -> tuple[float | None, float | None, float]:

@@ -57,7 +57,7 @@ def visualize_flight_path_2d(
     telemetry_data: list[RIDAircraftState],
     declaration_data: dict,
     output_html_path: Path,
-    air_traffic_data: list[list[FlightObservationSchema]] | None = None,
+    air_traffic_data: list[FlightObservationSchema] | None = None,
     well_clear_horizontal_distance_m: float | None = None,
     nmac_horizontal_distance_m: float | None = None,
     ownships: list[dict[str, Any]] | None = None,
@@ -96,6 +96,7 @@ def visualize_flight_path_2d(
 
     ownships_list = normalize_ownships_list(ownships, telemetry_data, declaration_data)
     geofence = extract_first_geofence(ownships_list)
+    all_geofences = extract_all_geofences(ownships_list, declaration_data)
 
     # Pre-process each ownship: extract coordinates
     all_coordinates: list[tuple[float, float]] = []
@@ -134,18 +135,28 @@ def visualize_flight_path_2d(
     logger.debug("Initialized Folium map")
 
     if geofence:
-        g = folium.GeoJson(geofence, style_function=lambda x: {"color": "red", "weight": 2, "fillOpacity": 0.1}, tooltip="Declared Geofence")
-        if "features" in geofence:
-            for feature in geofence.get("features", []):
-                geometry = feature.get("geometry")
-                if geometry and geometry.get("type") == "Polygon":
-                    for i, coord in enumerate(geometry["coordinates"][0][:-1]):
-                        lat, lng = coord[1], coord[0]
-                        folium.Marker(
-                            [lat, lng], popup=f"Corner {i + 1}:<br>Lat={lat}<br>Lng={lng}", icon=folium.Icon(color="purple", icon="info-sign")
-                        ).add_to(g)
-        g.add_to(flight_map)
-        logger.debug("Added geofence to map")
+        # Render all geofences when multiple ownships are present
+        geofence_colors = ["red", "blue", "green", "orange", "purple", "darkred"]
+        for gf_idx, (gf_label, gf_geo) in enumerate(all_geofences):
+            gf_color = geofence_colors[gf_idx % len(geofence_colors)]
+            g = folium.GeoJson(
+                gf_geo,
+                style_function=lambda x, c=gf_color: {"color": c, "weight": 2, "fillOpacity": 0.1},
+                tooltip=f"{gf_label} Geofence",
+            )
+            if "features" in gf_geo:
+                for feature in gf_geo.get("features", []):
+                    geometry = feature.get("geometry")
+                    if geometry and geometry.get("type") == "Polygon":
+                        for i, coord in enumerate(geometry["coordinates"][0][:-1]):
+                            lat, lng = coord[1], coord[0]
+                            folium.Marker(
+                                [lat, lng],
+                                popup=f"{gf_label} Corner {i + 1}:<br>Lat={lat}<br>Lng={lng}",
+                                icon=folium.Icon(color="purple", icon="info-sign"),
+                            ).add_to(g)
+            g.add_to(flight_map)
+        logger.debug(f"Added {len(all_geofences)} geofence(s) to map")
 
     # Draw each ownship path with a distinct color
     for label, color, path_points_with_alt, coordinates in ownship_paths:
@@ -202,14 +213,14 @@ def visualize_flight_path_2d(
 
 def _add_air_traffic_to_2d_map(
     flight_map: folium.Map,
-    air_traffic_data: list[list[FlightObservationSchema]],
+    air_traffic_data: list[FlightObservationSchema],
 ) -> None:
     """
     Adds airplane/air traffic paths to the 2D map with distinct colors.
 
     Args:
         flight_map: The Folium map to add paths to.
-        air_traffic_data: Air traffic data as list of aircraft, each with list of observations.
+        air_traffic_data: Flat list of air traffic observations.
     """
     # Reorganize data by aircraft ICAO address
     aircraft_tracks = reorganize_air_traffic_by_aircraft(air_traffic_data)
@@ -290,7 +301,7 @@ def visualize_flight_path_3d(
     telemetry_data: list[RIDAircraftState],
     declaration_data: dict,
     output_html_path: Path,
-    air_traffic_data: list[list[FlightObservationSchema]] | None = None,
+    air_traffic_data: list[FlightObservationSchema] | None = None,
     active_alerts: list[dict[str, Any]] | None = None,
     incident_logs: list[dict[str, Any]] | None = None,
     amqp_messages: list[dict[str, Any]] | None = None,

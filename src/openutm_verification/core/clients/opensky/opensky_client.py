@@ -6,6 +6,7 @@ from openutm_verification.core.clients.opensky.base_client import (
     OpenSkySettings,
 )
 from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.core.flight_phase import FlightPhase
 from openutm_verification.simulator.models.flight_data_types import (
     FlightObservationSchema,
 )
@@ -102,7 +103,7 @@ class OpenSkyClient(BaseOpenSkyAPIClient):
 
         return self.process_flight_data(flight_df)
 
-    @scenario_step("Fetch OpenSky Data")
+    @scenario_step("Fetch OpenSky Data", phase=FlightPhase.CRUISE)
     async def fetch_data(self) -> list[FlightObservationSchema] | None:
         """Fetch and process live flight data from OpenSky Network.
 

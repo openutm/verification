@@ -47,15 +47,12 @@ steps:
       state: ACTIVATED
 
   # --- Generate and submit intruder traffic (4 intruders, staggered) ---
-  - id: generate_c2_traffic
-    step: Generate BlueSky Simulation Air Traffic Data
+  - id: stream_c2_traffic
+    step: Stream Air Traffic
     arguments:
+      provider: bluesky
       config_path: config/edmonton/bluesky_c2_multi_ownship.scn
       duration: 240
-  - id: submit_c2_traffic
-    step: Submit Simulated Air Traffic
-    arguments:
-      observations: ${{ steps.generate_c2_traffic.result }}
     background: true
 
   - step: Wait X seconds
@@ -115,7 +112,7 @@ steps:
       - submit_alpha_telemetry
       - submit_bravo_telemetry
       - submit_charlie_telemetry
-      - submit_c2_traffic
+      - stream_c2_traffic
   - id: end_bravo
     step: Update Operation State of declaration
     arguments:
@@ -125,7 +122,7 @@ steps:
       - submit_alpha_telemetry
       - submit_bravo_telemetry
       - submit_charlie_telemetry
-      - submit_c2_traffic
+      - stream_c2_traffic
   - id: end_charlie
     step: Update Operation State of declaration
     arguments:
@@ -135,7 +132,7 @@ steps:
       - submit_alpha_telemetry
       - submit_bravo_telemetry
       - submit_charlie_telemetry
-      - submit_c2_traffic
+      - stream_c2_traffic
 
   - step: Stop AMQP Queue Monitor
     needs:

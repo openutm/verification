@@ -1,0 +1,8 @@
+name: bayesian_sim_air_traffic_data
+description: Bayesian simulation air traffic data test
+steps:
+- step: Stream Air Traffic
+  id: stream_air_traffic
+  arguments:
+    provider: bayesian
+    target: flight_blender

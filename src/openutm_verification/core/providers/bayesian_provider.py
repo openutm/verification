@@ -8,6 +8,7 @@ from openutm_verification.core.clients.air_traffic.base_client import (
 from openutm_verification.core.clients.air_traffic.bayesian_air_traffic_client import (
     BayesianTrafficClient,
 )
+from openutm_verification.core.reporting.reporting_models import Status
 from openutm_verification.simulator.models.flight_data_types import (
     FlightObservationSchema,
 )
@@ -70,29 +71,31 @@ class BayesianProvider:
     async def get_observations(
         self,
         duration: int | None = None,
-    ) -> list[list[FlightObservationSchema]]:
+    ) -> list[FlightObservationSchema]:
         """Generate observations using the underlying BayesianTrafficClient.
 
         Args:
             duration: Override duration in seconds.
 
         Returns:
-            List of observation lists per aircraft.
+            Flat list of observations across all aircraft.
         """
         effective_duration = duration or self._duration
 
         settings = BayesianAirTrafficSettings(
             simulation_config_path=self._config_path,
-            simulation_duration_seconds=effective_duration,
+            simulation_duration=effective_duration,
             number_of_aircraft=self._number_of_aircraft,
             sensor_ids=self._sensor_ids,
             session_ids=self._session_ids,
         )
 
         async with BayesianTrafficClient(settings) as client:
-            result = await client.generate_bayesian_sim_air_traffic_data(
+            step_result = await client.generate_bayesian_sim_air_traffic_data(
                 config_path=self._config_path,
                 duration=effective_duration,
             )
+            if step_result.status == Status.FAIL:
+                raise RuntimeError(step_result.error_message or "Bayesian generation failed")
             # Handle case where Bayesian client returns None or empty
-            return result if result else []
+            return step_result.result if step_result.result else []

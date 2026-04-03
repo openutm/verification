@@ -3,14 +3,14 @@ description: Runs the SDSP track scenario.
 steps:
 - step: Generate UUID
 - id: start_sdsp_session
-  step: Start / Stop SDSP Session
+  step: Start SDSP Session
   arguments:
     session_id: ${{ steps.Generate UUID.result }}
-    action: START
-- step: Generate Simulated Air Traffic Data
-- step: Submit Simulated Air Traffic
+- id: stream_air_traffic
+  step: Stream Air Traffic
   arguments:
-    observations: ${{ steps.Generate Simulated Air Traffic Data.result }}
+    provider: geojson
+    target: flight_blender
   background: true
 - id: wait_2_seconds
   step: Wait X seconds
@@ -26,9 +26,8 @@ steps:
   arguments:
     duration: 5
 - id: stop_sdsp_session
-  step: Start / Stop SDSP Session
+  step: Stop SDSP Session
   arguments:
     session_id: ${{ steps.Generate UUID.result }}
-    action: STOP
   needs:
-  - Submit Simulated Air Traffic
+  - stream_air_traffic
