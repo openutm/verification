@@ -5,6 +5,7 @@ import time as _time
 from unittest.mock import ANY, AsyncMock, MagicMock, mock_open, patch
 
 import pytest
+from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 from openutm_verification.core.clients.air_traffic.air_traffic_client import AirTrafficClient
 from openutm_verification.core.clients.air_traffic.base_client import SENSOR_MODE_MULTIPLE, SENSOR_MODE_SINGLE
@@ -176,11 +177,11 @@ async def test_submit_telemetry(fb_client):
     fb_client.put.return_value = mock_response
 
     states = [
-        {
-            "timestamp": "2023-10-26T12:00:00Z",
-            "timestamp_accuracy": 0.0,
-            "operational_status": "Undeclared",
-            "position": {
+        RIDAircraftState(
+            timestamp="2023-10-26T12:00:00Z",
+            timestamp_accuracy=0.0,
+            operational_status="Undeclared",
+            position={
                 "lat": 37.7749,
                 "lng": -122.4194,
                 "alt": 100.0,
@@ -189,21 +190,21 @@ async def test_submit_telemetry(fb_client):
                 "extrapolated": False,
                 "pressure_altitude": 100.0,
             },
-            "speed": 10.0,
-            "track": 90.0,
-            "speed_accuracy": "SA3mps",
-            "vertical_speed": 0.0,
-            "height": {
+            speed=10.0,
+            track=90.0,
+            speed_accuracy="SA3mps",
+            vertical_speed=0.0,
+            height={
                 "distance": 50.0,
                 "reference": "TakeoffLocation",
             },
-            "group_radius": 0,
-            "group_ceiling": 0,
-            "group_floor": 0,
-            "group_count": 1,
-            "group_time_start": "2023-10-26T12:00:00Z",
-            "group_time_end": "2023-10-26T12:00:00Z",
-        }
+            group_radius=0,
+            group_ceiling=0,
+            group_floor=0,
+            group_count=1,
+            group_time_start="2023-10-26T12:00:00Z",
+            group_time_end="2023-10-26T12:00:00Z",
+        )
     ]
     with patch("asyncio.sleep", AsyncMock()):
         result = await fb_client.submit_telemetry(states=states)
