@@ -669,8 +669,15 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
                 html += '<span class="metric-label">Bearing</span><span class="metric-value">' + fmtNum(state.bearing_deg) + '\\u00b0</span>';
                 html += '<span class="metric-label">CPA</span><span class="metric-value">' + fmtNum(state.cpa_time_seconds) + 's</span>';
                 html += '<span class="metric-label">Speed</span><span class="metric-value">' + fmtNum(state.intruder_speed_mps) + ' m/s</span>';
-                html += '<span class="metric-label">Heading</span><span class="metric-value">' + fmtNum(state.intruder_heading_deg) + '\\u00b0</span>';
-                html += '</div>';
+                html += '<span class="metric-label">Heading</span><span class="metric-value">' + fmtNum(state.intruder_heading_deg) + '\\u00b0</span>';                const am = state.avoidance_maneuver;
+                if (am && typeof am === 'object') {
+                    const amColor = am.is_feasible ? '#66bb6a' : '#ef5350';
+                    const amIcon = am.is_feasible ? '\u2705' : '\u26a0\ufe0f';
+                    html += '<span class="metric-label">Avoidance</span><span class="metric-value" style="color:' + amColor + '">' + amIcon + ' ' + (am.maneuver_type || 'n/a') + '</span>';
+                    if (am.advisory_text) {
+                        html += '<span class="metric-label">Advisory</span><span class="metric-value" style="font-size:10px">' + am.advisory_text + '</span>';
+                    }
+                }                html += '</div>';
                 html += jsonToggleHtml(state.raw || state);
                 html += '</div>';
 
@@ -709,6 +716,15 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
                 html += '<span style="opacity:0.6">t=' + evt.t + '</span> ' + meta.icon + ' ';
                 html += '<strong>' + (evt.intruder_icao || '?') + '</strong>' + ownTag + ' ';
                 html += '<span style="color:' + meta.color + '">' + evtType + '</span>' + arrow;
+                const evtAm = evt.avoidance_maneuver;
+                if (evtAm && typeof evtAm === 'object') {
+                    const amFeas = evtAm.is_feasible;
+                    const amC = amFeas ? '#66bb6a' : '#ef5350';
+                    html += '<div style="margin-left:14px;font-size:10px;color:' + amC + '">';
+                    html += (amFeas ? '\u2705' : '\u26a0\ufe0f') + ' ' + (evtAm.maneuver_type || '') + ' — ' + (evtAm.advisory_text || '');
+                    if (evtAm.predicted_min_horizontal_m != null) html += ' (sep ' + fmtNum(evtAm.predicted_min_horizontal_m, 0) + 'm)';
+                    html += '</div>';
+                }
                 html += jsonToggleHtml(evt.raw || evt);
                 html += '</div>';
             }
@@ -775,6 +791,14 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
                 const ownLabel = rkMap[evt.routing_key];
                 if (ownLabel) html += '<span class="entry-own" style="opacity:0.7">[' + ownLabel + ']</span> ';
                 html += meta.icon + ' ' + (evt.routing_key || 'amqp') + '<span style="color:' + meta.color + '">' + statusLabel + '</span>';
+                const amqpAm = (typeof bodyParsed === 'object' && bodyParsed) ? bodyParsed.avoidance_maneuver : null;
+                if (amqpAm && typeof amqpAm === 'object') {
+                    const amqpFeas = amqpAm.is_feasible;
+                    const amqpC = amqpFeas ? '#66bb6a' : '#ef5350';
+                    html += '<div style="margin-left:14px;font-size:10px;color:' + amqpC + '">';
+                    html += (amqpFeas ? '\u2705' : '\u26a0\ufe0f') + ' ' + (amqpAm.maneuver_type || '') + ': ' + (amqpAm.advisory_text || '');
+                    html += '</div>';
+                }
                 html += jsonToggleHtml(evt.raw || evt);
                 html += '</div>';
             }
