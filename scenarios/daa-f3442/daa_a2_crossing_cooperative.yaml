@@ -15,6 +15,7 @@ steps:
       flight_declaration_path: config/edmonton/flight_declaration_a2_crossing.json
       trajectory_path: config/edmonton/trajectory_a2_crossing_ownship.json
       telemetry_duration: 80
+      altitude_m: 120
   - step: Start AMQP Queue Monitor
     arguments:
       routing_key: ${{ steps.Setup Flight Declaration.result.id }}

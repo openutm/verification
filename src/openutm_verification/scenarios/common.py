@@ -36,7 +36,12 @@ def generate_flight_declaration_via_operational_intent(config_path: str) -> Flig
         raise
 
 
-def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURATION, reference_time: str | None = None) -> list[RIDAircraftState]:
+def generate_telemetry(
+    config_path: str,
+    duration: int = DEFAULT_TELEMETRY_DURATION,
+    reference_time: str | None = None,
+    altitude_m: float | None = None,
+) -> list[RIDAircraftState]:
     """Generate telemetry states from the GeoJSON config file at the given path."""
     try:
         logger.debug(f"Generating telemetry states from {relative_path(config_path)} for duration {duration} seconds")
@@ -46,11 +51,13 @@ def generate_telemetry(config_path: str, duration: int = DEFAULT_TELEMETRY_DURAT
         config_args = {"geojson": geojson_data}
         if reference_time:
             config_args["reference_time"] = StringBasedDateTime(reference_time)
+        if altitude_m is not None:
+            config_args["altitude_of_ground_level_wgs_84"] = altitude_m
 
         simulator_config = GeoJSONFlightsSimulatorConfiguration(**config_args)
         simulator = GeoJSONFlightsSimulator(simulator_config)
 
-        simulator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=120)
+        simulator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=simulator_config.altitude_of_ground_level_wgs_84)
         return simulator.generate_states(duration=duration)
     except Exception as e:
         logger.error(f"Failed to generate telemetry states from {config_path}: {e}")

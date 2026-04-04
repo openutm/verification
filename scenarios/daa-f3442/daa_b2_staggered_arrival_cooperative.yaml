@@ -18,6 +18,7 @@ steps:
       flight_declaration_path: config/edmonton/flight_declaration_b2_staggered.json
       trajectory_path: config/edmonton/trajectory_b2_staggered_ownship.json
       telemetry_duration: 170
+      altitude_m: 120
   - step: Start AMQP Queue Monitor
     arguments:
       routing_key: ${{ steps.Setup Flight Declaration.result.id }}

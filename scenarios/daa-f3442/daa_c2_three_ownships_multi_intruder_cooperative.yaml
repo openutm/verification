@@ -66,18 +66,21 @@ steps:
       config_path: config/edmonton/trajectory_c2_ownship_alpha.json
       duration: 210
       reference_time: ${{ steps.setup_c2_declarations.result.declarations[0].start_datetime }}
+      altitude_m: 120
   - id: generate_bravo_telemetry
     step: Generate Telemetry
     arguments:
       config_path: config/edmonton/trajectory_c2_ownship_bravo.json
       duration: 210
       reference_time: ${{ steps.setup_c2_declarations.result.declarations[1].start_datetime }}
+      altitude_m: 120
   - id: generate_charlie_telemetry
     step: Generate Telemetry
     arguments:
       config_path: config/edmonton/trajectory_c2_ownship_charlie.json
       duration: 210
       reference_time: ${{ steps.setup_c2_declarations.result.declarations[2].start_datetime }}
+      altitude_m: 120
 
   # --- Submit telemetry for each ownship (background) ---
   - id: submit_alpha_telemetry

@@ -761,7 +761,7 @@ async def test_setup_flight_declaration(fb_client):
         await fb_client.setup_flight_declaration("fd_path", "traj_path")
 
         mock_gen_fd.assert_called_with("fd_path")
-        mock_gen_tel.assert_called_with("traj_path", duration=30, reference_time=ANY)
+        mock_gen_tel.assert_called_with("traj_path", duration=30, reference_time=ANY, altitude_m=None)
         mock_context.set_flight_declaration_data.assert_called_with(mock_fd)
         mock_context.set_telemetry_data.assert_called_with([{"tel": "data"}])
         fb_client.upload_flight_declaration.assert_called_with(mock_fd)

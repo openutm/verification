@@ -422,10 +422,12 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         const periodicEvents = allIncidentEvents.filter(e => (e.event_type || '').toLowerCase() === 'periodic_update');
         const lifecycleEvents = allIncidentEvents.filter(e => (e.event_type || '').toLowerCase() !== 'periodic_update');
         const amqpEvents = [...(DATA.amqp_messages || [])].sort((a, b) => (a.t || 0) - (b.t || 0));
-        const allIcaos = [...new Set(allIncidentEvents.map(e => e.intruder_icao).filter(Boolean))].sort();
+        const allIcaos = [...new Set([...allIncidentEvents.map(e => e.intruder_icao).filter(Boolean), ...DATA.intruders.map(i => i.icao).filter(Boolean)])].sort();
 
         const maxT = Math.max(0, DATA.timeline.max_t || 0);
-        const logCount = unifiedTimeline.length || 1;
+        /* Time-based fallback when no DAA events exist */
+        const timeBasedMode = unifiedTimeline.length === 0 && maxT > 0;
+        const logCount = timeBasedMode ? (maxT + 1) : (unifiedTimeline.length || 1);
         slider.max = String(Math.max(0, logCount - 1));
 
         /* ── Playback state ── */
@@ -694,7 +696,7 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
             const filtered = lifecycleEvents.filter(matchesFilter);
             alertsBadge.textContent = filtered.length + '/' + lifecycleEvents.length + ' events';
 
-            const currentT = unifiedTimeline[logIndex] ? (unifiedTimeline[logIndex].t || 0) : 0;
+            const currentT = timeBasedMode ? logIndex : (unifiedTimeline[logIndex] ? (unifiedTimeline[logIndex].t || 0) : 0);
             const pastEvents = filtered.filter(e => e.t <= currentT);
 
             let html = '';
@@ -735,7 +737,7 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         function updateIncidentFeed(logIndex) {
             const feed = document.getElementById('incidentFeed');
             const badge = document.getElementById('incidentBadge');
-            const currentT = unifiedTimeline[logIndex] ? (unifiedTimeline[logIndex].t || 0) : 0;
+            const currentT = timeBasedMode ? logIndex : (unifiedTimeline[logIndex] ? (unifiedTimeline[logIndex].t || 0) : 0);
             const visible = periodicEvents.filter(e => e.t <= currentT && matchesFilter(e));
             badge.textContent = visible.length + '/' + periodicEvents.length + ' periodic';
 
@@ -761,7 +763,7 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         function updateAmqpFeed(logIndex) {
             const feed = document.getElementById('amqpFeed');
             const badge = document.getElementById('amqpBadge');
-            const currentT = unifiedTimeline[logIndex] ? (unifiedTimeline[logIndex].t || 0) : 0;
+            const currentT = timeBasedMode ? logIndex : (unifiedTimeline[logIndex] ? (unifiedTimeline[logIndex].t || 0) : 0);
             const rkMap = DATA.routing_key_to_ownship || {};
             const visible = amqpEvents.filter(e => {
                 if (e.t > currentT) return false;
@@ -834,9 +836,11 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
             currentLogIndex = Math.max(0, Math.min(logCount - 1, logIndex));
             slider.value = String(currentLogIndex);
 
-            const entry = unifiedTimeline[currentLogIndex];
-            const currentT = entry ? (entry.t || 0) : 0;
-            timeLabel.textContent = 'Log ' + (currentLogIndex + 1) + '/' + logCount + ' \\u2022 t = ' + currentT + 's';
+            const entry = timeBasedMode ? null : unifiedTimeline[currentLogIndex];
+            const currentT = timeBasedMode ? currentLogIndex : (entry ? (entry.t || 0) : 0);
+            timeLabel.textContent = timeBasedMode
+                ? 't = ' + currentT + 's / ' + maxT + 's'
+                : 'Log ' + (currentLogIndex + 1) + '/' + logCount + ' \\u2022 t = ' + currentT + 's';
 
             /* 3D scene positions by time — multi-ownship, filter-aware */
             let primaryPoint = null;
@@ -926,6 +930,10 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         /* ── Navigation: jump to next/previous second ── */
         function jumpToNextSecond(direction) {
             if (logCount <= 1) return;
+            if (timeBasedMode) {
+                updateFrame(Math.max(0, Math.min(logCount - 1, currentLogIndex + direction)));
+                return;
+            }
             const currentT = (unifiedTimeline[currentLogIndex] || {}).t || 0;
             const targetT = currentT + direction;
             let bestIdx = currentLogIndex;

@@ -47,12 +47,14 @@ steps:
       config_path: config/edmonton/trajectory_c1_ownship_alpha.json
       duration: 180
       reference_time: ${{ steps.setup_c1_declarations.result.declarations[0].start_datetime }}
+      altitude_m: 120
   - id: generate_bravo_telemetry
     step: Generate Telemetry
     arguments:
       config_path: config/edmonton/trajectory_c1_ownship_bravo.json
       duration: 180
       reference_time: ${{ steps.setup_c1_declarations.result.declarations[1].start_datetime }}
+      altitude_m: 120
   - id: submit_alpha_telemetry
     step: Submit Telemetry For Declaration
     arguments:

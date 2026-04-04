@@ -1512,6 +1512,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         flight_declaration_path: str | None = None,
         trajectory_path: str | None = None,
         telemetry_duration: int = 30,
+        altitude_m: float | None = None,
     ) -> dict[str, Any]:
         """Generates data and uploads flight declaration.
 
@@ -1544,7 +1545,9 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         flight_declaration.start_datetime = start_time.isoformat()
         flight_declaration.end_datetime = end_time.isoformat()
 
-        telemetry_states = generate_telemetry(trajectory_path, duration=telemetry_duration, reference_time=start_time.isoformat())
+        telemetry_states = generate_telemetry(
+            trajectory_path, duration=telemetry_duration, reference_time=start_time.isoformat(), altitude_m=altitude_m
+        )
 
         self.telemetry_states = telemetry_states
 

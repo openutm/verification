@@ -12,6 +12,7 @@ steps:
     arguments:
       flight_declaration_path: config/edmonton/flight_declaration_a1_head_on.json
       trajectory_path: config/edmonton/trajectory_a1_head_on_ownship.json
+      altitude_m: 120
   - step: Start AMQP Queue Monitor
     arguments:
       routing_key: ${{ steps.Setup Flight Declaration.result.id }}

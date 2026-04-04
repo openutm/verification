@@ -21,9 +21,10 @@ class CommonClient:
         config_path: str,
         duration: int = 30,
         reference_time: str | None = None,
+        altitude_m: float | None = None,
     ) -> list[RIDAircraftState]:
         """Generate telemetry states from a trajectory file for scenario reuse."""
-        return generate_telemetry(config_path=config_path, duration=duration, reference_time=reference_time)
+        return generate_telemetry(config_path=config_path, duration=duration, reference_time=reference_time, altitude_m=altitude_m)
 
     @scenario_step("Generate Random Number")
     async def generate_random_number(self, min: int = 0, max: int = 5) -> int:
