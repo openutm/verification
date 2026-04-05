@@ -1194,10 +1194,11 @@ class FlightBlenderClient(BaseBlenderAPIClient):
     ) -> StepResult:
         ws_connection = await self.initialize_track_websocket_connection(surveillance_session_id=surveillance_session_id)
         start_time = time.time()
-
+        track_duration_seconds = expected_track_interval_seconds * expected_track_count
         all_received_messages = []
         # Start Receiving messages from now till six seconds from now
-        async for message in receive_messages_for_duration(ws_connection, 6):
+
+        async for message in receive_messages_for_duration(ws_connection=ws_connection, duration_seconds=track_duration_seconds):
             message = json.loads(message)
             if "track_data" not in message or not message["track_data"]:
                 logger.debug("WebSocket connection established message received or empty track data")
@@ -1208,7 +1209,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
                 track = TrackMessage(**message)
                 all_received_messages.append(SDSPTrackMessage(message=track, timestamp=arrow.now().isoformat()))
 
-        logger.info(f"Received {len(all_received_messages)} messages in the first six seconds")
+        logger.info(f"Received {len(all_received_messages)} messages in the first {track_duration_seconds} seconds")
         await self.close_heartbeat_websocket_connection(ws_connection)
         end_time = time.time()
         duration = end_time - start_time
