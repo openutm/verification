@@ -267,7 +267,7 @@ async def test_submit_air_traffic(fb_client):
     fb_client.post.assert_called_once()
 
 
-async def test_start_stop_sdsp_session(fb_client):
+async def test_start_sdsp_session(fb_client):
     mock_response = MagicMock()
     mock_response.status_code = 200
     fb_client.put.return_value = mock_response
@@ -275,6 +275,17 @@ async def test_start_stop_sdsp_session(fb_client):
     result = await fb_client.start_stop_sdsp_session(surveillance_session_id="sess_123", action=SDSPSessionAction.START)
 
     assert "start Heartbeat Track message received" in result.result
+    fb_client.put.assert_called_once()
+
+
+async def test_stop_sdsp_session(fb_client):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    fb_client.put.return_value = mock_response
+
+    result = await fb_client.start_stop_sdsp_session(surveillance_session_id="sess_123", action=SDSPSessionAction.STOP)
+
+    assert "stop Heartbeat Track message received" in result.result
     fb_client.put.assert_called_once()
 
 
