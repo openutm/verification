@@ -12,7 +12,7 @@ from openutm_verification.core.clients.common.common_client import CommonClient
 from openutm_verification.core.clients.flight_blender.flight_blender_client import FlightBlenderClient
 from openutm_verification.core.clients.opensky.opensky_client import OpenSkyClient
 from openutm_verification.core.reporting.reporting_models import Status
-from openutm_verification.models import OperationState
+from openutm_verification.models import OperationState, SDSPSessionAction
 from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
 
 
@@ -272,7 +272,7 @@ async def test_start_sdsp_session(fb_client):
     mock_response.status_code = 200
     fb_client.put.return_value = mock_response
 
-    result = await fb_client.start_sdsp_session(session_id="sess_123")
+    result = await fb_client.start_stop_sdsp_session(surveillance_session_id="sess_123", action=SDSPSessionAction.START)
 
     assert "start Heartbeat Track message received" in result.result
     fb_client.put.assert_called_once()
@@ -283,7 +283,7 @@ async def test_stop_sdsp_session(fb_client):
     mock_response.status_code = 200
     fb_client.put.return_value = mock_response
 
-    result = await fb_client.stop_sdsp_session(session_id="sess_123")
+    result = await fb_client.start_stop_sdsp_session(surveillance_session_id="sess_123", action=SDSPSessionAction.STOP)
 
     assert "stop Heartbeat Track message received" in result.result
     fb_client.put.assert_called_once()
@@ -330,7 +330,7 @@ async def test_initialize_verify_sdsp_track(fb_client):
     except Exception:
         pass  # Expected to fail due to complex mocking needs, but we verified the call
 
-    fb_client.initialize_track_websocket_connection.assert_called_with(session_id="sess_123")
+    fb_client.initialize_track_websocket_connection.assert_called_with(surveillance_session_id="sess_123")
 
 
 async def test_submit_simulated_air_traffic(fb_client):
@@ -495,7 +495,7 @@ async def test_initialize_verify_sdsp_heartbeat(fb_client):
             except Exception:  # noqa: E722
                 pass
 
-    fb_client.initialize_heartbeat_websocket_connection.assert_called_with(session_id="sess_123")
+    fb_client.initialize_heartbeat_websocket_connection.assert_called_with(surveillance_session_id="sess_123")
 
 
 async def test_setup_flight_declaration(fb_client):

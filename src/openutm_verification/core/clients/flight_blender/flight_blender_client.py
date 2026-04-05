@@ -1145,43 +1145,43 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             result=f"Retrieved {len(notifications)} sensor failure notifications",
         )
 
-    async def _sdsp_session_action(self, session_id: str, action: SDSPSessionAction) -> str:
-        endpoint = f"/surveillance_monitoring_ops/start_stop_surveillance_heartbeat_track/{session_id}"
+    @scenario_step("Start / Stop SDSP Session")
+    async def start_stop_sdsp_session(self, surveillance_session_id: str, action: SDSPSessionAction) -> str:
+        """
+        Starts or stops an SDSP (Strategic Deconfliction Service Provider) session based on the specified action.
+        This method interacts with the Flight Blender service to manage the lifecycle of an SDSP session.
+        It can be used to initiate a new session or terminate an existing one.
+        Args:
+            session_id (str): The unique identifier of the SDSP session to start or stop.
+            action (SDSPSessionAction): The action to perform on the session, such as START or STOP.
+        Returns:
+            bool: True if the action was successfully performed, False otherwise.
+        Raises:
+            ValueError: If the session_id is invalid or the action is not supported.
+            ConnectionError: If there is an issue communicating with the Flight Blender service.
+            FlightBlenderError: If the action fails due to service errors.
+        """
+
+        endpoint = f"/surveillance_monitoring_ops/start_stop_surveillance_heartbeat_track/{surveillance_session_id}"
+
         payload = {"action": action.value}
         response = await self.put(endpoint, json=payload)
-        logger.info(f"SDSP session {session_id} action {action.value} response: {response.status_code}")
+        logger.info(f"SDSP session {surveillance_session_id} action {action.value} response: {response.status_code}")
         if response.status_code == 200:
-            logger.info(f"SDSP session {session_id} action {action.value} completed successfully.")
-            return f"{action.value} Heartbeat Track message received for {session_id}"
+            logger.info(f"SDSP session {surveillance_session_id} action {action.value} completed successfully.")
+            return f"{action.value} Heartbeat Track message received for {surveillance_session_id}"
+
         else:
-            logger.error(f"Failed to perform action {action.value} on SDSP session {session_id}. Response: {response.text}")
-            raise FlightBlenderError(f"{action.value} Heartbeat Track message not received for {session_id}")
+            logger.error(f"Failed to perform action {action.value} on SDSP session {surveillance_session_id}. Response: {response.text}")
+            raise FlightBlenderError(f"{action.value} Heartbeat Track message not received for {surveillance_session_id}")
 
-    @scenario_step("Start SDSP Session", phase=FlightPhase.PRE_FLIGHT)
-    async def start_sdsp_session(self, session_id: str) -> str:
-        """Starts an SDSP (Strategic Deconfliction Service Provider) session.
-
-        Args:
-            session_id: The unique identifier of the SDSP session to start.
-        """
-        return await self._sdsp_session_action(session_id, SDSPSessionAction.START)
-
-    @scenario_step("Stop SDSP Session", phase=FlightPhase.POST_FLIGHT)
-    async def stop_sdsp_session(self, session_id: str) -> str:
-        """Stops an SDSP (Strategic Deconfliction Service Provider) session.
-
-        Args:
-            session_id: The unique identifier of the SDSP session to stop.
-        """
-        return await self._sdsp_session_action(session_id, SDSPSessionAction.STOP)
-
-    async def initialize_heartbeat_websocket_connection(self, session_id: str) -> ClientConnection:
-        endpoint = f"/ws/surveillance/heartbeat/{session_id}"
+    async def initialize_heartbeat_websocket_connection(self, surveillance_session_id: str) -> ClientConnection:
+        endpoint = f"/ws/surveillance/heartbeat/{surveillance_session_id}"
         ws = await self.create_websocket_connection(endpoint=endpoint)
         return ws
 
-    async def initialize_track_websocket_connection(self, session_id: str) -> ClientConnection:
-        endpoint = f"/ws/surveillance/track/{session_id}"
+    async def initialize_track_websocket_connection(self, surveillance_session_id: str) -> ClientConnection:
+        endpoint = f"/ws/surveillance/track/{surveillance_session_id}"
         ws = await self.create_websocket_connection(endpoint=endpoint)
         return ws
 
@@ -1190,9 +1190,9 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self,
         expected_track_interval_seconds: int,
         expected_track_count: int,
-        session_id: str,
+        surveillance_session_id: str,
     ) -> StepResult:
-        ws_connection = await self.initialize_track_websocket_connection(session_id=session_id)
+        ws_connection = await self.initialize_track_websocket_connection(surveillance_session_id=surveillance_session_id)
         start_time = time.time()
 
         all_received_messages = []
@@ -1252,9 +1252,9 @@ class FlightBlenderClient(BaseBlenderAPIClient):
         self,
         expected_heartbeat_interval_seconds: int,
         expected_heartbeat_count: int,
-        session_id: str,
+        surveillance_session_id: str,
     ) -> StepResult:
-        ws_connection = await self.initialize_heartbeat_websocket_connection(session_id=session_id)
+        ws_connection = await self.initialize_heartbeat_websocket_connection(surveillance_session_id=surveillance_session_id)
         start_time = time.time()
 
         all_received_messages = []
