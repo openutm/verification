@@ -255,7 +255,7 @@ def annotate_ownship_labels(
 
     alert_id_to_label: dict[str, str] = {}
     for item in items:
-        ownship_op = item.get("ownship_operation")
+        ownship_op = item.get("ownship_operation") or item.get("ownship_operation_id")
         if ownship_op and ownship_op in declaration_map:
             label = declaration_map[ownship_op]
             item["ownship_label"] = label

@@ -110,6 +110,9 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
                 lats: list[float] = _tolist(getattr(bs.traf, "lat", []))
                 lons: list[float] = _tolist(getattr(bs.traf, "lon", []))
                 alts: list[float] = _tolist(getattr(bs.traf, "alt", []))
+                ground_speeds: list[float] = _tolist(getattr(bs.traf, "gs", []))
+                headings: list[float] = _tolist(getattr(bs.traf, "hdg", []))
+                vertical_speeds: list[float] = _tolist(getattr(bs.traf, "vs", []))
 
                 for i, acid in enumerate(acids):
                     lat = float(lats[i])
@@ -124,6 +127,12 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
                     # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
                     selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
                     metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
+                    # Include kinematics so the DAA system can coast intruder tracks
+                    metadata["current_state"] = {
+                        "speed": float(ground_speeds[i]) if i < len(ground_speeds) else 0.0,
+                        "track": float(headings[i]) if i < len(headings) else 0.0,
+                        "vertical_speed": float(vertical_speeds[i]) if i < len(vertical_speeds) else 0.0,
+                    }
 
                     obs = FlightObservationSchema(
                         lat_dd=lat,
@@ -209,6 +218,9 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
                 lats: list[float] = _tolist(getattr(bs.traf, "lat", []))
                 lons: list[float] = _tolist(getattr(bs.traf, "lon", []))
                 alts: list[float] = _tolist(getattr(bs.traf, "alt", []))
+                ground_speeds: list[float] = _tolist(getattr(bs.traf, "gs", []))
+                headings: list[float] = _tolist(getattr(bs.traf, "hdg", []))
+                vertical_speeds: list[float] = _tolist(getattr(bs.traf, "vs", []))
 
                 for i, acid in enumerate(acids):
                     lat = float(lats[i])
@@ -223,6 +235,12 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
                     # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
                     selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
                     metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
+                    # Include kinematics so the DAA system can coast intruder tracks
+                    metadata["current_state"] = {
+                        "speed": float(ground_speeds[i]) if i < len(ground_speeds) else 0.0,
+                        "track": float(headings[i]) if i < len(headings) else 0.0,
+                        "vertical_speed": float(vertical_speeds[i]) if i < len(vertical_speeds) else 0.0,
+                    }
 
                     obs = FlightObservationSchema(
                         lat_dd=lat,

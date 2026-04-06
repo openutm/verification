@@ -1,0 +1,346 @@
+name: daa_cap10_mixed
+description: >
+  DAA Detection Function mixed-provider capacity test (ASTM F3442 §7.3.1).
+  10 ownships loiter in a 5×2 grid while 20 intruders operate simultaneously:
+  - 10 BlueSky intruders: defined-path aircraft (C172, P28A, B206, C150) traversing
+    the grid on lateral, longitudinal, and diagonal paths at 370–430 ft.
+  - 10 Bayesian intruders: randomly generated within the ownship grid area.
+  Ownship altitude: 120m AGL (394 ft). All intruders within NMAC vertical threshold.
+  Measurement: processing_latency_ms and alert_notify_latency_ms from IncidentLog.
+
+steps:
+  # ─── Preflight ─────────────────────────────────────────────────
+  - step: Check AMQP Connection
+  - step: Cleanup Flight Declarations
+
+  # ─── Create 10 synchronized ownship declarations ────────────────
+  - id: setup_ownships
+    step: Setup Multiple Flight Declarations With Paths
+    arguments:
+      declaration_paths:
+        - config/edmonton/cap10/flight_declaration_cap_ownship_01.json
+        - config/edmonton/cap10/flight_declaration_cap_ownship_02.json
+        - config/edmonton/cap10/flight_declaration_cap_ownship_03.json
+        - config/edmonton/cap10/flight_declaration_cap_ownship_04.json
+        - config/edmonton/cap10/flight_declaration_cap_ownship_05.json
+        - config/edmonton/cap10/flight_declaration_cap_ownship_06.json
+        - config/edmonton/cap10/flight_declaration_cap_ownship_07.json
+        - config/edmonton/cap10/flight_declaration_cap_ownship_08.json
+        - config/edmonton/cap10/flight_declaration_cap_ownship_09.json
+        - config/edmonton/cap10/flight_declaration_cap_ownship_10.json
+      duration_minutes: 15
+
+  - step: Start AMQP Queue Monitor
+    arguments:
+      routing_key: "#"
+      duration: 350
+    background: true
+
+  # ─── Activate all 10 ownships ────────────────────────────────────
+  - id: activate_01
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[0].id }}
+      state: ACTIVATED
+  - id: activate_02
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[1].id }}
+      state: ACTIVATED
+  - id: activate_03
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[2].id }}
+      state: ACTIVATED
+  - id: activate_04
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[3].id }}
+      state: ACTIVATED
+  - id: activate_05
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[4].id }}
+      state: ACTIVATED
+  - id: activate_06
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[5].id }}
+      state: ACTIVATED
+  - id: activate_07
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[6].id }}
+      state: ACTIVATED
+  - id: activate_08
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[7].id }}
+      state: ACTIVATED
+  - id: activate_09
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[8].id }}
+      state: ACTIVATED
+  - id: activate_10
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[9].id }}
+      state: ACTIVATED
+
+  # ─── Generate telemetry for all 10 ownships ──────────────────────
+  - id: gen_telem_01
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap10/trajectory_cap_ownship_01.json
+      duration: 180
+      reference_time: ${{ steps.setup_ownships.result.declarations[0].start_datetime }}
+  - id: gen_telem_02
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap10/trajectory_cap_ownship_02.json
+      duration: 180
+      reference_time: ${{ steps.setup_ownships.result.declarations[1].start_datetime }}
+  - id: gen_telem_03
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap10/trajectory_cap_ownship_03.json
+      duration: 180
+      reference_time: ${{ steps.setup_ownships.result.declarations[2].start_datetime }}
+  - id: gen_telem_04
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap10/trajectory_cap_ownship_04.json
+      duration: 180
+      reference_time: ${{ steps.setup_ownships.result.declarations[3].start_datetime }}
+  - id: gen_telem_05
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap10/trajectory_cap_ownship_05.json
+      duration: 180
+      reference_time: ${{ steps.setup_ownships.result.declarations[4].start_datetime }}
+  - id: gen_telem_06
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap10/trajectory_cap_ownship_06.json
+      duration: 180
+      reference_time: ${{ steps.setup_ownships.result.declarations[5].start_datetime }}
+  - id: gen_telem_07
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap10/trajectory_cap_ownship_07.json
+      duration: 180
+      reference_time: ${{ steps.setup_ownships.result.declarations[6].start_datetime }}
+  - id: gen_telem_08
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap10/trajectory_cap_ownship_08.json
+      duration: 180
+      reference_time: ${{ steps.setup_ownships.result.declarations[7].start_datetime }}
+  - id: gen_telem_09
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap10/trajectory_cap_ownship_09.json
+      duration: 180
+      reference_time: ${{ steps.setup_ownships.result.declarations[8].start_datetime }}
+  - id: gen_telem_10
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap10/trajectory_cap_ownship_10.json
+      duration: 180
+      reference_time: ${{ steps.setup_ownships.result.declarations[9].start_datetime }}
+
+  # ─── Submit ownship telemetry (all 10 in background) ─────────────
+  - id: submit_telem_01
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[0].id }}
+      states: ${{ steps.gen_telem_01.result }}
+      duration: 180
+    background: true
+  - id: submit_telem_02
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[1].id }}
+      states: ${{ steps.gen_telem_02.result }}
+      duration: 180
+    background: true
+  - id: submit_telem_03
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[2].id }}
+      states: ${{ steps.gen_telem_03.result }}
+      duration: 180
+    background: true
+  - id: submit_telem_04
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[3].id }}
+      states: ${{ steps.gen_telem_04.result }}
+      duration: 180
+    background: true
+  - id: submit_telem_05
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[4].id }}
+      states: ${{ steps.gen_telem_05.result }}
+      duration: 180
+    background: true
+  - id: submit_telem_06
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[5].id }}
+      states: ${{ steps.gen_telem_06.result }}
+      duration: 180
+    background: true
+  - id: submit_telem_07
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[6].id }}
+      states: ${{ steps.gen_telem_07.result }}
+      duration: 180
+    background: true
+  - id: submit_telem_08
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[7].id }}
+      states: ${{ steps.gen_telem_08.result }}
+      duration: 180
+    background: true
+  - id: submit_telem_09
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[8].id }}
+      states: ${{ steps.gen_telem_09.result }}
+      duration: 180
+    background: true
+  - id: submit_telem_10
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[9].id }}
+      states: ${{ steps.gen_telem_10.result }}
+      duration: 180
+    background: true
+
+  # ─── BlueSky intruders: 10 defined-path aircraft ─────────────────
+  - id: stream_bluesky
+    step: Stream Air Traffic
+    arguments:
+      provider: bluesky
+      config_path: config/edmonton/cap10/bluesky_cap10_intruders.scn
+      duration: 190
+    background: true
+
+  # ─── Bayesian intruders: 10 randomly generated aircraft ──────────
+  - id: stream_bayesian
+    step: Stream Air Traffic
+    arguments:
+      provider: bayesian
+      config_path: config/edmonton/cap10/trajectory_cap_intruder_area.json
+      number_of_aircraft: 10
+      duration: 190
+    background: true
+
+  # ─── Wait for all background tasks to complete ──────────────────
+  - id: wait_completion
+    step: Wait X seconds
+    arguments:
+      duration: 200
+    needs:
+      - stream_bluesky
+      - stream_bayesian
+
+  # ─── End all ownship declarations ────────────────────────────────
+  - id: end_01
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[0].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_02
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[1].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_03
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[2].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_04
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[3].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_05
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[4].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_06
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[5].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_07
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[6].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_08
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[7].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_09
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[8].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_10
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[9].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+
+  - step: Stop AMQP Queue Monitor
+    needs:
+      - end_01
+
+  # ─── Post-flight: collect incident logs ──────────────────────────
+  - id: get_active_alerts
+    step: Get Active DAA Alerts
+  - id: get_incident_logs
+    step: Get DAA Incident Logs
+    arguments:
+      start_date: ${{ steps.setup_ownships.result.declarations[0].start_datetime }}
+  - step: Get AMQP Messages
+    arguments:
+      routing_key_filter: "#"
+
+  # ─── Verify DAA API compliance ───────────────────────────────────
+  - step: Verify DAA ASTM F3442 API Compliance
+    arguments:
+      incident_logs: ${{ steps.get_incident_logs.result }}
+      min_incident_logs: 10
+      require_alert_events: false
+      require_periodic_updates: true

@@ -1,0 +1,2778 @@
+name: daa_cap100_bluesky
+description: >
+  DAA capacity test with 100 ownships and 10 BlueSky intruders (ASTM F3442 §7.3.1).
+  100 ownships loiter in a 10×10 grid (53.504–53.576°N, -113.584 to -113.476°W)
+  while 10 BlueSky intruders on defined paths cross through the grid
+  from cardinal and diagonal directions.
+  Intruder altitudes 370–430 ft bracket the ownship altitude of 394 ft (120m).
+
+steps:
+  # ─── Preflight checks ──────────────────────────────────────────
+  - step: Check AMQP Connection
+  - step: Cleanup Flight Declarations
+
+  # ─── Create 100 synchronized ownship declarations ────────────────
+  - id: setup_ownships
+    step: Setup Multiple Flight Declarations With Paths
+    arguments:
+      declaration_paths:
+        - config/edmonton/cap100/flight_declaration_ownship_001.json
+        - config/edmonton/cap100/flight_declaration_ownship_002.json
+        - config/edmonton/cap100/flight_declaration_ownship_003.json
+        - config/edmonton/cap100/flight_declaration_ownship_004.json
+        - config/edmonton/cap100/flight_declaration_ownship_005.json
+        - config/edmonton/cap100/flight_declaration_ownship_006.json
+        - config/edmonton/cap100/flight_declaration_ownship_007.json
+        - config/edmonton/cap100/flight_declaration_ownship_008.json
+        - config/edmonton/cap100/flight_declaration_ownship_009.json
+        - config/edmonton/cap100/flight_declaration_ownship_010.json
+        - config/edmonton/cap100/flight_declaration_ownship_011.json
+        - config/edmonton/cap100/flight_declaration_ownship_012.json
+        - config/edmonton/cap100/flight_declaration_ownship_013.json
+        - config/edmonton/cap100/flight_declaration_ownship_014.json
+        - config/edmonton/cap100/flight_declaration_ownship_015.json
+        - config/edmonton/cap100/flight_declaration_ownship_016.json
+        - config/edmonton/cap100/flight_declaration_ownship_017.json
+        - config/edmonton/cap100/flight_declaration_ownship_018.json
+        - config/edmonton/cap100/flight_declaration_ownship_019.json
+        - config/edmonton/cap100/flight_declaration_ownship_020.json
+        - config/edmonton/cap100/flight_declaration_ownship_021.json
+        - config/edmonton/cap100/flight_declaration_ownship_022.json
+        - config/edmonton/cap100/flight_declaration_ownship_023.json
+        - config/edmonton/cap100/flight_declaration_ownship_024.json
+        - config/edmonton/cap100/flight_declaration_ownship_025.json
+        - config/edmonton/cap100/flight_declaration_ownship_026.json
+        - config/edmonton/cap100/flight_declaration_ownship_027.json
+        - config/edmonton/cap100/flight_declaration_ownship_028.json
+        - config/edmonton/cap100/flight_declaration_ownship_029.json
+        - config/edmonton/cap100/flight_declaration_ownship_030.json
+        - config/edmonton/cap100/flight_declaration_ownship_031.json
+        - config/edmonton/cap100/flight_declaration_ownship_032.json
+        - config/edmonton/cap100/flight_declaration_ownship_033.json
+        - config/edmonton/cap100/flight_declaration_ownship_034.json
+        - config/edmonton/cap100/flight_declaration_ownship_035.json
+        - config/edmonton/cap100/flight_declaration_ownship_036.json
+        - config/edmonton/cap100/flight_declaration_ownship_037.json
+        - config/edmonton/cap100/flight_declaration_ownship_038.json
+        - config/edmonton/cap100/flight_declaration_ownship_039.json
+        - config/edmonton/cap100/flight_declaration_ownship_040.json
+        - config/edmonton/cap100/flight_declaration_ownship_041.json
+        - config/edmonton/cap100/flight_declaration_ownship_042.json
+        - config/edmonton/cap100/flight_declaration_ownship_043.json
+        - config/edmonton/cap100/flight_declaration_ownship_044.json
+        - config/edmonton/cap100/flight_declaration_ownship_045.json
+        - config/edmonton/cap100/flight_declaration_ownship_046.json
+        - config/edmonton/cap100/flight_declaration_ownship_047.json
+        - config/edmonton/cap100/flight_declaration_ownship_048.json
+        - config/edmonton/cap100/flight_declaration_ownship_049.json
+        - config/edmonton/cap100/flight_declaration_ownship_050.json
+        - config/edmonton/cap100/flight_declaration_ownship_051.json
+        - config/edmonton/cap100/flight_declaration_ownship_052.json
+        - config/edmonton/cap100/flight_declaration_ownship_053.json
+        - config/edmonton/cap100/flight_declaration_ownship_054.json
+        - config/edmonton/cap100/flight_declaration_ownship_055.json
+        - config/edmonton/cap100/flight_declaration_ownship_056.json
+        - config/edmonton/cap100/flight_declaration_ownship_057.json
+        - config/edmonton/cap100/flight_declaration_ownship_058.json
+        - config/edmonton/cap100/flight_declaration_ownship_059.json
+        - config/edmonton/cap100/flight_declaration_ownship_060.json
+        - config/edmonton/cap100/flight_declaration_ownship_061.json
+        - config/edmonton/cap100/flight_declaration_ownship_062.json
+        - config/edmonton/cap100/flight_declaration_ownship_063.json
+        - config/edmonton/cap100/flight_declaration_ownship_064.json
+        - config/edmonton/cap100/flight_declaration_ownship_065.json
+        - config/edmonton/cap100/flight_declaration_ownship_066.json
+        - config/edmonton/cap100/flight_declaration_ownship_067.json
+        - config/edmonton/cap100/flight_declaration_ownship_068.json
+        - config/edmonton/cap100/flight_declaration_ownship_069.json
+        - config/edmonton/cap100/flight_declaration_ownship_070.json
+        - config/edmonton/cap100/flight_declaration_ownship_071.json
+        - config/edmonton/cap100/flight_declaration_ownship_072.json
+        - config/edmonton/cap100/flight_declaration_ownship_073.json
+        - config/edmonton/cap100/flight_declaration_ownship_074.json
+        - config/edmonton/cap100/flight_declaration_ownship_075.json
+        - config/edmonton/cap100/flight_declaration_ownship_076.json
+        - config/edmonton/cap100/flight_declaration_ownship_077.json
+        - config/edmonton/cap100/flight_declaration_ownship_078.json
+        - config/edmonton/cap100/flight_declaration_ownship_079.json
+        - config/edmonton/cap100/flight_declaration_ownship_080.json
+        - config/edmonton/cap100/flight_declaration_ownship_081.json
+        - config/edmonton/cap100/flight_declaration_ownship_082.json
+        - config/edmonton/cap100/flight_declaration_ownship_083.json
+        - config/edmonton/cap100/flight_declaration_ownship_084.json
+        - config/edmonton/cap100/flight_declaration_ownship_085.json
+        - config/edmonton/cap100/flight_declaration_ownship_086.json
+        - config/edmonton/cap100/flight_declaration_ownship_087.json
+        - config/edmonton/cap100/flight_declaration_ownship_088.json
+        - config/edmonton/cap100/flight_declaration_ownship_089.json
+        - config/edmonton/cap100/flight_declaration_ownship_090.json
+        - config/edmonton/cap100/flight_declaration_ownship_091.json
+        - config/edmonton/cap100/flight_declaration_ownship_092.json
+        - config/edmonton/cap100/flight_declaration_ownship_093.json
+        - config/edmonton/cap100/flight_declaration_ownship_094.json
+        - config/edmonton/cap100/flight_declaration_ownship_095.json
+        - config/edmonton/cap100/flight_declaration_ownship_096.json
+        - config/edmonton/cap100/flight_declaration_ownship_097.json
+        - config/edmonton/cap100/flight_declaration_ownship_098.json
+        - config/edmonton/cap100/flight_declaration_ownship_099.json
+        - config/edmonton/cap100/flight_declaration_ownship_100.json
+      duration_minutes: 15
+
+  # ─── Activate all 100 ownships ────────────────────────────────────
+  - id: activate_001
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[0].id }}
+      state: ACTIVATED
+  - id: activate_002
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[1].id }}
+      state: ACTIVATED
+  - id: activate_003
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[2].id }}
+      state: ACTIVATED
+  - id: activate_004
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[3].id }}
+      state: ACTIVATED
+  - id: activate_005
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[4].id }}
+      state: ACTIVATED
+  - id: activate_006
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[5].id }}
+      state: ACTIVATED
+  - id: activate_007
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[6].id }}
+      state: ACTIVATED
+  - id: activate_008
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[7].id }}
+      state: ACTIVATED
+  - id: activate_009
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[8].id }}
+      state: ACTIVATED
+  - id: activate_010
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[9].id }}
+      state: ACTIVATED
+  - id: activate_011
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[10].id }}
+      state: ACTIVATED
+  - id: activate_012
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[11].id }}
+      state: ACTIVATED
+  - id: activate_013
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[12].id }}
+      state: ACTIVATED
+  - id: activate_014
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[13].id }}
+      state: ACTIVATED
+  - id: activate_015
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[14].id }}
+      state: ACTIVATED
+  - id: activate_016
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[15].id }}
+      state: ACTIVATED
+  - id: activate_017
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[16].id }}
+      state: ACTIVATED
+  - id: activate_018
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[17].id }}
+      state: ACTIVATED
+  - id: activate_019
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[18].id }}
+      state: ACTIVATED
+  - id: activate_020
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[19].id }}
+      state: ACTIVATED
+  - id: activate_021
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[20].id }}
+      state: ACTIVATED
+  - id: activate_022
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[21].id }}
+      state: ACTIVATED
+  - id: activate_023
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[22].id }}
+      state: ACTIVATED
+  - id: activate_024
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[23].id }}
+      state: ACTIVATED
+  - id: activate_025
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[24].id }}
+      state: ACTIVATED
+  - id: activate_026
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[25].id }}
+      state: ACTIVATED
+  - id: activate_027
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[26].id }}
+      state: ACTIVATED
+  - id: activate_028
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[27].id }}
+      state: ACTIVATED
+  - id: activate_029
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[28].id }}
+      state: ACTIVATED
+  - id: activate_030
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[29].id }}
+      state: ACTIVATED
+  - id: activate_031
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[30].id }}
+      state: ACTIVATED
+  - id: activate_032
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[31].id }}
+      state: ACTIVATED
+  - id: activate_033
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[32].id }}
+      state: ACTIVATED
+  - id: activate_034
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[33].id }}
+      state: ACTIVATED
+  - id: activate_035
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[34].id }}
+      state: ACTIVATED
+  - id: activate_036
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[35].id }}
+      state: ACTIVATED
+  - id: activate_037
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[36].id }}
+      state: ACTIVATED
+  - id: activate_038
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[37].id }}
+      state: ACTIVATED
+  - id: activate_039
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[38].id }}
+      state: ACTIVATED
+  - id: activate_040
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[39].id }}
+      state: ACTIVATED
+  - id: activate_041
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[40].id }}
+      state: ACTIVATED
+  - id: activate_042
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[41].id }}
+      state: ACTIVATED
+  - id: activate_043
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[42].id }}
+      state: ACTIVATED
+  - id: activate_044
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[43].id }}
+      state: ACTIVATED
+  - id: activate_045
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[44].id }}
+      state: ACTIVATED
+  - id: activate_046
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[45].id }}
+      state: ACTIVATED
+  - id: activate_047
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[46].id }}
+      state: ACTIVATED
+  - id: activate_048
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[47].id }}
+      state: ACTIVATED
+  - id: activate_049
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[48].id }}
+      state: ACTIVATED
+  - id: activate_050
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[49].id }}
+      state: ACTIVATED
+  - id: activate_051
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[50].id }}
+      state: ACTIVATED
+  - id: activate_052
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[51].id }}
+      state: ACTIVATED
+  - id: activate_053
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[52].id }}
+      state: ACTIVATED
+  - id: activate_054
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[53].id }}
+      state: ACTIVATED
+  - id: activate_055
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[54].id }}
+      state: ACTIVATED
+  - id: activate_056
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[55].id }}
+      state: ACTIVATED
+  - id: activate_057
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[56].id }}
+      state: ACTIVATED
+  - id: activate_058
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[57].id }}
+      state: ACTIVATED
+  - id: activate_059
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[58].id }}
+      state: ACTIVATED
+  - id: activate_060
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[59].id }}
+      state: ACTIVATED
+  - id: activate_061
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[60].id }}
+      state: ACTIVATED
+  - id: activate_062
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[61].id }}
+      state: ACTIVATED
+  - id: activate_063
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[62].id }}
+      state: ACTIVATED
+  - id: activate_064
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[63].id }}
+      state: ACTIVATED
+  - id: activate_065
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[64].id }}
+      state: ACTIVATED
+  - id: activate_066
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[65].id }}
+      state: ACTIVATED
+  - id: activate_067
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[66].id }}
+      state: ACTIVATED
+  - id: activate_068
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[67].id }}
+      state: ACTIVATED
+  - id: activate_069
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[68].id }}
+      state: ACTIVATED
+  - id: activate_070
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[69].id }}
+      state: ACTIVATED
+  - id: activate_071
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[70].id }}
+      state: ACTIVATED
+  - id: activate_072
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[71].id }}
+      state: ACTIVATED
+  - id: activate_073
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[72].id }}
+      state: ACTIVATED
+  - id: activate_074
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[73].id }}
+      state: ACTIVATED
+  - id: activate_075
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[74].id }}
+      state: ACTIVATED
+  - id: activate_076
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[75].id }}
+      state: ACTIVATED
+  - id: activate_077
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[76].id }}
+      state: ACTIVATED
+  - id: activate_078
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[77].id }}
+      state: ACTIVATED
+  - id: activate_079
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[78].id }}
+      state: ACTIVATED
+  - id: activate_080
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[79].id }}
+      state: ACTIVATED
+  - id: activate_081
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[80].id }}
+      state: ACTIVATED
+  - id: activate_082
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[81].id }}
+      state: ACTIVATED
+  - id: activate_083
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[82].id }}
+      state: ACTIVATED
+  - id: activate_084
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[83].id }}
+      state: ACTIVATED
+  - id: activate_085
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[84].id }}
+      state: ACTIVATED
+  - id: activate_086
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[85].id }}
+      state: ACTIVATED
+  - id: activate_087
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[86].id }}
+      state: ACTIVATED
+  - id: activate_088
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[87].id }}
+      state: ACTIVATED
+  - id: activate_089
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[88].id }}
+      state: ACTIVATED
+  - id: activate_090
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[89].id }}
+      state: ACTIVATED
+  - id: activate_091
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[90].id }}
+      state: ACTIVATED
+  - id: activate_092
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[91].id }}
+      state: ACTIVATED
+  - id: activate_093
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[92].id }}
+      state: ACTIVATED
+  - id: activate_094
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[93].id }}
+      state: ACTIVATED
+  - id: activate_095
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[94].id }}
+      state: ACTIVATED
+  - id: activate_096
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[95].id }}
+      state: ACTIVATED
+  - id: activate_097
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[96].id }}
+      state: ACTIVATED
+  - id: activate_098
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[97].id }}
+      state: ACTIVATED
+  - id: activate_099
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[98].id }}
+      state: ACTIVATED
+  - id: activate_100
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[99].id }}
+      state: ACTIVATED
+
+  # ─── Generate telemetry for all 100 ownships ──────────────────────
+  - id: gen_telem_001
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_001.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[0].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_002
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_002.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[1].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_003
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_003.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[2].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_004
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_004.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[3].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_005
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_005.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[4].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_006
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_006.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[5].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_007
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_007.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[6].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_008
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_008.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[7].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_009
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_009.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[8].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_010
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_010.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[9].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_011
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_011.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[10].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_012
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_012.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[11].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_013
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_013.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[12].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_014
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_014.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[13].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_015
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_015.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[14].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_016
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_016.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[15].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_017
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_017.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[16].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_018
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_018.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[17].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_019
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_019.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[18].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_020
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_020.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[19].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_021
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_021.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[20].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_022
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_022.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[21].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_023
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_023.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[22].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_024
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_024.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[23].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_025
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_025.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[24].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_026
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_026.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[25].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_027
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_027.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[26].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_028
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_028.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[27].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_029
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_029.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[28].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_030
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_030.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[29].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_031
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_031.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[30].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_032
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_032.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[31].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_033
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_033.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[32].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_034
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_034.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[33].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_035
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_035.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[34].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_036
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_036.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[35].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_037
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_037.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[36].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_038
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_038.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[37].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_039
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_039.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[38].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_040
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_040.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[39].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_041
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_041.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[40].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_042
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_042.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[41].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_043
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_043.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[42].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_044
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_044.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[43].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_045
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_045.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[44].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_046
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_046.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[45].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_047
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_047.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[46].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_048
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_048.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[47].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_049
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_049.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[48].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_050
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_050.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[49].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_051
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_051.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[50].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_052
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_052.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[51].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_053
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_053.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[52].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_054
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_054.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[53].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_055
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_055.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[54].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_056
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_056.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[55].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_057
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_057.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[56].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_058
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_058.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[57].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_059
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_059.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[58].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_060
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_060.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[59].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_061
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_061.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[60].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_062
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_062.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[61].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_063
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_063.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[62].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_064
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_064.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[63].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_065
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_065.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[64].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_066
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_066.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[65].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_067
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_067.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[66].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_068
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_068.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[67].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_069
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_069.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[68].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_070
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_070.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[69].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_071
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_071.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[70].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_072
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_072.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[71].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_073
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_073.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[72].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_074
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_074.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[73].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_075
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_075.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[74].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_076
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_076.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[75].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_077
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_077.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[76].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_078
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_078.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[77].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_079
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_079.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[78].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_080
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_080.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[79].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_081
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_081.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[80].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_082
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_082.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[81].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_083
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_083.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[82].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_084
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_084.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[83].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_085
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_085.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[84].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_086
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_086.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[85].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_087
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_087.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[86].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_088
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_088.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[87].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_089
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_089.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[88].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_090
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_090.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[89].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_091
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_091.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[90].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_092
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_092.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[91].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_093
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_093.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[92].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_094
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_094.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[93].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_095
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_095.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[94].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_096
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_096.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[95].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_097
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_097.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[96].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_098
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_098.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[97].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_099
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_099.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[98].start_datetime }}
+      altitude_m: 120
+  - id: gen_telem_100
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/cap100/trajectory_ownship_100.json
+      duration: 300
+      reference_time: ${{ steps.setup_ownships.result.declarations[99].start_datetime }}
+      altitude_m: 120
+
+  # ─── Submit ownship telemetry (all 100 in background) ─────────────
+  - id: submit_telem_001
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[0].id }}
+      states: ${{ steps.gen_telem_001.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_002
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[1].id }}
+      states: ${{ steps.gen_telem_002.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_003
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[2].id }}
+      states: ${{ steps.gen_telem_003.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_004
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[3].id }}
+      states: ${{ steps.gen_telem_004.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_005
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[4].id }}
+      states: ${{ steps.gen_telem_005.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_006
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[5].id }}
+      states: ${{ steps.gen_telem_006.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_007
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[6].id }}
+      states: ${{ steps.gen_telem_007.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_008
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[7].id }}
+      states: ${{ steps.gen_telem_008.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_009
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[8].id }}
+      states: ${{ steps.gen_telem_009.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_010
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[9].id }}
+      states: ${{ steps.gen_telem_010.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_011
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[10].id }}
+      states: ${{ steps.gen_telem_011.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_012
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[11].id }}
+      states: ${{ steps.gen_telem_012.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_013
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[12].id }}
+      states: ${{ steps.gen_telem_013.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_014
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[13].id }}
+      states: ${{ steps.gen_telem_014.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_015
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[14].id }}
+      states: ${{ steps.gen_telem_015.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_016
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[15].id }}
+      states: ${{ steps.gen_telem_016.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_017
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[16].id }}
+      states: ${{ steps.gen_telem_017.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_018
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[17].id }}
+      states: ${{ steps.gen_telem_018.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_019
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[18].id }}
+      states: ${{ steps.gen_telem_019.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_020
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[19].id }}
+      states: ${{ steps.gen_telem_020.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_021
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[20].id }}
+      states: ${{ steps.gen_telem_021.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_022
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[21].id }}
+      states: ${{ steps.gen_telem_022.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_023
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[22].id }}
+      states: ${{ steps.gen_telem_023.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_024
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[23].id }}
+      states: ${{ steps.gen_telem_024.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_025
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[24].id }}
+      states: ${{ steps.gen_telem_025.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_026
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[25].id }}
+      states: ${{ steps.gen_telem_026.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_027
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[26].id }}
+      states: ${{ steps.gen_telem_027.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_028
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[27].id }}
+      states: ${{ steps.gen_telem_028.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_029
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[28].id }}
+      states: ${{ steps.gen_telem_029.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_030
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[29].id }}
+      states: ${{ steps.gen_telem_030.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_031
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[30].id }}
+      states: ${{ steps.gen_telem_031.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_032
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[31].id }}
+      states: ${{ steps.gen_telem_032.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_033
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[32].id }}
+      states: ${{ steps.gen_telem_033.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_034
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[33].id }}
+      states: ${{ steps.gen_telem_034.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_035
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[34].id }}
+      states: ${{ steps.gen_telem_035.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_036
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[35].id }}
+      states: ${{ steps.gen_telem_036.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_037
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[36].id }}
+      states: ${{ steps.gen_telem_037.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_038
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[37].id }}
+      states: ${{ steps.gen_telem_038.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_039
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[38].id }}
+      states: ${{ steps.gen_telem_039.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_040
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[39].id }}
+      states: ${{ steps.gen_telem_040.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_041
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[40].id }}
+      states: ${{ steps.gen_telem_041.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_042
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[41].id }}
+      states: ${{ steps.gen_telem_042.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_043
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[42].id }}
+      states: ${{ steps.gen_telem_043.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_044
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[43].id }}
+      states: ${{ steps.gen_telem_044.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_045
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[44].id }}
+      states: ${{ steps.gen_telem_045.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_046
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[45].id }}
+      states: ${{ steps.gen_telem_046.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_047
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[46].id }}
+      states: ${{ steps.gen_telem_047.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_048
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[47].id }}
+      states: ${{ steps.gen_telem_048.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_049
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[48].id }}
+      states: ${{ steps.gen_telem_049.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_050
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[49].id }}
+      states: ${{ steps.gen_telem_050.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_051
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[50].id }}
+      states: ${{ steps.gen_telem_051.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_052
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[51].id }}
+      states: ${{ steps.gen_telem_052.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_053
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[52].id }}
+      states: ${{ steps.gen_telem_053.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_054
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[53].id }}
+      states: ${{ steps.gen_telem_054.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_055
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[54].id }}
+      states: ${{ steps.gen_telem_055.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_056
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[55].id }}
+      states: ${{ steps.gen_telem_056.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_057
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[56].id }}
+      states: ${{ steps.gen_telem_057.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_058
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[57].id }}
+      states: ${{ steps.gen_telem_058.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_059
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[58].id }}
+      states: ${{ steps.gen_telem_059.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_060
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[59].id }}
+      states: ${{ steps.gen_telem_060.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_061
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[60].id }}
+      states: ${{ steps.gen_telem_061.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_062
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[61].id }}
+      states: ${{ steps.gen_telem_062.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_063
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[62].id }}
+      states: ${{ steps.gen_telem_063.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_064
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[63].id }}
+      states: ${{ steps.gen_telem_064.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_065
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[64].id }}
+      states: ${{ steps.gen_telem_065.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_066
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[65].id }}
+      states: ${{ steps.gen_telem_066.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_067
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[66].id }}
+      states: ${{ steps.gen_telem_067.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_068
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[67].id }}
+      states: ${{ steps.gen_telem_068.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_069
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[68].id }}
+      states: ${{ steps.gen_telem_069.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_070
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[69].id }}
+      states: ${{ steps.gen_telem_070.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_071
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[70].id }}
+      states: ${{ steps.gen_telem_071.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_072
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[71].id }}
+      states: ${{ steps.gen_telem_072.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_073
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[72].id }}
+      states: ${{ steps.gen_telem_073.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_074
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[73].id }}
+      states: ${{ steps.gen_telem_074.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_075
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[74].id }}
+      states: ${{ steps.gen_telem_075.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_076
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[75].id }}
+      states: ${{ steps.gen_telem_076.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_077
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[76].id }}
+      states: ${{ steps.gen_telem_077.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_078
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[77].id }}
+      states: ${{ steps.gen_telem_078.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_079
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[78].id }}
+      states: ${{ steps.gen_telem_079.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_080
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[79].id }}
+      states: ${{ steps.gen_telem_080.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_081
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[80].id }}
+      states: ${{ steps.gen_telem_081.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_082
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[81].id }}
+      states: ${{ steps.gen_telem_082.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_083
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[82].id }}
+      states: ${{ steps.gen_telem_083.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_084
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[83].id }}
+      states: ${{ steps.gen_telem_084.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_085
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[84].id }}
+      states: ${{ steps.gen_telem_085.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_086
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[85].id }}
+      states: ${{ steps.gen_telem_086.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_087
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[86].id }}
+      states: ${{ steps.gen_telem_087.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_088
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[87].id }}
+      states: ${{ steps.gen_telem_088.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_089
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[88].id }}
+      states: ${{ steps.gen_telem_089.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_090
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[89].id }}
+      states: ${{ steps.gen_telem_090.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_091
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[90].id }}
+      states: ${{ steps.gen_telem_091.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_092
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[91].id }}
+      states: ${{ steps.gen_telem_092.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_093
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[92].id }}
+      states: ${{ steps.gen_telem_093.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_094
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[93].id }}
+      states: ${{ steps.gen_telem_094.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_095
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[94].id }}
+      states: ${{ steps.gen_telem_095.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_096
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[95].id }}
+      states: ${{ steps.gen_telem_096.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_097
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[96].id }}
+      states: ${{ steps.gen_telem_097.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_098
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[97].id }}
+      states: ${{ steps.gen_telem_098.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_099
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[98].id }}
+      states: ${{ steps.gen_telem_099.result }}
+      duration: 300
+    background: true
+  - id: submit_telem_100
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[99].id }}
+      states: ${{ steps.gen_telem_100.result }}
+      duration: 300
+    background: true
+
+  # ─── Stream BlueSky intruder traffic ──────────────────────────────
+  - step: Start AMQP Queue Monitor
+    arguments:
+      routing_key: "#"
+      duration: 320
+    background: true
+
+  - id: stream_traffic
+    step: Stream Air Traffic
+    arguments:
+      provider: bluesky
+      config_path: config/edmonton/cap100/bluesky_cap100_intruders.scn
+      duration: 310
+    background: true
+
+  # ─── Wait for all background tasks to complete ──────────────────
+  - id: wait_completion
+    step: Wait X seconds
+    arguments:
+      duration: 310
+    needs:
+      - stream_traffic
+
+  # ─── End all ownship declarations ────────────────────────────────
+  - id: end_001
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[0].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_002
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[1].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_003
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[2].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_004
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[3].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_005
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[4].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_006
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[5].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_007
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[6].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_008
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[7].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_009
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[8].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_010
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[9].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_011
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[10].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_012
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[11].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_013
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[12].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_014
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[13].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_015
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[14].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_016
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[15].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_017
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[16].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_018
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[17].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_019
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[18].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_020
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[19].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_021
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[20].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_022
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[21].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_023
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[22].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_024
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[23].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_025
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[24].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_026
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[25].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_027
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[26].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_028
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[27].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_029
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[28].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_030
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[29].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_031
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[30].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_032
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[31].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_033
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[32].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_034
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[33].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_035
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[34].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_036
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[35].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_037
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[36].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_038
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[37].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_039
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[38].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_040
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[39].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_041
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[40].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_042
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[41].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_043
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[42].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_044
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[43].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_045
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[44].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_046
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[45].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_047
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[46].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_048
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[47].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_049
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[48].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_050
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[49].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_051
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[50].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_052
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[51].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_053
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[52].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_054
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[53].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_055
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[54].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_056
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[55].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_057
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[56].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_058
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[57].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_059
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[58].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_060
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[59].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_061
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[60].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_062
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[61].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_063
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[62].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_064
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[63].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_065
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[64].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_066
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[65].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_067
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[66].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_068
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[67].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_069
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[68].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_070
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[69].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_071
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[70].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_072
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[71].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_073
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[72].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_074
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[73].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_075
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[74].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_076
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[75].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_077
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[76].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_078
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[77].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_079
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[78].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_080
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[79].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_081
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[80].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_082
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[81].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_083
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[82].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_084
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[83].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_085
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[84].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_086
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[85].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_087
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[86].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_088
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[87].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_089
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[88].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_090
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[89].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_091
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[90].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_092
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[91].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_093
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[92].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_094
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[93].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_095
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[94].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_096
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[95].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_097
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[96].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_098
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[97].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_099
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[98].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+  - id: end_100
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_ownships.result.declarations[99].id }}
+      state: ENDED
+    needs:
+      - wait_completion
+
+  - step: Stop AMQP Queue Monitor
+    needs:
+      - end_001
+
+  # ─── Post-flight: collect alerts, incident logs, and AMQP ───────
+  - id: get_active_alerts
+    step: Get Active DAA Alerts
+
+  - id: get_incident_logs
+    step: Get DAA Incident Logs
+    arguments:
+      start_date: ${{ steps.setup_ownships.result.declarations[0].start_datetime }}
+    needs:
+      - end_001
+
+  - step: Get AMQP Messages
+    arguments:
+      routing_key_filter: "#"
+
+  # ─── Verify DAA API compliance ───────────────────────────────────
+  - step: Verify DAA ASTM F3442 API Compliance
+    arguments:
+      incident_logs: ${{ steps.get_incident_logs.result }}
+      active_alerts: ${{ steps.get_active_alerts.result }}
+      min_incident_logs: 20
+      require_alert_events: true
+      require_periodic_updates: true

@@ -536,58 +536,104 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
             updateFrame(currentLogIndex);
         }
 
+        const FILTER_DROPDOWN_THRESHOLD = 8;
+
         function buildSharedFilters() {
             const ownBar = document.getElementById('ownshipFilters');
             const intBar = document.getElementById('intruderFilters');
 
             /* Ownship row (hidden for single-ownship) */
             if (multiOwnship) {
-                const allOwnBtn = document.createElement('button');
-                allOwnBtn.className = 'filter-btn active';
-                allOwnBtn.textContent = 'All Ownships';
-                allOwnBtn.addEventListener('click', () => {
-                    filterState.ownship = null;
-                    activeOwnshipIdx = 0;
-                    syncOwnshipBar();
-                    refreshAllHuds();
-                });
-                ownBar.appendChild(allOwnBtn);
-                for (let i = 0; i < ownshipLabels.length; i++) {
-                    const lbl = ownshipLabels[i];
-                    const btn = document.createElement('button');
-                    btn.className = 'filter-btn';
-                    btn.textContent = lbl;
-                    btn.dataset.ownship = lbl;
-                    btn.addEventListener('click', () => {
-                        filterState.ownship = lbl;
-                        activeOwnshipIdx = i;
+                if (ownshipLabels.length > FILTER_DROPDOWN_THRESHOLD) {
+                    const sel = document.createElement('select');
+                    sel.id = 'ownshipSelect';
+                    const allOpt = document.createElement('option');
+                    allOpt.value = '';
+                    allOpt.textContent = 'All Ownships (' + ownshipLabels.length + ')';
+                    sel.appendChild(allOpt);
+                    for (let i = 0; i < ownshipLabels.length; i++) {
+                        const opt = document.createElement('option');
+                        opt.value = ownshipLabels[i];
+                        opt.textContent = ownshipLabels[i];
+                        sel.appendChild(opt);
+                    }
+                    sel.addEventListener('change', () => {
+                        const val = sel.value;
+                        filterState.ownship = val || null;
+                        activeOwnshipIdx = val ? ownshipLabels.indexOf(val) : 0;
+                        refreshAllHuds();
+                    });
+                    ownBar.appendChild(sel);
+                } else {
+                    const allOwnBtn = document.createElement('button');
+                    allOwnBtn.className = 'filter-btn active';
+                    allOwnBtn.textContent = 'All Ownships';
+                    allOwnBtn.addEventListener('click', () => {
+                        filterState.ownship = null;
+                        activeOwnshipIdx = 0;
                         syncOwnshipBar();
                         refreshAllHuds();
                     });
-                    ownBar.appendChild(btn);
+                    ownBar.appendChild(allOwnBtn);
+                    for (let i = 0; i < ownshipLabels.length; i++) {
+                        const lbl = ownshipLabels[i];
+                        const btn = document.createElement('button');
+                        btn.className = 'filter-btn';
+                        btn.textContent = lbl;
+                        btn.dataset.ownship = lbl;
+                        btn.addEventListener('click', () => {
+                            filterState.ownship = lbl;
+                            activeOwnshipIdx = i;
+                            syncOwnshipBar();
+                            refreshAllHuds();
+                        });
+                        ownBar.appendChild(btn);
+                    }
                 }
             } else {
                 ownBar.style.display = 'none';
             }
 
             /* Intruder row */
-            const allIntBtn = document.createElement('button');
-            allIntBtn.className = 'filter-btn active';
-            allIntBtn.textContent = 'All Intruders';
-            allIntBtn.addEventListener('click', () => { filterState.intruder = null; syncIntruderBar(); refreshAllHuds(); });
-            intBar.appendChild(allIntBtn);
-            for (const icao of allIcaos) {
-                const btn = document.createElement('button');
-                btn.className = 'filter-btn';
-                btn.textContent = icao;
-                btn.dataset.icao = icao;
-                btn.addEventListener('click', () => { filterState.intruder = icao; syncIntruderBar(); refreshAllHuds(); });
-                intBar.appendChild(btn);
+            if (allIcaos.length > FILTER_DROPDOWN_THRESHOLD) {
+                const sel = document.createElement('select');
+                sel.id = 'intruderSelect';
+                const allOpt = document.createElement('option');
+                allOpt.value = '';
+                allOpt.textContent = 'All Intruders (' + allIcaos.length + ')';
+                sel.appendChild(allOpt);
+                for (const icao of allIcaos) {
+                    const opt = document.createElement('option');
+                    opt.value = icao;
+                    opt.textContent = icao;
+                    sel.appendChild(opt);
+                }
+                sel.addEventListener('change', () => {
+                    filterState.intruder = sel.value || null;
+                    refreshAllHuds();
+                });
+                intBar.appendChild(sel);
+            } else {
+                const allIntBtn = document.createElement('button');
+                allIntBtn.className = 'filter-btn active';
+                allIntBtn.textContent = 'All Intruders';
+                allIntBtn.addEventListener('click', () => { filterState.intruder = null; syncIntruderBar(); refreshAllHuds(); });
+                intBar.appendChild(allIntBtn);
+                for (const icao of allIcaos) {
+                    const btn = document.createElement('button');
+                    btn.className = 'filter-btn';
+                    btn.textContent = icao;
+                    btn.dataset.icao = icao;
+                    btn.addEventListener('click', () => { filterState.intruder = icao; syncIntruderBar(); refreshAllHuds(); });
+                    intBar.appendChild(btn);
+                }
             }
             if (allIcaos.length === 0) intBar.style.display = 'none';
         }
 
         function syncOwnshipBar() {
+            const sel = document.getElementById('ownshipSelect');
+            if (sel) { sel.value = filterState.ownship || ''; return; }
             const bar = document.getElementById('ownshipFilters');
             const active = filterState.ownship;
             for (const btn of bar.children) {
@@ -597,6 +643,8 @@ REPLAY_3D_HTML_TEMPLATE = """<!DOCTYPE html>
         }
 
         function syncIntruderBar() {
+            const sel = document.getElementById('intruderSelect');
+            if (sel) { sel.value = filterState.intruder || ''; return; }
             const bar = document.getElementById('intruderFilters');
             const active = filterState.intruder;
             for (const btn of bar.children) {

@@ -14,6 +14,7 @@ End-to-end workflow for creating, running, and verifying ASTM F3442 DAA scenario
 | B3 | 1 | 5 | Swarm |
 | C1 | 2 | 1 | Shared intruder |
 | C2 | 3 | 4 | Multi-ownship multi-intruder |
+| Cap100 | 100 | 10 | 10×10 grid, BlueSky defined-path intruders |
 
 ## Files per scenario
 
@@ -27,6 +28,8 @@ Every scenario needs these files in the repo. Replace `<tag>` with a short ident
 | Scenario YAML | `scenarios/daa_<tag>_cooperative.yaml` | Orchestration + verification |
 
 Multi-ownship scenarios use per-ownship files: `flight_declaration_<tag>_alpha.json`, `trajectory_<tag>_alpha.json`, etc.
+
+**Large scenarios (>20 ownships):** use a subfolder under `config/edmonton/` to keep data files organized. For example, `config/edmonton/cap100/` contains all 200 data files for the 100-ownship scenario (trajectory + declaration per ownship) plus the BlueSky `.scn` file.
 
 ---
 
