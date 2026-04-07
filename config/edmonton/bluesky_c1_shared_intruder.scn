@@ -1,0 +1,22 @@
+# BlueSky Scenario C1: Two Ownships, Shared Intruder
+# Edmonton Area: two ownships loitering near 53.5000,-113.5600 and 53.5200,-113.5400.
+# Shared intruder: Bell 206 from the north-east, passing closer to ownship bravo,
+# then near ownship alpha to force two independent alerts with different CPA timing.
+
+00:00:00.00>POLY EDM_C1_BOX 53.4850,-113.5800 53.4850,-113.5100 53.5450,-113.5100 53.5450,-113.5800
+00:00:00.00>COLOR EDM_C1_BOX 0,255,0
+
+00:00:00.00>TRAILS ON
+00:00:00.00>RESO OFF
+00:00:00.00>RTF 10
+00:00:00.00>PAN 53.5100,-113.5500
+00:00:00.00>-
+
+# INTC1: Bell 206 cooperative intruder at 361 ft / 58 kts.
+# The path reaches ownship bravo first, then ownship alpha.
+00:00:00.00>CRE INTC1,B206,53.5450,-113.5100,225,361,58
+00:00:00.00>INTC1 ADDWPT 53.5193,-113.5390
+00:00:00.00>INTC1 ADDWPT 53.5008,-113.5592
+00:00:00.00>INTC1 ADDWPT 53.4850,-113.5800
+
+00:03:30.00>HOLD

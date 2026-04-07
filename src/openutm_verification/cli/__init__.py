@@ -69,6 +69,10 @@ def main():
     session_manager.current_timestamp_str = timestamp_str
     session_manager.current_start_time = run_timestamp
 
+    # SessionManager._load_config() replaces ConfigProxy with a fresh config from
+    # the file, discarding CLI overrides like target_suites. Re-apply them.
+    ConfigProxy.override(config)
+
     # Run verification scenarios
     failed = asyncio.run(run_verification_scenarios(config, config_path, session_manager=session_manager))
 

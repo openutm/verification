@@ -1,0 +1,129 @@
+name: daa_c1_two_ownships_shared_intruder_cooperative
+description: >
+  ASTM F3442 Category C1 - Two Ownships, Shared Intruder (Cooperative).
+  Two independent ownship declarations loiter in the Edmonton operating area while a
+  single cooperative Bell 206 intruder (INTC1) transits near both tracks.
+  Pass criteria: two distinct alerts are created, both reference the same intruder,
+  their CPA timing and minimum separation differ, and no unexpected intruder IDs appear.
+
+steps:
+  - step: Check AMQP Connection
+  - step: Cleanup Flight Declarations
+  - id: setup_c1_declarations
+    step: Setup Multiple Flight Declarations With Paths
+    arguments:
+      declaration_paths:
+        - config/edmonton/flight_declaration_c1_ownship_alpha.json
+        - config/edmonton/flight_declaration_c1_ownship_bravo.json
+      duration_minutes: 60
+  - step: Start AMQP Queue Monitor
+    arguments:
+      routing_key: "#"
+      duration: 250
+    background: true
+  - id: activate_alpha
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c1_declarations.result.declarations[0].id }}
+      state: ACTIVATED
+  - id: activate_bravo
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c1_declarations.result.declarations[1].id }}
+      state: ACTIVATED
+  - id: stream_c1_traffic
+    step: Stream Air Traffic
+    arguments:
+      provider: bluesky
+      config_path: config/edmonton/bluesky_c1_shared_intruder.scn
+      duration: 210
+    background: true
+  - step: Wait X seconds
+    arguments:
+      duration: 5
+  - id: generate_alpha_telemetry
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/trajectory_c1_ownship_alpha.json
+      duration: 180
+      reference_time: ${{ steps.setup_c1_declarations.result.declarations[0].start_datetime }}
+      altitude_m: 120
+  - id: generate_bravo_telemetry
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/trajectory_c1_ownship_bravo.json
+      duration: 180
+      reference_time: ${{ steps.setup_c1_declarations.result.declarations[1].start_datetime }}
+      altitude_m: 120
+  - id: submit_alpha_telemetry
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c1_declarations.result.declarations[0].id }}
+      states: ${{ steps.generate_alpha_telemetry.result }}
+      duration: 180
+    background: true
+  - id: submit_bravo_telemetry
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c1_declarations.result.declarations[1].id }}
+      states: ${{ steps.generate_bravo_telemetry.result }}
+      duration: 180
+    background: true
+  - id: end_alpha
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c1_declarations.result.declarations[0].id }}
+      state: ENDED
+    needs:
+      - submit_alpha_telemetry
+      - submit_bravo_telemetry
+      - stream_c1_traffic
+  - id: end_bravo
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c1_declarations.result.declarations[1].id }}
+      state: ENDED
+    needs:
+      - submit_alpha_telemetry
+      - submit_bravo_telemetry
+      - stream_c1_traffic
+  - step: Stop AMQP Queue Monitor
+    needs:
+      - end_alpha
+      - end_bravo
+  - id: get_c1_active_alerts
+    step: Get Active DAA Alerts
+  - id: get_c1_incident_logs
+    step: Get DAA Incident Logs
+    arguments:
+      start_date: ${{ steps.setup_c1_declarations.result.declarations[0].start_datetime }}
+  - step: Get AMQP Messages
+    arguments:
+      routing_key_filter: "#"
+
+  - step: Verify DAA ASTM F3442 API Compliance
+    arguments:
+      incident_logs: ${{ steps.get_c1_incident_logs.result }}
+      active_alerts: ${{ steps.get_c1_active_alerts.result }}
+      min_incident_logs: 4
+      require_alert_events: true
+      require_periodic_updates: true
+
+  - step: Verify DAA Encounter Criteria
+    arguments:
+      incident_logs: ${{ steps.get_c1_incident_logs.result }}
+      active_alerts: ${{ steps.get_c1_active_alerts.result }}
+      expected_alert_levels: [1]
+      expected_geometry: any
+      require_escalation: false
+      require_cpa: true
+      require_lifecycle: true
+      max_1hz_gap_seconds: 4.0
+
+  - step: Verify DAA Shared Intruder Independence
+    arguments:
+      incident_logs: ${{ steps.get_c1_incident_logs.result }}
+      expected_intruder_icao: INTC1
+      expected_alert_count: 2
+      min_distinct_range_m: 25.0
+      min_distinct_initial_cpa_seconds: 10.0

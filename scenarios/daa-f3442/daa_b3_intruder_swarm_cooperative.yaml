@@ -1,0 +1,84 @@
+name: daa_b3_intruder_swarm_cooperative
+description: >
+  ASTM F3442 Category B3 - Intruder Swarm Stress Test (5 Cooperative Intruders).
+  Verifies system performance with 5 simultaneous intruders approaching from
+  different directions with small vertical offsets, all reaching WARNING level.
+  Ownship hovering at 53.5600°N, -113.5400°W, 100m AGL.
+  INT-C01 (Cessna 172)  from North at 40 m/s, 110m AGL (10m offset) → WARNING.
+  INT-C02 (Piper PA-28) from East  at 45 m/s, 120m AGL (20m offset) → WARNING.
+  INT-C03 (Bell 206)    from South at 30 m/s, 100m AGL ( 0m offset) → WARNING.
+  INT-C04 (Cirrus SR22) from West  at 55 m/s, 130m AGL (30m offset) → WARNING.
+  INT-C05 (Air Tractor) from NE    at 35 m/s, 115m AGL (15m offset) → WARNING.
+  Pass criteria: all 5 detected, 1Hz maintained, all alerts resolved on departure.
+  Edmonton flight area (within inclusion zone, outside all exclusion zones).
+
+steps:
+  - step: Check AMQP Connection
+  - step: Cleanup Flight Declarations
+  - step: Setup Flight Declaration
+    arguments:
+      flight_declaration_path: config/edmonton/flight_declaration_b3_swarm.json
+      trajectory_path: config/edmonton/trajectory_b3_swarm_ownship.json
+      telemetry_duration: 190
+      altitude_m: 120
+  - step: Start AMQP Queue Monitor
+    arguments:
+      routing_key: ${{ steps.Setup Flight Declaration.result.id }}
+      duration: 250
+    background: true
+  - step: Update Operation State
+    arguments:
+      state: ACTIVATED
+  - id: stream_b3_traffic
+    step: Stream Air Traffic
+    arguments:
+      provider: bluesky
+      config_path: config/edmonton/bluesky_b3_swarm.scn
+      duration: 200
+    background: true
+  - id: wait_traffic_start
+    step: Wait X seconds
+    arguments:
+      duration: 5
+  - step: Submit Telemetry
+    arguments:
+      duration: 190
+    background: true
+  - id: update_state_ended
+    step: Update Operation State
+    arguments:
+      state: ENDED
+    needs:
+      - Submit Telemetry
+      - stream_b3_traffic
+  - step: Stop AMQP Queue Monitor
+    needs:
+      - update_state_ended
+  - id: get_daa_active_alerts
+    step: Get Active DAA Alerts
+  - id: get_daa_incident_logs
+    step: Get DAA Incident Logs
+    arguments:
+      start_date: ${{ steps.Setup Flight Declaration.result.start_datetime }}
+
+  - step: Get AMQP Messages
+    arguments:
+      routing_key_filter: ${{ steps.Setup Flight Declaration.result.id }}
+
+  # Schema validation: checks API payloads have required fields and correct types
+  - step: Verify DAA ASTM F3442 API Compliance
+    arguments:
+      incident_logs: ${{ steps.get_daa_incident_logs.result }}
+      active_alerts: ${{ steps.get_daa_active_alerts.result }}
+      min_incident_logs: 5
+      require_alert_events: true
+      require_periodic_updates: true
+
+  # B3 pass criteria: 5 intruders detected, 1Hz maintained, all alerts resolved
+  - step: Verify DAA Encounter Criteria
+    arguments:
+      incident_logs: ${{ steps.get_daa_incident_logs.result }}
+      active_alerts: ${{ steps.get_daa_active_alerts.result }}
+      expected_alert_levels: [1, 2, 3]
+      expected_geometry: any
+      max_1hz_gap_seconds: 5.0  # Five intruders significantly increase Celery load; allow scheduling jitter

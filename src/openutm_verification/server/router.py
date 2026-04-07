@@ -39,10 +39,7 @@ async def list_scenarios():
     path = get_scenarios_directory()
     if not path.exists():
         return []
-    return [
-        f.relative_to(path).with_suffix("").as_posix()
-        for f in sorted(path.rglob("*.yaml"))
-    ]
+    return [f.relative_to(path).with_suffix("").as_posix() for f in sorted(path.rglob("*.yaml"))]
 
 
 @scenario_router.get("/api/suites")

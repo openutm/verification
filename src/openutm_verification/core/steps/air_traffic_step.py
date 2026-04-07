@@ -142,7 +142,7 @@ class AirTrafficStepClient:
             duration = 30
 
         return (duration, config_path, number_of_aircraft, sensor_ids, session_ids)
-    
+
     @scenario_step("Stream Air Traffic", phase=FlightPhase.CRUISE)
     async def stream_air_traffic(
         self,

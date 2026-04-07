@@ -53,7 +53,7 @@ bayesian_air_traffic_simulator_settings:
 amqp:
   url: "" # e.g., amqp://guest:guest@localhost:5672/ (can also use AMQP_URL env var)
   exchange_name: "operational_events"
-  exchange_type: "direct"
+  exchange_type: "topic"
   routing_key: "#" # Flight declaration ID or '#' for all messages
   queue_name: "" # Empty means auto-generate exclusive queue
 
@@ -95,6 +95,16 @@ suites:
       trajectory: "config/bern/trajectory_f3.json"
     - name: add_flight_declaration
     - name: geo_fence_upload
+  astm_f3442:
+    scenarios:
+      - name: daa_a1_head_on_cooperative
+      - name: daa_a2_crossing_cooperative
+      - name: daa_a3_overtake_cooperative
+      - name: daa_b1_multi_intruder_cooperative
+      - name: daa_b2_staggered_arrival_cooperative
+      - name: daa_b3_intruder_swarm_cooperative
+      - name: daa_c1_two_ownships_shared_intruder_cooperative
+      - name: daa_c2_three_ownships_multi_intruder_cooperative
 
 # Reporting configuration
 reporting:

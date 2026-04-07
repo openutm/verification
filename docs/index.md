@@ -10,6 +10,9 @@ All scenarios are defined as YAML files and executed via the runner. See the [sc
 
 ## Scenarios
 
+### DAA (Detect and Avoid)
+* [DAA Scenario Authoring Guide](daa_scenario_authoring_guide.md)
+
 ### Flight Declarations
 * [Add Flight Declaration](scenarios/flight-declarations/add_flight_declaration.md)
 * [Add Flight Declaration (via Operational Intent)](scenarios/flight-declarations/add_flight_declaration_via_operational_intent.md)

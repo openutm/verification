@@ -1,0 +1,24 @@
+# BlueSky Scenario A1: Head-On Approach (Cooperative)
+# Edmonton Area B (suburban): Ownship at 53.5200, -113.6000 heading East
+# Intruder INT-C01 (C-GABC, Cessna 172): starts at 53.5200, -113.5500 heading West
+# Initial separation: ~4.2 km horizontal, 22m vertical
+# Per ASTM F3442 integration test plan scenario A1
+
+00:00:00.00>POLY EDM_A1_BOX 53.5100,-113.6100 53.5100,-113.5400 53.5300,-113.5400 53.5300,-113.6100
+00:00:00.00>COLOR EDM_A1_BOX 0,255,0
+
+00:00:00.00>TRAILS ON
+00:00:00.00>RESO OFF
+00:00:00.00>RTF 10
+00:00:00.00>PAN 53.5200,-113.5750
+00:00:00.00>-
+
+# Intruder INT-C01: Cessna 172, ADS-B Out, heading 270 (West) at 400 ft, 87 kts
+# ICAO: C0A1B2, Call Sign: C-GABC
+# Format: CRE <acid>,<type>,<lat>,<lon>,<hdg>,<alt>,<spd>
+00:00:00.00>CRE INTA1,C172,53.5200,-113.5500,270,400,87
+00:00:00.00>INTA1 ADDWPT 53.5200,-113.5750
+00:00:00.00>INTA1 ADDWPT 53.5200,-113.6000
+00:00:00.00>INTA1 ADDWPT 53.5200,-113.6200
+
+00:02:00.00>HOLD

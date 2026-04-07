@@ -1,0 +1,185 @@
+name: daa_c2_three_ownships_multi_intruder_cooperative
+description: >
+  ASTM F3442 Category C2 - Three Ownships, Multiple Intruders (Complex).
+  Three independent ownship declarations (Alpha, Bravo, Charlie) loiter in a
+  triangular layout within Edmonton Area B while four intruders approach from
+  different cardinal directions:
+    INTC01 (Cessna 172, NE→SW)  → encounters Charlie, Alpha
+    INTC02 (Piper PA-28, SE→NW) → encounters Bravo, Charlie
+    INTC03 (Bell 206, W→E)      → encounters Alpha, Bravo
+    INTCN1 (Ultralight, N→S)    → encounters Charlie
+  Pass criteria: system handles all ownship-intruder combinations, correct
+  ownship assignment, shared intruder independence for INTC01.
+
+steps:
+  - step: Check AMQP Connection
+  - step: Cleanup Flight Declarations
+  - id: setup_c2_declarations
+    step: Setup Multiple Flight Declarations With Paths
+    arguments:
+      declaration_paths:
+        - config/edmonton/flight_declaration_c2_ownship_alpha.json
+        - config/edmonton/flight_declaration_c2_ownship_bravo.json
+        - config/edmonton/flight_declaration_c2_ownship_charlie.json
+      duration_minutes: 60
+
+  - step: Start AMQP Queue Monitor
+    arguments:
+      routing_key: "#"
+      duration: 300
+    background: true
+
+  # --- Activate all three ownship declarations ---
+  - id: activate_alpha
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c2_declarations.result.declarations[0].id }}
+      state: ACTIVATED
+  - id: activate_bravo
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c2_declarations.result.declarations[1].id }}
+      state: ACTIVATED
+  - id: activate_charlie
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c2_declarations.result.declarations[2].id }}
+      state: ACTIVATED
+
+  # --- Generate and submit intruder traffic (4 intruders, staggered) ---
+  - id: stream_c2_traffic
+    step: Stream Air Traffic
+    arguments:
+      provider: bluesky
+      config_path: config/edmonton/bluesky_c2_multi_ownship.scn
+      duration: 240
+    background: true
+
+  - step: Wait X seconds
+    arguments:
+      duration: 5
+
+  # --- Generate telemetry for each ownship ---
+  - id: generate_alpha_telemetry
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/trajectory_c2_ownship_alpha.json
+      duration: 210
+      reference_time: ${{ steps.setup_c2_declarations.result.declarations[0].start_datetime }}
+      altitude_m: 120
+  - id: generate_bravo_telemetry
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/trajectory_c2_ownship_bravo.json
+      duration: 210
+      reference_time: ${{ steps.setup_c2_declarations.result.declarations[1].start_datetime }}
+      altitude_m: 120
+  - id: generate_charlie_telemetry
+    step: Generate Telemetry
+    arguments:
+      config_path: config/edmonton/trajectory_c2_ownship_charlie.json
+      duration: 210
+      reference_time: ${{ steps.setup_c2_declarations.result.declarations[2].start_datetime }}
+      altitude_m: 120
+
+  # --- Submit telemetry for each ownship (background) ---
+  - id: submit_alpha_telemetry
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c2_declarations.result.declarations[0].id }}
+      states: ${{ steps.generate_alpha_telemetry.result }}
+      duration: 210
+    background: true
+  - id: submit_bravo_telemetry
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c2_declarations.result.declarations[1].id }}
+      states: ${{ steps.generate_bravo_telemetry.result }}
+      duration: 210
+    background: true
+  - id: submit_charlie_telemetry
+    step: Submit Telemetry For Declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c2_declarations.result.declarations[2].id }}
+      states: ${{ steps.generate_charlie_telemetry.result }}
+      duration: 210
+    background: true
+
+  # --- End all declarations after telemetry completes ---
+  - id: end_alpha
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c2_declarations.result.declarations[0].id }}
+      state: ENDED
+    needs:
+      - submit_alpha_telemetry
+      - submit_bravo_telemetry
+      - submit_charlie_telemetry
+      - stream_c2_traffic
+  - id: end_bravo
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c2_declarations.result.declarations[1].id }}
+      state: ENDED
+    needs:
+      - submit_alpha_telemetry
+      - submit_bravo_telemetry
+      - submit_charlie_telemetry
+      - stream_c2_traffic
+  - id: end_charlie
+    step: Update Operation State of declaration
+    arguments:
+      declaration_id: ${{ steps.setup_c2_declarations.result.declarations[2].id }}
+      state: ENDED
+    needs:
+      - submit_alpha_telemetry
+      - submit_bravo_telemetry
+      - submit_charlie_telemetry
+      - stream_c2_traffic
+
+  - step: Stop AMQP Queue Monitor
+    needs:
+      - end_alpha
+      - end_bravo
+      - end_charlie
+
+  # --- Retrieve alerts and incident logs ---
+  - id: get_c2_active_alerts
+    step: Get Active DAA Alerts
+  - id: get_c2_incident_logs
+    step: Get DAA Incident Logs
+    arguments:
+      start_date: ${{ steps.setup_c2_declarations.result.declarations[0].start_datetime }}
+  - step: Get AMQP Messages
+    arguments:
+      routing_key_filter: "#"
+
+  # --- Verification ---
+  - step: Verify DAA ASTM F3442 API Compliance
+    arguments:
+      incident_logs: ${{ steps.get_c2_incident_logs.result }}
+      active_alerts: ${{ steps.get_c2_active_alerts.result }}
+      min_incident_logs: 8
+      require_alert_events: true
+      require_periodic_updates: true
+
+  - step: Verify DAA Encounter Criteria
+    arguments:
+      incident_logs: ${{ steps.get_c2_incident_logs.result }}
+      active_alerts: ${{ steps.get_c2_active_alerts.result }}
+      expected_alert_levels: [1]
+      expected_geometry: any
+      require_escalation: false
+      require_cpa: true
+      require_lifecycle: true
+      max_1hz_gap_seconds: 5.0
+
+  # INTC01 is the shared intruder that encounters both Charlie and Alpha
+  - step: Verify DAA Shared Intruder Independence
+    arguments:
+      incident_logs: ${{ steps.get_c2_incident_logs.result }}
+      expected_intruder_icao: INTC01
+      expected_alert_count: 2
+      min_distinct_range_m: 20.0
+      min_distinct_initial_cpa_seconds: 5.0
+      allow_other_intruders: true

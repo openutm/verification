@@ -1,0 +1,24 @@
+# BlueSky Scenario A3: Overtake from Behind (Cooperative)
+# Edmonton Area A (Rural): center 53.6200°N, -113.6400°W
+# Ownship heading East at ~15 m/s, intruder SR22 heading East faster
+# Intruder starts 3.5 km behind (west of) ownship, same latitude
+# Initial separation: ~3500m horizontal, 7m vertical (100m vs 107m AGL)
+# Per ASTM F3442 integration test plan scenario A3
+
+00:00:00.00>POLY EDM_A3_BOX 53.6100,-113.7100 53.6100,-113.5500 53.6300,-113.5500 53.6300,-113.7100
+00:00:00.00>COLOR EDM_A3_BOX 0,255,0
+
+00:00:00.00>TRAILS ON
+00:00:00.00>RESO OFF
+00:00:00.00>RTF 10
+00:00:00.00>PAN 53.6200,-113.6400
+00:00:00.00>-
+
+# Intruder INT-C04: Cirrus SR22, ADS-B Out, heading 090 (East) at 350 ft, 117 kts
+# ICAO: A1B2C3, Call Sign: N12345
+# Starts 3.5 km west of ownship, overtakes from behind
+00:00:00.00>CRE INTA3,SR22,53.6200,-113.6931,090,350,117
+00:00:00.00>INTA3 ADDWPT 53.6200,-113.6400
+00:00:00.00>INTA3 ADDWPT 53.6200,-113.5600
+
+00:02:30.00>HOLD

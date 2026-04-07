@@ -109,6 +109,7 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path, sessi
                 duration=0,
                 steps=steps,
                 flight_declaration_data=state.flight_declaration_data if state else None,
+                flight_declarations_data=state.flight_declarations_data if state else None,
                 flight_declaration_via_operational_intent_data=state.flight_declaration_via_operational_intent_data if state else None,
                 telemetry_data=state.telemetry_data if state else None,
                 air_traffic_data=state.air_traffic_data if state else [],

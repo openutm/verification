@@ -60,6 +60,7 @@ class ScenarioResult(BaseModel):
     flight_declaration_filename: str | None = None
     telemetry_filename: str | None = None
     flight_declaration_data: FlightDeclaration | None = None
+    flight_declarations_data: list[FlightDeclaration] | None = None
     flight_declaration_via_operational_intent_data: FlightDeclarationViaOperationalIntent | None = None
     telemetry_data: list[RIDAircraftState] | None = None
     air_traffic_data: list[FlightObservationSchema] | None = None
