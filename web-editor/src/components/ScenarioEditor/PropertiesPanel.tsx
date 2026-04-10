@@ -164,6 +164,9 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     <h3>{selectedNode.data.label}</h3>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
                         <div style={{ fontFamily: 'monospace' }}>Node ID: {selectedNode.id}</div>
+                        {selectedNode.data.category && (
+                            <div style={{ marginTop: '4px', fontFamily: 'monospace' }}>Client: {selectedNode.data.category as string}</div>
+                        )}
                         {selectedNode.data.phase && (
                             <div style={{ marginTop: '4px' }}>
                                 <span style={{

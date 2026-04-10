@@ -1,6 +1,6 @@
 
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass, Plane } from 'lucide-react';
+import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass, Plane, Monitor } from 'lucide-react';
 import styles from '../../styles/Node.module.css';
 import { getPhaseColor, PHASE_LABELS } from '../../utils/phaseColors';
 import type { NodeData } from '../../types/scenario';
@@ -123,6 +123,12 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                     </div>
                 )}
             </div>
+            {data.category && (
+                <div className={styles.clientBadge} title={`Client: ${data.category}`}>
+                    <Monitor size={11} />
+                    <span>{data.category}</span>
+                </div>
+            )}
             <Handle type="source" position={Position.Bottom} style={{ background: 'var(--rf-handle)' }} />
         </div>
     );

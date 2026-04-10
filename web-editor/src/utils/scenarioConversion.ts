@@ -122,6 +122,7 @@ export const convertYamlToGraph = (
                         label: groupStep.step,
                         stepId: groupStep.id || groupStep.step,
                         operationId: groupOperation?.id,
+                        category: groupOperation?.category,
                         description: groupStep.description || groupOperation?.description || '',
                         phase: groupOperation?.phase,
                         parameters: groupParameters
@@ -180,6 +181,7 @@ export const convertYamlToGraph = (
                     label: step.step,
                     stepId: step.id,
                     operationId: operation?.id,
+                    category: operation?.category,
                     description: step.description || operation?.description || '',
                     phase: operation?.phase,
                     parameters: parameters,

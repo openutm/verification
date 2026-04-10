@@ -83,4 +83,19 @@ describe('CustomNode', () => {
         // just check if the class name includes the selected class.
         expect(nodeElement.classList.toString()).toContain(styles.selected || 'selected');
     });
+
+    it('renders client badge when category is provided', () => {
+        const propsWithCategory = {
+            ...defaultProps,
+            data: { ...mockData, category: 'FlightBlenderClient' }
+        };
+        render(<CustomNode {...propsWithCategory} />, { wrapper });
+        expect(screen.getByText('FlightBlenderClient')).toBeInTheDocument();
+        expect(screen.getByTitle('Client: FlightBlenderClient')).toBeInTheDocument();
+    });
+
+    it('does not render client badge when category is absent', () => {
+        render(<CustomNode {...defaultProps} />, { wrapper });
+        expect(screen.queryByTitle(/^Client:/)).not.toBeInTheDocument();
+    });
 });

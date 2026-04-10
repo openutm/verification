@@ -19,6 +19,7 @@ export interface NodeData extends Record<string, unknown> {
     label: string;
     stepId?: string;
     operationId?: string;
+    category?: string;
     description?: string;
     parameters?: OperationParam[];
     phase?: string;
