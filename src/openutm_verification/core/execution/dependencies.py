@@ -41,7 +41,12 @@ def get_scenario_docs(scenario_id: str) -> str | None:
 
     docs_path = docs_dir / f"{scenario_id}.md"
     if not docs_path.exists():
-        return None
+        # Search subdirectories for a matching file
+        matches = list(docs_dir.rglob(f"{scenario_id}.md"))
+        if len(matches) == 1:
+            docs_path = matches[0]
+        else:
+            return None
 
     try:
         return docs_path.read_text(encoding="utf-8")
@@ -81,6 +86,16 @@ def scenarios() -> Iterable[str]:
         logger.info(f"Running YAML scenario: {scenario_id}")
 
         docs_content = get_scenario_docs(scenario_id)
+
+        if docs_content is None:
+            scenario_docs_mode = config.scenario_docs if hasattr(config, "scenario_docs") else "warn"
+            if scenario_docs_mode == "required":
+                logger.error(f"Scenario '{scenario_id}' has no documentation. Aborting because scenario_docs is set to 'required'.")
+                raise FileNotFoundError(
+                    f"Missing documentation for scenario '{scenario_id}'. Add a '{scenario_id}.md' file under the docs/scenarios directory."
+                )
+            elif scenario_docs_mode == "warn":
+                logger.warning(f"Scenario '{scenario_id}' has no documentation. Add a '{scenario_id}.md' file under the docs/scenarios directory.")
 
         CONTEXT.set(
             {

@@ -195,6 +195,7 @@ class AppConfig(StrictBaseModel):
 
     version: str = "1.0"
     run_id: str = "daily-conformance-check"
+    scenario_docs: Literal["warn", "required", "ignore"] = "warn"
     flight_blender: FlightBlenderConfig
     opensky: OpenSkyConfig
     air_traffic_simulator_settings: AirTrafficSimulatorSettings
