@@ -25,10 +25,14 @@ def _make_runner() -> SessionManager:
     runner = SessionManager.__new__(SessionManager)
     runner._initialized = True
     runner.config_path = None
-    runner.config = type("C", (), {
-        "suites": {},
-        "reporting": type("R", (), {"output_dir": "/tmp/reports", "formats": []})(),
-    })()
+    runner.config = type(
+        "C",
+        (),
+        {
+            "suites": {},
+            "reporting": type("R", (), {"output_dir": "/tmp/reports", "formats": []})(),
+        },
+    )()
     runner.client_map = {}
     runner.session_stack = None
     runner.session_resolver = None
