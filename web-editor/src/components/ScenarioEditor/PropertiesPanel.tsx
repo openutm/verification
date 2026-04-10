@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, Link as LinkIcon, Unlink, Plane } from 'lucide-react';
 import type { Node } from '@xyflow/react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
@@ -95,16 +95,12 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
     const [jsonItemsText, setJsonItemsText] = useState<string | null>(null);
     // Local state to track when "Custom expression…" is explicitly selected
     const [isCustomCondition, setIsCustomCondition] = useState(false);
-    const [prevNodeId, setPrevNodeId] = useState(selectedNode.id);
-    const [prevItems, setPrevItems] = useState(selectedNode.data.loop?.items);
 
-    // Sync local state when node selection changes
-    if (selectedNode.id !== prevNodeId || selectedNode.data.loop?.items !== prevItems) {
-        setPrevNodeId(selectedNode.id);
-        setPrevItems(selectedNode.data.loop?.items);
+    // Sync local state when node selection or loop items change
+    useEffect(() => {
         setJsonItemsText(null);
         setIsCustomCondition(false);
-    }
+    }, [selectedNode.id, selectedNode.data.loop?.items]);
 
     const getItemsText = () => {
         if (jsonItemsText !== null) return jsonItemsText;

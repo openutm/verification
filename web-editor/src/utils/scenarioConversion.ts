@@ -125,7 +125,8 @@ export const convertYamlToGraph = (
                         operationId: groupOperation?.id,
                         description: groupStep.description || groupOperation?.description || '',
                         phase: groupOperation?.phase,
-                        parameters: groupParameters
+                        parameters: groupParameters,
+                        continueOnError: groupStep['continue-on-error'],
                     }
                 };
 

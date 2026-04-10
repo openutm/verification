@@ -957,11 +957,37 @@ const ScenarioEditorContent = () => {
 
     const updateNodeContinueOnError = useCallback((nodeId: string, value: boolean) => {
         setIsDirty(true);
-        setNodes((nds) => nds.map((node) => (
-            node.id === nodeId
-                ? { ...node, data: { ...node.data, continueOnError: value } }
-                : node
-        )));
+        setNodes((nds) => {
+            const targetNode = nds.find(n => n.id === nodeId);
+            // If this is a group child node, sync back to the groups state
+            if (targetNode?.parentId) {
+                const parentNode = nds.find(n => n.id === targetNode.parentId);
+                if (parentNode?.data.isGroupContainer) {
+                    const groupName = parentNode.data.label.replace(/^📦\s*/, '').trim();
+                    const stepId = targetNode.data.stepId || targetNode.data.label;
+                    setCurrentScenarioGroups(prev => {
+                        const group = prev[groupName];
+                        if (!group) return prev;
+                        return {
+                            ...prev,
+                            [groupName]: {
+                                ...group,
+                                steps: group.steps.map(s =>
+                                    (s.id || s.step) === stepId
+                                        ? { ...s, 'continue-on-error': value || undefined }
+                                        : s
+                                ),
+                            },
+                        };
+                    });
+                }
+            }
+            return nds.map((node) => (
+                node.id === nodeId
+                    ? { ...node, data: { ...node.data, continueOnError: value } }
+                    : node
+            ));
+        });
 
         setSelectedNode((prev) => {
             if (!prev || prev.id !== nodeId) return prev;
