@@ -95,8 +95,8 @@ class AirTrafficStepClient:
             return (resolved_duration, config_path, number_of_aircraft, sensor_ids, session_ids)
 
         try:
-            if provider == ProviderType.GEOJSON:
-                sim = app_config.air_traffic_simulator_settings
+            sim = app_config.air_traffic_simulator_settings
+            if sim and provider != ProviderType.OPENSKY:
                 if duration is None:
                     duration = sim.simulation_duration
                 if number_of_aircraft is None:
@@ -105,35 +105,13 @@ class AirTrafficStepClient:
                     sensor_ids = sim.sensor_ids
                 if session_ids is None and sim.session_ids:
                     session_ids = sim.session_ids
-                if config_path is None:
+
+            # Resolve config_path from data_files when not explicitly provided
+            if config_path is None:
+                if provider == ProviderType.GEOJSON:
                     config_path = _get_data_file_path("trajectory")
-
-            elif provider == ProviderType.BLUESKY:
-                sim = app_config.blue_sky_air_traffic_simulator_settings
-                if duration is None:
-                    duration = sim.simulation_duration
-                if number_of_aircraft is None:
-                    number_of_aircraft = sim.number_of_aircraft
-                if sensor_ids is None and sim.sensor_ids:
-                    sensor_ids = sim.sensor_ids
-                if session_ids is None and sim.session_ids:
-                    session_ids = sim.session_ids
-                if config_path is None:
+                elif provider == ProviderType.BLUESKY:
                     config_path = _get_data_file_path("simulation")
-
-            elif provider == ProviderType.BAYESIAN:
-                sim = app_config.bayesian_air_traffic_simulator_settings
-                if duration is None:
-                    duration = sim.simulation_duration
-                if number_of_aircraft is None:
-                    number_of_aircraft = sim.number_of_aircraft
-                if sensor_ids is None and sim.sensor_ids:
-                    sensor_ids = sim.sensor_ids
-                if session_ids is None and sim.session_ids:
-                    session_ids = sim.session_ids
-
-            elif provider == ProviderType.OPENSKY:
-                pass  # OpenSky reads its own config in the provider
         except Exception:
             logger.debug("Could not read application config for defaults, using step arguments only.")
 
