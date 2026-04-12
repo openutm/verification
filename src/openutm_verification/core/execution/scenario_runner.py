@@ -208,12 +208,13 @@ class ScenarioContext:
 
 
 class ScenarioStepDescriptor:
-    def __init__(self, func: Callable[..., Awaitable[Any]], step_name: str, phase: FlightPhase | None = None):
+    def __init__(self, func: Callable[..., Awaitable[Any]], step_name: str, phase: FlightPhase | None = None, *, register: bool = True):
         self.func = func
         self.step_name = step_name
         self.phase = phase
+        self.register = register
         self.wrapper = self._create_wrapper(func, step_name, phase)
-        self.param_model = self._create_param_model(func, step_name)
+        self.param_model = self._create_param_model(func, step_name) if register else None
 
     def _create_param_model(self, func: Callable[..., Any], step_name: str) -> type[BaseModel]:
         sig = inspect.signature(func)
@@ -331,16 +332,17 @@ class ScenarioStepDescriptor:
         return async_wrapper
 
     def __set_name__(self, owner: type, name: str):
-        # Register using the human-readable step name
-        registry_key = self.step_name
-        if registry_key in STEP_REGISTRY:
-            logger.warning(f"Overwriting step registry for '{registry_key}'. Ensure step names are unique.")
+        if self.register:
+            # Register using the human-readable step name
+            registry_key = self.step_name
+            if registry_key in STEP_REGISTRY:
+                logger.warning(f"Overwriting step registry for '{registry_key}'. Ensure step names are unique.")
 
-        STEP_REGISTRY[registry_key] = StepRegistryEntry(
-            client_class=owner,
-            method_name=name,
-            param_model=self.param_model,
-        )
+            STEP_REGISTRY[registry_key] = StepRegistryEntry(
+                client_class=owner,
+                method_name=name,
+                param_model=self.param_model,
+            )
         setattr(owner, name, self.wrapper)
 
     def __call__(self, *args: Any, **kwargs: Any):
@@ -350,5 +352,18 @@ class ScenarioStepDescriptor:
 def scenario_step(step_name: str, phase: FlightPhase | None = None) -> Callable[[Callable[..., Awaitable[Any]]], Any]:
     def decorator(func: Callable[..., Awaitable[Any]]) -> Any:
         return ScenarioStepDescriptor(func, step_name, phase)
+
+    return decorator
+
+
+def internal_step(step_name: str, phase: FlightPhase | None = None) -> Callable[[Callable[..., Awaitable[Any]]], Any]:
+    """Like @scenario_step but without registering in STEP_REGISTRY.
+
+    The method still gets StepResult wrapping, timing, logging, and error
+    handling — it just won't appear in the UI or be callable from YAML scenarios.
+    """
+
+    def decorator(func: Callable[..., Awaitable[Any]]) -> Any:
+        return ScenarioStepDescriptor(func, step_name, phase, register=False)
 
     return decorator

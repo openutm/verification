@@ -19,7 +19,7 @@ from openutm_verification.core.clients.air_traffic.base_client import (
 from openutm_verification.core.clients.flight_blender.base_client import (
     BaseBlenderAPIClient,
 )
-from openutm_verification.core.execution.scenario_runner import scenario_step
+from openutm_verification.core.execution.scenario_runner import internal_step
 from openutm_verification.core.flight_phase import FlightPhase
 from openutm_verification.simulator.models.flight_data_types import FlightObservationSchema
 
@@ -75,7 +75,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
         # but we inherit from it. Ideally, we should refactor to composition over inheritance.
         BaseBlenderAPIClient.__init__(self, base_url="", credentials={})
 
-    @scenario_step("Fetch Session IDs for Bayesian Simulation", phase=FlightPhase.PRE_FLIGHT)
+    @internal_step("Fetch Session IDs for Bayesian Simulation", phase=FlightPhase.PRE_FLIGHT)
     async def get_configured_bayesian_session_ids(
         self,
     ) -> list[UUID]:
@@ -98,7 +98,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
             raise
         return session_ids
 
-    @scenario_step("Generate Bayesian Simulation Air Traffic Data", phase=FlightPhase.PRE_FLIGHT)
+    @internal_step("Generate Bayesian Simulation Air Traffic Data", phase=FlightPhase.PRE_FLIGHT)
     async def generate_bayesian_sim_air_traffic_data(
         self,
         config_path: str | None = None,
@@ -275,7 +275,7 @@ class BayesianTrafficClient(BayesianAirTrafficClient, BaseBlenderAPIClient):
 
         return observations
 
-    @scenario_step("Generate Bayesian Simulation Air Traffic Data with latency issues", phase=FlightPhase.PRE_FLIGHT)
+    @internal_step("Generate Bayesian Simulation Air Traffic Data with latency issues", phase=FlightPhase.PRE_FLIGHT)
     async def generate_bayesian_sim_air_traffic_data_with_sensor_latency_issues(
         self,
         config_path: str | None = None,
