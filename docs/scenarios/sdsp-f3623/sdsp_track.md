@@ -14,11 +14,10 @@ The scenario executes the following sequence of steps:
 - **Action:** Initiates a new SDSP session with a unique UUID.
 - **Context:** Signals the beginning of a data provision session.
 
-### 2. Generate and Submit Air Traffic
-- **Step:** `Generate Simulated Air Traffic Data`
-- **Action:** Generates simulated flight observations.
-- **Step:** `Submit Simulated Air Traffic` (Background Task)
-- **Action:** Starts submitting the generated observations to Flight Blender in a background process.
+### 2. Stream Air Traffic
+- **Step:** `Stream Air Traffic` (Background Task)
+- **Arguments:** `provider: geojson`, `target: flight_blender`
+- **Action:** Generates simulated flight observations and submits them to Flight Blender in a background process.
 - **Context:** Simulates a live feed of aircraft tracking data being pushed to the system.
 
 ### 3. Initial Wait

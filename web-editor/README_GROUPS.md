@@ -19,7 +19,7 @@ Located in the **Scenario Settings** right sidebar, the Groups Manager allows yo
 
 Each step in a group has:
 - **Step ID**: Unique identifier within the group (e.g., `fetch`, `submit`)
-- **Step Name**: The operation to execute (e.g., "Fetch OpenSky Data")
+- **Step Name**: The operation to execute (e.g., "Stream Air Traffic")
 - **Arguments**: Parameters for the operation, supporting internal group references
 
 ### 3. Internal Group References
@@ -55,9 +55,8 @@ In the main scenario flow:
 
 1. **Create a group** in the Groups Manager:
    - Name: `fetch_and_submit`
-   - Add step 1: "Fetch OpenSky Data" (id: `fetch`)
-   - Add step 2: "Submit Air Traffic" (id: `submit`)
-   - Set submit's observations argument to: `${{ group.fetch.result }}`
+   - Add step 1: "Stream Air Traffic" with `provider: opensky` (id: `stream`)
+   - Set submit's observations argument to: `${{ group.stream.result }}`
 
 2. **Use the group** in the main flow:
    - Add a step that references `fetch_and_submit`
@@ -76,17 +75,16 @@ When you save a scenario with groups, the YAML will include:
 ```yaml
 name: my_scenario
 groups:
-  fetch_and_submit:
-    description: Fetches and submits air traffic data
+  stream_traffic:
+    description: Streams air traffic from OpenSky
     steps:
-      - id: fetch
-        step: Fetch OpenSky Data
-      - id: submit
-        step: Submit Air Traffic
+      - id: stream
+        step: Stream Air Traffic
         arguments:
-          observations: ${{ group.fetch.result }}
+          provider: opensky
+          duration: 30
 steps:
-  - step: fetch_and_submit
+  - step: stream_traffic
     loop:
       count: 5
 ```
