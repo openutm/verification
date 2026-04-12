@@ -98,3 +98,7 @@ reporting:
     name: "Local Flight Blender Dev Instance"
     version: "v0.12.0"
     notes: "Running against local Docker Compose setup."
+  # Allure reporting (use `allure generate reports/allure-results` for HTML)
+  allure:
+    enabled: true
+    results_dir: "reports/allure-results"

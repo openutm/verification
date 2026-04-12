@@ -72,6 +72,13 @@ class DeploymentDetails(StrictBaseModel):
     notes: str = ""
 
 
+class AllureConfig(StrictBaseModel):
+    """Configuration for Allure reporting."""
+
+    enabled: bool = False
+    results_dir: str = "reports/allure-results"
+
+
 class ReportingConfig(StrictBaseModel):
     """Configuration for generating reports."""
 
@@ -79,6 +86,7 @@ class ReportingConfig(StrictBaseModel):
     output_dir: str = "reports"
     formats: list[str] = Field(default_factory=lambda: ["json", "html", "log"])
     deployment_details: DeploymentDetails = Field(default_factory=DeploymentDetails)
+    allure: AllureConfig = Field(default_factory=AllureConfig)
 
 
 class DataFiles(StrictBaseModel):

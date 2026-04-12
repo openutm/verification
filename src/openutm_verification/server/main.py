@@ -24,6 +24,7 @@ from openutm_verification.core.execution.config_models import (
     FlightBlenderConfig,
 )
 from openutm_verification.core.execution.definitions import ScenarioDefinition
+from openutm_verification.core.reporting.allure_reporter import AllureScenarioReporter
 from openutm_verification.core.reporting.reporting import create_report_data, generate_reports
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
@@ -357,6 +358,14 @@ async def generate_report_endpoint(request: GenerateReportRequest, runner: Sessi
             report_data,
             config.reporting,
         )
+
+        # Generate Allure report if enabled
+        if config.reporting.allure.enabled:
+            allure_reporter = AllureScenarioReporter(config.reporting.allure.results_dir)
+            allure_reporter.start_scenario(request.scenario_name)
+            allure_reporter.record_steps(steps)
+            allure_reporter.end_scenario(scenario_result)
+            allure_reporter.close()
 
         # Get the actual report directory for the response
         report_id = runner.current_timestamp_str or run_id

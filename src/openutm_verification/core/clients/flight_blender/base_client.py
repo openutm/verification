@@ -1,7 +1,10 @@
+import time
+
 import httpx
 from loguru import logger
 from websockets.asyncio.client import ClientConnection, connect
 
+from openutm_verification.core.reporting.http_collector import HttpCollector
 from openutm_verification.models import FlightBlenderError
 
 
@@ -33,17 +36,29 @@ class BaseBlenderAPIClient:
         silent_status: list[int] | None = None,
     ) -> httpx.Response:
         url = f"{self.base_url}{endpoint}"
+        start = time.time()
+        response: httpx.Response | None = None
         try:
             response = await self.client.request(method, url, json=json)
             if not (silent_status and response.status_code in silent_status):
                 response.raise_for_status()
             return response
         except httpx.HTTPStatusError as e:
+            response = e.response
             logger.error(f"HTTP error occurred: {e.response.status_code} - {e.response.text}")
             raise FlightBlenderError(f"Request failed: {e.response.status_code}") from e
         except httpx.RequestError as e:
             logger.error(f"Request error occurred: {e}")
             raise FlightBlenderError("Request failed") from e
+        finally:
+            HttpCollector.record_from_httpx(
+                method=method,
+                url=url,
+                request_headers=dict(self.client.headers),
+                request_body=json,
+                response=response,
+                start=start,
+            )
 
     async def get(self, endpoint: str, silent_status: list[int] | None = None) -> httpx.Response:
         return await self._request("GET", endpoint, silent_status=silent_status)

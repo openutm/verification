@@ -23,6 +23,7 @@ from openutm_verification.core.execution.config_models import AppConfig
 from openutm_verification.core.execution.dependencies import scenarios
 from openutm_verification.core.execution.dependency_resolution import CONTEXT, call_with_dependencies
 from openutm_verification.core.execution.scenario_loader import load_yaml_scenario_definition
+from openutm_verification.core.reporting.allure_reporter import AllureScenarioReporter
 from openutm_verification.core.reporting.reporting import _sanitize_config, create_report_data, generate_reports
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
@@ -70,6 +71,12 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path, sessi
 
     # Import Python scenarios to populate registry
     _import_python_scenarios()
+
+    # Initialise Allure reporter if enabled
+    allure_reporter: AllureScenarioReporter | None = None
+    if config.reporting.allure.enabled:
+        allure_reporter = AllureScenarioReporter(config.reporting.allure.results_dir)
+        logger.info(f"Allure reporting enabled → {config.reporting.allure.results_dir}")
 
     scenario_results = []
     for scenario_id in scenarios():
@@ -136,6 +143,12 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path, sessi
         scenario_results.append(result)
         logger.info(f"Scenario {scenario_id} finished with status: {result.status}")
 
+        # Record scenario in Allure
+        if allure_reporter:
+            allure_reporter.start_scenario(scenario_id, result.suite_name)
+            allure_reporter.record_steps(result.steps)
+            allure_reporter.end_scenario(result)
+
     end_time_obj = datetime.now(timezone.utc)
 
     docs_dir = get_docs_directory()
@@ -151,4 +164,9 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path, sessi
     logger.info(f"Verification run complete with overall status: {report_data.overall_status}")
 
     generate_reports(report_data, config.reporting)
+
+    if allure_reporter:
+        allure_reporter.close()
+        logger.info(f"Allure results written to {config.reporting.allure.results_dir}")
+
     return report_data.summary.failed

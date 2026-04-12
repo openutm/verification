@@ -1,3 +1,5 @@
+import asyncio
+import shutil
 from pathlib import Path
 from typing import Any, Type, TypeVar
 
@@ -172,3 +174,70 @@ async def get_latest_report(request: Request, scenario: str | None = None):
     url = f"/reports/{relative_path}"
 
     return RedirectResponse(url=url)
+
+
+@scenario_router.post("/api/allure/generate")
+async def generate_allure_report(request: Request):
+    """Run ``allure generate`` to build HTML from allure-results."""
+    runner = request.app.state.runner
+    allure_cfg = runner.config.reporting.allure
+
+    if not allure_cfg.enabled:
+        raise HTTPException(status_code=400, detail="Allure reporting is not enabled in config")
+
+    results_dir = Path(allure_cfg.results_dir)
+    if not results_dir.exists() or not any(results_dir.iterdir()):
+        raise HTTPException(status_code=404, detail="No Allure results found. Run a scenario first.")
+
+    output_dir = results_dir.parent / "allure-report"
+
+    # Clean previous report so stale files don't linger
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+
+    # Try allure CLI first, fall back to npx (no global install needed)
+    allure_cmd = shutil.which("allure")
+    if allure_cmd:
+        cmd = [allure_cmd, "generate", str(results_dir), "--output", str(output_dir)]
+    else:
+        cmd = ["npx", "allure", "generate", str(results_dir), "--output", str(output_dir)]
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Neither 'allure' nor 'npx' found. Install Allure CLI: brew install allure",
+        ) from exc
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(status_code=500, detail="Allure generate timed out after 60s") from exc
+
+    if proc.returncode != 0:
+        detail = stderr.decode(errors="replace").strip() or stdout.decode(errors="replace").strip()
+        raise HTTPException(status_code=500, detail=f"allure generate failed: {detail}")
+
+    return {"status": "success", "report_url": "/api/allure/report"}
+
+
+@scenario_router.get("/api/allure/report")
+async def get_allure_report(request: Request):
+    """Redirect to the generated Allure HTML report."""
+    runner = request.app.state.runner
+    allure_cfg = runner.config.reporting.allure
+    report_index = Path(allure_cfg.results_dir).parent / "allure-report" / "index.html"
+
+    if not report_index.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Allure report not generated yet. Call POST /api/allure/generate first.",
+        )
+
+    # Served via the /reports static mount
+    output_dir = Path(runner.config.reporting.output_dir)
+    relative_path = report_index.relative_to(output_dir)
+    return RedirectResponse(url=f"/reports/{relative_path}")

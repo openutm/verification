@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING
 
 import httpx
@@ -8,6 +9,7 @@ from pydantic import BaseModel
 
 from openutm_verification.auth.oauth2 import OAuth2Client
 from openutm_verification.core.execution.config_models import get_settings
+from openutm_verification.core.reporting.http_collector import HttpCollector
 
 if TYPE_CHECKING:
     from openutm_verification.core.execution.config_models import OpenSkyConfig
@@ -66,12 +68,32 @@ class BaseOpenSkyAPIClient:
             headers["Authorization"] = f"Bearer {await self.oauth_client.get_access_token()}"
 
         logger.debug(f"Making {method} request to {url}")
+        start = time.time()
         response = await self.client.request(method, url, params=params, headers=headers)
 
         if response.status_code == 401 and config.opensky.auth.type == "oauth2":
+            # Record the failed attempt
+            HttpCollector.record_from_httpx(
+                method=method,
+                url=url,
+                request_headers={**dict(self.client.headers), **headers},
+                request_body=params,
+                response=response,
+                start=start,
+            )
             logger.warning("Token expired, retrying with new token...")
             headers["Authorization"] = f"Bearer {await self.oauth_client.get_access_token()}"
+            start = time.time()
             response = await self.client.request(method, url, params=params, headers=headers)
+
+        HttpCollector.record_from_httpx(
+            method=method,
+            url=url,
+            request_headers={**dict(self.client.headers), **headers},
+            request_body=params,
+            response=response,
+            start=start,
+        )
 
         if not (silent_status and response.status_code in silent_status):
             response.raise_for_status()
