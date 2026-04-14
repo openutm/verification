@@ -953,7 +953,7 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             wall_clock_observations = [obs.model_copy(update={"timestamp": wall_clock_us}) for obs in slot_observations]
 
             # Batch all aircraft for this time slot into a single request
-            endpoint = f"/flight_stream/set_air_traffic/{session_id}"
+            endpoint = f"/flight_stream/bulk_set_air_traffic/{session_id}"
             payload = {"observations": [obs.model_dump(mode="json") for obs in wall_clock_observations]}
             ScenarioContext.add_air_traffic_data(wall_clock_observations)
             try:
