@@ -869,6 +869,113 @@ class FlightBlenderClient(BaseBlenderAPIClient):
             "simulation_duration": (simulation_end - simulation_start).total_seconds(),
         }
 
+    @scenario_step("Bulk Submit Simulated Air Traffic", phase=FlightPhase.CRUISE)
+    async def bulk_submit_simulated_air_traffic(
+        self,
+        observations: list[FlightObservationSchema],
+        session_ids: list[uuid.UUID] | None = None,
+        single_or_multiple_sensors: str = "single",
+    ) -> dict[str, Any]:
+        """Submit simulated air traffic observations to the Flight Blender API.
+
+        Plays back observations in real-time, submitting one observation per aircraft per second.
+
+        Args:
+            observations: Flat list of observations across all aircraft.
+            single_or_multiple_sensors: Whether to use single or multiple sensor IDs.
+
+        Returns:
+            Dictionary with submission statistics.
+        """
+        session_ids = session_ids or [uuid.uuid4()]
+        if not observations:
+            logger.warning("No air traffic observations to submit.")
+            return {
+                "success": True,
+                "aircraft_count": 0,
+                "observations_submitted": 0,
+                "duration_seconds": 0,
+            }
+
+        # Pre-convert all timestamps to Arrow objects once and group by aircraft.
+        # Sorting per-aircraft enables O(log N) bisect lookups in the inner loop.
+        all_arrow_timestamps: list[arrow.Arrow] = []
+        aircraft_data: dict[str, list[tuple[arrow.Arrow, FlightObservationSchema]]] = {}
+        for obs in observations:
+            ts = arrow.get(obs.timestamp)
+            all_arrow_timestamps.append(ts)
+            aircraft_data.setdefault(obs.icao_address, []).append((ts, obs))
+
+        number_of_aircraft = len(aircraft_data)
+        logger.debug(f"Submitting simulated air traffic for {number_of_aircraft} aircraft")
+
+        simulation_start = min(all_arrow_timestamps)
+        simulation_end = max(all_arrow_timestamps)
+
+        # Sort per-aircraft observations and extract timestamp lists for bisect
+        for icao in aircraft_data:
+            aircraft_data[icao].sort(key=lambda pair: pair[0])
+        aircraft_ts: dict[str, list[arrow.Arrow]] = {icao: [ts for ts, _ in pairs] for icao, pairs in aircraft_data.items()}
+
+        # Only iterate over seconds that actually contain observations
+        unique_time_slots = sorted({ts.floor("second") for ts in all_arrow_timestamps})
+
+        start_time = arrow.now()
+        observations_submitted = 0
+        submission_errors = 0
+        session_id = str(session_ids[0])
+
+        for slot_index, current_simulation_time in enumerate(unique_time_slots):
+            # Pace at 1 second per slot with a single sleep instead of busy-wait
+            if slot_index > 0:
+                sleep_seconds = (start_time.shift(seconds=slot_index) - arrow.now()).total_seconds()
+                if sleep_seconds > 0:
+                    await asyncio.sleep(sleep_seconds)
+
+            # Collect closest observation per aircraft using binary search
+            slot_observations: list[FlightObservationSchema] = []
+            for icao, pairs in aircraft_data.items():
+                ts_list = aircraft_ts[icao]
+                idx = bisect.bisect_left(ts_list, current_simulation_time)
+                if idx == 0:
+                    closest_obs = pairs[0][1]
+                elif idx >= len(pairs):
+                    closest_obs = pairs[-1][1]
+                elif abs(ts_list[idx - 1] - current_simulation_time) <= abs(ts_list[idx] - current_simulation_time):
+                    closest_obs = pairs[idx - 1][1]
+                else:
+                    closest_obs = pairs[idx][1]
+                slot_observations.append(closest_obs)
+
+            # Use wall-clock timestamps so sensor_timestamp reflects actual
+            # submission time, not the pre-generated simulation time.
+            wall_clock_us = int(arrow.now().float_timestamp * 1_000_000)
+            wall_clock_observations = [obs.model_copy(update={"timestamp": wall_clock_us}) for obs in slot_observations]
+
+            # Batch all aircraft for this time slot into a single request
+            endpoint = f"/flight_stream/set_air_traffic/{session_id}"
+            payload = {"observations": [obs.model_dump(mode="json") for obs in wall_clock_observations]}
+            ScenarioContext.add_air_traffic_data(wall_clock_observations)
+            try:
+                response = await self.post(endpoint, json=payload)
+                logger.debug(f"Air traffic submission response: {response.text}")
+                logger.info(f"Submitted {len(slot_observations)} observations at time {current_simulation_time}")
+                observations_submitted += len(slot_observations)
+            except Exception as e:
+                logger.error(f"Failed to submit observations at {current_simulation_time}: {e}")
+                submission_errors += len(slot_observations)
+
+        duration_seconds = (arrow.now() - start_time).total_seconds()
+
+        return {
+            "success": submission_errors == 0,
+            "aircraft_count": number_of_aircraft,
+            "observations_submitted": observations_submitted,
+            "submission_errors": submission_errors,
+            "duration_seconds": round(duration_seconds, 2),
+            "simulation_duration": (simulation_end - simulation_start).total_seconds(),
+        }
+
     @scenario_step("Submit Simulated Air Traffic at varying refresh rates", phase=FlightPhase.CRUISE)
     async def submit_simulated_air_traffic_at_random_refresh_rates(
         self,
