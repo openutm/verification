@@ -349,6 +349,21 @@ class SessionManager:
 
         return config
 
+    async def reload_config(self) -> AppConfig:
+        """Re-read the config file from disk and re-initialize the session.
+
+        Used after the GUI writes new values via PUT /api/config so the
+        running server picks them up without a restart.
+        """
+        await self.close_session()
+        self.current_output_dir = None
+        self.current_timestamp_str = None
+        self.current_start_time = None
+        self.config = self._load_config()
+        ConfigProxy.override(self.config)
+        await self.initialize_session()
+        return self.config
+
     def _generate_data(self, data_files: DataFiles):
         flight_declaration = None
         telemetry_states = None
@@ -783,6 +798,11 @@ class SessionManager:
                         break
                 else:
                     await self.execute_single_step(step)
+        # An empty scenario (or one whose every step was skipped before any
+        # `with self.session_context:` block ran) leaves session_context.state
+        # unset; return an empty list rather than crashing.
+        if not self.session_context or not self.session_context.state:
+            return []
         return self.session_context.state.steps
 
     async def _execute_loop_for_group(self, step: StepDefinition, scenario: ScenarioDefinition) -> List[StepResult]:

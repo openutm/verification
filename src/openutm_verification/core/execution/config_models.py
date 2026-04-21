@@ -193,10 +193,21 @@ class AppConfig(StrictBaseModel):
     def resolve_paths(self, config_file_path: Path) -> None:
         """Resolve all relative paths in the configuration to absolute paths.
 
+        This method accepts either:
+        - a config file path, e.g. ``/app/config/default.yaml``
+        - a project root path, e.g. ``/app``
+
         Also merges default data_files into each scenario's SuiteScenario,
         so scenarios have complete paths without needing runtime override logic.
         """
-        base_path = config_file_path.parent
+        # Historical callers pass project root (runner/cli), while docstrings
+        # and some uses pass a config file path. Support both to avoid
+        # incorrect path resolution in containerized runs.
+        if config_file_path.is_file():
+            base_path = config_file_path.parent.parent
+        else:
+            base_path = config_file_path
+
         self.data_files.resolve_paths(base_path)
 
         # Merge defaults into each scenario BEFORE resolving their paths

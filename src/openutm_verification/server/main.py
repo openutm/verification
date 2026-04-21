@@ -126,6 +126,86 @@ async def get_operations(runner: SessionManager = Depends(get_session_manager)):
     return runner.get_available_operations()
 
 
+@app.get("/api/config")
+async def get_config(runner: SessionManager = Depends(get_session_manager)):
+    """Return the full server config the GUI manages.
+
+    Re-reads from disk first so the GUI's Reload button reflects any
+    out-of-band edits to the YAML file (e.g. someone editing in an editor
+    while the server is running). Falls back to the in-memory config if the
+    reload fails so a transient parse error doesn't break the screen.
+    """
+    try:
+        await runner.reload_config()
+    except Exception:  # noqa: BLE001
+        logger.exception("reload_config during GET /api/config failed; serving in-memory copy")
+    cfg = runner.config
+    return {
+        "version": cfg.version,
+        "run_id": cfg.run_id,
+        "config_path": str(runner.config_path),
+        "flight_blender": cfg.flight_blender.model_dump(),
+        "opensky": cfg.opensky.model_dump(),
+        "amqp": cfg.amqp.model_dump() if cfg.amqp else None,
+        "data_files": cfg.data_files.model_dump(),
+        "air_traffic_simulator_settings": (cfg.air_traffic_simulator_settings.model_dump() if cfg.air_traffic_simulator_settings else None),
+    }
+
+
+# Editable top-level keys via PUT /api/config. Other keys (suites, reporting)
+# stay read-only because they have non-trivial side effects on path resolution
+# and report layout that aren't worth exposing through the GUI right now.
+_EDITABLE_CONFIG_KEYS = (
+    "flight_blender",
+    "opensky",
+    "amqp",
+    "air_traffic_simulator_settings",
+    "data_files",
+)
+
+
+@app.put("/api/config")
+async def put_config(
+    payload: dict = Body(...),
+    runner: SessionManager = Depends(get_session_manager),
+):
+    """Persist edited config sections back to the loaded YAML file and reload.
+
+    Only the keys in ``_EDITABLE_CONFIG_KEYS`` are honored. Comments and
+    formatting in the file are preserved via ruamel.yaml round-trip mode.
+    """
+    from ruamel.yaml import YAML
+
+    config_path = runner.config_path
+    if not config_path.exists():
+        return {"status": "error", "message": f"Config file not found: {config_path}"}
+
+    yaml_rt = YAML()
+    yaml_rt.preserve_quotes = True
+    yaml_rt.indent(mapping=2, sequence=4, offset=2)
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        doc = yaml_rt.load(f)
+
+    applied: list[str] = []
+    for key in _EDITABLE_CONFIG_KEYS:
+        if key in payload and payload[key] is not None:
+            doc[key] = payload[key]
+            applied.append(key)
+
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml_rt.dump(doc, f)
+
+    logger.info(f"Wrote {applied} to {config_path}; reloading config")
+    try:
+        await runner.reload_config()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Reload after config save failed")
+        return {"status": "saved_but_reload_failed", "applied": applied, "error": str(exc)}
+
+    return {"status": "saved", "applied": applied, "config_path": str(config_path)}
+
+
 @app.post("/session/reset")
 async def reset_session(
     config: SessionResetRequest = Body(default_factory=SessionResetRequest, embed=True),

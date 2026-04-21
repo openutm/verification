@@ -498,26 +498,38 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                                             </div>
                                         ) : (
                                             param.isEnum && param.options ? (
-                                                <select
-                                                    className={styles.paramInput}
-                                                    value={formatParamValue(param.default)}
-                                                    onChange={(e) => {
-                                                        const inputValue = e.target.value;
-                                                        let value: unknown = undefined;
-                                                        if (inputValue !== '') {
-                                                            const numValue = Number(inputValue);
-                                                            value = Number.isNaN(numValue) ? inputValue : numValue;
-                                                        }
-                                                        onUpdateParameter(selectedNode.id, param.name, value);
-                                                    }}
-                                                >
-                                                    <option value="">Select...</option>
-                                                    {param.options.map(opt => (
-                                                        <option key={String(opt.value)} value={String(opt.value)}>
-                                                            {opt.name} ({String(opt.value)})
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                (() => {
+                                                    // YAML may store enums by name (e.g. "ACTIVATED") or by value
+                                                    // (e.g. 2); normalise to the option's value for the <select>.
+                                                    const raw = formatParamValue(param.default);
+                                                    const match = param.options.find(opt =>
+                                                        String(opt.value) === raw ||
+                                                        opt.name.toLowerCase() === raw.toLowerCase()
+                                                    );
+                                                    const selectValue = match ? String(match.value) : '';
+                                                    return (
+                                                        <select
+                                                            className={styles.paramInput}
+                                                            value={selectValue}
+                                                            onChange={(e) => {
+                                                                const inputValue = e.target.value;
+                                                                let value: unknown = undefined;
+                                                                if (inputValue !== '') {
+                                                                    const numValue = Number(inputValue);
+                                                                    value = Number.isNaN(numValue) ? inputValue : numValue;
+                                                                }
+                                                                onUpdateParameter(selectedNode.id, param.name, value);
+                                                            }}
+                                                        >
+                                                            <option value="">Select...</option>
+                                                            {param.options!.map(opt => (
+                                                                <option key={String(opt.value)} value={String(opt.value)}>
+                                                                    {opt.name} ({String(opt.value)})
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    );
+                                                })()
                                             ) : (
                                                 <input
                                                     type="text"
