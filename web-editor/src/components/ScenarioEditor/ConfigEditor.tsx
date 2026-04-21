@@ -361,7 +361,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                             <input
                                 type="number"
                                 className={styles.paramInput}
-                                value={config.air_traffic_simulator_settings?.number_of_aircraft || 3}
+                                value={config.air_traffic_simulator_settings?.number_of_aircraft ?? ''}
                                 onChange={(e) => updateAirTrafficSettings('number_of_aircraft', parseInt(e.target.value))}
                                 min="1"
                                 max="100"
@@ -373,7 +373,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                             <input
                                 type="number"
                                 className={styles.paramInput}
-                                value={config.air_traffic_simulator_settings?.simulation_duration || 30}
+                                value={config.air_traffic_simulator_settings?.simulation_duration ?? ''}
                                 onChange={(e) => updateAirTrafficSettings('simulation_duration', parseInt(e.target.value))}
                                 min="1"
                                 max="3600"
@@ -384,9 +384,10 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                             <label style={{ display: 'block', fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--text-secondary)' }}>Single or Multiple Sensors</label>
                             <select
                                 className={styles.paramInput}
-                                value={config.air_traffic_simulator_settings?.single_or_multiple_sensors || 'single'}
+                                value={config.air_traffic_simulator_settings?.single_or_multiple_sensors ?? ''}
                                 onChange={(e) => updateAirTrafficSettings('single_or_multiple_sensors', e.target.value)}
                             >
+                                <option value="" disabled>(from server config)</option>
                                 <option value="single">single</option>
                                 <option value="multiple">multiple</option>
                             </select>
