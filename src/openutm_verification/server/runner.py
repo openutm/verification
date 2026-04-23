@@ -353,8 +353,13 @@ class SessionManager:
         """Re-read the config file from disk and re-initialize the session.
 
         Used after the GUI writes new values via PUT /api/config so the
-        running server picks them up without a restart.
+        running server picks them up without a restart. Refuses to reload
+        while a scenario run is active because tearing down the session
+        stack out from under in-flight tasks leaves them executing against
+        torn-down dependencies. Callers should ``stop_scenario()`` first.
         """
+        if self.current_run_task is not None and not self.current_run_task.done():
+            raise RuntimeError("Cannot reload config while a scenario run is active; stop it first")
         await self.close_session()
         self.current_output_dir = None
         self.current_timestamp_str = None

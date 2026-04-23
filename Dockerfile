@@ -1,61 +1,62 @@
+# Multi-stage Dockerfile for OpenUTM Verification
+# Single image: FastAPI backend on :8989 also serves the built React frontend.
+#
+# For local development, skip Docker and run two processes directly:
+#   1. uv run uvicorn openutm_verification.server.main:app --reload --port 8989
+#   2. cd web-editor && npm run dev   # Vite on :5173, proxies API to :8989
+
 # --- UI Builder Stage ---
-FROM node:20-slim AS ui-builder
+FROM node:25-slim AS ui-builder
 WORKDIR /app/web-editor
+
+# Install dependencies first for better layer caching
 COPY web-editor/package.json web-editor/package-lock.json ./
 RUN npm ci
+
+# Copy source and build
 COPY web-editor/ .
 RUN npm run build
 
-# --- Builder Stage ---
+# --- Backend Builder Stage ---
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
-# Build arguments
 ARG UV_COMPILE_BYTECODE=1
 ARG UV_LINK_MODE=copy
 
-# Install necessary build-time dependencies for compiling Python extensions
+# Install build dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        git \
         pkg-config \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory for the application in the builder image
 WORKDIR /app
 
-# Configure UV for optimal Docker layer caching and performance
+# Configure UV
 ENV UV_COMPILE_BYTECODE=${UV_COMPILE_BYTECODE}
 ENV UV_LINK_MODE=${UV_LINK_MODE}
 ENV PYTHONUNBUFFERED=1
 
-# --- Dependency Installation Layer ---
-# Copy dependency files first for better layer caching
+# Install dependencies first for better caching
 COPY pyproject.toml uv.lock ./
 COPY docs ./docs
 COPY scenarios ./scenarios
 
-# Install project dependencies using uv sync with cache mount for faster builds
-# --frozen: ensures reproducible builds from uv.lock
-# --no-install-project: skips installing the project itself (we do this later)
-# --no-dev: excludes development dependencies for production builds
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
-# --- Application Installation Layer ---
-# Copy the rest of the application source code
+# Copy application source and install
 COPY LICENSE README.md ./
 COPY src ./src
 COPY tests ./tests
 
-# Install the project itself in the builder stage
-# --no-deps: Dependencies are already installed, skip resolution
 RUN uv pip install --no-deps . && rm -f LICENSE
 
-# --- Production Stage ---
+# --- Production Runtime Stage ---
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS production
 
-# Build arguments for production stage
 ARG APP_USER=appuser
 ARG APP_GROUP=appgrp
 ARG UID=1000
@@ -69,43 +70,50 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure environment
+# Configure environment for GUI server mode
 ENV PYTHONUNBUFFERED=1
 ENV TZ=UTC
 ENV PATH="/app/.venv/bin:$PATH"
 ENV WEB_EDITOR_PATH=/app/web-editor
 ENV SCENARIOS_PATH=/app/scenarios
 ENV DOCS_PATH=/app/docs
+# Configuration and reports paths (typically mounted as volumes)
+ENV OPENUTM_CONFIG_PATH=config/default.yaml
+ENV REPORTS_DIR=reports
 
-# Create non-root user and group for enhanced security
+# Create non-root user
 RUN (getent group "${GID}" || groupadd -g "${GID}" "${APP_GROUP}") \
     && useradd -u "${UID}" -g "${GID}" -s /bin/sh -m "${APP_USER}"
 
-# Copy application artifacts from builder stage
+# Copy application from builder
 COPY --chown=${UID}:${GID} --from=builder /app /app
 
-# Copy UI artifacts from ui-builder stage
+# Copy built UI from ui-builder
 COPY --chown=${UID}:${GID} --from=ui-builder /app/web-editor/dist /app/web-editor/dist
 
-# Set working directory
 WORKDIR /app
 
-# Create necessary directories with proper permissions
+# Create necessary directories
 RUN mkdir -p /app/config /app/reports \
     && chown -R ${UID}:${GID} /app/config /app/reports
 
-# Switch to non-root user
 USER ${UID}:${GID}
 
-# Expose the server port
+# Expose the server port (backend serves both API and frontend)
 EXPOSE 8989
 
-# Health check
+# Health check for the API
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import sys; print('OK'); sys.exit(0)" || exit 1
+    CMD curl -f http://localhost:8989/health || exit 1
 
-# Define the entrypoint for the container
-ENTRYPOINT ["openutm-verify"]
-
-# Set the default command with arguments
-CMD ["--config", "config/default.yaml"]
+# Start the server in GUI mode
+# The backend serves the built frontend at / (via StaticFiles mount) and API at:
+#   - /health, /operations, /session/*, /run-scenario*, /stop-scenario
+#   - /reports (static mounted directory for report access)
+#
+# Environment variables:
+#   OPENUTM_CONFIG_PATH: Path to YAML config (default: config/default.yaml)
+#   FLIGHT_BLENDER_URL: Override Flight Blender endpoint
+#   LOG_LEVEL: Logging verbosity (DEBUG, INFO, WARNING, ERROR)
+ENTRYPOINT ["python", "-m", "uvicorn", "openutm_verification.server.main:app"]
+CMD ["--host", "0.0.0.0", "--port", "8989"]

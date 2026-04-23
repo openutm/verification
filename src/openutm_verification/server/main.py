@@ -18,6 +18,7 @@ from pydantic import BaseModel
 import openutm_verification.core.execution.dependencies  # noqa: F401
 from openutm_verification.core.execution.config_models import (
     AirTrafficSimulatorSettings,
+    AppConfig,
     ConfigProxy,
     DataFiles,
     FlightBlenderConfig,
@@ -130,16 +131,22 @@ async def get_operations(runner: SessionManager = Depends(get_session_manager)):
 async def get_config(runner: SessionManager = Depends(get_session_manager)):
     """Return the full server config the GUI manages.
 
-    Re-reads from disk first so the GUI's Reload button reflects any
-    out-of-band edits to the YAML file (e.g. someone editing in an editor
-    while the server is running). Falls back to the in-memory config if the
-    reload fails so a transient parse error doesn't break the screen.
+    Re-reads the YAML from disk into a transient ``AppConfig`` so the GUI
+    reflects out-of-band edits without touching the live session. The running
+    session's ``runner.config`` is intentionally left alone here so that
+    simply opening the Settings screen never resets an in-progress run.
+    Falls back to the in-memory copy on parse errors so a transient bad file
+    doesn't break the screen.
     """
-    try:
-        await runner.reload_config()
-    except Exception:  # noqa: BLE001
-        logger.exception("reload_config during GET /api/config failed; serving in-memory copy")
+    import yaml as _yaml
+
     cfg = runner.config
+    try:
+        with open(runner.config_path, "r", encoding="utf-8") as f:
+            raw = _yaml.safe_load(f)
+        cfg = AppConfig.model_validate(raw)
+    except Exception:  # noqa: BLE001
+        logger.exception("Re-reading config during GET /api/config failed; serving in-memory copy")
     return {
         "version": cfg.version,
         "run_id": cfg.run_id,
@@ -173,8 +180,19 @@ async def put_config(
 
     Only the keys in ``_EDITABLE_CONFIG_KEYS`` are honored. Comments and
     formatting in the file are preserved via ruamel.yaml round-trip mode.
+    Refuses to save while a scenario is running (the reload would tear down
+    in-flight clients). Validates the candidate config before writing, and
+    writes atomically (temp file + rename) so a failed save can never leave
+    a half-written YAML on disk.
     """
+    from pydantic import ValidationError
     from ruamel.yaml import YAML
+
+    if runner.current_run_task is not None and not runner.current_run_task.done():
+        return {
+            "status": "error",
+            "message": "Cannot save config while a scenario is running. Stop the run first.",
+        }
 
     config_path = runner.config_path
     if not config_path.exists():
@@ -189,12 +207,32 @@ async def put_config(
 
     applied: list[str] = []
     for key in _EDITABLE_CONFIG_KEYS:
-        if key in payload and payload[key] is not None:
+        # Apply the key whenever it appears in the payload, including when
+        # its value is null, so the GUI can clear optional sections (e.g.
+        # set ``amqp: null`` to remove AMQP config).
+        if key in payload:
             doc[key] = payload[key]
             applied.append(key)
 
-    with open(config_path, "w", encoding="utf-8") as f:
-        yaml_rt.dump(doc, f)
+    # Validate the would-be config before touching disk so we never persist
+    # a broken YAML that would block future reloads/restarts.
+    try:
+        AppConfig.model_validate(dict(doc))
+    except ValidationError as exc:
+        logger.warning(f"Rejected config save to {config_path}: validation failed")
+        return {"status": "error", "message": f"Invalid config: {exc}"}
+
+    tmp_path = config_path.with_suffix(config_path.suffix + ".tmp")
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            yaml_rt.dump(doc, f)
+        os.replace(tmp_path, config_path)
+    finally:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
 
     logger.info(f"Wrote {applied} to {config_path}; reloading config")
     try:
