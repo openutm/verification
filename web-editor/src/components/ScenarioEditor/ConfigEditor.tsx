@@ -79,7 +79,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
         });
     };
 
-    const updateAirTrafficSettings = (field: string, value: string | number | string[]) => {
+    const updateAirTrafficSettings = (field: string, value: string | number | string[] | undefined) => {
         onUpdateConfig({
             ...config,
             air_traffic_simulator_settings: {
@@ -87,6 +87,15 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                 [field]: value
             }
         });
+    };
+
+    // Parse a numeric input value, returning undefined when the field is
+    // cleared so we don't propagate NaN into the config state (which would
+    // serialize as null in JSON and fail server-side validation).
+    const parseIntOrUndefined = (raw: string): number | undefined => {
+        if (raw === '') return undefined;
+        const n = parseInt(raw, 10);
+        return Number.isNaN(n) ? undefined : n;
     };
 
     const updateSensorIds = (value: string) => {
@@ -362,7 +371,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                                 type="number"
                                 className={styles.paramInput}
                                 value={config.air_traffic_simulator_settings?.number_of_aircraft ?? ''}
-                                onChange={(e) => updateAirTrafficSettings('number_of_aircraft', parseInt(e.target.value))}
+                                onChange={(e) => updateAirTrafficSettings('number_of_aircraft', parseIntOrUndefined(e.target.value))}
                                 min="1"
                                 max="100"
                             />
@@ -374,7 +383,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, onUpdateConf
                                 type="number"
                                 className={styles.paramInput}
                                 value={config.air_traffic_simulator_settings?.simulation_duration ?? ''}
-                                onChange={(e) => updateAirTrafficSettings('simulation_duration', parseInt(e.target.value))}
+                                onChange={(e) => updateAirTrafficSettings('simulation_duration', parseIntOrUndefined(e.target.value))}
                                 min="1"
                                 max="3600"
                             />

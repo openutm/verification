@@ -1,204 +1,63 @@
 #!/usr/bin/env bash
-
-# OpenUTM Verification Docker Build Script
-# This script builds the Docker image with proper error handling and logging
+#
+# Build the single OpenUTM Verification Docker image (backend + built GUI).
+#
+# Usage:
+#   ./scripts/build.sh [--force] [--verbose]
 
 set -euo pipefail
 
-# Source common functions
 SCRIPT_DIR="$(dirname "$0")"
+# shellcheck source=common.sh
 source "$SCRIPT_DIR/common.sh"
 
-# Configuration
 readonly NAMESPACE="${NAMESPACE:-openutm}"
 readonly APP="${APP:-verification}"
-TIMESTAMP="$(date +%s)"
-readonly TIMESTAMP
-readonly IMAGE="${APP}:${TIMESTAMP}"
-readonly IMAGE_LATEST="${APP}:latest"
-readonly IMAGE_DEV="${APP}:dev"
+readonly IMAGE_LATEST="${NAMESPACE}/${APP}:latest"
 
-# Cleanup function specific to build script
-cleanup_build() {
-    local exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        log_error "Build failed with exit code $exit_code"
-        # Optionally cleanup dangling images
-        # docker image prune -f
-    fi
-    exit $exit_code
+show_usage() {
+    cat << EOF
+Build the OpenUTM Verification Docker image.
+
+Usage: $0 [OPTIONS]
+
+Options:
+    -f, --force     Force rebuild without cache
+    -v, --verbose   Verbose build output (--progress=plain)
+    -h, --help      Show this help message
+EOF
 }
 
-# Set trap for cleanup
-trap cleanup_build EXIT
+main() {
+    local force_rebuild="false"
+    local verbose="false"
 
-# Check if Docker and Docker Compose are available
-# Note: check_dependencies is now sourced from common.sh
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -f|--force) force_rebuild="true"; shift ;;
+            -v|--verbose) verbose="true"; shift ;;
+            -h|--help) show_usage; exit 0 ;;
+            *) log_error "Unknown option: $1"; show_usage; exit 1 ;;
+        esac
+    done
 
-# Build production image
-build_production() {
-    log_info "Building production Docker image: ${NAMESPACE}/${IMAGE_LATEST}"
-
-    # Enable Docker BuildKit for better performance
-    export DOCKER_BUILDKIT=1
+    check_dependencies
 
     local build_args=()
-    if [[ "${force_rebuild}" == "true" ]]; then
-        build_args+=(--no-cache)
-        log_info "Force rebuild enabled - skipping cache"
-    fi
+    [[ "${force_rebuild}" == "true" ]] && build_args+=(--no-cache)
+    [[ "${verbose}" == "true" ]] && build_args+=(--progress=plain)
 
-    if [[ "${verbose}" == "true" ]]; then
-        build_args+=(--progress=plain)
-        log_info "Verbose output enabled"
-    fi
-
-    # Build with build args
-    docker build \
-        --target production \
+    log_info "Building ${IMAGE_LATEST}"
+    DOCKER_BUILDKIT=1 docker build \
         --build-arg UV_COMPILE_BYTECODE=1 \
         --build-arg UV_LINK_MODE=copy \
         --build-arg UID="${HOST_UID}" \
         --build-arg GID="${HOST_GID}" \
         ${build_args[@]+"${build_args[@]}"} \
-        -t "${NAMESPACE}/${IMAGE}" \
-        -t "${NAMESPACE}/${IMAGE_LATEST}" \
+        -t "${IMAGE_LATEST}" \
         .
 
-    log_success "Production image built successfully"
+    log_success "Built ${IMAGE_LATEST}"
 }
 
-# Build development image
-build_development() {
-    log_info "Building development Docker image: ${NAMESPACE}/${IMAGE_DEV}"
-
-    export DOCKER_BUILDKIT=1
-
-    local build_args=()
-    if [[ "${force_rebuild}" == "true" ]]; then
-        build_args+=(--no-cache)
-        log_info "Force rebuild enabled - skipping cache"
-    fi
-
-    if [[ "${verbose}" == "true" ]]; then
-        build_args+=(--progress=plain)
-        log_info "Verbose output enabled"
-    fi
-
-    docker build \
-        -f Dockerfile.dev \
-        --target development \
-        --build-arg UV_COMPILE_BYTECODE=0 \
-        --build-arg UID="${HOST_UID}" \
-        --build-arg GID="${HOST_GID}" \
-        ${build_args[@]+"${build_args[@]}"} \
-        -t "${NAMESPACE}/${IMAGE_DEV}" \
-        .
-
-    log_success "Development image built successfully"
-}
-
-# Show build information
-show_build_info() {
-    log_info "Build completed successfully!"
-    echo "Production image: ${NAMESPACE}/${IMAGE_LATEST}"
-    echo "Development image: ${NAMESPACE}/${IMAGE_DEV}"
-    echo "Timestamp: ${TIMESTAMP}"
-}
-
-# Show usage information
-show_usage() {
-    cat << EOF
-OpenUTM Verification Docker Build Script
-
-Usage: $0 [OPTIONS] [BUILD_TYPE]
-
-Build Docker images for OpenUTM Verification
-
-Arguments:
-    BUILD_TYPE          Type of build to perform
-                        production, prod    Build production image only
-                        development, dev    Build development image only
-                        all                 Build both images (default)
-
-Options:
-    -f, --force         Force rebuild even if images exist
-    -v, --verbose       Enable verbose output
-    -h, --help          Show this help message
-
-Examples:
-    $0                   # Build all images
-    $0 production        # Build production image only
-    $0 --force all       # Force rebuild all images
-    $0 -v development    # Build development image with verbose output
-
-EOF
-}
-
-# Main execution
-main() {
-    local build_type="all"
-    local force_rebuild="false"
-    local verbose="false"
-    local args=()
-
-    # Parse options
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            -f|--force)
-                force_rebuild="true"
-                shift
-                ;;
-            -v|--verbose)
-                verbose="true"
-                shift
-                ;;
-            -h|--help)
-                show_usage
-                exit 0
-                ;;
-            -*)
-                log_error "Unknown option: $1"
-                show_usage
-                exit 1
-                ;;
-            *)
-                # Collect positional arguments
-                args+=("$1")
-                shift
-                ;;
-        esac
-    done
-
-    # Set build type from the first positional argument, if provided
-    if [[ ${#args[@]} -gt 0 ]]; then
-        build_type="${args[0]}"
-    fi
-
-    log_info "Starting Docker build process..."
-    check_dependencies
-
-    case "${build_type}" in
-        "production"|"prod")
-            build_production
-            ;;
-        "development"|"dev")
-            build_development
-            ;;
-        "all")
-            build_production
-            build_development
-            ;;
-        *)
-            log_error "Invalid build type: '${build_type}'"
-            echo "Usage: $0 [OPTIONS] [production|development|all]"
-            echo "Try '$0 --help' for more information."
-            exit 1
-            ;;
-    esac
-
-    show_build_info
-}
-
-# Run main function with all arguments
 main "$@"
