@@ -36,6 +36,22 @@ interface DataFiles {
     flight_declaration_via_operational_intent?: string | null;
     geo_fence?: string | null;
 }
+interface DeploymentDetails {
+    name: string;
+    version: string;
+    notes: string;
+}
+interface AllureReporting {
+    enabled: boolean;
+    capture_http: boolean;
+    results_dir: string;
+}
+interface Reporting {
+    output_dir: string;
+    formats: string[];
+    deployment_details: DeploymentDetails;
+    allure: AllureReporting;
+}
 interface FullConfig {
     version: string;
     run_id: string;
@@ -45,6 +61,7 @@ interface FullConfig {
     amqp: AMQP | null;
     air_traffic_simulator_settings: AirTrafficSim | null;
     data_files: DataFiles;
+    reporting: Reporting;
 }
 
 const navigateBack = () => {
@@ -149,6 +166,7 @@ export default function ConfigScreen() {
                 amqp: config.amqp,
                 air_traffic_simulator_settings: config.air_traffic_simulator_settings,
                 data_files: config.data_files,
+                reporting: config.reporting,
             };
             const res = await fetch('/api/config', {
                 method: 'PUT',
@@ -218,12 +236,31 @@ export default function ConfigScreen() {
         });
     const updateDF = (patch: Partial<DataFiles>) =>
         setConfig({ ...config, data_files: { ...config.data_files, ...patch } });
+    const updateReporting = (patch: Partial<Reporting>) =>
+        setConfig({ ...config, reporting: { ...config.reporting, ...patch } });
+    const updateDeployment = (patch: Partial<DeploymentDetails>) =>
+        setConfig({
+            ...config,
+            reporting: {
+                ...config.reporting,
+                deployment_details: { ...config.reporting.deployment_details, ...patch },
+            },
+        });
+    const updateAllure = (patch: Partial<AllureReporting>) =>
+        setConfig({
+            ...config,
+            reporting: {
+                ...config.reporting,
+                allure: { ...config.reporting.allure, ...patch },
+            },
+        });
 
     const fb = config.flight_blender;
     const os = config.opensky;
     const amqp = config.amqp;
     const ats = config.air_traffic_simulator_settings;
     const df = config.data_files;
+    const rep = config.reporting;
 
     return (
         <div style={{ width: '100%', height: '100%', overflow: 'auto', background: 'var(--bg-primary)' }}>
@@ -271,8 +308,7 @@ export default function ConfigScreen() {
             <div style={{ padding: '20px 24px', maxWidth: '1100px' }}>
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: 0 }}>
                     Edits here are written back to the YAML file shown above (comments preserved) and applied
-                    to the running server immediately. Suites and reporting settings are intentionally not
-                    editable from the GUI.
+                    to the running server immediately. Suite definitions are intentionally not editable from the GUI.
                 </p>
 
                 {/* Flight Blender */}
@@ -383,6 +419,60 @@ export default function ConfigScreen() {
                     <div style={{ marginTop: '12px' }}>
                         <Field label="Geo-fence" value={df.geo_fence} onChange={(v) => updateDF({ geo_fence: v || null })} />
                     </div>
+                </div>
+
+                {/* Reporting */}
+                <div style={sectionStyle}>
+                    <h3 style={sectionTitleStyle}>Reporting</h3>
+                    <div style={gridTwoCol}>
+                        <Field label="Output Directory" value={rep.output_dir}
+                            onChange={(v) => updateReporting({ output_dir: v })}
+                            placeholder="reports" />
+                        <Field label="Formats (comma-separated)"
+                            value={rep.formats?.join(', ') ?? ''}
+                            onChange={(v) => updateReporting({
+                                formats: v.split(',').map(s => s.trim()).filter(Boolean),
+                            })}
+                            placeholder="json, html, log" />
+                    </div>
+
+                    <h4 style={{ ...sectionTitleStyle, fontSize: '13px', marginTop: '16px' }}>
+                        Deployment Details
+                    </h4>
+                    <div style={gridTwoCol}>
+                        <Field label="Name" value={rep.deployment_details.name}
+                            onChange={(v) => updateDeployment({ name: v })} />
+                        <Field label="Version" value={rep.deployment_details.version}
+                            onChange={(v) => updateDeployment({ version: v })} />
+                    </div>
+                    <div style={{ marginTop: '12px' }}>
+                        <Field label="Notes" value={rep.deployment_details.notes}
+                            onChange={(v) => updateDeployment({ notes: v })} />
+                    </div>
+
+                    <h4 style={{ ...sectionTitleStyle, fontSize: '13px', marginTop: '16px' }}>
+                        Allure
+                    </h4>
+                    <div style={{ display: 'flex', gap: '24px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>
+                            <input
+                                type="checkbox"
+                                checked={rep.allure.enabled}
+                                onChange={(e) => updateAllure({ enabled: e.target.checked })}
+                            /><span>Enabled</span>
+                        </label>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-primary)' }}>
+                            <input
+                                type="checkbox"
+                                checked={rep.allure.capture_http}
+                                onChange={(e) => updateAllure({ capture_http: e.target.checked })}
+                            /><span>Capture HTTP exchanges</span>
+                        </label>
+                    </div>
+                    <Field label="Results Directory (relative to per-run output dir)"
+                        value={rep.allure.results_dir}
+                        onChange={(v) => updateAllure({ results_dir: v })}
+                        placeholder="allure-results" />
                 </div>
 
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '8px' }}>

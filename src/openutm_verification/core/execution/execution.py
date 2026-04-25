@@ -90,11 +90,6 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path, sessi
     # Import Python scenarios to populate registry
     _import_python_scenarios()
 
-    # Toggle HTTP exchange capture once per run (no-op on the hot path when
-    # disabled). Always enable when Allure is on, so attachments contain
-    # request/response data, but allow capture without Allure for debugging.
-    HttpCollector.set_enabled(config.reporting.allure.enabled or config.reporting.allure.capture_http)
-
     # Initialise Allure reporter if enabled. Results are scoped to the active
     # run directory so concurrent / repeated runs don't share state.
     allure_reporter: AllureScenarioReporter | None = None

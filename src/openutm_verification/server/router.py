@@ -20,6 +20,11 @@ scenario_router = APIRouter()
 # invocations would race and produce a corrupt report directory.
 _allure_generate_lock = asyncio.Lock()
 
+# Bundled Allure 3 CLI installed via ``web-editor/package.json``
+# (``allure`` npm package). Resolved relative to the repo root so the
+# server doesn't depend on a system-wide Allure install.
+_BUNDLED_ALLURE = Path(__file__).resolve().parents[3] / "web-editor" / "node_modules" / ".bin" / "allure"
+
 
 def get_runner(request: Request) -> Any:
     return request.app.state.runner
@@ -218,23 +223,33 @@ async def generate_allure_report(request: Request):
             ),
         ) from exc
 
-    # Prefer a locally installed Allure CLI. Fall back to npx with the
-    # explicit ``allure-commandline`` package and ``-y`` so it never prompts.
-    allure_cmd = shutil.which("allure")
+    # Prefer the bundled Allure 3 CLI under ``web-editor/node_modules`` so
+    # the server works out of the box after ``npm install``. Fall back to a
+    # system install on PATH, then to ``npx``. The Allure 3 CLI does not
+    # accept ``--clean`` or ``--theme`` flags (the "awesome" report layout
+    # is the default in v3); we clean ``report_dir`` ourselves below.
+    if _BUNDLED_ALLURE.exists():
+        allure_cmd: str | None = str(_BUNDLED_ALLURE)
+    else:
+        allure_cmd = shutil.which("allure")
     if allure_cmd:
-        cmd = [allure_cmd, "generate", str(results_dir), "--clean", "--output", str(report_dir)]
+        cmd = [allure_cmd, "generate", str(results_dir), "--output", str(report_dir)]
     elif shutil.which("npx"):
-        cmd = ["npx", "-y", "allure-commandline@latest", "generate", str(results_dir), "--clean", "--output", str(report_dir)]
+        cmd = ["npx", "-y", "allure@3", "generate", str(results_dir), "--output", str(report_dir)]
     else:
         raise HTTPException(
             status_code=500,
-            detail="Allure CLI not found. Install with `brew install allure` or ensure `npx` is on PATH.",
+            detail=(
+                "Allure 3 CLI not found. Run `npm install` in web-editor/ to use the "
+                "bundled CLI, install with `brew install allure` (>=3), or ensure "
+                "`npx` is on PATH."
+            ),
         )
 
     async with _allure_generate_lock:
-        # Clean previous report so stale files don't linger. The CLI's --clean
-        # flag covers this too, but doing it ourselves catches the case where
-        # the directory exists but the CLI fails before writing.
+        # Allure 3's ``generate`` command does not accept ``--clean``, so we
+        # remove any previous report ourselves to make sure stale files from
+        # a prior run don't bleed into the new one.
         if report_dir.exists():
             shutil.rmtree(report_dir)
 
@@ -246,9 +261,15 @@ async def generate_allure_report(request: Request):
             )
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
         except FileNotFoundError as exc:
+            # The CLI was on disk / PATH when we resolved it but vanished
+            # before exec (rare race, e.g. node_modules cleanup mid-request).
             raise HTTPException(
                 status_code=500,
-                detail="Allure CLI not found. Install with `brew install allure`.",
+                detail=(
+                    "Allure 3 CLI not found at exec time. Run `npm install` in "
+                    "web-editor/ to restore the bundled CLI, or install with "
+                    "`brew install allure` (>=3)."
+                ),
             ) from exc
         except asyncio.TimeoutError as exc:
             raise HTTPException(status_code=500, detail="Allure generate timed out after 120s") from exc

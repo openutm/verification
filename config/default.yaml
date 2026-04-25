@@ -104,6 +104,6 @@ reporting:
   # HTTP request/response exchanges to each step (sensitive headers and body
   # fields are redacted; bodies are truncated).
   allure:
-    enabled: false
-    capture_http: false
+    enabled: true
+    capture_http: true
     results_dir: "allure-results"

@@ -162,18 +162,22 @@ async def get_config(runner: SessionManager = Depends(get_session_manager)):
         "amqp": cfg.amqp.model_dump() if cfg.amqp else None,
         "data_files": cfg.data_files.model_dump(),
         "air_traffic_simulator_settings": (cfg.air_traffic_simulator_settings.model_dump() if cfg.air_traffic_simulator_settings else None),
+        # Exclude ``timestamp_subdir`` (a runtime-only field) so the GUI never
+        # round-trips a stale per-run value back into the YAML on save.
+        "reporting": cfg.reporting.model_dump(exclude={"timestamp_subdir"}),
     }
 
 
-# Editable top-level keys via PUT /api/config. Other keys (suites, reporting)
-# stay read-only because they have non-trivial side effects on path resolution
-# and report layout that aren't worth exposing through the GUI right now.
+# Editable top-level keys via PUT /api/config. ``suites`` stays read-only
+# because its scenarios reference data files via path resolution that's not
+# worth exposing through the GUI right now.
 _EDITABLE_CONFIG_KEYS = (
     "flight_blender",
     "opensky",
     "amqp",
     "air_traffic_simulator_settings",
     "data_files",
+    "reporting",
 )
 
 
@@ -292,11 +296,6 @@ async def reset_session(
     # Refresh global config proxy so dependency settings use updated values
     ConfigProxy.override(runner.config)
 
-    # Re-evaluate HTTP capture flag in case the config changed.
-    from openutm_verification.core.reporting.http_collector import HttpCollector
-
-    HttpCollector.set_enabled(runner.config.reporting.allure.enabled or runner.config.reporting.allure.capture_http)
-
     await runner.initialize_session()
     return {"status": "session_reset"}
 
@@ -392,6 +391,13 @@ async def generate_report_endpoint(request: GenerateReportRequest, runner: Sessi
 
 @app.post("/run-scenario")
 async def run_scenario(scenario: ScenarioDefinition, runner: SessionManager = Depends(get_session_manager)):
+    # Each server-driven scenario must produce its own isolated run directory
+    # so reports (including ``allure-results``) are not shared across calls.
+    # ``run_scenario`` only allocates a new timestamp when these are unset, so
+    # clear the cached state from the prior run before kicking off the next.
+    runner.current_output_dir = None
+    runner.current_timestamp_str = None
+    runner.current_start_time = None
     return await runner.run_scenario(scenario)
 
 

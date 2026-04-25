@@ -277,7 +277,7 @@ class AllureScenarioReporter:
             self._attach_json(step_uuid, "Step Result", step_result.result)
 
         if step_result.logs:
-            self._attach_text(step_uuid, "Logs", "\n".join(step_result.logs))
+            self._attach_text(step_uuid, "Logs", "".join(step_result.logs))
 
         self._lifecycle.stop_step(uuid=step_uuid)
 
