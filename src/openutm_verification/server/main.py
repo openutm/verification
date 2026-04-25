@@ -18,6 +18,7 @@ from pydantic import BaseModel
 import openutm_verification.core.execution.dependencies  # noqa: F401
 from openutm_verification.core.execution.config_models import (
     AirTrafficSimulatorSettings,
+    AppConfig,
     ConfigProxy,
     DataFiles,
     FlightBlenderConfig,
@@ -124,6 +125,134 @@ async def health_check():
 @app.get("/operations")
 async def get_operations(runner: SessionManager = Depends(get_session_manager)):
     return runner.get_available_operations()
+
+
+@app.get("/api/config")
+async def get_config(runner: SessionManager = Depends(get_session_manager)):
+    """Return the full server config the GUI manages.
+
+    Re-reads the YAML from disk into a transient ``AppConfig`` so the GUI
+    reflects out-of-band edits without touching the live session. The running
+    session's ``runner.config`` is intentionally left alone here so that
+    simply opening the Settings screen never resets an in-progress run.
+    Falls back to the in-memory copy on parse errors so a transient bad file
+    doesn't break the screen.
+
+    No redaction is performed: this server is intended for local single-user
+    use (binds 127.0.0.1 by default) and the user already has filesystem
+    access to the config file.
+    """
+    import yaml as _yaml
+
+    cfg = runner.config
+    try:
+        with open(runner.config_path, "r", encoding="utf-8") as f:
+            raw = _yaml.safe_load(f)
+        cfg = AppConfig.model_validate(raw)
+    except Exception:  # noqa: BLE001
+        logger.exception("Re-reading config during GET /api/config failed; serving in-memory copy")
+
+    return {
+        "version": cfg.version,
+        "run_id": cfg.run_id,
+        "config_path": str(runner.config_path),
+        "flight_blender": cfg.flight_blender.model_dump(),
+        "opensky": cfg.opensky.model_dump(),
+        "amqp": cfg.amqp.model_dump() if cfg.amqp else None,
+        "data_files": cfg.data_files.model_dump(),
+        "air_traffic_simulator_settings": (cfg.air_traffic_simulator_settings.model_dump() if cfg.air_traffic_simulator_settings else None),
+    }
+
+
+# Editable top-level keys via PUT /api/config. Other keys (suites, reporting)
+# stay read-only because they have non-trivial side effects on path resolution
+# and report layout that aren't worth exposing through the GUI right now.
+_EDITABLE_CONFIG_KEYS = (
+    "flight_blender",
+    "opensky",
+    "amqp",
+    "air_traffic_simulator_settings",
+    "data_files",
+)
+
+
+@app.put("/api/config")
+async def put_config(
+    payload: dict = Body(...),
+    runner: SessionManager = Depends(get_session_manager),
+):
+    """Persist edited config sections back to the loaded YAML file and reload.
+
+    Only the keys in ``_EDITABLE_CONFIG_KEYS`` are honored. Comments and
+    formatting in the file are preserved via ruamel.yaml round-trip mode.
+    Refuses to save while a scenario is running (the reload would tear down
+    in-flight clients). Validates the candidate config before writing, and
+    writes atomically (temp file + rename) so a failed save can never leave
+    a half-written YAML on disk.
+    """
+    from pydantic import ValidationError
+    from ruamel.yaml import YAML
+
+    if runner.current_run_task is not None and not runner.current_run_task.done():
+        return {
+            "status": "error",
+            "message": "Cannot save config while a scenario is running. Stop the run first.",
+        }
+
+    config_path = runner.config_path
+    if not config_path.exists():
+        return {"status": "error", "message": f"Config file not found: {config_path}"}
+
+    yaml_rt = YAML()
+    yaml_rt.preserve_quotes = True
+    yaml_rt.indent(mapping=2, sequence=4, offset=2)
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        doc = yaml_rt.load(f)
+    # ruamel returns None for an empty/whitespace-only file; normalize so
+    # ``doc[key] = ...`` below doesn't TypeError.
+    if doc is None:
+        from ruamel.yaml.comments import CommentedMap
+
+        doc = CommentedMap()
+
+    applied: list[str] = []
+    for key in _EDITABLE_CONFIG_KEYS:
+        # Apply the key whenever it appears in the payload, including when
+        # its value is null, so the GUI can clear optional sections (e.g.
+        # set ``amqp: null`` to remove AMQP config).
+        if key in payload:
+            doc[key] = payload[key]
+            applied.append(key)
+
+    # Validate the would-be config before touching disk so we never persist
+    # a broken YAML that would block future reloads/restarts.
+    try:
+        AppConfig.model_validate(dict(doc))
+    except ValidationError as exc:
+        logger.warning(f"Rejected config save to {config_path}: validation failed")
+        return {"status": "error", "message": f"Invalid config: {exc}"}
+
+    tmp_path = config_path.with_suffix(config_path.suffix + ".tmp")
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            yaml_rt.dump(doc, f)
+        os.replace(tmp_path, config_path)
+    finally:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+
+    logger.info(f"Wrote {applied} to {config_path}; reloading config")
+    try:
+        await runner.reload_config()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Reload after config save failed")
+        return {"status": "saved_but_reload_failed", "applied": applied, "error": str(exc)}
+
+    return {"status": "saved", "applied": applied, "config_path": str(config_path)}
 
 
 @app.post("/session/reset")

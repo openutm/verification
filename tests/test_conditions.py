@@ -171,3 +171,42 @@ class TestConditionEvaluator:
         evaluator = ConditionEvaluator(steps, loop_context)
         assert evaluator.evaluate("loop.index < 100") is True
         assert evaluator.evaluate("loop.index >= 99") is True
+
+    def test_success_ignores_continue_on_error_steps(self):
+        """Test success() ignores failed steps with continue_on_error=True."""
+        steps = {
+            "step1": StepResult(id="step1", name="Step 1", status=Status.PASS, duration=1.0),
+            "step2": StepResult(id="step2", name="Step 2", status=Status.FAIL, duration=1.0, continue_on_error=True),
+        }
+        evaluator = ConditionEvaluator(steps)
+        # step2 failed but has continue_on_error, so success() should still be True
+        assert evaluator.evaluate("success()") is True
+
+    def test_failure_ignores_continue_on_error_steps(self):
+        """Test failure() ignores failed steps with continue_on_error=True."""
+        steps = {
+            "step1": StepResult(id="step1", name="Step 1", status=Status.PASS, duration=1.0),
+            "step2": StepResult(id="step2", name="Step 2", status=Status.FAIL, duration=1.0, continue_on_error=True),
+        }
+        evaluator = ConditionEvaluator(steps)
+        # step2 failed but has continue_on_error, so last_step_status is PASS (from step1)
+        assert evaluator.evaluate("failure()") is False
+
+    def test_continue_on_error_step_status_still_queryable(self):
+        """Test that individual step status is still queryable even with continue_on_error."""
+        steps = {
+            "step1": StepResult(id="step1", name="Step 1", status=Status.PASS, duration=1.0),
+            "step2": StepResult(id="step2", name="Step 2", status=Status.FAIL, duration=1.0, continue_on_error=True),
+        }
+        evaluator = ConditionEvaluator(steps)
+        # Direct step status queries should still reflect the actual status
+        assert evaluator.evaluate("steps.step2.status == 'failure'") is True
+
+    def test_success_fails_with_non_continue_on_error_step(self):
+        """Test success() still returns False for failed steps without continue_on_error."""
+        steps = {
+            "step1": StepResult(id="step1", name="Step 1", status=Status.PASS, duration=1.0),
+            "step2": StepResult(id="step2", name="Step 2", status=Status.FAIL, duration=1.0, continue_on_error=False),
+        }
+        evaluator = ConditionEvaluator(steps)
+        assert evaluator.evaluate("success()") is False

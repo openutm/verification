@@ -22,4 +22,5 @@ steps:
     state: ENDED
   description: Marks the operation as ended after the flight is complete.
 - step: Teardown Flight Declaration
+  if: always()
   description: Cleans up the flight declaration and any associated resources.

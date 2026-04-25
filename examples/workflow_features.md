@@ -21,6 +21,16 @@ Complete guide to advanced workflow features including conditional execution and
 
 **Operators:** `==`, `!=`, `&&`, `||`, `not`
 
+### Continue on Error
+
+```yaml
+- id: step_name
+  step: Operation Name
+  continue-on-error: true  # Scenario continues even if this step fails
+```
+
+By default, a failing step halts the scenario. Use `continue-on-error: true` to allow subsequent steps to execute regardless. This is useful for non-critical checks or when cleanup steps must always run.
+
 ### Loops
 
 ```yaml
@@ -46,6 +56,7 @@ Complete guide to advanced workflow features including conditional execution and
 | **Item Loop** | `loop: { items: [...] }` | Process list of files |
 | **While Loop** | `loop: { while: condition }` | Poll until ready |
 | **Conditional Step** | `if: expression` | Run only on success |
+| **Continue on Error** | `continue-on-error: true` | Don't halt on failure |
 | **Step Status** | `steps.X.status` | Check if step passed |
 | **Step Result** | `steps.X.result` | Access return value |
 | **Loop Index** | `loop.index` | Get iteration number |

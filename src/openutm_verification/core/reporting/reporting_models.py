@@ -44,6 +44,7 @@ class StepResult(BaseModel, Generic[T]):
     result: T = None  # type: ignore
     error_message: str | None = None
     logs: list[str] = []
+    continue_on_error: bool = False
 
 
 class ScenarioResult(BaseModel):

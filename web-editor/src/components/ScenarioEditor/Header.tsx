@@ -1,4 +1,4 @@
-import { Activity, Moon, Sun, Layout, FilePlus, Save, Play, Loader2, Copy, Square, Layers } from 'lucide-react';
+import { Activity, Moon, Sun, Layout, FilePlus, Save, Play, Loader2, Copy, Square, Layers, Settings } from 'lucide-react';
 import styles from '../../styles/Header.module.css';
 import btnStyles from '../../styles/Button.module.css';
 
@@ -74,6 +74,15 @@ export const Header = ({
                         Stop
                     </button>
                 )}
+                <button
+                    className={btnStyles.button}
+                    onClick={() => { globalThis.location.hash = '#/config'; }}
+                    title="Edit server configuration (default.yaml)"
+                    type="button"
+                >
+                    <Settings size={16} />
+                    Settings
+                </button>
             </div>
         </header>
     );

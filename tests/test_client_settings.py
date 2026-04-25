@@ -16,7 +16,6 @@ from openutm_verification.core.execution.config_models import (
     AirTrafficSimulatorSettings,
     AMQPConfig,
     AuthConfig,
-    BlueSkyAirTrafficSimulatorSettings,
     OpenSkyConfig,
 )
 
@@ -168,7 +167,7 @@ class TestBlueSkyAirTrafficSettingsFromConfig:
 
     def test_from_config_all_fields(self):
         """All config fields are correctly mapped."""
-        sim_config = BlueSkyAirTrafficSimulatorSettings(
+        sim_config = AirTrafficSimulatorSettings(
             number_of_aircraft=10,
             simulation_duration=120,
             single_or_multiple_sensors="single",
@@ -190,7 +189,7 @@ class TestBlueSkyAirTrafficSettingsFromConfig:
 
     def test_from_config_no_simulation(self):
         """Settings work without simulation path."""
-        sim_config = BlueSkyAirTrafficSimulatorSettings(
+        sim_config = AirTrafficSimulatorSettings(
             number_of_aircraft=3,
             simulation_duration=30,
         )
@@ -202,7 +201,7 @@ class TestBlueSkyAirTrafficSettingsFromConfig:
 
     def test_from_config_defaults(self):
         """Default values work correctly."""
-        sim_config = BlueSkyAirTrafficSimulatorSettings(
+        sim_config = AirTrafficSimulatorSettings(
             number_of_aircraft=2,
             simulation_duration=30,
         )

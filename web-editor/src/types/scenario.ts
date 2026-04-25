@@ -29,6 +29,7 @@ export interface NodeData extends Record<string, unknown> {
     ifCondition?: string;
     loop?: LoopConfig;
     needs?: string[];
+    continueOnError?: boolean;
     isGroupReference?: boolean;
     isGroupContainer?: boolean;
     isPhaseContainer?: boolean;
@@ -62,6 +63,7 @@ export interface ScenarioStep {
     description?: string;
     if?: string;
     loop?: LoopConfig;
+    'continue-on-error'?: boolean;
 }
 
 export interface ScenarioDefinition {
@@ -114,24 +116,8 @@ export interface AirTrafficSimulatorSettings {
     sensor_ids?: string[];
 }
 
-export interface BlueSkyAirTrafficSimulatorSettings {
-    number_of_aircraft?: number;
-    simulation_duration?: number;
-    single_or_multiple_sensors?: string;
-    sensor_ids?: string[];
-}
-
-export interface BayesianAirTrafficSimulatorSettings {
-    number_of_aircraft?: number;
-    simulation_duration?: number;
-    single_or_multiple_sensors?: string;
-    sensor_ids?: string[];
-}
-
 export interface ScenarioConfig {
     flight_blender: FlightBlenderConfig;
     data_files: DataFilesConfig;
-    air_traffic_simulator_settings: AirTrafficSimulatorSettings;
-    blue_sky_air_traffic_simulator_settings?: BlueSkyAirTrafficSimulatorSettings;
-    bayesian_air_traffic_simulator_settings?: BayesianAirTrafficSimulatorSettings;
+    air_traffic_simulator_settings?: AirTrafficSimulatorSettings;
 }

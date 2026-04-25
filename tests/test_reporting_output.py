@@ -6,8 +6,6 @@ from openutm_verification.core.execution.config_models import (
     AirTrafficSimulatorSettings,
     AppConfig,
     AuthConfig,
-    BayesianAirTrafficSimulatorSettings,
-    BlueSkyAirTrafficSimulatorSettings,
     DataFiles,
     DeploymentDetails,
     FlightBlenderConfig,
@@ -26,12 +24,6 @@ def _make_app_config(tmp_path: Path) -> AppConfig:
         flight_blender=FlightBlenderConfig(url="http://localhost:8000", auth=AuthConfig()),
         opensky=OpenSkyConfig(auth=AuthConfig()),
         air_traffic_simulator_settings=AirTrafficSimulatorSettings(
-            number_of_aircraft=1, simulation_duration=1, single_or_multiple_sensors="single", sensor_ids=[]
-        ),
-        blue_sky_air_traffic_simulator_settings=BlueSkyAirTrafficSimulatorSettings(
-            number_of_aircraft=1, simulation_duration=1, single_or_multiple_sensors="single", sensor_ids=[]
-        ),
-        bayesian_air_traffic_simulator_settings=BayesianAirTrafficSimulatorSettings(
             number_of_aircraft=1, simulation_duration=1, single_or_multiple_sensors="single", sensor_ids=[]
         ),
         data_files=DataFiles(),

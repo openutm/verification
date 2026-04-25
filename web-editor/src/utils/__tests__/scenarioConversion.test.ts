@@ -190,5 +190,58 @@ describe('YAML Conversion - Category propagation', () => {
         };
         const { nodes } = convertYamlToGraph(scenario, operations);
         expect(nodes[0].data.category).toBeUndefined();
+
+describe('YAML Conversion - continue-on-error', () => {
+    it('includes continue-on-error=true in YAML output', () => {
+        const node: Node<NodeData> = {
+            id: 'node1',
+            position: { x: 0, y: 0 },
+            data: {
+                label: 'Validate Metrics',
+                stepId: 'validate',
+                operationId: 'validate_op',
+                parameters: [],
+                continueOnError: true
+            }
+        };
+
+        const scenario = convertGraphToYaml([node], [], [], 'test', 'test');
+        const step = scenario.steps[0];
+        expect(step['continue-on-error']).toBe(true);
+    });
+
+    it('omits continue-on-error when set to false (default)', () => {
+        const node: Node<NodeData> = {
+            id: 'node1',
+            position: { x: 0, y: 0 },
+            data: {
+                label: 'Setup',
+                stepId: 'setup',
+                operationId: 'setup_op',
+                parameters: [],
+                continueOnError: false
+            }
+        };
+
+        const scenario = convertGraphToYaml([node], [], [], 'test', 'test');
+        const step = scenario.steps[0];
+        expect(step['continue-on-error']).toBeUndefined();
+    });
+
+    it('omits continue-on-error when not set', () => {
+        const node: Node<NodeData> = {
+            id: 'node1',
+            position: { x: 0, y: 0 },
+            data: {
+                label: 'Setup',
+                stepId: 'setup',
+                operationId: 'setup_op',
+                parameters: []
+            }
+        };
+
+        const scenario = convertGraphToYaml([node], [], [], 'test', 'test');
+        const step = scenario.steps[0];
+        expect(step['continue-on-error']).toBeUndefined();
     });
 });

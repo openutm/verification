@@ -53,31 +53,14 @@ Use the optional `groups` section to define named step collections:
 
 ```yaml
 name: opensky_live_data
-description: Fetch live flight data and submit to Flight Blender.
-
-groups:
-  fetch_and_submit_opensky:
-    description: Fetches OpenSky data and submits it to Flight Blender
-    steps:
-      - id: fetch
-        step: Fetch OpenSky Data
-
-      - id: submit
-        step: Submit Air Traffic
-        arguments:
-          observations: ${{ group.fetch.result }}
-
-      - id: wait
-        step: Wait X seconds
-        arguments:
-          duration: 3
+description: Fetch live flight data from OpenSky and submit to Flight Blender.
 
 steps:
-  # Execute the group once
-  - step: fetch_and_submit_opensky
-
-  # Execute the group in a loop
-  - step: fetch_and_submit_opensky
+  - step: Stream Air Traffic
+    id: stream_opensky
+    arguments:
+      provider: opensky
+      target: flight_blender
     loop:
       count: 5
 ```
@@ -124,6 +107,40 @@ steps:
 - Default step condition: runs only if prior steps are `success()`.
 - Available status strings: `success`, `failure`, `running`, `skipped`.
 - You can use conditions like `always()`, `success()`, `failure()` and combined references (e.g., `steps.Upload Flight Declaration.status == 'success'`).
+
+### Run Conditions (`if`)
+
+Control when a step executes using the `if` field:
+
+```yaml
+steps:
+  - step: Cleanup Resources
+    if: always()    # Always runs, even after failures
+
+  - step: Deploy
+    if: success()   # Runs only if all previous steps succeeded
+
+  - step: Rollback
+    if: failure()   # Runs only if a previous step failed
+
+  - step: Custom Check
+    if: steps.test.status == 'success'  # Check a specific step
+```
+
+### Continue on Error (`continue-on-error`)
+
+By default, a failing step halts the scenario. Set `continue-on-error: true` to allow subsequent steps to execute even if this step fails:
+
+```yaml
+steps:
+  - step: Run Flaky Test
+    continue-on-error: true   # Scenario continues even if this fails
+
+  - step: Cleanup Resources
+    if: always()
+```
+
+This is useful for non-critical validation steps or cleanup flows where you want the scenario to keep going.
 
 ## Validation
 To validate scenarios locally:

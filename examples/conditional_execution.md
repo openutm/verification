@@ -119,6 +119,46 @@ Access the return value/result data from a specific step. Steps may return data 
 
 **Note**: The `result` field accesses the return value/details from the step execution. Use `!= None` to check if a step returned any data.
 
+## Continue on Error
+
+By default, when a step fails the scenario stops. Use `continue-on-error: true` to allow subsequent steps to execute even if the current step fails:
+
+```yaml
+- id: validate_metrics
+  step: Verify Reported Metrics
+  continue-on-error: true  # Scenario continues even if validation fails
+```
+
+This is different from `if: always()` — `continue-on-error` controls what happens **after** the step runs and fails, while `if` controls whether the step runs **at all**.
+
+### Combining with Conditions
+
+`continue-on-error` and `if` can be used together for robust workflows:
+
+```yaml
+steps:
+  - id: run_tests
+    step: Run Tests
+    continue-on-error: true   # Don't halt if tests fail
+
+  - id: collect_results
+    step: Collect Test Results
+    description: Runs even if tests failed above
+
+  - id: cleanup
+    step: Cleanup Resources
+    if: always()               # Runs regardless of any previous failure
+```
+
+### When to Use Each
+
+| Scenario | Use |
+|----------|-----|
+| Step might fail but rest of workflow should continue | `continue-on-error: true` |
+| Step should only run when a previous step failed | `if: failure()` |
+| Step must always run (cleanup, teardown) | `if: always()` |
+| Step should run only on success (default behavior) | No `if` needed, or `if: success()` |
+
 ## Complete Example
 
 ```yaml
