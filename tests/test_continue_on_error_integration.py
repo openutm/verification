@@ -135,7 +135,7 @@ async def test_without_continue_on_error_stops_after_failure():
     with patch.object(runner, "execute_single_step", side_effect=fake_execute):
         with patch.object(runner, "initialize_session", new_callable=AsyncMock):
             with patch.object(runner, "_wait_for_dependencies", new_callable=AsyncMock):
-                results = await runner.run_scenario(scenario)
+                await runner.run_scenario(scenario)
 
     assert call_order == ["step_a"], "step_b should NOT have executed"
 
@@ -225,7 +225,7 @@ async def test_group_stops_without_continue_on_error():
     with patch.object(runner, "execute_single_step", side_effect=fake_execute):
         with patch.object(runner, "initialize_session", new_callable=AsyncMock):
             with patch.object(runner, "_wait_for_dependencies", new_callable=AsyncMock):
-                results = await runner.run_scenario(scenario)
+                await runner.run_scenario(scenario)
 
     assert "g_step1" in call_order
     assert "g_step2" not in call_order, "g_step2 should NOT execute after g_step1 failure"

@@ -130,6 +130,10 @@ fixable = ["ALL"]
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
+[tool.ruff.lint.per-file-ignores]
+# JS/HTML embedded as a Python string literal — long lines are unavoidable.
+"src/openutm_verification/core/reporting/_viz_3d_template.py" = ["E501"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
