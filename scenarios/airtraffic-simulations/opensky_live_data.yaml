@@ -7,5 +7,6 @@ steps:
     arguments:
       provider: opensky
       target: flight_blender
+      duration: 10
     loop:
-      count: 5
+      count: 2
