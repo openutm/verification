@@ -790,6 +790,9 @@ const ScenarioEditorContent = () => {
             setReportError({ title: "Popup Blocked", message: "Please allow popups for this site to view reports." });
             return;
         }
+        // Prevent reverse-tabnabbing: the new window must not retain a
+        // reference to this editor window via window.opener.
+        newWindow.opener = null;
 
         // Set a loading title or message
         newWindow.document.title = "Loading Report...";
@@ -825,6 +828,9 @@ const ScenarioEditorContent = () => {
             setReportError({ title: "Popup Blocked", message: "Please allow popups for this site to view reports." });
             return;
         }
+        // Prevent reverse-tabnabbing: the new window must not retain a
+        // reference to this editor window via window.opener.
+        newWindow.opener = null;
 
         newWindow.document.title = "Generating Allure Report...";
         newWindow.document.body.innerHTML = '<div style="font-family:sans-serif;padding:20px;">Generating Allure report…</div>';

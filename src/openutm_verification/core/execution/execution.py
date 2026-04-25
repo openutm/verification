@@ -97,103 +97,109 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path, sessi
     if config.reporting.allure.enabled:
         allure_results_path = _resolve_allure_results_dir(config)
         allure_reporter = AllureScenarioReporter(allure_results_path)
+        # HttpCollector is process-global and disabled by default. Enable it
+        # only when both Allure reporting and HTTP capture are turned on so
+        # individual step exchanges can be attached to the Allure attachments.
+        HttpCollector.set_enabled(config.reporting.allure.capture_http)
         logger.info(f"Allure reporting enabled → {allure_results_path}")
 
-    scenario_results = []
-    for scenario_id in scenarios():
-        try:
-            # Initialize session with the current context
-            await session_manager.initialize_session()
+    try:
+        scenario_results = []
+        for scenario_id in scenarios():
+            try:
+                # Initialize session with the current context
+                await session_manager.initialize_session()
 
-            if scenario_id in SCENARIO_REGISTRY:
-                logger.info(f"Running Python scenario: {scenario_id}")
-                wrapper = SCENARIO_REGISTRY[scenario_id]["func"]
-                # Unwrap to get the original function for dependency injection
-                func_to_call = getattr(wrapper, "__wrapped__", wrapper)
+                if scenario_id in SCENARIO_REGISTRY:
+                    logger.info(f"Running Python scenario: {scenario_id}")
+                    wrapper = SCENARIO_REGISTRY[scenario_id]["func"]
+                    # Unwrap to get the original function for dependency injection
+                    func_to_call = getattr(wrapper, "__wrapped__", wrapper)
 
-                # Execute within the session context
-                # session_manager.initialize_session() already sets up session_context but doesn't enter it
-                # We need to manually enter the context or use run_scenario logic
-                # session_context is a ScenarioContext.
-                # ScenarioContext.__enter__ sets the thread-local state.
+                    # Execute within the session context
+                    # session_manager.initialize_session() already sets up session_context but doesn't enter it
+                    # We need to manually enter the context or use run_scenario logic
+                    # session_context is a ScenarioContext.
+                    # ScenarioContext.__enter__ sets the thread-local state.
 
-                if not session_manager.session_context:
-                    raise RuntimeError("Session context not initialized")
+                    if not session_manager.session_context:
+                        raise RuntimeError("Session context not initialized")
 
-                with session_manager.session_context:
-                    await call_with_dependencies(func_to_call, resolver=session_manager.session_resolver)
+                    with session_manager.session_context:
+                        await call_with_dependencies(func_to_call, resolver=session_manager.session_resolver)
 
-            else:
-                scenario_def = load_yaml_scenario_definition(scenario_id)
-                await session_manager.run_scenario(scenario_def)
+                else:
+                    scenario_def = load_yaml_scenario_definition(scenario_id)
+                    await session_manager.run_scenario(scenario_def)
 
-            state = session_manager.session_context.state if session_manager.session_context else None
-            steps = state.steps if state else []
-            failed = any(s.status == Status.FAIL for s in steps)
-            status = Status.FAIL if failed else Status.PASS
-            result = ScenarioResult(
-                name=scenario_id,
-                status=status,
-                duration=0,
-                steps=steps,
-                flight_declaration_data=state.flight_declaration_data if state else None,
-                flight_declarations_data=state.flight_declarations_data if state else None,
-                flight_declaration_via_operational_intent_data=state.flight_declaration_via_operational_intent_data if state else None,
-                telemetry_data=state.telemetry_data if state else None,
-                air_traffic_data=state.air_traffic_data if state else [],
-            )
-        except (AirTrafficError, OpenSkyError, ValidationError) as e:
-            logger.error(f"Failed to run scenario '{scenario_id}': {e}")
-            result = ScenarioResult(
-                name=scenario_id,
-                status=Status.FAIL,
-                duration=0,
-                steps=[],
-                error_message=str(e),
-                docs=None,
-            )
-        finally:
-            # Ensure session is closed after each scenario to clean up resources
-            await session_manager.close_session()
+                state = session_manager.session_context.state if session_manager.session_context else None
+                steps = state.steps if state else []
+                failed = any(s.status == Status.FAIL for s in steps)
+                status = Status.FAIL if failed else Status.PASS
+                result = ScenarioResult(
+                    name=scenario_id,
+                    status=status,
+                    duration=0,
+                    steps=steps,
+                    flight_declaration_data=state.flight_declaration_data if state else None,
+                    flight_declarations_data=state.flight_declarations_data if state else None,
+                    flight_declaration_via_operational_intent_data=state.flight_declaration_via_operational_intent_data if state else None,
+                    telemetry_data=state.telemetry_data if state else None,
+                    air_traffic_data=state.air_traffic_data if state else [],
+                )
+            except (AirTrafficError, OpenSkyError, ValidationError) as e:
+                logger.error(f"Failed to run scenario '{scenario_id}': {e}")
+                result = ScenarioResult(
+                    name=scenario_id,
+                    status=Status.FAIL,
+                    duration=0,
+                    steps=[],
+                    error_message=str(e),
+                    docs=None,
+                )
+            finally:
+                # Ensure session is closed after each scenario to clean up resources
+                await session_manager.close_session()
 
-        # Enrich result with context data
-        context_data = CONTEXT.get()
-        result.suite_name = context_data.get("suite_name")
-        result.docs = context_data.get("docs")
+            # Enrich result with context data
+            context_data = CONTEXT.get()
+            result.suite_name = context_data.get("suite_name")
+            result.docs = context_data.get("docs")
 
-        scenario_results.append(result)
-        logger.info(f"Scenario {scenario_id} finished with status: {result.status}")
+            scenario_results.append(result)
+            logger.info(f"Scenario {scenario_id} finished with status: {result.status}")
 
-        # Record scenario in Allure
-        if allure_reporter:
-            allure_reporter.start_scenario(scenario_id, result.suite_name)
-            allure_reporter.record_steps(result.steps)
-            allure_reporter.end_scenario(result)
+            # Record scenario in Allure
+            if allure_reporter:
+                allure_reporter.start_scenario(scenario_id, result.suite_name)
+                allure_reporter.record_steps(result.steps)
+                allure_reporter.end_scenario(result)
 
-    end_time_obj = datetime.now(timezone.utc)
+        end_time_obj = datetime.now(timezone.utc)
 
-    docs_dir = get_docs_directory()
-    report_data = create_report_data(
-        config=config,
-        config_path=str(config_path),
-        results=scenario_results,
-        start_time=start_time,
-        end_time=end_time_obj,
-        docs_dir=str(docs_dir) if docs_dir else None,
-    )
+        docs_dir = get_docs_directory()
+        report_data = create_report_data(
+            config=config,
+            config_path=str(config_path),
+            results=scenario_results,
+            start_time=start_time,
+            end_time=end_time_obj,
+            docs_dir=str(docs_dir) if docs_dir else None,
+        )
 
-    logger.info(f"Verification run complete with overall status: {report_data.overall_status}")
+        logger.info(f"Verification run complete with overall status: {report_data.overall_status}")
 
-    generate_reports(report_data, config.reporting)
+        generate_reports(report_data, config.reporting)
 
-    if allure_reporter:
-        try:
-            allure_reporter.close()
-        finally:
-            HttpCollector.set_enabled(False)
-        if allure_results_path is not None:
+        if allure_reporter and allure_results_path is not None:
             logger.info(f"Allure results written to {allure_results_path}")
-    else:
-        HttpCollector.set_enabled(False)
 
-    return report_data.summary.failed
+        return report_data.summary.failed
+    finally:
+        # Always tear down Allure / HttpCollector state so an exception in the
+        # scenario loop or report generation doesn't leak the Allure plugin
+        # registration or leave HTTP capture enabled across runs (especially
+        # in long-lived server processes).
+        if allure_reporter is not None:
+            allure_reporter.close()
+        HttpCollector.set_enabled(False)

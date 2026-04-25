@@ -65,9 +65,8 @@ def test_close_is_idempotent(tmp_path: Path) -> None:
     reporter = AllureScenarioReporter(tmp_path)
     reporter.close()
     reporter.close()  # second call must not raise
-    assert (
-        all(not n.startswith("allure_scenario_file_logger_") or "allure_scenario_file_logger_" not in n for n in _registered_plugin_names()) or True
-    )
+    remaining = [n for n in _registered_plugin_names() if n.startswith("allure_scenario_file_logger_")]
+    assert remaining == []
 
 
 def test_context_manager_unregisters_on_exception(tmp_path: Path) -> None:

@@ -259,7 +259,6 @@ async def generate_allure_report(request: Request):
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
         except FileNotFoundError as exc:
             # The CLI was on disk / PATH when we resolved it but vanished
             # before exec (rare race, e.g. node_modules cleanup mid-request).
@@ -271,7 +270,19 @@ async def generate_allure_report(request: Request):
                     "`brew install allure` (>=3)."
                 ),
             ) from exc
+
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
         except asyncio.TimeoutError as exc:
+            # Kill the subprocess so it doesn't keep writing into report_dir
+            # after we've already returned an error to the caller (which would
+            # leave a leaked process and a corrupt report directory the next
+            # time generate runs under the lock).
+            proc.kill()
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=5)
+            except asyncio.TimeoutError:
+                pass
             raise HTTPException(status_code=500, detail="Allure generate timed out after 120s") from exc
 
         if proc.returncode != 0:

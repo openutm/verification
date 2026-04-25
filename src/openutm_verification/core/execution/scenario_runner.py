@@ -321,9 +321,10 @@ class ScenarioStepDescriptor:
                         step_result = handle_exception(e, start_time)
             finally:
                 logger.remove(handler_id)
-                if step_result:
+                http_exchanges = HttpCollector.drain()
+                if step_result is not None:
                     step_result.logs = captured_logs
-                    step_result.http_exchanges = HttpCollector.drain()
+                    step_result.http_exchanges = http_exchanges
 
             return step_result
 
