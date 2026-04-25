@@ -39,9 +39,23 @@ def get_scenario_docs(scenario_id: str) -> str | None:
     if not docs_dir:
         return None
 
+    if not docs_dir.exists() or not docs_dir.is_dir():
+        logger.warning(f"Docs directory '{docs_dir}' does not exist or is not a directory.")
+        return None
+
     docs_path = docs_dir / f"{scenario_id}.md"
     if not docs_path.exists():
-        return None
+        # Search subdirectories for a matching file
+        matches = list(docs_dir.rglob(f"{scenario_id}.md"))
+        if len(matches) == 1:
+            docs_path = matches[0]
+        elif len(matches) > 1:
+            logger.warning(
+                f"Multiple documentation files found for scenario '{scenario_id}' under '{docs_dir}': {matches}. Skipping ambiguous match."
+            )
+            return None
+        else:
+            return None
 
     try:
         return docs_path.read_text(encoding="utf-8")
@@ -81,6 +95,20 @@ def scenarios() -> Iterable[str]:
         logger.info(f"Running YAML scenario: {scenario_id}")
 
         docs_content = get_scenario_docs(scenario_id)
+
+        if docs_content is None:
+            scenario_docs_mode = config.scenario_docs if hasattr(config, "scenario_docs") else "warn"
+            docs_dir = get_docs_directory()
+            if scenario_docs_mode == "required":
+                logger.error(f"Scenario '{scenario_id}' has no documentation. Aborting because scenario_docs is set to 'required'.")
+                raise FileNotFoundError(
+                    f"Missing documentation for scenario '{scenario_id}'. "
+                    f"Add a '{scenario_id}.md' file under '{docs_dir}' (including subdirectories)."
+                )
+            elif scenario_docs_mode == "warn":
+                logger.warning(
+                    f"Scenario '{scenario_id}' has no documentation. Add a '{scenario_id}.md' file under '{docs_dir}' (including subdirectories)."
+                )
 
         CONTEXT.set(
             {
