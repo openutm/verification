@@ -357,10 +357,18 @@ def scenario_step(step_name: str, phase: FlightPhase | None = None) -> Callable[
 
 
 def internal_step(step_name: str, phase: FlightPhase | None = None) -> Callable[[Callable[..., Awaitable[Any]]], Any]:
-    """Like @scenario_step but without registering in STEP_REGISTRY.
+    """Decorator for helper methods that should NOT be exposed as YAML operations.
 
-    The method still gets StepResult wrapping, timing, logging, and error
-    handling — it just won't appear in the UI or be callable from YAML scenarios.
+    Behaves like @scenario_step (StepResult wrapping, timing, logging, error
+    handling, captured logs) but skips registration in STEP_REGISTRY. As a result
+    the method:
+
+    - is not callable from YAML scenarios via ``step: <name>``
+    - is not surfaced in the web-editor operations toolbox
+    - is not enumerated by ``/operations`` or any STEP_REGISTRY-backed introspection
+
+    It will still appear in run telemetry / reports when invoked internally,
+    typically with ``id=None``.
     """
 
     def decorator(func: Callable[..., Awaitable[Any]]) -> Any:

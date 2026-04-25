@@ -68,7 +68,6 @@ suites:
   air_traffic_simulations:
     scenarios:
       - name: openutm_sim_air_traffic_data
-      - name: stream_air_traffic_example
       - name: opensky_live_data
       - name: bayesian_sim_air_traffic_data
       - name: bluesky_sim_air_traffic_data

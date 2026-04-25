@@ -9,9 +9,9 @@
 ## Execution Flow
 The scenario executes the following sequence of steps:
 1. **Stream Air Traffic** (`provider: bayesian`, `target: flight_blender`) - Generate synthetic air traffic data using the Bayesian provider and submit to Flight Blender, mimicking real-world SDSP inputs including various flight parameters and metadata.
-4. **Start SDSP Session** - Initiate and terminate SDSP sessions to simulate real-world usage patterns, allowing for the measurement of session-related metrics such as active session count and data volume.
-5. **Verify Reported Metrics in Flight Blender** - Check the Flight Blender dashboard and logs to confirm that the metrics for active SDSP sessions, data volume, and update frequency are accurately reported based on the actions performed in the previous steps.
-5. **Stop SDSP Session** - Terminate the SDSP sessions to ensure that the system correctly updates the metrics to reflect the cessation of data streams and session activity.
+2. **Start SDSP Session** - Initiate and terminate SDSP sessions to simulate real-world usage patterns, allowing for the measurement of session-related metrics such as active session count and data volume.
+3. **Verify Reported Metrics in Flight Blender** - Check the Flight Blender dashboard and logs to confirm that the metrics for active SDSP sessions, data volume, and update frequency are accurately reported based on the actions performed in the previous steps.
+4. **Stop SDSP Session** - Terminate the SDSP sessions to ensure that the system correctly updates the metrics to reflect the cessation of data streams and session activity.
 
 
 ## Expected Outcomes

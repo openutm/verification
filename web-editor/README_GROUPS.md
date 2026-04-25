@@ -54,18 +54,17 @@ In the main scenario flow:
 ## Example Workflow
 
 1. **Create a group** in the Groups Manager:
-   - Name: `fetch_and_submit`
-   - Add step 1: "Stream Air Traffic" with `provider: opensky` (id: `stream`)
-   - Set submit's observations argument to: `${{ group.stream.result }}`
+   - Name: `stream_traffic`
+   - Add step 1: "Stream Air Traffic" with `provider: opensky`, `target: flight_blender` (id: `stream`)
 
 2. **Use the group** in the main flow:
-   - Add a step that references `fetch_and_submit`
+   - Add a step that references `stream_traffic`
    - Set it to loop with count 5
    - The group will execute all its steps 5 times
 
 3. **Reference group results** in subsequent steps:
-   - After the group, add "Process Results"
-   - Reference the group's submit step: `${{ group.submit.result }}`
+   - After the group, add a follow-up step
+   - Reference the group's stream step: `${{ group.stream.result }}`
    - This will get the last iteration's result
 
 ## Exporting to YAML
