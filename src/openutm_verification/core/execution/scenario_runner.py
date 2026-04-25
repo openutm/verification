@@ -271,7 +271,7 @@ class ScenarioStepDescriptor:
             step_result: StepResult[Any]
             if isinstance(e, (FlightBlenderError, OpenSkyError)):
                 logger.error(f"Step '{step_name}' failed after {duration:.2f} seconds: {e}")
-                step_result = StepResult(
+                step_result: StepResult = StepResult(
                     name=step_name,
                     phase=phase,
                     status=Status.FAIL,
