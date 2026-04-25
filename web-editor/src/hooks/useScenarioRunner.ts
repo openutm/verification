@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import type { Node, Edge } from '@xyflow/react';
-import type { GroupDefinition, NodeData, Operation, ScenarioConfig } from '../types/scenario';
+import type { GroupDefinition, NodeData, Operation } from '../types/scenario';
 import { convertGraphToYaml } from '../utils/scenarioConversion';
 
 export const useScenarioRunner = () => {
@@ -35,7 +35,6 @@ export const useScenarioRunner = () => {
         scenarioName: string,
         onStepComplete?: (result: { id: string; status: 'success' | 'failure' | 'error' | 'skipped' | 'running' | 'waiting'; result?: unknown }) => void,
         onStepStart?: (nodeId: string) => void,
-        config?: ScenarioConfig,
         operations: Operation[] = [],
         groups?: Record<string, GroupDefinition>,
         description: string = 'Run from Web UI'
@@ -78,16 +77,13 @@ export const useScenarioRunner = () => {
         const runnableNodes = sortedNodes.filter(node => node.data.operationId); // Filter out nodes without operationId
 
         try {
-            // 1. Reset Session and apply configuration
-            const resetPayload: { config?: ScenarioConfig } = {};
-            if (config) {
-                resetPayload.config = config;
-            }
-
+            // Reset session — server-side YAML config is the source of truth
+            // (edited via the Settings screen / PUT /api/config), so we no
+            // longer send any per-scenario overrides here.
             const resetResponse = await fetch('/session/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(resetPayload)
+                body: JSON.stringify({})
             });
 
             if (!resetResponse.ok) {

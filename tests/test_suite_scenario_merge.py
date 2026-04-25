@@ -134,14 +134,6 @@ class TestAppConfigResolvePathsMergesDefaults:
                 "number_of_aircraft": 3,
                 "simulation_duration": 10,
             },
-            "blue_sky_air_traffic_simulator_settings": {
-                "number_of_aircraft": 3,
-                "simulation_duration": 30,
-            },
-            "bayesian_air_traffic_simulator_settings": {
-                "number_of_aircraft": 3,
-                "simulation_duration": 30,
-            },
             "data_files": {
                 "trajectory": "default_traj.json",
                 "flight_declaration": "default_fd.json",
@@ -166,7 +158,12 @@ class TestAppConfigResolvePathsMergesDefaults:
             "reporting": {"output_dir": "reports"},
         }
 
-        config_file = tmp_path / "config.yaml"
+        # Mirror the real layout: project/config/default.yaml referencing
+        # files at the project root. AppConfig.resolve_paths uses parent.parent
+        # of the config file as the base for relative data-file paths.
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        config_file = config_dir / "config.yaml"
         config_file.write_text(yaml.dump(config_data))
 
         config = AppConfig(**config_data)
@@ -210,14 +207,6 @@ class TestAppConfigResolvePathsMergesDefaults:
                 "number_of_aircraft": 3,
                 "simulation_duration": 10,
             },
-            "blue_sky_air_traffic_simulator_settings": {
-                "number_of_aircraft": 3,
-                "simulation_duration": 30,
-            },
-            "bayesian_air_traffic_simulator_settings": {
-                "number_of_aircraft": 3,
-                "simulation_duration": 30,
-            },
             "data_files": {
                 "trajectory": "trajectory_f1.json",  # DEFAULT
                 "flight_declaration": "fd.json",
@@ -237,7 +226,9 @@ class TestAppConfigResolvePathsMergesDefaults:
             "reporting": {"output_dir": "reports"},
         }
 
-        config_file = tmp_path / "config.yaml"
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        config_file = config_dir / "config.yaml"
         config_file.write_text(yaml.dump(config_data))
 
         config = AppConfig(**config_data)

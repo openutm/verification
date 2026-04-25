@@ -50,40 +50,29 @@ const MemoizedBottomPanel = React.memo(BottomPanel);
 const MemoizedHeader = React.memo(Header);
 
 const ScenarioEditorContent = () => {
-    // Default configuration
-    const getDefaultConfig = (): ScenarioConfig => ({
+    // Empty config skeleton. Real values are hydrated from the server's
+    // /api/config endpoint (which reflects the YAML config). We deliberately
+    // avoid hard-coded URLs / file paths / sensor IDs here so the GUI never
+    // ships invented defaults that could overwrite the operator's config on
+    // /session/reset.
+    const getEmptyConfig = (): ScenarioConfig => ({
         flight_blender: {
-            url: "http://localhost:8000",
+            url: "",
             auth: {
                 type: "none",
-                audience: "testflight.flightblender.com",
-                scopes: ["flightblender.write", "flightblender.read"]
+                audience: "",
+                scopes: []
             }
         },
-        data_files: {
-            trajectory: "config/bern/trajectory_f1.json",
-            flight_declaration: "config/bern/flight_declaration.json",
-            flight_declaration_via_operational_intent: "config/bern/flight_declaration_via_operational_intent.json"
-        },
-        air_traffic_simulator_settings: {
-            number_of_aircraft: 3,
-            simulation_duration: 10,
-            single_or_multiple_sensors: "multiple",
-            sensor_ids: ["a0b7d47e5eac45dc8cbaf47e6fe0e558"]
-        },
-        blue_sky_air_traffic_simulator_settings: {
-            number_of_aircraft: 3,
-            simulation_duration: 30,
-            single_or_multiple_sensors: "multiple",
-            sensor_ids: ["562e6297036a4adebb4848afcd1ede90"]
-        }
+        data_files: {},
+        air_traffic_simulator_settings: {}
     });
 
     const groupPadding = 40;
 
     // Synchronously read autosave state for lazy initialization
     const [initialState] = useState(() => {
-        if (typeof window === 'undefined') return { nodes: [], edges: [], desc: "", config: getDefaultConfig(), groups: {}, isDirty: false, isRestored: false };
+        if (typeof window === 'undefined') return { nodes: [], edges: [], desc: "", config: getEmptyConfig(), groups: {}, isDirty: false, isRestored: false };
 
         const savedIsDirty = sessionStorage.getItem('editor-is-dirty') === 'true';
         const savedScenarioName = sessionStorage.getItem('editor-autosave-scenario-name');
@@ -94,14 +83,14 @@ const ScenarioEditorContent = () => {
                 const nodes = JSON.parse(sessionStorage.getItem('editor-autosave-nodes') || '[]');
                 const edges = JSON.parse(sessionStorage.getItem('editor-autosave-edges') || '[]');
                 const desc = sessionStorage.getItem('editor-autosave-description') || "";
-                const config = JSON.parse(sessionStorage.getItem('editor-autosave-config') || JSON.stringify(getDefaultConfig()));
+                const config = JSON.parse(sessionStorage.getItem('editor-autosave-config') || JSON.stringify(getEmptyConfig()));
                 const groups = JSON.parse(sessionStorage.getItem('editor-autosave-groups') || '{}');
                 return { nodes, edges, desc, config, groups, isDirty: true, isRestored: true };
              } catch (e) {
                  console.error("Failed to parse autosave data", e);
              }
         }
-        return { nodes: [], edges: [], desc: "", config: getDefaultConfig(), groups: {}, isDirty: false, isRestored: false };
+        return { nodes: [], edges: [], desc: "", config: getEmptyConfig(), groups: {}, isDirty: false, isRestored: false };
     });
 
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -871,7 +860,6 @@ const ScenarioEditorContent = () => {
             currentScenarioName || "Interactive Session",
             onStepComplete,
             onStepStart,
-            currentScenarioConfig,
             operations,
             currentScenarioGroups,
             currentScenarioDescription
@@ -879,7 +867,6 @@ const ScenarioEditorContent = () => {
     }, [
         runScenario,
         currentScenarioName,
-        currentScenarioConfig,
         currentScenarioGroups,
         currentScenarioDescription,
         operations,
@@ -1289,17 +1276,12 @@ const ScenarioEditorContent = () => {
                     <MemoizedScenarioInfoPanel
                         name={currentScenarioName}
                         description={currentScenarioDescription}
-                        config={currentScenarioConfig}
                         onUpdateName={(name) => {
                             setCurrentScenarioName(name);
                             setIsDirty(true);
                         }}
                         onUpdateDescription={(desc) => {
                             setCurrentScenarioDescription(desc);
-                            setIsDirty(true);
-                        }}
-                        onUpdateConfig={(config) => {
-                            setCurrentScenarioConfig(config);
                             setIsDirty(true);
                         }}
                         onOpenReport={handleOpenReport}

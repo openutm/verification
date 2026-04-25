@@ -15,7 +15,7 @@ flight_blender:
     # token_endpoint: "/oauth/token/"
     # passport_base_url: "https://passport.testflight.openutm.net"
     audience: "testflight.flightblender.com" # Audience for OAuth tokens, default for local testing
-    scopes: ["flightblender.write", "flightblender.read"] # Scopes for write and read access
+    scopes: [ "flightblender.write", "flightblender.read" ] # Scopes for write and read access
 
 # Details for connecting to the OpenSky Network API
 opensky:
@@ -24,29 +24,13 @@ opensky:
     client_id: "your-client-id"
     client_secret: "your-client-secret"
 
-# Air traffic data configuration
+# Default air traffic simulator settings (can be overridden per step in scenario YAML)
 air_traffic_simulator_settings:
   number_of_aircraft: 3
   simulation_duration: 10
   single_or_multiple_sensors: "single" # this setting specifies if the traffic data is submitted from a single sensor or multiple sensors
-  sensor_ids: ["a0b7d47e5eac45dc8cbaf47e6fe0e558"] # List of sensor IDs to use when 'multiple' is selected
-  session_ids: ["ee9405e564ea4373823e37d950858e6a"] # List of session IDs to use when 'multiple' is selected, a session id is needed in Flight Blender to depict a period of time these observations were made (this assumes the observations may not be continuous); if empty, random UUIDs will be generated
-
-# Bluesky Air traffic data configuration
-blue_sky_air_traffic_simulator_settings:
-  number_of_aircraft: 3
-  simulation_duration: 30
-  single_or_multiple_sensors: "single" # this setting specifies if the traffic data is submitted from a single sensor or multiple sensors
-  sensor_ids: ["562e6297036a4adebb4848afcd1ede90"] # List of sensor IDs to use when 'multiple' is selected
-  session_ids: ["ee9405e564ea4373823e37d950858e6a"] # List of session IDs to use when 'multiple' is selected, a session id is needed in Flight Blender to depict a period of time these observations were made (this assumes the observations may not be continuous); if empty, random UUIDs will be generated
-
-# Bayesian Air traffic data configuration
-bayesian_air_traffic_simulator_settings:
-  number_of_aircraft: 3
-  simulation_duration: 30
-  single_or_multiple_sensors: "single" # this setting specifies if the traffic data is submitted from a single sensor or multiple sensors
-  sensor_ids: ["562e6297036a4adebb4848afcd1ede90"] # List of sensor IDs to use when 'multiple' is selected
-  session_ids: ["ee9405e564ea4373823e37d950858e6a"] # List of session IDs to use when 'multiple' is selected, a session id is needed in Flight Blender to depict a period of time these observations were made (this assumes the observations may not be continuous); if empty, random UUIDs will be generated
+  sensor_ids: [ "a0b7d47e5eac45dc8cbaf47e6fe0e558" ] # List of sensor IDs to use when 'multiple' is selected
+  session_ids: [ "ee9405e564ea4373823e37d950858e6a" ] # List of session IDs to use when 'multiple' is selected
 
 # AMQP/RabbitMQ configuration for event monitoring
 # Set AMQP_URL environment variable or configure here
@@ -62,7 +46,7 @@ data_files:
   simulation: "config/bern/blue_sky_sim_example.scn" # Path to air traffic simulation scenario file, used for BlueSky enabled simulations only.
   flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file
   flight_declaration_via_operational_intent: "config/bern/flight_declaration_via_operational_intent.json" # Path to flight declaration via operational intent JSON file
-  geo_fence: "src/openutm_verification/assets/aoi_geo_fence_samples/geo_fence.geojson" # Path to geo-fences
+  geo_fence: "config/bern/geo_fence.geojson" # Path to geo-fences
 
 # List of test scenario IDs to execute
 suites:
@@ -84,17 +68,16 @@ suites:
   air_traffic_simulations:
     scenarios:
       - name: openutm_sim_air_traffic_data
-      - name: stream_air_traffic_example
       - name: opensky_live_data
       - name: bayesian_sim_air_traffic_data
       - name: bluesky_sim_air_traffic_data
         simulation: "config/bern/blue_sky_sim_example.scn"
   extra:
     scenarios:
-    - name: F3_non_conforming_path
-      trajectory: "config/bern/trajectory_f3.json"
-    - name: add_flight_declaration
-    - name: geo_fence_upload
+      - name: F3_non_conforming_path
+        trajectory: "config/bern/trajectory_f3.json"
+      - name: add_flight_declaration
+      - name: geo_fence_upload
   astm_f3442:
     scenarios:
       - name: daa_a1_head_on_cooperative
@@ -109,7 +92,7 @@ suites:
 # Reporting configuration
 reporting:
   output_dir: "reports"
-  formats: ["json", "html", "log"] # 'json' is raw, 'html' is summarized
+  formats: [ "json", "html", "log" ] # 'json' is raw, 'html' is summarized
   # A place to add metadata about the system under test
   deployment_details:
     name: "Local Flight Blender Dev Instance"

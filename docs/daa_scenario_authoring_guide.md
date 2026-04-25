@@ -165,13 +165,12 @@ steps:
     arguments:
       state: ACTIVATED
   - id: generate_traffic
-    step: Generate BlueSky Simulation Air Traffic Data
+    step: Stream Air Traffic
     arguments:
+      provider: bluesky
       config_path: config/edmonton/bluesky_<tag>.scn
       duration: 130                     # > encounter window
-  - step: Submit Simulated Air Traffic
-    arguments:
-      observations: ${{ steps.generate_traffic.result }}
+      target: flight_blender
     background: true
   - step: Wait X seconds
     arguments:
@@ -186,7 +185,7 @@ steps:
       state: ENDED
     needs:
       - Submit Telemetry
-      - Submit Simulated Air Traffic
+      - generate_traffic
   - step: Stop AMQP Queue Monitor
     needs:
       - update_state_ended
@@ -256,13 +255,12 @@ steps:
 
   # Intruder traffic
   - id: generate_traffic
-    step: Generate BlueSky Simulation Air Traffic Data
+    step: Stream Air Traffic
     arguments:
+      provider: bluesky
       config_path: config/edmonton/bluesky_<tag>.scn
       duration: 210
-  - step: Submit Simulated Air Traffic
-    arguments:
-      observations: ${{ steps.generate_traffic.result }}
+      target: flight_blender
     background: true
   - step: Wait X seconds
     arguments:
@@ -302,13 +300,13 @@ steps:
     arguments:
       declaration_id: ${{ steps.setup_declarations.result.declarations[0].id }}
       state: ENDED
-    needs: [submit_alpha_telemetry, submit_bravo_telemetry, Submit Simulated Air Traffic]
+    needs: [submit_alpha_telemetry, submit_bravo_telemetry, generate_traffic]
   - id: end_bravo
     step: Update Operation State of declaration
     arguments:
       declaration_id: ${{ steps.setup_declarations.result.declarations[1].id }}
       state: ENDED
-    needs: [submit_alpha_telemetry, submit_bravo_telemetry, Submit Simulated Air Traffic]
+    needs: [submit_alpha_telemetry, submit_bravo_telemetry, generate_traffic]
 
   - step: Stop AMQP Queue Monitor
     needs: [end_alpha, end_bravo]

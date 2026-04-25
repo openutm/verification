@@ -53,31 +53,14 @@ Use the optional `groups` section to define named step collections:
 
 ```yaml
 name: opensky_live_data
-description: Fetch live flight data and submit to Flight Blender.
-
-groups:
-  fetch_and_submit_opensky:
-    description: Fetches OpenSky data and submits it to Flight Blender
-    steps:
-      - id: fetch
-        step: Fetch OpenSky Data
-
-      - id: submit
-        step: Submit Air Traffic
-        arguments:
-          observations: ${{ group.fetch.result }}
-
-      - id: wait
-        step: Wait X seconds
-        arguments:
-          duration: 3
+description: Fetch live flight data from OpenSky and submit to Flight Blender.
 
 steps:
-  # Execute the group once
-  - step: fetch_and_submit_opensky
-
-  # Execute the group in a loop
-  - step: fetch_and_submit_opensky
+  - step: Stream Air Traffic
+    id: stream_opensky
+    arguments:
+      provider: opensky
+      target: flight_blender
     loop:
       count: 5
 ```

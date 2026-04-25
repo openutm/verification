@@ -52,14 +52,15 @@ To create a scenario with async tasks (e.g., `sdsp_track`):
 ### Example YAML (`scenarios/sdsp_track.yaml`)
 
 ```yaml
-  - step: Submit Simulated Air Traffic
+  - step: Stream Air Traffic
     arguments:
-      observations: ${{ steps.Generate Simulated Air Traffic Data.result }}
+      provider: geojson
+      duration: 30
     background: true
 
   # ... other steps running in parallel ...
 
   - step: Other step that needs to wait for BG task to finish.
     needs:
-    - Submit Simulated Air Traffic
+    - Stream Air Traffic
 ```

@@ -1,239 +1,78 @@
 #!/usr/bin/env bash
-
-# OpenUTM Verification Docker Run Script
-# This script runs the verification tool using Docker Compose with enhanced error handling
+#
+# Start the OpenUTM Verification GUI (backend + built frontend) via Docker
+# Compose. Equivalent to `make gui`.
+#
+# For local development without Docker, use `make dev-backend` and
+# `make dev-frontend` instead.
+#
+# Usage:
+#   ./scripts/run.sh [--build] [--foreground] [--verbose]
 
 set -euo pipefail
 
-# Source common functions
 SCRIPT_DIR="$(dirname "$0")"
+# shellcheck source=common.sh
 source "$SCRIPT_DIR/common.sh"
 
-# Configuration
 readonly COMPOSE_FILE="docker-compose.yml"
-readonly SERVICE_NAME="verification-tool"
-readonly DEV_SERVICE_NAME="verification-dev"
-readonly SERVER_SERVICE_NAME="verification-server"
 
-# Check if Docker and Docker Compose are available
-# Note: check_dependencies is now sourced from common.sh
-
-# Check if required files exist
-check_files() {
-    if [[ ! -f "${COMPOSE_FILE}" ]]; then
-        log_error "Docker Compose file '${COMPOSE_FILE}' not found"
-        exit 1
-    fi
-
-    if [[ ! -f "config/default.yaml" ]]; then
-        log_warning "Default config file 'config/default.yaml' not found"
-    fi
-}
-
-# create the reports and logs folder
-create_folders() {
-    for dir in reports; do
-        if [[ ! -d "$dir" ]]; then
-            log_info "Directory '$dir' does not exist. Creating..."
-            mkdir -p "$dir"
-        fi
-    done
-}
-
-# Show usage information
 show_usage() {
     cat << EOF
-OpenUTM Verification Tool Runner
+Start the OpenUTM Verification GUI in Docker.
 
-Usage: $0 [OPTIONS] [ARGS...]
+Usage: $0 [OPTIONS]
 
 Options:
-    -d, --dev          Run in development mode with hot reload
-    -p, --production   Run in production mode (default)
-    -s, --server       Run in server mode (starts API and UI)
-    -b, --build        Build images before running
-    --clean            Clean up containers and images after run
-    -v, --verbose      Enable verbose output
-    -h, --help         Show this help message
+    -b, --build         Rebuild the image before starting
+    -f, --foreground    Run in the foreground (stream logs); default is detached
+    -v, --verbose       Verbose docker compose output
+    -h, --help          Show this help message
 
-Arguments:
-    All additional arguments are passed to the verification tool
-
-Examples:
-    $0                                   # Run with default config
-    $0 --config config/custom.yaml       # Run with custom config
-    $0 --server                          # Run in server mode
-    $0 --debug                           # Run with debug logging
-    $0 --dev --build                     # Build and run in development mode
-    $0 --clean --config config/test.yaml # Clean up after run
-    $0 -v --build                        # Run with verbose output and build first
-
+The GUI is served at http://localhost:8989.
 EOF
 }
 
-# Run in production mode
-run_production() {
-    log_info "Running verification tool in production mode..."
-
-    local build_opts=()
-    if [[ "${VERBOSE}" == "true" ]]; then
-        log_info "Verbose mode enabled - additional logging will be shown"
-        build_opts+=("-v")
-    fi
-
-    if [[ "${BUILD_FIRST}" == "true" ]]; then
-        log_info "Building production image first..."
-        ./scripts/build.sh ${build_opts[@]+"${build_opts[@]}"} production
-    fi
-
-    local compose_opts=()
-    if [[ "${VERBOSE}" == "true" ]]; then
-        log_info "Starting container with verbose output..."
-        compose_opts+=("--verbose")
-    fi
-
-    docker compose ${compose_opts[@]+"${compose_opts[@]}"} --file "${COMPOSE_FILE}" run --rm \
-        --user "${HOST_UID}:${HOST_GID}" \
-        -e HOST_UID="${HOST_UID}" -e HOST_GID="${HOST_GID}" \
-        "${SERVICE_NAME}" "$@"
-}
-
-# Run in development mode
-run_development() {
-    log_info "Running verification tool in development mode..."
-
-    local build_opts=()
-    if [[ "${VERBOSE}" == "true" ]]; then
-        log_info "Verbose mode enabled - additional logging will be shown"
-        build_opts+=("-v")
-    fi
-
-    if [[ "${BUILD_FIRST}" == "true" ]]; then
-        log_info "Building development image first..."
-        ./scripts/build.sh ${build_opts[@]+"${build_opts[@]}"} development
-    fi
-
-    local compose_opts=()
-    if [[ "${VERBOSE}" == "true" ]]; then
-        compose_opts+=("--verbose")
-    fi
-
-    docker compose ${compose_opts[@]+"${compose_opts[@]}"} --profile dev run --rm \
-        --user "${HOST_UID}:${HOST_GID}" \
-        -e HOST_UID="${HOST_UID}" -e HOST_GID="${HOST_GID}" \
-        "${DEV_SERVICE_NAME}" "$@"
-}
-# Run in server mode
-run_server() {
-    log_info "Running verification tool in server mode..."
-
-    local build_opts=()
-    if [[ "${VERBOSE}" == "true" ]]; then
-        log_info "Verbose mode enabled - additional logging will be shown"
-        build_opts+=("-v")
-    fi
-
-    if [[ "${BUILD_FIRST}" == "true" ]]; then
-        log_info "Building production image first..."
-        ./scripts/build.sh ${build_opts[@]+"${build_opts[@]}"} production
-    fi
-
-    local compose_opts=()
-    if [[ "${VERBOSE}" == "true" ]]; then
-        log_info "Starting container with verbose output..."
-        compose_opts+=("--verbose")
-    fi
-
-    # For server mode, we use 'up' instead of 'run' to keep the service running
-    # and we don't use --rm because we might want to inspect logs
-    docker compose ${compose_opts[@]+"${compose_opts[@]}"} --profile server up \
-        "${SERVER_SERVICE_NAME}"
-}
-
-# Cleanup function for run script
-run_cleanup() {
-    if [[ "${CLEANUP_AFTER:-false}" == "true" ]]; then
-        log_info "Cleaning up containers and images after run..."
-        ./scripts/cleanup.sh -a -f
-    fi
-}
-
-# Main execution
 main() {
-    local RUN_MODE="production"
-    local BUILD_FIRST="false"
-    local CLEANUP_AFTER="false"
-    local VERBOSE="false"
+    local build_first="false"
+    local foreground="false"
+    local verbose="false"
 
-    # Parse options
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -d|--dev)
-                RUN_MODE="development"
-                shift
-                ;;
-            -p|--production)
-                RUN_MODE="production"
-                shift
-                ;;
-            -b|--build)
-                BUILD_FIRST="true"
-                shift
-                ;;
-            --clean)
-                CLEANUP_AFTER="true"
-                shift
-                ;;
-            -v|--verbose)
-                VERBOSE="true"
-                shift
-                ;;
-            -s|--server)
-                RUN_MODE="server"
-                shift
-                ;;
-            -h|--help)
-                show_usage
-                exit 0
-                ;;
-            *)
-                # Break on first non-option argument
-                break
-                ;;
+            -b|--build) build_first="true"; shift ;;
+            -f|--foreground) foreground="true"; shift ;;
+            -v|--verbose) verbose="true"; shift ;;
+            -h|--help) show_usage; exit 0 ;;
+            *) log_error "Unknown option: $1"; show_usage; exit 1 ;;
         esac
     done
 
-    # Consume the separator if present
-    if [[ "${1:-}" == "--" ]]; then
-        shift
+    check_dependencies
+
+    if [[ ! -f "${COMPOSE_FILE}" ]]; then
+        log_error "Compose file '${COMPOSE_FILE}' not found"
+        exit 1
     fi
 
-    log_info "Starting OpenUTM Verification Tool..."
-    check_dependencies
-    check_files
-    create_folders
+    mkdir -p reports
 
-    # Set up cleanup trap
-    trap 'run_cleanup' EXIT
+    local compose_opts=()
+    [[ "${verbose}" == "true" ]] && compose_opts+=(--verbose)
 
-    case "${RUN_MODE}" in
-        "production")
-            run_production "$@"
-            ;;
-        "development")
-            run_development "$@"
-            ;;
-        "server")
-            run_server "$@"
-            ;;
-        *)
-            log_error "Invalid run mode: ${RUN_MODE}"
-            exit 1
-            ;;
-    esac
+    local up_opts=()
+    [[ "${build_first}" == "true" ]] && up_opts+=(--build)
+    [[ "${foreground}" == "false" ]] && up_opts+=(-d)
 
-    log_success "Verification run completed successfully"
+    log_info "Starting GUI via docker compose..."
+    DOCKER_BUILDKIT=1 docker compose ${compose_opts[@]+"${compose_opts[@]}"} \
+        -f "${COMPOSE_FILE}" up ${up_opts[@]+"${up_opts[@]}"}
+
+    if [[ "${foreground}" == "false" ]]; then
+        log_success "GUI running at http://localhost:8989 (detached)"
+        log_info "Logs:  docker compose logs -f"
+        log_info "Stop:  docker compose down  (or ./scripts/cleanup.sh)"
+    fi
 }
 
-# Run main function with all arguments
 main "$@"

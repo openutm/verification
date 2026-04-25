@@ -10,13 +10,7 @@ SENSOR_MODE_MULTIPLE = "multiple"
 
 if TYPE_CHECKING:
     from openutm_verification.core.execution.config_models import (
-        AirTrafficSimulatorSettings as AirTrafficSimConfig,
-    )
-    from openutm_verification.core.execution.config_models import (
-        BayesianAirTrafficSimulatorSettings as BayesianSimConfig,
-    )
-    from openutm_verification.core.execution.config_models import (
-        BlueSkyAirTrafficSimulatorSettings as BlueSkySimConfig,
+        AirTrafficSimulatorSettings as SimConfig,
     )
 
 
@@ -35,7 +29,7 @@ class AirTrafficSettings(BaseModel):
     session_ids: list[str] = []
 
     @classmethod
-    def from_config(cls, sim_config: "AirTrafficSimConfig", trajectory_path: str | None = None) -> "AirTrafficSettings":
+    def from_config(cls, sim_config: "SimConfig", trajectory_path: str | None = None) -> "AirTrafficSettings":
         """Create settings from config."""
         return cls(
             simulation_config_path=trajectory_path or "",
@@ -58,7 +52,7 @@ class BlueSkyAirTrafficSettings(BaseModel):
     session_ids: list[str] = []
 
     @classmethod
-    def from_config(cls, sim_config: "BlueSkySimConfig", simulation_path: str | None = None) -> "BlueSkyAirTrafficSettings":
+    def from_config(cls, sim_config: "SimConfig", simulation_path: str | None = None) -> "BlueSkyAirTrafficSettings":
         """Create settings from config."""
         return cls(
             simulation_config_path=simulation_path or "",
@@ -82,7 +76,7 @@ class BayesianAirTrafficSettings(BaseModel):
     session_ids: list[str] = []
 
     @classmethod
-    def from_config(cls, sim_config: "BayesianSimConfig", simulation_path: str | None = None) -> "BayesianAirTrafficSettings":
+    def from_config(cls, sim_config: "SimConfig", simulation_path: str | None = None) -> "BayesianAirTrafficSettings":
         """Create settings from config."""
         return cls(
             simulation_config_path=simulation_path or "",
