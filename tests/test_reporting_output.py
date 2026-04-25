@@ -139,6 +139,12 @@ def test_report_html_groups_steps_by_phase(tmp_path: Path):
     assert "Stream telemetry" in html
     assert "Cleanup" in html
 
+    # Phase headers must appear in canonical flight order: PRE FLIGHT -> CRUISE -> POST FLIGHT
+    pre_pos = html.index(">PRE FLIGHT<")
+    cruise_pos = html.index(">CRUISE<")
+    post_pos = html.index(">POST FLIGHT<")
+    assert pre_pos < cruise_pos < post_pos, "Phase groups must appear in canonical flight phase order"
+
 
 def test_report_html_no_phases_renders_flat_table(tmp_path: Path):
     app_config = _make_app_config(tmp_path)

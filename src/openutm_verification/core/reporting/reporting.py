@@ -194,7 +194,7 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
         loader=FileSystemLoader(template_dir),
         autoescape=select_autoescape(enabled_extensions=("html", "xml"), default_for_string=True, default=True),
     )
-    _phase_order = [p.value for p in FlightPhase]
+    _phase_rank: dict[str, int] = {p.value: i for i, p in enumerate(FlightPhase)}
 
     def _phase_groupby(steps: list[dict]) -> list[tuple[str, list[dict]]]:
         """Group steps by phase and return groups in canonical flight phase order."""
@@ -204,7 +204,7 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
             groups.setdefault(phase, []).append(step)
         return sorted(
             groups.items(),
-            key=lambda item: _phase_order.index(item[0]) if item[0] in _phase_order else len(_phase_order),
+            key=lambda item: _phase_rank.get(item[0], len(_phase_rank)),
         )
 
     env.filters["markdown"] = lambda text: markdown.markdown(text) if text else ""
