@@ -38,6 +38,7 @@ class BaseBlenderAPIClient:
         url = f"{self.base_url}{endpoint}"
         start = time.time()
         response: httpx.Response | None = None
+        error: str | None = None
         try:
             response = await self.client.request(method, url, json=json)
             if not (silent_status and response.status_code in silent_status):
@@ -45,9 +46,11 @@ class BaseBlenderAPIClient:
             return response
         except httpx.HTTPStatusError as e:
             response = e.response
+            error = f"{e.response.status_code}: {e.response.text[:500]}"
             logger.error(f"HTTP error occurred: {e.response.status_code} - {e.response.text}")
             raise FlightBlenderError(f"Request failed: {e.response.status_code}") from e
         except httpx.RequestError as e:
+            error = str(e)
             logger.error(f"Request error occurred: {e}")
             raise FlightBlenderError("Request failed") from e
         finally:
@@ -58,6 +61,7 @@ class BaseBlenderAPIClient:
                 request_body=json,
                 response=response,
                 start=start,
+                error=error,
             )
 
     async def get(self, endpoint: str, silent_status: list[int] | None = None) -> httpx.Response:

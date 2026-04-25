@@ -24,6 +24,7 @@ from openutm_verification.core.execution.dependencies import scenarios
 from openutm_verification.core.execution.dependency_resolution import CONTEXT, call_with_dependencies
 from openutm_verification.core.execution.scenario_loader import load_yaml_scenario_definition
 from openutm_verification.core.reporting.allure_reporter import AllureScenarioReporter
+from openutm_verification.core.reporting.http_collector import HttpCollector
 from openutm_verification.core.reporting.reporting import _sanitize_config, create_report_data, generate_reports
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
@@ -31,6 +32,23 @@ from openutm_verification.core.reporting.reporting_models import (
 )
 from openutm_verification.scenarios.registry import SCENARIO_REGISTRY
 from openutm_verification.utils.paths import get_docs_directory
+from openutm_verification.utils.time_utils import get_run_timestamp_str
+
+
+def _resolve_allure_results_dir(config: AppConfig) -> Path:
+    """Return the absolute path where Allure results for the current run go.
+
+    If ``results_dir`` is relative it is anchored under the active run's
+    output directory (``<output_dir>/<timestamp_subdir>/<results_dir>``) so
+    each run produces its own isolated set of result files. Absolute paths
+    are honoured verbatim for users with bespoke setups.
+    """
+    results_path = Path(config.reporting.allure.results_dir)
+    if results_path.is_absolute():
+        return results_path
+    if not config.reporting.timestamp_subdir:
+        config.reporting.timestamp_subdir = get_run_timestamp_str(datetime.now(timezone.utc))
+    return Path(config.reporting.output_dir) / config.reporting.timestamp_subdir / results_path
 
 
 def _import_python_scenarios():
@@ -72,11 +90,19 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path, sessi
     # Import Python scenarios to populate registry
     _import_python_scenarios()
 
-    # Initialise Allure reporter if enabled
+    # Toggle HTTP exchange capture once per run (no-op on the hot path when
+    # disabled). Always enable when Allure is on, so attachments contain
+    # request/response data, but allow capture without Allure for debugging.
+    HttpCollector.set_enabled(config.reporting.allure.enabled or config.reporting.allure.capture_http)
+
+    # Initialise Allure reporter if enabled. Results are scoped to the active
+    # run directory so concurrent / repeated runs don't share state.
     allure_reporter: AllureScenarioReporter | None = None
+    allure_results_path: Path | None = None
     if config.reporting.allure.enabled:
-        allure_reporter = AllureScenarioReporter(config.reporting.allure.results_dir)
-        logger.info(f"Allure reporting enabled → {config.reporting.allure.results_dir}")
+        allure_results_path = _resolve_allure_results_dir(config)
+        allure_reporter = AllureScenarioReporter(allure_results_path)
+        logger.info(f"Allure reporting enabled → {allure_results_path}")
 
     scenario_results = []
     for scenario_id in scenarios():
@@ -166,7 +192,13 @@ async def run_verification_scenarios(config: AppConfig, config_path: Path, sessi
     generate_reports(report_data, config.reporting)
 
     if allure_reporter:
-        allure_reporter.close()
-        logger.info(f"Allure results written to {config.reporting.allure.results_dir}")
+        try:
+            allure_reporter.close()
+        finally:
+            HttpCollector.set_enabled(False)
+        if allure_results_path is not None:
+            logger.info(f"Allure results written to {allure_results_path}")
+    else:
+        HttpCollector.set_enabled(False)
 
     return report_data.summary.failed

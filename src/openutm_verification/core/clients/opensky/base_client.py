@@ -69,10 +69,39 @@ class BaseOpenSkyAPIClient:
 
         logger.debug(f"Making {method} request to {url}")
         start = time.time()
-        response = await self.client.request(method, url, params=params, headers=headers)
+        response: httpx.Response | None = None
+        error: str | None = None
+        try:
+            try:
+                response = await self.client.request(method, url, params=params, headers=headers)
+            except httpx.RequestError as exc:
+                error = str(exc)
+                raise
 
-        if response.status_code == 401 and config.opensky.auth.type == "oauth2":
-            # Record the failed attempt
+            if response.status_code == 401 and config.opensky.auth.type == "oauth2":
+                # Record the failed attempt before retrying with a fresh token.
+                HttpCollector.record_from_httpx(
+                    method=method,
+                    url=url,
+                    request_headers={**dict(self.client.headers), **headers},
+                    request_body=params,
+                    response=response,
+                    start=start,
+                )
+                logger.warning("Token expired, retrying with new token...")
+                headers["Authorization"] = f"Bearer {await self.oauth_client.get_access_token()}"
+                start = time.time()
+                response = None
+                try:
+                    response = await self.client.request(method, url, params=params, headers=headers)
+                except httpx.RequestError as exc:
+                    error = str(exc)
+                    raise
+
+            if not (silent_status and response.status_code in silent_status):
+                response.raise_for_status()
+            return response
+        finally:
             HttpCollector.record_from_httpx(
                 method=method,
                 url=url,
@@ -80,24 +109,8 @@ class BaseOpenSkyAPIClient:
                 request_body=params,
                 response=response,
                 start=start,
+                error=error,
             )
-            logger.warning("Token expired, retrying with new token...")
-            headers["Authorization"] = f"Bearer {await self.oauth_client.get_access_token()}"
-            start = time.time()
-            response = await self.client.request(method, url, params=params, headers=headers)
-
-        HttpCollector.record_from_httpx(
-            method=method,
-            url=url,
-            request_headers={**dict(self.client.headers), **headers},
-            request_body=params,
-            response=response,
-            start=start,
-        )
-
-        if not (silent_status and response.status_code in silent_status):
-            response.raise_for_status()
-        return response
 
     async def get(
         self,

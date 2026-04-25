@@ -15,6 +15,11 @@ T = TypeVar("T")
 
 scenario_router = APIRouter()
 
+# Serialise concurrent Allure HTML generations: the underlying ``allure
+# generate`` command rewrites ``allure-report/`` in place, so concurrent
+# invocations would race and produce a corrupt report directory.
+_allure_generate_lock = asyncio.Lock()
+
 
 def get_runner(request: Request) -> Any:
     return request.app.state.runner
@@ -178,58 +183,98 @@ async def get_latest_report(request: Request, scenario: str | None = None):
 
 @scenario_router.post("/api/allure/generate")
 async def generate_allure_report(request: Request):
-    """Run ``allure generate`` to build HTML from allure-results."""
+    """Run ``allure generate`` to build HTML from allure-results.
+
+    Results are read from the active run directory
+    (``<output_dir>/<timestamp>/<results_dir>``) and HTML is written next to
+    them as ``allure-report/``. Concurrent calls are serialised with an
+    ``asyncio.Lock`` because the CLI rewrites the output directory in place.
+    """
     runner = request.app.state.runner
     allure_cfg = runner.config.reporting.allure
 
     if not allure_cfg.enabled:
         raise HTTPException(status_code=400, detail="Allure reporting is not enabled in config")
 
-    results_dir = Path(allure_cfg.results_dir)
+    output_dir = Path(runner.config.reporting.output_dir).resolve()
+    results_dir = _resolve_run_allure_results_dir(runner).resolve()
+
     if not results_dir.exists() or not any(results_dir.iterdir()):
         raise HTTPException(status_code=404, detail="No Allure results found. Run a scenario first.")
 
-    output_dir = results_dir.parent / "allure-report"
+    report_dir = (results_dir.parent / "allure-report").resolve()
 
-    # Clean previous report so stale files don't linger
-    if output_dir.exists():
-        shutil.rmtree(output_dir)
+    # The report path is exposed via the /reports static mount, which serves
+    # files from ``output_dir``. Refuse to generate outside that tree to
+    # prevent path traversal and to keep ``/api/allure/report`` deterministic.
+    try:
+        report_dir.relative_to(output_dir)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Allure report directory {report_dir} is outside the configured "
+                f"reporting output directory {output_dir}. Adjust reporting.allure.results_dir."
+            ),
+        ) from exc
 
-    # Try allure CLI first, fall back to npx (no global install needed)
+    # Prefer a locally installed Allure CLI. Fall back to npx with the
+    # explicit ``allure-commandline`` package and ``-y`` so it never prompts.
     allure_cmd = shutil.which("allure")
     if allure_cmd:
-        cmd = [allure_cmd, "generate", str(results_dir), "--output", str(output_dir)]
+        cmd = [allure_cmd, "generate", str(results_dir), "--clean", "--output", str(report_dir)]
+    elif shutil.which("npx"):
+        cmd = ["npx", "-y", "allure-commandline@latest", "generate", str(results_dir), "--clean", "--output", str(report_dir)]
     else:
-        cmd = ["npx", "allure", "generate", str(results_dir), "--output", str(output_dir)]
-
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
-    except FileNotFoundError as exc:
         raise HTTPException(
             status_code=500,
-            detail="Neither 'allure' nor 'npx' found. Install Allure CLI: brew install allure",
-        ) from exc
-    except asyncio.TimeoutError as exc:
-        raise HTTPException(status_code=500, detail="Allure generate timed out after 60s") from exc
+            detail="Allure CLI not found. Install with `brew install allure` or ensure `npx` is on PATH.",
+        )
 
-    if proc.returncode != 0:
-        detail = stderr.decode(errors="replace").strip() or stdout.decode(errors="replace").strip()
-        raise HTTPException(status_code=500, detail=f"allure generate failed: {detail}")
+    async with _allure_generate_lock:
+        # Clean previous report so stale files don't linger. The CLI's --clean
+        # flag covers this too, but doing it ourselves catches the case where
+        # the directory exists but the CLI fails before writing.
+        if report_dir.exists():
+            shutil.rmtree(report_dir)
 
-    return {"status": "success", "report_url": "/api/allure/report"}
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status_code=500,
+                detail="Allure CLI not found. Install with `brew install allure`.",
+            ) from exc
+        except asyncio.TimeoutError as exc:
+            raise HTTPException(status_code=500, detail="Allure generate timed out after 120s") from exc
+
+        if proc.returncode != 0:
+            detail = stderr.decode(errors="replace").strip() or stdout.decode(errors="replace").strip()
+            raise HTTPException(status_code=500, detail=f"allure generate failed: {detail}")
+
+    relative_path = report_dir.relative_to(output_dir)
+    return {
+        "status": "success",
+        "report_url": f"/reports/{relative_path}/index.html",
+    }
 
 
 @scenario_router.get("/api/allure/report")
 async def get_allure_report(request: Request):
-    """Redirect to the generated Allure HTML report."""
+    """Redirect to the generated Allure HTML report for the current run."""
     runner = request.app.state.runner
     allure_cfg = runner.config.reporting.allure
-    report_index = Path(allure_cfg.results_dir).parent / "allure-report" / "index.html"
+    if not allure_cfg.enabled:
+        raise HTTPException(status_code=400, detail="Allure reporting is not enabled in config")
+
+    output_dir = Path(runner.config.reporting.output_dir).resolve()
+    results_dir = _resolve_run_allure_results_dir(runner).resolve()
+    report_index = (results_dir.parent / "allure-report" / "index.html").resolve()
 
     if not report_index.exists():
         raise HTTPException(
@@ -237,7 +282,29 @@ async def get_allure_report(request: Request):
             detail="Allure report not generated yet. Call POST /api/allure/generate first.",
         )
 
-    # Served via the /reports static mount
-    output_dir = Path(runner.config.reporting.output_dir)
-    relative_path = report_index.relative_to(output_dir)
+    try:
+        relative_path = report_index.relative_to(output_dir)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Allure report at {report_index} is not under reporting.output_dir {output_dir}",
+        ) from exc
     return RedirectResponse(url=f"/reports/{relative_path}")
+
+
+def _resolve_run_allure_results_dir(runner: Any) -> Path:
+    """Compute the active-run Allure results directory.
+
+    Mirrors :func:`openutm_verification.core.execution.execution._resolve_allure_results_dir`
+    but pulls the timestamp from the live ``SessionManager`` so the latest
+    server-driven run is always targeted.
+    """
+    cfg = runner.config
+    p = Path(cfg.reporting.allure.results_dir)
+    if p.is_absolute():
+        return p
+    timestamp = runner.current_timestamp_str or cfg.reporting.timestamp_subdir
+    base = Path(cfg.reporting.output_dir)
+    if timestamp:
+        return base / timestamp / p
+    return base / p

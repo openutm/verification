@@ -73,10 +73,17 @@ class DeploymentDetails(StrictBaseModel):
 
 
 class AllureConfig(StrictBaseModel):
-    """Configuration for Allure reporting."""
+    """Configuration for Allure reporting.
+
+    ``results_dir`` is interpreted as a relative path under the active run's
+    output directory (``reports/<timestamp>/<results_dir>``) so each run gets
+    its own isolated Allure results folder. Absolute paths are honoured as-is
+    for backwards compatibility.
+    """
 
     enabled: bool = False
-    results_dir: str = "reports/allure-results"
+    capture_http: bool = False
+    results_dir: str = "allure-results"
 
 
 class ReportingConfig(StrictBaseModel):

@@ -4,7 +4,7 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 import uvicorn
 from fastapi import Body, Depends, FastAPI, Request
@@ -292,6 +292,11 @@ async def reset_session(
     # Refresh global config proxy so dependency settings use updated values
     ConfigProxy.override(runner.config)
 
+    # Re-evaluate HTTP capture flag in case the config changed.
+    from openutm_verification.core.reporting.http_collector import HttpCollector
+
+    HttpCollector.set_enabled(runner.config.reporting.allure.enabled or runner.config.reporting.allure.capture_http)
+
     await runner.initialize_session()
     return {"status": "session_reset"}
 
@@ -358,21 +363,31 @@ async def generate_report_endpoint(request: GenerateReportRequest, runner: Sessi
             report_data,
             config.reporting,
         )
-
-        # Generate Allure report if enabled
-        if config.reporting.allure.enabled:
-            allure_reporter = AllureScenarioReporter(config.reporting.allure.results_dir)
-            allure_reporter.start_scenario(request.scenario_name)
-            allure_reporter.record_steps(steps)
-            allure_reporter.end_scenario(scenario_result)
-            allure_reporter.close()
-
-        # Get the actual report directory for the response
         report_id = runner.current_timestamp_str or run_id
-        return {"status": "success", "report_id": report_id}
+        report_status: dict[str, Any] = {"status": "success", "report_id": report_id}
     except Exception as e:
-        print(f"Error generating report: {e}")
+        logger.error(f"Error generating report: {e}")
         return {"status": "error", "message": str(e)}
+
+    # Allure generation is a best-effort, secondary diagnostic. Failures here
+    # must NOT mask successful primary report generation above.
+    if config.reporting.allure.enabled:
+        from openutm_verification.core.execution.execution import _resolve_allure_results_dir
+
+        try:
+            allure_results_path = _resolve_allure_results_dir(config)
+            with AllureScenarioReporter(allure_results_path) as allure_reporter:
+                allure_reporter.start_scenario(request.scenario_name)
+                allure_reporter.record_steps(steps)
+                allure_reporter.end_scenario(scenario_result)
+            report_status["allure_status"] = "success"
+            report_status["allure_results_dir"] = str(allure_results_path)
+        except Exception as exc:
+            logger.warning(f"Allure result generation failed: {exc}")
+            report_status["allure_status"] = "error"
+            report_status["allure_error"] = str(exc)
+
+    return report_status
 
 
 @app.post("/run-scenario")

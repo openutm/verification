@@ -347,6 +347,13 @@ class SessionManager:
             ConfigProxy._config = None
             ConfigProxy.initialize(config)
 
+        # Toggle HTTP exchange capture once per config load. Capture is enabled
+        # when Allure is on (so attachments contain payloads) or when explicitly
+        # requested via reporting.allure.capture_http for ad-hoc debugging.
+        from openutm_verification.core.reporting.http_collector import HttpCollector
+
+        HttpCollector.set_enabled(config.reporting.allure.enabled or config.reporting.allure.capture_http)
+
         return config
 
     async def reload_config(self) -> AppConfig:

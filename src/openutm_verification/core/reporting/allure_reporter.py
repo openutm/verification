@@ -74,18 +74,38 @@ def _loop_index(step_id: str) -> int:
 
 
 class AllureScenarioReporter:
-    """Write Allure results for each scenario execution."""
+    """Write Allure results for each scenario execution.
+
+    Each instance registers its file logger under a unique plugin name so
+    multiple reporters can coexist (e.g. concurrent server requests, or a
+    failed instance that hasn't been closed yet). Use as a context manager to
+    guarantee the plugin is unregistered::
+
+        with AllureScenarioReporter(results_dir) as reporter:
+            reporter.start_scenario(...)
+            ...
+    """
 
     def __init__(self, results_dir: str | Path) -> None:
         self._results_dir = Path(results_dir)
         self._results_dir.mkdir(parents=True, exist_ok=True)
 
+        self._plugin_name = f"allure_scenario_file_logger_{uuid4().hex}"
         self._file_logger = AllureFileLogger(str(self._results_dir))
-        plugin_manager.register(self._file_logger, "allure_scenario_file_logger")
+        plugin_manager.register(self._file_logger, self._plugin_name)
 
         self._lifecycle = AllureLifecycle()
         # Track current test case UUID for step nesting
         self._current_test_uuid: str | None = None
+        self._closed = False
+
+    # ── Context manager ───────────────────────────────────────────
+
+    def __enter__(self) -> "AllureScenarioReporter":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
 
     # ── Public API ────────────────────────────────────────────────
 
@@ -157,11 +177,14 @@ class AllureScenarioReporter:
         self._current_test_uuid = None
 
     def close(self) -> None:
-        """Unregister the file logger plugin."""
+        """Unregister the file logger plugin. Idempotent."""
+        if self._closed:
+            return
+        self._closed = True
         try:
-            plugin_manager.unregister(name="allure_scenario_file_logger")
-        except Exception:
-            pass
+            plugin_manager.unregister(name=self._plugin_name)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.debug(f"Allure plugin unregister failed for {self._plugin_name}: {exc}")
 
     # ── Internal ──────────────────────────────────────────────────
 
