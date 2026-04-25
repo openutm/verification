@@ -42,18 +42,6 @@ export interface LoopConfig {
     while?: string;
 }
 
-export interface GroupStepDefinition {
-    id?: string;
-    step: string;
-    arguments: Record<string, unknown>;
-    description?: string;
-}
-
-export interface GroupDefinition {
-    description?: string;
-    steps: GroupStepDefinition[];
-}
-
 export interface ScenarioStep {
     id?: string;
     step: string;
@@ -64,6 +52,15 @@ export interface ScenarioStep {
     if?: string;
     loop?: LoopConfig;
     'continue-on-error'?: boolean;
+}
+
+// Backend uses a single StepDefinition model for both top-level and group steps
+// (see src/openutm_verification/core/execution/definitions.py).
+export type GroupStepDefinition = ScenarioStep;
+
+export interface GroupDefinition {
+    description?: string;
+    steps: GroupStepDefinition[];
 }
 
 export interface ScenarioDefinition {
