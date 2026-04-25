@@ -839,7 +839,6 @@ class SessionManager:
                         if self.session_context:
                             with self.session_context:
                                 self.session_context.update_result(result)
-                    await self.execute_single_step(step)
         # An empty scenario (or one whose every step was skipped before any
         # `with self.session_context:` block ran) leaves session_context.state
         # unset; return an empty list rather than crashing.
