@@ -4,17 +4,13 @@ import layoutStyles from '../../styles/EditorLayout.module.css';
 import styles from '../../styles/SidebarPanel.module.css';
 import docStyles from '../../styles/DocumentationPanel.module.css';
 import { DocumentationPanel } from './DocumentationPanel';
-import { ConfigEditor } from './ConfigEditor';
-import type { ScenarioConfig } from '../../types/scenario';
 import { useSidebarResize } from '../../hooks/useSidebarResize';
 
 interface ScenarioInfoPanelProps {
     name: string | null;
     description: string;
-    config: ScenarioConfig;
     onUpdateName: (name: string) => void;
     onUpdateDescription: (description: string) => void;
-    onUpdateConfig: (config: ScenarioConfig) => void;
     onOpenReport: () => void;
     onClose?: () => void;
 }
@@ -24,7 +20,7 @@ const DEFAULT_DOCS_HEIGHT = Math.floor(window.innerHeight * 0.45);
 const MIN_DOCS_HEIGHT = 80;
 const MAX_DOCS_HEIGHT_RATIO = 0.8;
 
-export const ScenarioInfoPanel = ({ name, description, config, onUpdateName, onUpdateDescription, onUpdateConfig, onOpenReport, onClose }: ScenarioInfoPanelProps) => {
+export const ScenarioInfoPanel = ({ name, description, onUpdateName, onUpdateDescription, onOpenReport, onClose }: ScenarioInfoPanelProps) => {
     const { sidebarWidth: width, isResizing: isWidthResizing, startResizing: startWidthResize } = useSidebarResize(DEFAULT_WIDTH, 300, 800);
 
     const [docsHeight, setDocsHeight] = useState(DEFAULT_DOCS_HEIGHT);
@@ -223,8 +219,6 @@ export const ScenarioInfoPanel = ({ name, description, config, onUpdateName, onU
                                 placeholder="Describe what this scenario tests..."
                             />
                         </div>
-
-                        <ConfigEditor config={config} onUpdateConfig={onUpdateConfig} />
                     </div>
                 )}
             </div>

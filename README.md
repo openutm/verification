@@ -1,10 +1,12 @@
-# OpenUTM Verification Toolkit v0.1.3
+# OpenUTM Verification Toolkit v0.2.0
 
 A repository to host verification tools for Flight Blender and OpenUTM products.
 
 ## Overview
 
-This toolkit provides a configuration-driven framework for running automated conformance and integration test scenarios against a Flight Blender instance. It is designed to be run as a standalone tool or within a Docker container.
+This toolkit provides a configuration-driven framework for running automated
+conformance and integration test scenarios against a Flight Blender instance.
+It can be run as a local CLI, as a single-image Docker GUI, or in Kubernetes.
 
 ### Key Features
 
@@ -12,480 +14,191 @@ This toolkit provides a configuration-driven framework for running automated con
 * **Automatic Cleanup**: Scenarios automatically clean up created resources (flight declarations) after execution
 * **Multiple Authentication Methods**: Support for dummy authentication (development) and OAuth2/Passport (production)
 * **Comprehensive Reporting**: Generate JSON, HTML, and log reports with detailed execution results
-* **Docker Integration**: Full containerization support for production and development environments
+* **Single Docker Image**: Backend (FastAPI on `:8989`) and built frontend bundled in one container
 * **Live Data Integration**: Support for OpenSky Network live flight data in test scenarios
 * **Configuration-Driven**: YAML-based configuration for easy customization and environment management
 
 ## Documentation
 
-For detailed information about the verification scenarios, please refer to the [Scenario Documentation](docs/index.md).
+For detailed information about the verification scenarios, please refer to the
+[Scenario Documentation](docs/index.md). For the GUI quick-start, see
+[GUI_QUICKSTART.md](GUI_QUICKSTART.md). For Kubernetes, see
+[k8s-deployment.yaml](k8s-deployment.yaml) and
+[docs/deployment-guide.md](docs/deployment-guide.md).
 
 ## Quick Start
 
 ### Prerequisites
 
-* Docker
-* Docker Compose
+* Docker and Docker Compose (for the GUI image)
+* Python 3.12 + [uv](https://docs.astral.sh/uv/) (for local CLI / dev)
+* Node.js LTS (for the web editor in dev mode)
 
-### 1. Environment Setup
-
-Copy the environment template and customize it for your setup:
-
-```bash
-cp .env.example .env
-# Edit .env with your Flight Blender URL and other settings
-```
-
-### 2. Build the Docker Images
-
-Build the production and development images:
+### Run the GUI in Docker (recommended)
 
 ```bash
-# Build all images (production + development)
-./scripts/build.sh
-
-# Build all images with verbose output
-./scripts/build.sh -v
-
-# Build all images with force rebuild (skip cache)
-./scripts/build.sh -f
-
-# Build only production image
-./scripts/build.sh production
-
-# Build only development image
-./scripts/build.sh development
+cp .env.example .env       # optional — edit FLIGHT_BLENDER_URL etc.
+make gui                   # docker compose up --build
+# open http://localhost:8989
 ```
 
-### 3. Run Verification Scenarios
+Stop with `make gui-stop` (`docker compose down`).
 
-#### Production Mode (Recommended)
+The image is built from the single `Dockerfile` (multi-stage: Vite build →
+`uv` install → minimal Python runtime). `docker-compose.yml` mounts
+`./config`, `./reports`, and `./scenarios` so edits and reports persist on the
+host.
 
-**Run with default configuration:**
+### Run the CLI locally
 
 ```bash
-./scripts/run.sh
+make install               # uv sync --dev -U
+make run                   # ./verify.sh — runs scenarios from config/default.yaml
 ```
 
-**Run with custom configuration:**
+### Run scenarios end-to-end without Docker or the GUI
+
+This is the same flow CI uses (see [.github/workflows/main.yml](.github/workflows/main.yml)):
+spin up Flight Blender + dependencies via the test compose file, then run the
+verification CLI against it.
 
 ```bash
-./scripts/run.sh --config config/custom.yaml
+# 1. Install dependencies (one-off)
+uv sync --locked --all-extras --dev
+
+# 2. Start Flight Blender and its dependencies (Postgres, Redis, RabbitMQ, …)
+#    The test compose file lives under tests/.
+docker compose --env-file tests/.env.tests -f tests/docker-compose.fb.yml up -d --wait
+
+# 3. Run the PR scenario suite against it (writes reports/ on success or failure)
+uv run openutm-verify --debug --config config/pull_request.yaml
+
+# 4. Tear down when done
+docker compose --env-file tests/.env.tests -f tests/docker-compose.fb.yml down
 ```
 
-**Run with debug logging:**
+What the flags do:
+
+* `--debug` — verbose logging (DEBUG level) to stdout and `reports/<run>/report.log`.
+* `--config <path>` — pick the config file. Built-in options:
+  * [config/default.yaml](config/default.yaml) — full daily-conformance suite.
+  * [config/pull_request.yaml](config/pull_request.yaml) — fast PR smoke
+    suite (the seven scenarios CI runs).
+  * Drop your own under `config/local/` and point `--config` at it.
+
+Reports land in `reports/<timestamp>/` (`report.json`, `report.html`,
+`report.log`, plus per-scenario artefacts). Open the HTML report in a browser
+to inspect results.
+
+If Flight Blender is already running elsewhere (e.g. on `:8000` natively),
+skip steps 2 and 4 and just point the config at it via
+`flight_blender.url` or `FLIGHT_BLENDER_URL=...`.
+
+### Local development (no Docker)
+
+Run the backend and Vite dev server in two terminals:
 
 ```bash
-./scripts/run.sh --debug
+make dev-backend           # uvicorn --reload on :8989
+make dev-frontend          # Vite on :5173, proxies API calls to :8989
 ```
 
-**Run with debug logging and production settings:**
+Edit `src/` → backend reloads. Edit `web-editor/src/` → browser reloads.
+
+### Run the test suite
 
 ```bash
-./scripts/run.sh -p --debug
+make test                  # uv run pytest tests/
 ```
 
-**Run with verbose output:**
+## Configuration
 
-```bash
-./scripts/run.sh -v
-```
+The single source of truth is `config/default.yaml`. Override the path with
+the `OPENUTM_CONFIG_PATH` env var.
 
-**Build and run in production mode:**
+Three ways to change config at runtime:
 
-```bash
-./scripts/run.sh -b
-```
+1. **In-app Settings screen** (recommended) — edit values, click *Save & Apply*.
+   The backend writes back to the YAML (preserving comments via `ruamel.yaml`)
+   and hot-reloads.
+2. **Edit `config/default.yaml` directly** then click *Reload* in the Settings
+   screen, or restart the container.
+3. **Environment variable** at start time, e.g.
+   `FLIGHT_BLENDER_URL=http://my-blender:8000 make gui`.
 
-#### Development Mode
+### Authentication
 
-**Run in development mode with hot reload:**
+`flight_blender.auth` supports `type: none` (dummy auth, default) and
+`type: passport` (OAuth2). For Passport, set `client_id`, `client_secret`,
+`token_endpoint`, `passport_base_url`, `audience`, and `scopes`.
 
-```bash
-./scripts/run.sh -d
-```
+### Scenario data
 
-**Build and run in development mode:**
-
-```bash
-./scripts/run.sh -d -b
-```
-
-**Run in development mode with verbose output:**
-
-```bash
-./scripts/run.sh -d -v
-```
-
-#### Testing Mode
-
-**Run tests in an isolated environment:**
-
-```bash
-docker compose --profile test run --rm test-runner
-```
-
-This command starts a dedicated container using the `test-runner` service definition, which is configured to execute the `pytest` suite against the codebase.
-
-## Docker Workflow Details
-
-### Environment Configuration
-
-The toolkit uses environment variables for configuration. Key variables include:
-
-* `FLIGHT_BLENDER_URL`: URL of the Flight Blender instance to test
-* `LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
-* `ENVIRONMENT`: Environment name for labeling
-
-#### Creating a Local Configuration
-
-To set up a local configuration, make a copy of `default.yaml` and place it in the `config/local` folder.
-
-#### Authentication Configuration
-
-For authentication, the following fields can be configured in `config/default.yaml` under `flight_blender.auth`:
-
-* `audience`: The OAuth audience for token requests. Default: "testflight.flightblender.com"
-* `scopes`: The list of scopes for token requests. Default: ["flightblender.write", "flightblender.read"]
-
-When using `type: "passport"`, also set `client_id`, `client_secret`, and `token_url` as needed.
-
-#### Scenario Data Configuration
-
-The verification scenarios are driven by configuration in `config/default.yaml`, which controls the in-memory generation of flight data. This approach eliminates the need for pre-generated data files.
-
-* **`data_files`**: This section defines the global default paths to the *configuration files* used for generating flight declarations and telemetry.
-* **`scenarios`**: This section allows for per-scenario overrides. If a scenario requires different data, you can specify its data configuration paths here.
-
-The paths point to configuration files, not generated data. For example:
-
-* `telemetry`: A GeoJSON file defining the flight path for telemetry generation.
-* `flight_declaration`: A JSON file defining the bounds and parameters for generating a flight declaration.
-
-**Example `config/default.yaml` structure:**
+Scenarios are driven by config, which references files used to generate flight
+declarations and telemetry in memory:
 
 ```yaml
 data_files:
-  telemetry: "config/bern/trajectory_f1.json"
+  trajectory: "config/bern/trajectory_f1.json"
   flight_declaration: "config/bern/flight_declaration.json"
 
-scenarios:
-  "F1_happy_path":
-    telemetry: "config/bern/trajectory_f1.json" # Optional override
-    flight_declaration: "config/bern/flight_declaration.json" # Optional override
+suites:
+  basic_conformance:
+    scenarios:
+      - name: F1_happy_path
+        trajectory: "config/bern/trajectory_f1.json"   # optional override
 ```
-
-### Docker Compose Services
-
-#### Production Service (`verification-tool`)
-
-* Optimized for production use
-* Minimal image size with security hardening
-* Volume mounts for config and reports
-* Host network mode for local Flight Blender access
-
-#### Development Service (`verification-dev`)
-
-* Includes development tools and dependencies
-* Hot reload capabilities
-* Full source code mounting
-* Debug logging enabled by default
-
-#### Testing Service (`test-runner`)
-
-* Isolated testing environment
-* Runs pytest with coverage
-* Separate from main application
-
-### Build Optimization
-
-The Docker setup includes several optimizations:
-
-* **Multi-stage builds**: Separate builder and production stages
-* **Layer caching**: Optimized for faster rebuilds
-* **Security**: Non-root user, minimal attack surface
-* **Performance**: UV package manager for fast Python installs
-
-### Volume Management
-
-The following directories are mounted as volumes:
-
-* `./config:/app/config`: Configuration files
-* `./reports:/app/reports`: Generated reports
-* `./src:/app/src`: Source code (development only)
-
-### Network Configuration
-
-The containers use `network_mode: host` to:
-
-* Access Flight Blender running on `localhost`
-* Maintain consistent networking behavior
-* Avoid port conflicts
-
-## Advanced Usage
-
-### Custom Build Arguments
-
-Override build arguments for specific needs:
-
-```bash
-docker build \
-  --build-arg UV_COMPILE_BYTECODE=0 \
-  --build-arg APP_USER=myuser \
-  --build-arg UID=1001 \
-  -t custom-verification .
-```
-
-### Development Workflow
-
-1. **Start development environment:**
-
-   ```bash
-   ./scripts/run.sh -d -b
-   ```
-
-2. **Run tests:**
-
-   ```bash
-   docker compose --profile test run --rm test-runner
-   ```
-
-3. **Check logs:**
-
-   ```bash
-   docker compose logs verification-dev
-   ```
 
 ## Web UI (Scenario Editor)
 
-The web-based scenario editor lives in [web-editor](web-editor) and is built with Vite.
-
-### Dependencies
-
-* **Node.js** (LTS recommended)
-* **npm** (bundled with Node.js)
-
-### Build
+The web editor lives in [web-editor](web-editor) (React + Vite + `@xyflow/react`).
+It is built into the Docker image automatically. To work on it locally, see
+**Local development** above, or build standalone:
 
 ```bash
 cd web-editor
 npm install
-npm run build
+npm run build              # outputs to web-editor/dist
 ```
-
-### Run in Development Mode
-
-```bash
-cd web-editor
-npm install
-npm run dev
-```
-
-### Production Deployment
-
-1. **Build optimized image:**
-
-   ```bash
-   ./scripts/build.sh production
-   ```
-
-2. **Build with force rebuild:**
-
-   ```bash
-   ./scripts/build.sh -f production
-   ```
-
-3. **Run with production settings:**
-
-   ```bash
-   ./scripts/run.sh -p
-   ```
-
-4. **Run with verbose output:**
-
-   ```bash
-   ./scripts/run.sh -v
-   ```
 
 ## Version Management
 
-This project uses `uv` for dependency management and version control. The `uv version bump` command allows you to easily update the project version in `pyproject.toml`.
-
-### Basic Usage
-
-Bump the version to the next patch version (e.g., 1.0.0 → 1.0.1):
+This project uses `uv` for dependency management. Bump the version with:
 
 ```bash
-uv version bump --patch
-```
-
-Bump the version to the next minor version (e.g., 1.0.0 → 1.1.0):
-
-```bash
-uv version bump --minor
-```
-
-Bump the version to the next major version (e.g., 1.0.0 → 2.0.0):
-
-```bash
-uv version bump --major
-```
-
-### Advanced Options
-
-Bump to a specific version:
-
-```bash
-uv version bump 1.2.3
-```
-
-Preview the changes without applying them:
-
-```bash
+uv version bump --patch    # 1.0.0 → 1.0.1
+uv version bump --minor    # 1.0.0 → 1.1.0
+uv version bump --major    # 1.0.0 → 2.0.0
+uv version bump 1.2.3      # explicit
 uv version bump --patch --dry-run
 ```
 
-The version bump will update the `version` field in `pyproject.toml` and ensure consistency across the project.
+This updates the `version` field in `pyproject.toml`.
 
 ## Maintenance
 
-### Cleanup
-
-Clean up Docker resources:
-
 ```bash
-# Clean all project resources
-./scripts/cleanup.sh -a
-
-# Clean all resources with force (no confirmation)
-./scripts/cleanup.sh -f -a
-
-# Clean all resources with verbose output
-./scripts/cleanup.sh -V -a
-
-# Clean specific resources
-./scripts/cleanup.sh -c -i
-./scripts/cleanup.sh -d
-
-# Clean containers only
-./scripts/cleanup.sh -c
-
-# Clean images only
-./scripts/cleanup.sh -i
-
-# Clean volumes only
-./scripts/cleanup.sh -v
-
-# Clean networks only
-./scripts/cleanup.sh -n
-
-# Clean dangling resources only
-./scripts/cleanup.sh -d
-```
-
-### Health Checks
-
-Monitor container health:
-
-```bash
-# Check container status
-docker compose ps
-
-# View logs
-docker compose logs verification-tool
-
-# Check health status
-docker compose exec verification-tool python -c "print('OK')"
+docker compose ps                    # container status
+docker compose logs -f verification  # follow logs
+docker compose exec verification sh  # shell into the container
+docker compose down -v               # stop and remove volumes
+make clean                           # local artefacts (caches, reports/*)
 ```
 
 ### Troubleshooting
 
-**Common issues:**
-
-1. **Permission denied**: Ensure proper file permissions on mounted volumes
-2. **Network connectivity**: Verify Flight Blender is accessible on specified URL
-3. **Build failures**: Check Docker daemon and available disk space
-
-**Debug commands:**
-
-```bash
-# Enter running container
-docker compose exec verification-tool bash
-
-# View detailed logs
-docker compose logs --tail=100 -f verification-tool
-
-# Check container resource usage
-docker stats
-```
+* **Port 8989 already in use** — `lsof -i :8989`, then stop the offender.
+* **Permission denied on `./reports`** — `sudo chown -R 1000:1000 ./reports`.
+* **Backend can't reach Flight Blender from container** — set
+  `FLIGHT_BLENDER_URL=http://host.docker.internal:8000` (macOS/Windows) or
+  the appropriate URL for your network.
+* **Settings *Save & Apply* fails read-only** — confirm `./config` mount in
+  `docker-compose.yml` is `:rw`.
 
 ## Configuration Files
 
-* `docker-compose.yml`: Main service definitions
-* `docker-compose.override.yml`: Development overrides
-* `Dockerfile`: Production image definition
-* `Dockerfile.dev`: Development image definition
-* `.dockerignore`: Files excluded from build context
-* `.env.example`: Environment variables template
-
-Reports will be generated in the `reports/` directory on your local machine.
-
-## Script Arguments Reference
-
-All scripts in this project follow a consistent argument structure for better usability:
-
-### Common Flags
-
-| Flag | Long Form | Description | Available In |
-|------|-----------|-------------|--------------|
-| `-h` | `--help` | Show help message | All scripts |
-| `-v` | `--verbose` | Enable verbose output | All scripts |
-| `-f` | `--force` | Force operation without confirmation | build.sh, cleanup.sh |
-
-### Script-Specific Flags
-
-#### `run.sh` - Run Verification Tool
-
-| Flag | Long Form | Description |
-|------|-----------|-------------|
-| `-d` | `--dev` | Run in development mode |
-| `-p` | `--production` | Run in production mode (default) |
-| `-b` | `--build` | Build images before running |
-| | `--clean` | Clean up after run |
-
-#### `build.sh` - Build Docker Images
-
-| Argument | Description |
-|----------|-------------|
-| `production` | Build production image only |
-| `development` | Build development image only |
-| `all` | Build both images (default) |
-
-#### `cleanup.sh` - Clean Docker Resources
-
-| Flag | Long Form | Description |
-|------|-----------|-------------|
-| `-a` | `--all` | Clean all resources |
-| `-c` | `--containers` | Clean containers only |
-| `-i` | `--images` | Clean images only |
-| `-v` | `--volumes` | Clean volumes only |
-| `-n` | `--networks` | Clean networks only |
-| `-d` | `--dangling` | Clean dangling resources only |
-
-### Examples
-
-```bash
-# Get help for any script
-./scripts/run.sh --help
-./scripts/build.sh --help
-./scripts/cleanup.sh --help
-
-# Use verbose output across all scripts
-./scripts/run.sh -v
-./scripts/build.sh -v production
-./scripts/cleanup.sh -V -a
-
-# Force operations where available
-./scripts/build.sh -f production
-./scripts/cleanup.sh -f -a
-```
+* `Dockerfile` — single multi-stage build (Vite UI + Python backend)
+* `docker-compose.yml` — single service definition for local Docker use
+* `k8s-deployment.yaml` — example Kubernetes manifests
+* `.env.example` — environment variables template
+* `config/default.yaml` — default app configuration

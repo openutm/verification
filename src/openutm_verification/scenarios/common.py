@@ -62,9 +62,3 @@ def generate_telemetry(
     except Exception as e:
         logger.error(f"Failed to generate telemetry states from {config_path}: {e}")
         raise
-
-
-def get_geo_fence_path(geo_fence_filename: str) -> str:
-    """Helper to get the full path to a geo-fence file."""
-    parent_dir = Path(__file__).parent.resolve()
-    return str(parent_dir / f"../assets/aoi_geo_fence_samples/{geo_fence_filename}")
