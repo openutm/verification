@@ -1,6 +1,8 @@
 
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
-import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass, Plane, ShieldAlert, CircleDot, Infinity as InfinityIcon } from 'lucide-react';
+
+import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateCw, GitBranch, Timer, Hourglass, Plane, Monitor, ShieldAlert, CircleDot, Infinity as InfinityIcon } from 'lucide-react';
+
 import styles from '../../styles/Node.module.css';
 import { getPhaseColor, PHASE_LABELS } from '../../utils/phaseColors';
 import type { NodeData } from '../../types/scenario';
@@ -154,6 +156,12 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                     </div>
                 )}
             </div>
+            {data.category && (
+                <div className={styles.clientBadge} title={`Client: ${data.category}`}>
+                    <Monitor size={11} />
+                    <span>{data.category}</span>
+                </div>
+            )}
             {data.ifCondition && data.ifCondition.trim() !== '' && data.ifCondition.trim() !== 'success()' && (
                 <div className={styles.conditionText} title={data.ifCondition}>
                     <ConditionIcon condition={data.ifCondition} />

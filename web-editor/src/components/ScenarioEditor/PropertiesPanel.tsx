@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, Link as LinkIcon, Unlink, Plane } from 'lucide-react';
 import type { Node } from '@xyflow/react';
 import layoutStyles from '../../styles/EditorLayout.module.css';
@@ -96,11 +96,15 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
     // Local state to track when "Custom expression…" is explicitly selected
     const [isCustomCondition, setIsCustomCondition] = useState(false);
 
-    // Sync local state when node selection or loop items change
-    useEffect(() => {
+    // Reset transient UI state when the selected node or its loop items change.
+    // Using render-time state update (React docs pattern) avoids setState-in-effect lint error.
+    const nodeResetKey = `${selectedNode.id}::${JSON.stringify(selectedNode.data.loop?.items)}`;
+    const [prevResetKey, setPrevResetKey] = useState(nodeResetKey);
+    if (prevResetKey !== nodeResetKey) {
+        setPrevResetKey(nodeResetKey);
         setJsonItemsText(null);
         setIsCustomCondition(false);
-    }, [selectedNode.id, selectedNode.data.loop?.items]);
+    }
 
     const getItemsText = () => {
         if (jsonItemsText !== null) return jsonItemsText;
@@ -164,6 +168,9 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     <h3>{selectedNode.data.label}</h3>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
                         <div style={{ fontFamily: 'monospace' }}>Node ID: {selectedNode.id}</div>
+                        {selectedNode.data.category && (
+                            <div style={{ marginTop: '4px', fontFamily: 'monospace' }}>Client: {selectedNode.data.category as string}</div>
+                        )}
                         {selectedNode.data.phase && (
                             <div style={{ marginTop: '4px' }}>
                                 <span style={{

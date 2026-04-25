@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { convertGraphToYaml } from '../scenarioConversion';
+import { convertGraphToYaml, convertYamlToGraph } from '../scenarioConversion';
 import type { Node, Edge } from '@xyflow/react';
-import type { NodeData } from '../../types/scenario';
+import type { NodeData, Operation } from '../../types/scenario';
 
 describe('YAML Conversion - Reference Normalization', () => {
     it('normalizes group references to steps for top-level nodes', () => {
@@ -143,6 +143,73 @@ describe('YAML Conversion - Reference Normalization', () => {
 
         // The group reference should be preserved in the group definition
         expect(scenario.groups?.my_group?.steps?.[1]?.arguments?.data).toBe('${{ group.fetch.result }}');
+    });
+});
+
+describe('YAML Conversion - Category propagation', () => {
+    it('convertYamlToGraph passes operation category into node data', () => {
+        const operations: Operation[] = [
+            { id: 'FlightBlenderClient.submit', name: 'Submit Flight', description: '', parameters: [], category: 'FlightBlenderClient', phase: 'CRUISE' },
+        ];
+        const scenario = {
+            name: 'test',
+            steps: [{ step: 'Submit Flight', arguments: {} }],
+        };
+        const { nodes } = convertYamlToGraph(scenario, operations);
+        expect(nodes).toHaveLength(1);
+        expect(nodes[0].data.category).toBe('FlightBlenderClient');
+    });
+
+    it('convertYamlToGraph sets category for group child steps', () => {
+        const operations: Operation[] = [
+            { id: 'BlueSkyClient.generate', name: 'Generate Traffic', description: '', parameters: [], category: 'BlueSkyClient' },
+        ];
+        const scenario = {
+            name: 'test',
+            groups: {
+                my_group: {
+                    description: 'g',
+                    steps: [{ step: 'Generate Traffic', arguments: {} }],
+                },
+            },
+            steps: [{ step: 'my_group', arguments: {} }],
+        };
+        const { nodes } = convertYamlToGraph(scenario, operations);
+        const childNode = nodes.find(n => n.data.label === 'Generate Traffic');
+        expect(childNode).toBeDefined();
+        expect(childNode!.data.category).toBe('BlueSkyClient');
+    });
+
+    it('convertYamlToGraph leaves category undefined when operation has none', () => {
+        const operations: Operation[] = [
+            { id: 'Common.wait', name: 'Wait', description: '', parameters: [] },
+        ];
+        const scenario = {
+            name: 'test',
+            steps: [{ step: 'Wait', arguments: {} }],
+        };
+        const { nodes } = convertYamlToGraph(scenario, operations);
+        expect(nodes[0].data.category).toBeUndefined();
+    });
+
+    it('convertYamlToGraph skips group child steps with missing operations', () => {
+        const operations: Operation[] = [];
+        const scenario = {
+            name: 'test',
+            groups: {
+                my_group: {
+                    description: 'g',
+                    steps: [{ step: 'Unknown Step', arguments: {} }],
+                },
+            },
+            steps: [{ step: 'my_group', arguments: {} }],
+        };
+        const { nodes } = convertYamlToGraph(scenario, operations);
+        // Group container should still be created, but no child node for the unknown step
+        const containerNode = nodes.find(n => n.data.isGroupContainer);
+        expect(containerNode).toBeDefined();
+        const childNode = nodes.find(n => n.data.label === 'Unknown Step');
+        expect(childNode).toBeUndefined();
     });
 });
 
