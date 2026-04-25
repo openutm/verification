@@ -181,3 +181,65 @@ steps:
     # Verify groups is empty dict
     assert scenario.groups == {}
     assert len(scenario.steps) == 1
+
+
+@pytest.mark.asyncio
+async def test_continue_on_error_parsing():
+    """Test that continue-on-error is correctly parsed from YAML."""
+    yaml_content = """
+name: test_continue_on_error
+description: Test scenario with continue-on-error
+
+steps:
+  - step: Setup Flight Declaration
+  - step: Validate Metrics
+    continue-on-error: true
+  - step: Teardown Flight Declaration
+"""
+
+    data = yaml.safe_load(yaml_content)
+    scenario = ScenarioDefinition.model_validate(data)
+
+    assert scenario.steps[0].continue_on_error is False  # default
+    assert scenario.steps[1].continue_on_error is True
+    assert scenario.steps[2].continue_on_error is False  # default
+
+
+@pytest.mark.asyncio
+async def test_continue_on_error_default():
+    """Test that continue_on_error defaults to False."""
+    yaml_content = """
+name: test_default_error_action
+description: Test default continue-on-error
+
+steps:
+  - step: Setup Flight Declaration
+"""
+
+    data = yaml.safe_load(yaml_content)
+    scenario = ScenarioDefinition.model_validate(data)
+    assert scenario.steps[0].continue_on_error is False
+
+
+@pytest.mark.asyncio
+async def test_continue_on_error_in_group():
+    """Test that continue-on-error works inside groups."""
+    yaml_content = """
+name: test_continue_on_error_group
+description: Test scenario with continue-on-error inside a group
+
+groups:
+  my_group:
+    steps:
+      - step: Validate Metrics
+        continue-on-error: true
+      - step: Teardown Flight Declaration
+
+steps:
+  - step: my_group
+"""
+
+    data = yaml.safe_load(yaml_content)
+    scenario = ScenarioDefinition.model_validate(data)
+    assert scenario.groups["my_group"].steps[0].continue_on_error is True
+    assert scenario.groups["my_group"].steps[1].continue_on_error is False

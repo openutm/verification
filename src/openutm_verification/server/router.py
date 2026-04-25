@@ -105,7 +105,7 @@ async def get_scenario(scenario: str):
     """Get the content of a specific scenario."""
     try:
         scenario_def = load_yaml_scenario_definition(scenario)
-        return scenario_def.model_dump()
+        return scenario_def.model_dump(by_alias=True)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Scenario not found")
     except Exception as e:
@@ -131,7 +131,7 @@ async def save_scenario(name: str, scenario: ScenarioDefinition):
 
     try:
         # Convert Pydantic model to dict, excluding None values to keep YAML clean
-        data = scenario.model_dump(exclude_none=True, exclude_defaults=True)
+        data = scenario.model_dump(by_alias=True, exclude_none=True, exclude_defaults=True)
 
         with open(file_path, "w") as f:
             yaml.dump(data, f, sort_keys=False, default_flow_style=False)

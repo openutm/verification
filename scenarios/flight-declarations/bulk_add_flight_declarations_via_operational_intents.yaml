@@ -4,9 +4,11 @@ steps:
 - step: Setup Two Operational Intents
 - id: teardown_first_declaration
   step: Teardown Flight Declaration
+  if: always()
   arguments:
     flight_declaration_id: ${{ steps.Setup Two Operational Intents.result.declarations[0].id }}
 - id: teardown_second_declaration
   step: Teardown Flight Declaration
+  if: always()
   arguments:
     flight_declaration_id: ${{ steps.Setup Two Operational Intents.result.declarations[1].id }}
