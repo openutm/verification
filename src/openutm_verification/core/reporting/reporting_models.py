@@ -6,11 +6,12 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 
 from openutm_verification.core.execution.config_models import DeploymentDetails
 from openutm_verification.core.flight_phase import FlightPhase
+from openutm_verification.core.reporting.http_collector import HttpExchange
 from openutm_verification.simulator.models.declaration_models import (
     FlightDeclaration,
     FlightDeclarationViaOperationalIntent,
@@ -45,6 +46,7 @@ class StepResult(BaseModel, Generic[T]):
     error_message: str | None = None
     logs: list[str] = []
     continue_on_error: bool = False
+    http_exchanges: list[HttpExchange] = Field(default_factory=list, exclude=True)
 
 
 class ScenarioResult(BaseModel):

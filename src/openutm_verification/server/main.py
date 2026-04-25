@@ -4,7 +4,7 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 import uvicorn
 from fastapi import Body, Depends, FastAPI, Request
@@ -24,6 +24,7 @@ from openutm_verification.core.execution.config_models import (
     FlightBlenderConfig,
 )
 from openutm_verification.core.execution.definitions import ScenarioDefinition
+from openutm_verification.core.reporting.allure_reporter import AllureScenarioReporter
 from openutm_verification.core.reporting.reporting import create_report_data, generate_reports
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
@@ -161,18 +162,22 @@ async def get_config(runner: SessionManager = Depends(get_session_manager)):
         "amqp": cfg.amqp.model_dump() if cfg.amqp else None,
         "data_files": cfg.data_files.model_dump(),
         "air_traffic_simulator_settings": (cfg.air_traffic_simulator_settings.model_dump() if cfg.air_traffic_simulator_settings else None),
+        # Exclude ``timestamp_subdir`` (a runtime-only field) so the GUI never
+        # round-trips a stale per-run value back into the YAML on save.
+        "reporting": cfg.reporting.model_dump(exclude={"timestamp_subdir"}),
     }
 
 
-# Editable top-level keys via PUT /api/config. Other keys (suites, reporting)
-# stay read-only because they have non-trivial side effects on path resolution
-# and report layout that aren't worth exposing through the GUI right now.
+# Editable top-level keys via PUT /api/config. ``suites`` stays read-only
+# because its scenarios reference data files via path resolution that's not
+# worth exposing through the GUI right now.
 _EDITABLE_CONFIG_KEYS = (
     "flight_blender",
     "opensky",
     "amqp",
     "air_traffic_simulator_settings",
     "data_files",
+    "reporting",
 )
 
 
@@ -357,17 +362,42 @@ async def generate_report_endpoint(request: GenerateReportRequest, runner: Sessi
             report_data,
             config.reporting,
         )
-
-        # Get the actual report directory for the response
         report_id = runner.current_timestamp_str or run_id
-        return {"status": "success", "report_id": report_id}
+        report_status: dict[str, Any] = {"status": "success", "report_id": report_id}
     except Exception as e:
-        print(f"Error generating report: {e}")
+        logger.error(f"Error generating report: {e}")
         return {"status": "error", "message": str(e)}
+
+    # Allure generation is a best-effort, secondary diagnostic. Failures here
+    # must NOT mask successful primary report generation above.
+    if config.reporting.allure.enabled:
+        from openutm_verification.core.execution.execution import _resolve_allure_results_dir
+
+        try:
+            allure_results_path = _resolve_allure_results_dir(config)
+            with AllureScenarioReporter(allure_results_path) as allure_reporter:
+                allure_reporter.start_scenario(request.scenario_name)
+                allure_reporter.record_steps(steps)
+                allure_reporter.end_scenario(scenario_result)
+            report_status["allure_status"] = "success"
+            report_status["allure_results_dir"] = str(allure_results_path)
+        except Exception as exc:
+            logger.warning(f"Allure result generation failed: {exc}")
+            report_status["allure_status"] = "error"
+            report_status["allure_error"] = str(exc)
+
+    return report_status
 
 
 @app.post("/run-scenario")
 async def run_scenario(scenario: ScenarioDefinition, runner: SessionManager = Depends(get_session_manager)):
+    # Each server-driven scenario must produce its own isolated run directory
+    # so reports (including ``allure-results``) are not shared across calls.
+    # ``run_scenario`` only allocates a new timestamp when these are unset, so
+    # clear the cached state from the prior run before kicking off the next.
+    runner.current_output_dir = None
+    runner.current_timestamp_str = None
+    runner.current_start_time = None
     return await runner.run_scenario(scenario)
 
 

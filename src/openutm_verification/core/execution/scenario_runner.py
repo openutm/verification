@@ -23,6 +23,7 @@ from uas_standards.astm.f3411.v22a.api import RIDAircraftState
 from openutm_verification.core.clients.opensky.base_client import OpenSkyError
 from openutm_verification.core.execution.dependency_resolution import DEPENDENCIES
 from openutm_verification.core.flight_phase import FlightPhase
+from openutm_verification.core.reporting.http_collector import HttpCollector
 from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
     Status,
@@ -303,6 +304,7 @@ class ScenarioStepDescriptor:
 
             handler_id = logger.add(lambda msg: captured_logs.append(msg), filter=log_filter, format="{time:HH:mm:ss} | {level} | {message}")
 
+            HttpCollector.init()
             step_result: StepResult[Any] | None = None
             try:
                 with logger.contextualize(step_execution_id=step_execution_id):
@@ -319,8 +321,10 @@ class ScenarioStepDescriptor:
                         step_result = handle_exception(e, start_time)
             finally:
                 logger.remove(handler_id)
-                if step_result:
+                http_exchanges = HttpCollector.drain()
+                if step_result is not None:
                     step_result.logs = captured_logs
+                    step_result.http_exchanges = http_exchanges
 
             return step_result
 

@@ -65,6 +65,16 @@ class SessionManager:
         if self.current_run_task and not self.current_run_task.done():
             self.current_run_task.cancel()
 
+        # Each server-driven scenario must produce its own isolated run
+        # directory so reports (including ``allure-results``) are not shared
+        # across invocations. ``run_scenario`` only allocates a new timestamp
+        # when these are unset, so clear the cached state from the prior run
+        # before kicking off the next one. CLI mode does not go through this
+        # entry point — it pre-seeds these attributes to deliberately group
+        # multiple scenarios under one timestamp.
+        self.current_output_dir = None
+        self.current_timestamp_str = None
+        self.current_start_time = None
         self.current_run_error = None
 
         task = asyncio.create_task(self.run_scenario(scenario))
@@ -346,6 +356,14 @@ class SessionManager:
             # For now, let's override to ensure we have the latest config
             ConfigProxy._config = None
             ConfigProxy.initialize(config)
+
+        # Toggle HTTP exchange capture once per config load. Capture only when
+        # Allure reporting is on AND the user has opted in via ``capture_http``:
+        # the collector's only consumer is the Allure reporter, so capturing
+        # without it just wastes memory.
+        from openutm_verification.core.reporting.http_collector import HttpCollector
+
+        HttpCollector.set_enabled(config.reporting.allure.enabled and config.reporting.allure.capture_http)
 
         return config
 

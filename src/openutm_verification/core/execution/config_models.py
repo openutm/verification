@@ -72,6 +72,21 @@ class DeploymentDetails(StrictBaseModel):
     notes: str = ""
 
 
+class AllureConfig(StrictBaseModel):
+    """Configuration for Allure reporting.
+
+    ``results_dir`` is interpreted as a relative path under the
+    configured reporting output directory
+    (``<output_dir>/<timestamp>/<results_dir>``, where ``<output_dir>`` is
+    ``reporting.output_dir``) so each run gets its own isolated Allure results
+    folder. Absolute paths are honoured as-is for backwards compatibility.
+    """
+
+    enabled: bool = False
+    capture_http: bool = False
+    results_dir: str = "allure-results"
+
+
 class ReportingConfig(StrictBaseModel):
     """Configuration for generating reports."""
 
@@ -79,6 +94,7 @@ class ReportingConfig(StrictBaseModel):
     output_dir: str = "reports"
     formats: list[str] = Field(default_factory=lambda: ["json", "html", "log"])
     deployment_details: DeploymentDetails = Field(default_factory=DeploymentDetails)
+    allure: AllureConfig = Field(default_factory=AllureConfig)
 
 
 class DataFiles(StrictBaseModel):

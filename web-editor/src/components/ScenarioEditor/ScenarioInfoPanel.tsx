@@ -12,6 +12,7 @@ interface ScenarioInfoPanelProps {
     onUpdateName: (name: string) => void;
     onUpdateDescription: (description: string) => void;
     onOpenReport: () => void;
+    onOpenAllureReport?: () => void;
     onClose?: () => void;
 }
 
@@ -20,7 +21,7 @@ const DEFAULT_DOCS_HEIGHT = Math.floor(window.innerHeight * 0.45);
 const MIN_DOCS_HEIGHT = 80;
 const MAX_DOCS_HEIGHT_RATIO = 0.8;
 
-export const ScenarioInfoPanel = ({ name, description, onUpdateName, onUpdateDescription, onOpenReport, onClose }: ScenarioInfoPanelProps) => {
+export const ScenarioInfoPanel = ({ name, description, onUpdateName, onUpdateDescription, onOpenReport, onOpenAllureReport, onClose }: ScenarioInfoPanelProps) => {
     const { sidebarWidth: width, isResizing: isWidthResizing, startResizing: startWidthResize } = useSidebarResize(DEFAULT_WIDTH, 300, 800);
 
     const [docsHeight, setDocsHeight] = useState(DEFAULT_DOCS_HEIGHT);
@@ -128,6 +129,28 @@ export const ScenarioInfoPanel = ({ name, description, onUpdateName, onUpdateDes
                         >
                             <FileText size={13} />
                             Report
+                        </button>
+                    )}
+                    {name && onOpenAllureReport && (
+                        <button
+                            onClick={onOpenAllureReport}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '6px 12px',
+                                backgroundColor: 'var(--bg-secondary)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                color: 'var(--text-primary)',
+                                fontSize: '12px',
+                                fontWeight: 500,
+                            }}
+                            title="Generate and open Allure report"
+                        >
+                            <FileText size={13} />
+                            Allure
                         </button>
                     )}
                     {onClose && (
