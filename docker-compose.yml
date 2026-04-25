@@ -29,8 +29,11 @@ services:
       - TZ=UTC
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - FLIGHT_BLENDER_URL=${FLIGHT_BLENDER_URL:-http://host.docker.internal:8000}
+    # Bind to localhost by default. The GUI/API are unauthenticated and
+    # /api/config supports live edits, so exposing on all interfaces is unsafe.
+    # To expose intentionally, set HOST_BIND=0.0.0.0 (or a specific interface).
     ports:
-      - "8989:8989"
+      - "${HOST_BIND:-127.0.0.1}:8989:8989"
     # Volume mounts:
     #   - config: YAML config (read-write so the in-app Settings screen can
     #     persist edits via PUT /api/config back to default.yaml)
@@ -39,10 +42,12 @@ services:
     #     them without rebuilding the image)
     #
     # For Kubernetes: use ConfigMap for config, PersistentVolumeClaim for reports.
+    # The `:Z` flag relabels mounts for SELinux hosts (Fedora/RHEL); it's
+    # a no-op on macOS/Linux distros without SELinux.
     volumes:
-      - ./config:/app/config:rw
-      - ./reports:/app/reports:rw
-      - ./scenarios:/app/scenarios:rw
+      - ./config:/app/config:rw,Z
+      - ./reports:/app/reports:rw,Z
+      - ./scenarios:/app/scenarios:rw,Z
     extra_hosts:
       - "host.docker.internal:host-gateway"
     deploy:
@@ -54,7 +59,7 @@ services:
           memory: 256M
           cpus: '0.5'
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8989/health"]
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8989/health',timeout=5).status==200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3

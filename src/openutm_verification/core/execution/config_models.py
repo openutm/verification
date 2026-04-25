@@ -204,13 +204,20 @@ class AppConfig(StrictBaseModel):
         # and some uses pass a config file path. Support both to avoid
         # incorrect path resolution in containerized runs.
         if config_file_path.is_file():
-            base_path = config_file_path.parent
-            # If the file lives in a `config/` directory, resolve relative
-            # data-file paths from the project root (one level up). For configs
-            # placed elsewhere (e.g. <project>/config.yaml), use the file's
-            # own directory so we don't escape above the project root.
-            if base_path.name == "config":
-                base_path = base_path.parent
+            config_dir = config_file_path.parent
+            base_path = config_dir
+            # If the file lives anywhere within a `config/` directory (e.g.
+            # `config/default.yaml` or `config/local/dev.yaml`), resolve
+            # relative data-file paths from that `config/` directory's
+            # parent (the project root). For configs placed elsewhere
+            # (e.g. `<project>/config.yaml`), use the file's own directory
+            # so we don't escape above the project root.
+            config_root = next(
+                (candidate for candidate in (config_dir, *config_dir.parents) if candidate.name == "config"),
+                None,
+            )
+            if config_root is not None:
+                base_path = config_root.parent
         else:
             base_path = config_file_path
 

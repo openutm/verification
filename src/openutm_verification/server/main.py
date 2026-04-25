@@ -29,6 +29,11 @@ from openutm_verification.core.reporting.reporting_models import (
     ScenarioResult,
     Status,
 )
+from openutm_verification.server.config_redaction import (
+    redact_amqp,
+    redact_auth,
+    strip_redacted,
+)
 from openutm_verification.server.router import scenario_router
 from openutm_verification.server.runner import SessionManager
 
@@ -137,6 +142,11 @@ async def get_config(runner: SessionManager = Depends(get_session_manager)):
     simply opening the Settings screen never resets an in-progress run.
     Falls back to the in-memory copy on parse errors so a transient bad file
     doesn't break the screen.
+
+    Secrets (auth ``client_secret`` values, AMQP URL passwords) are redacted
+    on response so the unauthenticated GUI/API never echoes credentials. The
+    matching PUT endpoint ignores the redaction sentinel so round-tripping
+    edits doesn't overwrite the stored secret with the placeholder.
     """
     import yaml as _yaml
 
@@ -147,13 +157,19 @@ async def get_config(runner: SessionManager = Depends(get_session_manager)):
         cfg = AppConfig.model_validate(raw)
     except Exception:  # noqa: BLE001
         logger.exception("Re-reading config during GET /api/config failed; serving in-memory copy")
+
+    fb = cfg.flight_blender.model_dump()
+    fb["auth"] = redact_auth(fb.get("auth", {}))
+    opensky = cfg.opensky.model_dump()
+    opensky["auth"] = redact_auth(opensky.get("auth", {}))
+
     return {
         "version": cfg.version,
         "run_id": cfg.run_id,
         "config_path": str(runner.config_path),
-        "flight_blender": cfg.flight_blender.model_dump(),
-        "opensky": cfg.opensky.model_dump(),
-        "amqp": cfg.amqp.model_dump() if cfg.amqp else None,
+        "flight_blender": fb,
+        "opensky": opensky,
+        "amqp": redact_amqp(cfg.amqp.model_dump() if cfg.amqp else None),
         "data_files": cfg.data_files.model_dump(),
         "air_traffic_simulator_settings": (cfg.air_traffic_simulator_settings.model_dump() if cfg.air_traffic_simulator_settings else None),
     }
@@ -211,7 +227,7 @@ async def put_config(
         # its value is null, so the GUI can clear optional sections (e.g.
         # set ``amqp: null`` to remove AMQP config).
         if key in payload:
-            doc[key] = payload[key]
+            doc[key] = strip_redacted(key, payload[key], doc.get(key))
             applied.append(key)
 
     # Validate the would-be config before touching disk so we never persist

@@ -197,8 +197,11 @@ export default function ConfigScreen() {
         setConfig({ ...config, flight_blender: { ...config.flight_blender, auth: { ...config.flight_blender.auth, ...patch } } });
     const updateOpenSkyAuth = (patch: Partial<FlightBlenderAuth>) =>
         setConfig({ ...config, opensky: { auth: { ...config.opensky.auth, ...patch } } });
+    // Defaults mirror the backend AMQPConfig model so seeding an empty
+    // section doesn't silently overwrite users' existing values with mismatched
+    // defaults when only one field is being edited.
     const updateAMQP = (patch: Partial<AMQP>) =>
-        setConfig({ ...config, amqp: { ...(config.amqp ?? { url: '', exchange_name: '', exchange_type: 'topic', routing_key: '#', queue_name: '' }), ...patch } });
+        setConfig({ ...config, amqp: { ...(config.amqp ?? { url: '', exchange_name: 'operational_events', exchange_type: 'direct', routing_key: '#', queue_name: '' }), ...patch } });
     const updateATS = (patch: Partial<AirTrafficSim>) =>
         setConfig({
             ...config,
