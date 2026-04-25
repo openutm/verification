@@ -101,8 +101,8 @@ reporting:
   # Allure reporting (opt-in). When enabled, results are written under
   # <output_dir>/<run_timestamp>/allure-results and HTML can be generated via
   # POST /api/allure/generate. Set capture_http=true to also attach the raw
-  # HTTP request/response exchanges to each step (sensitive headers and body
-  # fields are redacted; bodies are truncated).
+  # HTTP request/response exchanges to each step (sensitive headers and
+  # request body fields are redacted; bodies are truncated).
   allure:
     enabled: true
     capture_http: true
