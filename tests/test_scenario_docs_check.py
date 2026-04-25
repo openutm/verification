@@ -58,9 +58,23 @@ class TestGetScenarioDocs:
         (dir2 / "ambiguous.md").write_text("B", encoding="utf-8")
 
         with patch("openutm_verification.core.execution.dependencies.get_docs_directory", return_value=docs_dir):
-            result = get_scenario_docs("ambiguous")
+            with patch("openutm_verification.core.execution.dependencies.logger") as mock_logger:
+                result = get_scenario_docs("ambiguous")
 
         assert result is None
+        warning_calls = " ".join(str(c) for c in mock_logger.warning.call_args_list)
+        assert "Multiple documentation files found" in warning_calls
+
+    def test_returns_none_when_docs_dir_does_not_exist(self, tmp_path):
+        missing_dir = tmp_path / "nonexistent"
+
+        with patch("openutm_verification.core.execution.dependencies.get_docs_directory", return_value=missing_dir):
+            with patch("openutm_verification.core.execution.dependencies.logger") as mock_logger:
+                result = get_scenario_docs("any_scenario")
+
+        assert result is None
+        warning_calls = " ".join(str(c) for c in mock_logger.warning.call_args_list)
+        assert "does not exist or is not a directory" in warning_calls
 
 
 class TestScenariosDocsCheck:
@@ -89,17 +103,19 @@ class TestScenariosDocsCheck:
 
         return mock_config
 
+    @patch("openutm_verification.core.execution.dependencies.get_docs_directory")
     @patch("openutm_verification.core.execution.dependencies.get_scenario_docs")
     @patch("openutm_verification.core.execution.dependencies.get_settings")
-    def test_warn_mode_logs_warning_for_missing_docs(self, mock_get_settings, mock_get_docs, capfd):
+    def test_warn_mode_logs_warning_for_missing_docs(self, mock_get_settings, mock_get_docs, mock_docs_dir, capfd, tmp_path):
         mock_get_settings.return_value = self._make_config(scenario_docs="warn")
         mock_get_docs.return_value = None
+        mock_docs_dir.return_value = tmp_path / "docs"
 
         with patch("openutm_verification.core.execution.dependencies.logger") as mock_logger:
             list(scenarios())
-            mock_logger.warning.assert_any_call(
-                "Scenario 'test_scenario' has no documentation. Add a 'test_scenario.md' file under the docs/scenarios directory."
-            )
+            warning_calls = " ".join(str(c) for c in mock_logger.warning.call_args_list)
+            assert "test_scenario" in warning_calls
+            assert "has no documentation" in warning_calls
 
     @patch("openutm_verification.core.execution.dependencies.get_scenario_docs")
     @patch("openutm_verification.core.execution.dependencies.get_settings")
