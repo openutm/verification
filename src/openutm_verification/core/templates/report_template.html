@@ -130,13 +130,13 @@
                 <h4>Steps:</h4>
                 {% set has_phases = result.steps | selectattr('phase') | list | length > 0 %}
                 {% if has_phases %}
-                    {% for phase_group in result.steps | default_phase | groupby('phase') %}
+                    {% for phase_group in result.steps | default_phase | phase_groupby %}
                     {% set phase_index = loop.index %}
                     <div class="phase-group">
-                        {% if phase_group.grouper %}
+                        {% if phase_group[0] %}
                         <div class="phase-header">
-                            <span class="phase-badge">{{ phase_group.grouper }}</span>
-                            {{ (phase_labels or {}).get(phase_group.grouper, phase_group.grouper) }}
+                            <span class="phase-badge">{{ phase_group[0] }}</span>
+                            {{ (phase_labels or {}).get(phase_group[0], phase_group[0]) }}
                         </div>
                         {% else %}
                         <div class="phase-header">Other Steps</div>
@@ -144,7 +144,7 @@
                         <table class="steps-table">
                         <thead><tr><th>Step Name</th><th>Status</th><th>Duration (s)</th><th>Result</th></tr></thead>
                         <tbody>
-                        {% for step in phase_group.list %}
+                        {% for step in phase_group[1] %}
                             {% set result_json = step.result | tojson(indent=2) %}
                             {% set line_count = result_json.split('\n') | length %}
                             <tr>

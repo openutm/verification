@@ -10,7 +10,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 
 from openutm_verification.core.execution.config_models import AppConfig, ReportingConfig
-from openutm_verification.core.flight_phase import FLIGHT_PHASE_LABELS
+from openutm_verification.core.flight_phase import FLIGHT_PHASE_LABELS, FlightPhase
 from openutm_verification.core.reporting._viz_engine import (
     extract_step_payload,
     label_from_step_id,
@@ -194,8 +194,22 @@ def _generate_html_report(report_data: ReportData, output_dir: Path, base_filena
         loader=FileSystemLoader(template_dir),
         autoescape=select_autoescape(enabled_extensions=("html", "xml"), default_for_string=True, default=True),
     )
+    _phase_order = [p.value for p in FlightPhase]
+
+    def _phase_groupby(steps: list[dict]) -> list[tuple[str, list[dict]]]:
+        """Group steps by phase and return groups in canonical flight phase order."""
+        groups: dict[str, list[dict]] = {}
+        for step in steps:
+            phase = step.get("phase") or ""
+            groups.setdefault(phase, []).append(step)
+        return sorted(
+            groups.items(),
+            key=lambda item: _phase_order.index(item[0]) if item[0] in _phase_order else len(_phase_order),
+        )
+
     env.filters["markdown"] = lambda text: markdown.markdown(text) if text else ""
     env.filters["default_phase"] = lambda steps: [{**s, "phase": s.get("phase") or ""} for s in steps]
+    env.filters["phase_groupby"] = _phase_groupby
     template = env.get_template("report_template.html")
 
     html_content = template.render(
