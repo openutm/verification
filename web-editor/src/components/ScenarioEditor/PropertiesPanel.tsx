@@ -65,6 +65,7 @@ interface PropertiesPanelProps {
     onUpdateIfCondition: (nodeId: string, condition: string) => void;
     onUpdateLoop: (nodeId: string, loopConfig: { count?: number; items?: unknown[]; while?: string } | undefined) => void;
     onUpdateNeeds: (nodeId: string, needs: string[]) => void;
+    onUpdateContinueOnError: (nodeId: string, value: boolean) => void;
     onUpdateGroupDescription?: (groupName: string, description: string) => void;
 }
 
@@ -78,7 +79,7 @@ const parseRefString = (value: unknown) => {
     };
 };
 
-export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId, onUpdateIfCondition, onUpdateLoop, onUpdateNeeds, onUpdateGroupDescription }: PropertiesPanelProps) => {
+export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClose, onUpdateParameter, onUpdateRunInBackground, onUpdateStepId, onUpdateIfCondition, onUpdateLoop, onUpdateNeeds, onUpdateContinueOnError, onUpdateGroupDescription }: PropertiesPanelProps) => {
     const { sidebarWidth: width, isResizing, startResizing } = useSidebarResize(480, 300, 800);
 
     // Compute loop type from node data
@@ -92,14 +93,17 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
 
     // Local state for JSON items textarea to allow invalid JSON while typing
     const [jsonItemsText, setJsonItemsText] = useState<string | null>(null);
-    const [prevNodeId, setPrevNodeId] = useState(selectedNode.id);
-    const [prevItems, setPrevItems] = useState(selectedNode.data.loop?.items);
+    // Local state to track when "Custom expression…" is explicitly selected
+    const [isCustomCondition, setIsCustomCondition] = useState(false);
 
-    // Sync local JSON text when node data changes externally
-    if (selectedNode.id !== prevNodeId || selectedNode.data.loop?.items !== prevItems) {
-        setPrevNodeId(selectedNode.id);
-        setPrevItems(selectedNode.data.loop?.items);
+    // Reset transient UI state when the selected node or its loop items change.
+    // Using render-time state update (React docs pattern) avoids setState-in-effect lint error.
+    const nodeResetKey = `${selectedNode.id}::${JSON.stringify(selectedNode.data.loop?.items)}`;
+    const [prevResetKey, setPrevResetKey] = useState(nodeResetKey);
+    if (prevResetKey !== nodeResetKey) {
+        setPrevResetKey(nodeResetKey);
         setJsonItemsText(null);
+        setIsCustomCondition(false);
     }
 
     const getItemsText = () => {
@@ -164,6 +168,9 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     <h3>{selectedNode.data.label}</h3>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
                         <div style={{ fontFamily: 'monospace' }}>Node ID: {selectedNode.id}</div>
+                        {selectedNode.data.category && (
+                            <div style={{ marginTop: '4px', fontFamily: 'monospace' }}>Client: {selectedNode.data.category as string}</div>
+                        )}
                         {selectedNode.data.phase && (
                             <div style={{ marginTop: '4px' }}>
                                 <span style={{
@@ -216,6 +223,20 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     </div>
 
                     <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={selectedNode.data.continueOnError === true}
+                                onChange={(e) => onUpdateContinueOnError(selectedNode.id, e.target.checked)}
+                            />
+                            Continue on Failure
+                        </label>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                            If checked, subsequent steps will still execute even if this step fails.
+                        </div>
+                    </div>
+
+                    <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
                         <label>Needs (wait for background tasks)</label>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', padding: '6px', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
                             {allNodes
@@ -252,20 +273,44 @@ export const PropertiesPanel = ({ selectedNode, connectedNodes, allNodes, onClos
                     </div>
 
                     <div className={styles.paramItem} style={{ marginTop: '10px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
-                        <label>If Condition</label>
-                        <input
-                            type="text"
+                        <label>Run Condition</label>
+                        <select
                             className={styles.paramInput}
-                            value={selectedNode.data.ifCondition || ''}
-                            onChange={(e) => onUpdateIfCondition(selectedNode.id, e.target.value)}
-                            placeholder="e.g., success() or steps.step1.status == 'pass'"
-                        />
+                            value={
+                                isCustomCondition ? 'custom'
+                                : !selectedNode.data.ifCondition || selectedNode.data.ifCondition.trim() === '' || selectedNode.data.ifCondition.trim() === 'success()' ? ''
+                                : selectedNode.data.ifCondition.trim() === 'failure()' ? 'failure()'
+                                : selectedNode.data.ifCondition.trim() === 'always()' ? 'always()'
+                                : 'custom'
+                            }
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === 'custom') {
+                                    setIsCustomCondition(true);
+                                    onUpdateIfCondition(selectedNode.id, selectedNode.data.ifCondition || '');
+                                } else {
+                                    setIsCustomCondition(false);
+                                    onUpdateIfCondition(selectedNode.id, val);
+                                }
+                            }}
+                        >
+                            <option value="">Default (runs on success)</option>
+                            <option value="failure()">Runs on failure</option>
+                            <option value="always()">Always runs</option>
+                            <option value="custom">Custom expression…</option>
+                        </select>
+                        {(isCustomCondition || (selectedNode.data.ifCondition && !['', 'success()', 'failure()', 'always()'].includes(selectedNode.data.ifCondition.trim()))) && (
+                            <input
+                                type="text"
+                                className={styles.paramInput}
+                                style={{ marginTop: '6px' }}
+                                value={selectedNode.data.ifCondition || ''}
+                                onChange={(e) => onUpdateIfCondition(selectedNode.id, e.target.value)}
+                                placeholder="steps.step1.status == 'success'"
+                            />
+                        )}
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                            Conditional expression (GitHub Actions-style). Examples:<br />
-                            • <code style={{ fontSize: '10px' }}>success()</code> - run if previous step succeeded<br />
-                            • <code style={{ fontSize: '10px' }}>failure()</code> - run if previous step failed<br />
-                            • <code style={{ fontSize: '10px' }}>always()</code> - always run<br />
-                            • <code style={{ fontSize: '10px' }}>steps.step1.status == 'pass'</code> - check specific step
+                            Controls when this step executes. Steps marked "Continue on Error" are excluded from success/failure evaluation. Custom expressions support status checks like <code style={{ fontSize: '10px' }}>steps.step_id.status == 'success'</code>
                         </div>
                     </div>
 

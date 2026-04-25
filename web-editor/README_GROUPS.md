@@ -43,7 +43,7 @@ In the main scenario flow:
   - Fixed count: `count: 5`
   - Iterate items: `items: [...]`
   - While condition: `while: loop.index < 10`
-- **Conditional groups**: Groups can have conditions: `if: ${{ always() }}`
+- **Conditional groups**: Groups can have conditions: `if: always()`
 
 ### 5. UI Indicators
 

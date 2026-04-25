@@ -79,6 +79,7 @@ export const convertYamlToGraph = (
                     runInBackground: step.background,
                     ifCondition: step.if,
                     loop: step.loop,
+                    continueOnError: step['continue-on-error'],
                     isGroupReference: true,
                     isGroupContainer: true
                 },
@@ -107,7 +108,12 @@ export const convertYamlToGraph = (
 
                 const groupOperation = operations.find(op => op.name === groupStep.step);
 
-                const groupParameters = (groupOperation?.parameters || []).map(param => ({
+                if (!groupOperation) {
+                    console.warn(`Operation ${groupStep.step} not found in group ${step.step}`);
+                    return;
+                }
+
+                const groupParameters = (groupOperation.parameters || []).map(param => ({
                     ...param,
                     default: groupStep.arguments?.[param.name] ?? param.default
                 }));
@@ -121,10 +127,12 @@ export const convertYamlToGraph = (
                     data: {
                         label: groupStep.step,
                         stepId: groupStep.id || groupStep.step,
-                        operationId: groupOperation?.id,
-                        description: groupStep.description || groupOperation?.description || '',
-                        phase: groupOperation?.phase,
-                        parameters: groupParameters
+                        operationId: groupOperation.id,
+                        category: groupOperation.category,
+                        description: groupStep.description || groupOperation.description || '',
+                        phase: groupOperation.phase,
+                        parameters: groupParameters,
+                        continueOnError: groupStep['continue-on-error'],
                     }
                 };
 
@@ -180,6 +188,7 @@ export const convertYamlToGraph = (
                     label: step.step,
                     stepId: step.id,
                     operationId: operation?.id,
+                    category: operation?.category,
                     description: step.description || operation?.description || '',
                     phase: operation?.phase,
                     parameters: parameters,
@@ -187,6 +196,7 @@ export const convertYamlToGraph = (
                     ifCondition: step.if,
                     loop: step.loop,
                     needs: needsList,
+                    continueOnError: step['continue-on-error'],
                     isGroupReference: false
                 }
             };
@@ -313,6 +323,10 @@ export const convertGraphToYaml = (
                 step.loop = node.data.loop;
             }
 
+            if (node.data.continueOnError) {
+                step['continue-on-error'] = true;
+            }
+
             return step;
         }
 
@@ -388,6 +402,10 @@ export const convertGraphToYaml = (
 
         if (node.data.loop) {
             step.loop = node.data.loop;
+        }
+
+        if (node.data.continueOnError) {
+            step['continue-on-error'] = true;
         }
 
         // Dependencies (needs) come from dotted edges into this node

@@ -18,3 +18,4 @@ steps:
   arguments:
     state: ENDED
 - step: Teardown Flight Declaration
+  if: always()

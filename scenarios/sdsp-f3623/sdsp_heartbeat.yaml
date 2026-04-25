@@ -29,3 +29,4 @@ steps:
     arguments:
       action: STOP
       surveillance_session_id: ${{ steps.Generate UUID.result }}
+    if: always()

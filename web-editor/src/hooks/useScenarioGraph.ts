@@ -149,6 +149,7 @@ export const useScenarioGraph = (initialNodesParams: Node<NodeData>[] = [], init
                     data: {
                         label: type,
                         operationId: opId,
+                        category: operation?.category,
                         description: operation?.description,
                         phase: operation?.phase,
                         parameters: operation?.parameters ? JSON.parse(JSON.stringify(operation.parameters)) : [], // Deep copy parameters

@@ -33,3 +33,4 @@ steps:
     action: STOP
   needs:
   - stream_air_traffic
+  if: always()

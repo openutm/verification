@@ -24,6 +24,11 @@ class StepDefinition(BaseModel):
     description: str | None = None
     if_condition: str | None = Field(default=None, alias="if", description="Conditional expression to determine if step should run")
     loop: LoopConfig | None = Field(default=None, description="Loop configuration for repeating the step")
+    continue_on_error: bool = Field(
+        default=False,
+        alias="continue-on-error",
+        description="If true, subsequent steps will still execute even if this step fails. Default is false (stop on failure).",
+    )
 
 
 class GroupDefinition(BaseModel):

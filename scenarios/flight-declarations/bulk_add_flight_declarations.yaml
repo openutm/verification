@@ -4,9 +4,11 @@ steps:
 - step: Setup Two Flight Declarations
 - id: teardown_first_declaration
   step: Teardown Flight Declaration
+  if: always()
   arguments:
     flight_declaration_id: ${{ steps.Setup Two Flight Declarations.result.declarations[0].id }}
 - id: teardown_second_declaration
   step: Teardown Flight Declaration
+  if: always()
   arguments:
     flight_declaration_id: ${{ steps.Setup Two Flight Declarations.result.declarations[1].id }}

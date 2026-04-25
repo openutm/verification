@@ -633,10 +633,17 @@ class SessionManager:
 
             # If step failed and it's not allowed to fail, break the group
             if result.status == Status.FAIL:
-                logger.error(f"Group step '{group_step.id}' failed, stopping group execution")
-                # Mark remaining steps as SKIP
-                self._mark_remaining_group_steps_skipped(group, group_name, loop_context, executed_step_indices)
-                break
+                if group_step.continue_on_error:
+                    logger.warning(f"Group step '{group_step.id}' failed, but continue-on-error=true — continuing group")
+                    result.continue_on_error = True
+                    if self.session_context:
+                        with self.session_context:
+                            self.session_context.update_result(result)
+                else:
+                    logger.error(f"Group step '{group_step.id}' failed, stopping group execution")
+                    # Mark remaining steps as SKIP
+                    self._mark_remaining_group_steps_skipped(group, group_name, loop_context, executed_step_indices)
+                    break
 
         return results
 
@@ -669,6 +676,15 @@ class SessionManager:
             )
             with self.session_context:
                 self.session_context.update_result(skipped_result)
+
+    def _mark_results_continue_on_error(self, results: List[StepResult]) -> None:
+        """Mark failed results as continue_on_error and update them in session context."""
+        for result in results:
+            if result.status == Status.FAIL:
+                result.continue_on_error = True
+                if self.session_context:
+                    with self.session_context:
+                        self.session_context.update_result(result)
 
     async def _wait_for_dependencies(self, step: StepDefinition) -> None:
         """Wait for any declared dependencies (by step ID) before executing a step."""
@@ -786,19 +802,29 @@ class SessionManager:
             # Wait for declared dependencies (useful for background steps)
             await self._wait_for_dependencies(step)
 
+            should_continue_on_error = step.continue_on_error
+
             # Check if this step references a group
             if self._is_group_reference(step.step, scenario):
                 # Handle loop execution for groups
                 if step.loop:
                     loop_results = await self._execute_loop_for_group(step, scenario)
                     if loop_results and any(r.status == Status.FAIL for r in loop_results):
-                        logger.error(f"Loop for group '{step.id}' failed, breaking scenario")
-                        break
+                        if should_continue_on_error:
+                            logger.warning(f"Loop for group '{step.id}' failed, but continue-on-error=true — continuing")
+                            self._mark_results_continue_on_error(loop_results)
+                        else:
+                            logger.error(f"Loop for group '{step.id}' failed, breaking scenario")
+                            break
                 else:
                     group_results = await self._execute_group(step, scenario)
                     if any(r.status == Status.FAIL for r in group_results):
-                        logger.error(f"Group '{step.id}' failed, breaking scenario")
-                        break
+                        if should_continue_on_error:
+                            logger.warning(f"Group '{step.id}' failed, but continue-on-error=true — continuing")
+                            self._mark_results_continue_on_error(group_results)
+                        else:
+                            logger.error(f"Group '{step.id}' failed, breaking scenario")
+                            break
             else:
                 # Regular step execution
                 # Handle loop execution
@@ -806,10 +832,20 @@ class SessionManager:
                     loop_results = await self._execute_loop(step)
                     # Check if any loop iteration failed
                     if loop_results and any(r.status == Status.FAIL for r in loop_results):
-                        logger.error(f"Loop for step '{step.id}' failed, breaking scenario")
-                        break
+                        if should_continue_on_error:
+                            logger.warning(f"Loop for step '{step.id}' failed, but continue-on-error=true — continuing")
+                            self._mark_results_continue_on_error(loop_results)
+                        else:
+                            logger.error(f"Loop for step '{step.id}' failed, breaking scenario")
+                            break
                 else:
-                    await self.execute_single_step(step)
+                    result = await self.execute_single_step(step)
+                    if result.status == Status.FAIL and should_continue_on_error:
+                        logger.warning(f"Step '{step.id}' failed, but continue-on-error=true — continuing")
+                        result.continue_on_error = True
+                        if self.session_context:
+                            with self.session_context:
+                                self.session_context.update_result(result)
         # An empty scenario (or one whose every step was skipped before any
         # `with self.session_context:` block ran) leaves session_context.state
         # unset; return an empty list rather than crashing.
