@@ -54,15 +54,16 @@ class BaseBlenderAPIClient:
             logger.error(f"Request error occurred: {e}")
             raise FlightBlenderError("Request failed") from e
         finally:
-            HttpCollector.record_from_httpx(
-                method=method,
-                url=url,
-                request_headers=dict(self.client.headers),
-                request_body=json,
-                response=response,
-                start=start,
-                error=error,
-            )
+            if HttpCollector.is_enabled():
+                HttpCollector.record_from_httpx(
+                    method=method,
+                    url=url,
+                    request_headers=dict(self.client.headers),
+                    request_body=json,
+                    response=response,
+                    start=start,
+                    error=error,
+                )
 
     async def get(self, endpoint: str, silent_status: list[int] | None = None) -> httpx.Response:
         return await self._request("GET", endpoint, silent_status=silent_status)

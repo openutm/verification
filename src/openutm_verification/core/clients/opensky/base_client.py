@@ -80,14 +80,15 @@ class BaseOpenSkyAPIClient:
 
             if response.status_code == 401 and config.opensky.auth.type == "oauth2":
                 # Record the failed attempt before retrying with a fresh token.
-                HttpCollector.record_from_httpx(
-                    method=method,
-                    url=url,
-                    request_headers={**dict(self.client.headers), **headers},
-                    request_body=params,
-                    response=response,
-                    start=start,
-                )
+                if HttpCollector.is_enabled():
+                    HttpCollector.record_from_httpx(
+                        method=method,
+                        url=url,
+                        request_headers={**dict(self.client.headers), **headers},
+                        request_body=params,
+                        response=response,
+                        start=start,
+                    )
                 logger.warning("Token expired, retrying with new token...")
                 headers["Authorization"] = f"Bearer {await self.oauth_client.get_access_token()}"
                 start = time.time()
@@ -102,15 +103,16 @@ class BaseOpenSkyAPIClient:
                 response.raise_for_status()
             return response
         finally:
-            HttpCollector.record_from_httpx(
-                method=method,
-                url=url,
-                request_headers={**dict(self.client.headers), **headers},
-                request_body=params,
-                response=response,
-                start=start,
-                error=error,
-            )
+            if HttpCollector.is_enabled():
+                HttpCollector.record_from_httpx(
+                    method=method,
+                    url=url,
+                    request_headers={**dict(self.client.headers), **headers},
+                    request_body=params,
+                    response=response,
+                    start=start,
+                    error=error,
+                )
 
     async def get(
         self,
