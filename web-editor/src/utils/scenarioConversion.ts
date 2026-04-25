@@ -108,7 +108,12 @@ export const convertYamlToGraph = (
 
                 const groupOperation = operations.find(op => op.name === groupStep.step);
 
-                const groupParameters = (groupOperation?.parameters || []).map(param => ({
+                if (!groupOperation) {
+                    console.warn(`Operation ${groupStep.step} not found in group ${step.step}`);
+                    return;
+                }
+
+                const groupParameters = (groupOperation.parameters || []).map(param => ({
                     ...param,
                     default: groupStep.arguments?.[param.name] ?? param.default
                 }));
@@ -122,10 +127,10 @@ export const convertYamlToGraph = (
                     data: {
                         label: groupStep.step,
                         stepId: groupStep.id || groupStep.step,
-                        operationId: groupOperation?.id,
-                        category: groupOperation?.category,
-                        description: groupStep.description || groupOperation?.description || '',
-                        phase: groupOperation?.phase,
+                        operationId: groupOperation.id,
+                        category: groupOperation.category,
+                        description: groupStep.description || groupOperation.description || '',
+                        phase: groupOperation.phase,
                         parameters: groupParameters,
                         continueOnError: groupStep['continue-on-error'],
                     }

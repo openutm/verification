@@ -190,6 +190,28 @@ describe('YAML Conversion - Category propagation', () => {
         };
         const { nodes } = convertYamlToGraph(scenario, operations);
         expect(nodes[0].data.category).toBeUndefined();
+    });
+
+    it('convertYamlToGraph skips group child steps with missing operations', () => {
+        const operations: Operation[] = [];
+        const scenario = {
+            name: 'test',
+            groups: {
+                my_group: {
+                    description: 'g',
+                    steps: [{ step: 'Unknown Step', arguments: {} }],
+                },
+            },
+            steps: [{ step: 'my_group', arguments: {} }],
+        };
+        const { nodes } = convertYamlToGraph(scenario, operations);
+        // Group container should still be created, but no child node for the unknown step
+        const containerNode = nodes.find(n => n.data.isGroupContainer);
+        expect(containerNode).toBeDefined();
+        const childNode = nodes.find(n => n.data.label === 'Unknown Step');
+        expect(childNode).toBeUndefined();
+    });
+});
 
 describe('YAML Conversion - continue-on-error', () => {
     it('includes continue-on-error=true in YAML output', () => {
