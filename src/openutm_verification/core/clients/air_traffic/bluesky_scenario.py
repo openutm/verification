@@ -37,16 +37,24 @@ Example YAML scenario::
 from __future__ import annotations
 
 import json
+import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Annotated
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+# Regex for BlueSky timed stack commands: HH:MM:SS.SS
+# Hours: any non-negative integer; minutes/seconds: 00–59; fractional: exactly 2 digits.
+_BLUESKY_TIME_RE = re.compile(r"^\d+:([0-5]\d):([0-5]\d)\.\d{2}$")
 
 
 class BlueSkyArea(BaseModel):
     """A named polygon area displayed in the BlueSky visualizer."""
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str = Field(..., description="Name of the area polygon (used in POLY command)")
     bounds: list[Annotated[list[float], Field(min_length=2, max_length=2)]] = Field(
@@ -71,6 +79,8 @@ class BlueSkyArea(BaseModel):
 class BlueSkyDisplaySettings(BaseModel):
     """Viewport and display configuration for BlueSky."""
 
+    model_config = ConfigDict(extra="forbid")
+
     pan: Annotated[list[float], Field(min_length=2, max_length=2)] | None = Field(
         default=None,
         description="Center the view on [lat, lon]",
@@ -83,12 +93,14 @@ class BlueSkyDisplaySettings(BaseModel):
 class BlueSkyAircraft(BaseModel):
     """A single aircraft to be created and flown in the BlueSky scenario."""
 
+    model_config = ConfigDict(extra="forbid")
+
     callsign: str = Field(..., description="Aircraft callsign / ACID (e.g. INTA1)")
     type: str = Field(..., description="Aircraft type code (e.g. C172, B744, P28A)")
     lat: float = Field(..., ge=-90.0, le=90.0, description="Initial latitude in decimal degrees")
     lon: float = Field(..., ge=-180.0, le=180.0, description="Initial longitude in decimal degrees")
     heading: float = Field(..., ge=0.0, le=360.0, description="Initial true heading in degrees")
-    altitude_ft: float = Field(..., ge=0.0, description="Initial altitude in feet (or flight level, e.g. 'FL080' as 8000)")
+    altitude_ft: float = Field(..., ge=0.0, description="Initial altitude in feet")
     speed_kts: float = Field(..., ge=0.0, description="Initial airspeed in knots")
     start_time: str = Field(default="00:00:00.00", description="Simulation time to create this aircraft (HH:MM:SS.SS)")
     waypoints: list[Annotated[list[float], Field(min_length=2, max_length=2)]] = Field(
@@ -107,9 +119,8 @@ class BlueSkyAircraft(BaseModel):
     @field_validator("start_time")
     @classmethod
     def _validate_time_format(cls, v: str) -> str:
-        parts = v.split(":")
-        if len(parts) != 3:
-            raise ValueError(f"start_time '{v}' must be in HH:MM:SS.SS format")
+        if not _BLUESKY_TIME_RE.match(v):
+            raise ValueError(f"start_time '{v}' must be in HH:MM:SS.SS format with minutes and seconds in range 00–59")
         return v
 
 
@@ -119,6 +130,8 @@ class BlueSkyScenarioDefinition(BaseModel):
     This model can be serialised to/from YAML or JSON and converted to the
     BlueSky ``.scn`` stack-command format via :meth:`to_scn`.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str = Field(..., description="Human-readable name for this scenario")
     description: str = Field(default="", description="Optional longer description of the scenario")
@@ -133,9 +146,8 @@ class BlueSkyScenarioDefinition(BaseModel):
     @field_validator("hold_time")
     @classmethod
     def _validate_hold_time(cls, v: str) -> str:
-        parts = v.split(":")
-        if len(parts) != 3:
-            raise ValueError(f"hold_time '{v}' must be in HH:MM:SS.SS format")
+        if not _BLUESKY_TIME_RE.match(v):
+            raise ValueError(f"hold_time '{v}' must be in HH:MM:SS.SS format with minutes and seconds in range 00–59")
         return v
 
     @model_validator(mode="after")
@@ -181,18 +193,21 @@ class BlueSkyScenarioDefinition(BaseModel):
         lines.append(f"00:00:00.00>RTF {disp.rtf}")
         if disp.pan is not None:
             lat_pan, lon_pan = disp.pan
-            lines.append(f"00:00:00.00>PAN {lat_pan},{lon_pan}")
+            lines.append(f"00:00:00.00>PAN {_fmt_coord(lat_pan)},{_fmt_coord(lon_pan)}")
         lines.append("00:00:00.00>-")
         lines.append("")
 
         # Aircraft
         for ac in self.aircraft:
-            # Format altitude: if it's a whole number >= 1000, render as FL
             alt_str = _format_altitude(ac.altitude_ft)
-            lines.append(f"# {ac.callsign}: {ac.type}, hdg {ac.heading}° alt {alt_str} spd {ac.speed_kts} kts")
-            lines.append(f"{ac.start_time}>CRE {ac.callsign},{ac.type},{ac.lat},{ac.lon},{ac.heading},{ac.altitude_ft},{ac.speed_kts}")
+            lines.append(f"# {ac.callsign}: {ac.type}, hdg {_fmt_num(ac.heading)}° alt {alt_str} spd {_fmt_num(ac.speed_kts)} kts")
+            lines.append(
+                f"{ac.start_time}>CRE {ac.callsign},{ac.type},"
+                f"{_fmt_coord(ac.lat)},{_fmt_coord(ac.lon)},"
+                f"{_fmt_num(ac.heading)},{_fmt_num(ac.altitude_ft)},{_fmt_num(ac.speed_kts)}"
+            )
             for wpt_lat, wpt_lon in ac.waypoints:
-                lines.append(f"{ac.start_time}>{ac.callsign} ADDWPT {wpt_lat},{wpt_lon}")
+                lines.append(f"{ac.start_time}>{ac.callsign} ADDWPT {_fmt_coord(wpt_lat)},{_fmt_coord(wpt_lon)}")
             lines.append("")
 
         # Hold command
@@ -224,8 +239,6 @@ class BlueSkyScenarioDefinition(BaseModel):
             str: Absolute path to the temporary ``.scn`` file.
         """
         fd, tmp_path = tempfile.mkstemp(prefix="openutm-bluesky-", suffix=".scn")
-        import os
-
         os.close(fd)
         Path(tmp_path).write_text(self.to_scn(), encoding="utf-8")
         return tmp_path
@@ -306,3 +319,22 @@ def _format_altitude(altitude_ft: float) -> str:
         fl = int(altitude_ft // 100)
         return f"FL{fl:03d}"
     return f"{altitude_ft:.0f} ft"
+
+
+def _fmt_num(v: float) -> str:
+    """Render a float as an integer string when it is a whole number, otherwise as-is.
+
+    This keeps BlueSky stack commands clean: ``270`` instead of ``270.0``.
+    """
+    if v == int(v):
+        return str(int(v))
+    return str(v)
+
+
+def _fmt_coord(v: float) -> str:
+    """Render a latitude or longitude to 4 decimal places.
+
+    This matches the precision convention used in the existing ``.scn`` files
+    in the ``config/`` directory (e.g. ``53.5200,-113.5500``).
+    """
+    return f"{v:.4f}"

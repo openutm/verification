@@ -129,6 +129,45 @@ class TestBlueSkyAircraft:
                 start_time="invalid",
             )
 
+    def test_start_time_out_of_range_minutes_rejected(self) -> None:
+        with pytest.raises(ValueError, match="HH:MM:SS.SS"):
+            BlueSkyAircraft(
+                callsign="AC001",
+                type="C172",
+                lat=53.0,
+                lon=-113.0,
+                heading=270,
+                altitude_ft=400,
+                speed_kts=87,
+                start_time="00:99:00.00",  # minutes out of range
+            )
+
+    def test_start_time_out_of_range_seconds_rejected(self) -> None:
+        with pytest.raises(ValueError, match="HH:MM:SS.SS"):
+            BlueSkyAircraft(
+                callsign="AC001",
+                type="C172",
+                lat=53.0,
+                lon=-113.0,
+                heading=270,
+                altitude_ft=400,
+                speed_kts=87,
+                start_time="00:00:60.00",  # seconds out of range
+            )
+
+    def test_start_time_non_numeric_rejected(self) -> None:
+        with pytest.raises(ValueError, match="HH:MM:SS.SS"):
+            BlueSkyAircraft(
+                callsign="AC001",
+                type="C172",
+                lat=53.0,
+                lon=-113.0,
+                heading=270,
+                altitude_ft=400,
+                speed_kts=87,
+                start_time="00:00:xx.00",
+            )
+
     def test_heading_out_of_range(self) -> None:
         with pytest.raises(ValueError):
             BlueSkyAircraft(
@@ -170,6 +209,43 @@ class TestBlueSkyScenarioDefinition:
         with pytest.raises(ValueError):
             BlueSkyScenarioDefinition.model_validate({"name": "Empty", "aircraft": []})
 
+    def test_hold_time_out_of_range_minutes_rejected(self) -> None:
+        data = dict(MINIMAL_SCENARIO_DATA)
+        data["hold_time"] = "00:99:00.00"  # minutes out of range
+        with pytest.raises(ValueError, match="HH:MM:SS.SS"):
+            BlueSkyScenarioDefinition.model_validate(data)
+
+    def test_hold_time_invalid_format_rejected(self) -> None:
+        data = dict(MINIMAL_SCENARIO_DATA)
+        data["hold_time"] = "2minutes"
+        with pytest.raises(ValueError, match="HH:MM:SS.SS"):
+            BlueSkyScenarioDefinition.model_validate(data)
+
+    def test_extra_fields_rejected(self) -> None:
+        data = dict(MINIMAL_SCENARIO_DATA)
+        data["unknown_field"] = "typo_value"
+        with pytest.raises(ValueError):
+            BlueSkyScenarioDefinition.model_validate(data)
+
+    def test_extra_fields_in_aircraft_rejected(self) -> None:
+        data = {
+            "name": "Test",
+            "aircraft": [
+                {
+                    "callsign": "AC001",
+                    "type": "C172",
+                    "lat": 53.0,
+                    "lon": -113.0,
+                    "heading": 270,
+                    "altitude_ft": 400,
+                    "speed_kts": 87,
+                    "typo_field": "oops",
+                }
+            ],
+        }
+        with pytest.raises(ValueError):
+            BlueSkyScenarioDefinition.model_validate(data)
+
 
 # ---------------------------------------------------------------------------
 # SCN rendering tests
@@ -186,8 +262,8 @@ class TestToScn:
     def test_waypoints_rendered(self) -> None:
         scenario = BlueSkyScenarioDefinition.model_validate(FULL_SCENARIO_DATA)
         scn = scenario.to_scn()
-        assert "INTA1 ADDWPT 53.52,-113.575" in scn
-        assert "INTA1 ADDWPT 53.52,-113.6" in scn
+        assert "INTA1 ADDWPT 53.5200,-113.5750" in scn
+        assert "INTA1 ADDWPT 53.5200,-113.6000" in scn
 
     def test_poly_area_rendered(self) -> None:
         scenario = BlueSkyScenarioDefinition.model_validate(FULL_SCENARIO_DATA)
@@ -201,7 +277,7 @@ class TestToScn:
         assert "TRAILS ON" in scn
         assert "RESO OFF" in scn
         assert "RTF 10" in scn
-        assert "PAN 53.52,-113.575" in scn
+        assert "PAN 53.5200,-113.5750" in scn
 
     def test_header_comment(self) -> None:
         scenario = BlueSkyScenarioDefinition.model_validate(FULL_SCENARIO_DATA)
@@ -227,10 +303,21 @@ class TestToScn:
         scn = BlueSkyScenarioDefinition.model_validate(data).to_scn()
         assert "00:00:20.00>CRE INTB,B206" in scn
 
-    def test_hold_time_in_scn(self) -> None:
-        scenario = BlueSkyScenarioDefinition.model_validate(FULL_SCENARIO_DATA)
+    def test_cre_command_integer_formatting(self) -> None:
+        """Whole-number heading/altitude/speed must not render as floats (e.g. 270 not 270.0)."""
+        scenario = BlueSkyScenarioDefinition.model_validate(MINIMAL_SCENARIO_DATA)
         scn = scenario.to_scn()
-        assert "00:02:00.00>HOLD" in scn
+        # Should contain integer values, not float representations
+        assert "CRE AC001,C172,53.5200,-113.5500,270,400,87" in scn
+        assert "270.0" not in scn
+        assert "400.0" not in scn
+        assert "87.0" not in scn
+
+    def test_cre_command_coord_precision(self) -> None:
+        """Lat/lon in CRE command must use 4 decimal places."""
+        scenario = BlueSkyScenarioDefinition.model_validate(MINIMAL_SCENARIO_DATA)
+        scn = scenario.to_scn()
+        assert "53.5200,-113.5500" in scn
 
     def test_write_scn_creates_file(self, tmp_path: Path) -> None:
         scenario = BlueSkyScenarioDefinition.model_validate(MINIMAL_SCENARIO_DATA)
