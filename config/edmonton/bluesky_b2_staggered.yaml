@@ -1,0 +1,65 @@
+name: "B2 Three Intruders, Staggered Arrival (Cooperative)"
+description: >
+  ASTM F3442 Category B2 - Staggered arrival scenario.
+  Edmonton Area: Ownship hovering at 53.5500 N, -113.5500 W, 100 m AGL (328 ft).
+  Staggered creation to test prioritization with different alert levels:
+    T=0:  INTB2A (Cessna 172)  from East  - ADVISORY only (90 m vertical offset)
+    T=20: INTB2C (Bell 429)    from South - CAUTION max  (50 m vertical offset)
+    T=40: INTB2B (Piper PA-28) from North - WARNING      (7 m vertical offset)
+
+display:
+  pan: [53.5500, -113.5500]
+  trails: true
+  reso: false
+  rtf: 10
+
+areas:
+  - name: EDM_B2_BOX
+    color: [0, 255, 0]
+    bounds:
+      - [53.5100, -113.5800]
+      - [53.5100, -113.4800]
+      - [53.5900, -113.4800]
+      - [53.5900, -113.5800]
+
+aircraft:
+  # T=0: INT-C01 (Early arrival) - Cessna 172 from East, ADVISORY only
+  - callsign: INTB2A
+    type: C172
+    lat: 53.5500
+    lon: -113.5000
+    heading: 270
+    altitude_ft: 623
+    speed_kts: 78
+    start_time: "00:00:00.00"
+    waypoints:
+      - [53.5500, -113.5500]
+      - [53.5500, -113.6000]
+
+  # T=20: INT-C06 (Medium arrival) - Bell 429 from South, CAUTION max
+  - callsign: INTB2C
+    type: B206
+    lat: 53.5200
+    lon: -113.5500
+    heading: 0
+    altitude_ft: 492
+    speed_kts: 78
+    start_time: "00:00:20.00"
+    waypoints:
+      - [53.5500, -113.5500]
+      - [53.5800, -113.5500]
+
+  # T=40: INT-C02 (Late arrival) - Piper PA-28 from North, WARNING
+  - callsign: INTB2B
+    type: P28A
+    lat: 53.5800
+    lon: -113.5500
+    heading: 180
+    altitude_ft: 351
+    speed_kts: 97
+    start_time: "00:00:40.00"
+    waypoints:
+      - [53.5500, -113.5500]
+      - [53.5200, -113.5500]
+
+hold_time: "00:03:30.00"
