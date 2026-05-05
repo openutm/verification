@@ -183,7 +183,7 @@ const ScenarioEditorContent = () => {
         edgesRef.current = edges;
     }, [nodes, edges]);
 
-    const { isRunning, runScenario, stopScenario } = useScenarioRunner();
+    const { isRunning, isPaused, isStepMode, runScenario, resumeStep, stopScenario } = useScenarioRunner();
     const { handleSaveToServer, handleSaveAs } = useScenarioFile(
         nodes,
         edges,
@@ -935,6 +935,51 @@ const ScenarioEditorContent = () => {
         }));
     }, [stopScenario, setNodes]);
 
+    const handleStepRun = useCallback(async () => {
+        setNodes((nds) => nds.map(node => ({
+            ...node,
+            data: { ...node.data, status: undefined, result: undefined }
+        })));
+
+        const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodesRef.current;
+        const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edgesRef.current;
+
+        const onStepComplete = (stepResult: { id: string; status: 'success' | 'failure' | 'error' | 'skipped' | 'running' | 'waiting'; result?: unknown }) => {
+            setNodes((nds) => updateNodesWithResults(nds, [stepResult]));
+        };
+
+        const onStepStart = (nodeId: string) => {
+            setNodes((nds) => nds.map(node =>
+                node.id === nodeId ? { ...node, data: { ...node.data, status: 'waiting' } } : node
+            ));
+        };
+
+        await runScenario(
+            currentNodes,
+            currentEdges,
+            currentScenarioName || "Interactive Session",
+            onStepComplete,
+            onStepStart,
+            operations,
+            currentScenarioGroups,
+            currentScenarioDescription,
+            true
+        );
+    }, [
+        runScenario,
+        currentScenarioName,
+        currentScenarioGroups,
+        currentScenarioDescription,
+        operations,
+        setNodes,
+        updateNodesWithResults,
+        reactFlowInstance
+    ]);
+
+    const handleResume = useCallback(async () => {
+        await resumeStep();
+    }, [resumeStep]);
+
     const updateNodeParameter = useCallback((nodeId: string, paramName: string, value: unknown) => {
         setIsDirty(true);
         setNodes((nds) => {
@@ -1184,8 +1229,12 @@ const ScenarioEditorContent = () => {
                 onSave={handleSaveToServer}
                 onSaveAs={handleSaveAs}
                 onRun={handleRun}
+                onStepRun={handleStepRun}
                 onStop={handleStop}
+                onResume={handleResume}
                 isRunning={isRunning}
+                isPaused={isPaused}
+                isStepMode={isStepMode}
                 groupedByPhase={groupedByPhase}
                 onToggleGroupByPhase={toggleGroupByPhase}
             />

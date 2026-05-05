@@ -5,6 +5,8 @@ import { convertGraphToYaml } from '../utils/scenarioConversion';
 
 export const useScenarioRunner = () => {
     const [isRunning, setIsRunning] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
+    const [isStepMode, setIsStepMode] = useState(false);
     const eventSourceRef = useRef<EventSource | null>(null);
 
     const stopScenario = useCallback(async () => {
@@ -26,6 +28,17 @@ export const useScenarioRunner = () => {
             console.error('Error stopping scenario:', error);
         } finally {
             setIsRunning(false);
+            setIsPaused(false);
+            setIsStepMode(false);
+        }
+    }, []);
+
+    const resumeStep = useCallback(async () => {
+        setIsPaused(false);
+        try {
+            await fetch('/resume-step', { method: 'POST' });
+        } catch (error) {
+            console.error('Error resuming step:', error);
         }
     }, []);
 
@@ -37,7 +50,8 @@ export const useScenarioRunner = () => {
         onStepStart?: (nodeId: string) => void,
         operations: Operation[] = [],
         groups?: Record<string, GroupDefinition>,
-        description: string = 'Run from Web UI'
+        description: string = 'Run from Web UI',
+        stepMode: boolean = false
     ) => {
         if (nodes.length === 0) return null;
 
@@ -54,6 +68,7 @@ export const useScenarioRunner = () => {
         }
 
         setIsRunning(true);
+        if (stepMode) setIsStepMode(true);
 
         const sortedNodes: Node<NodeData>[] = [];
         const queue = [...startNodes];
@@ -106,7 +121,8 @@ export const useScenarioRunner = () => {
                 groups
             );
 
-            const response = await fetch('/run-scenario-async', {
+            const endpoint = stepMode ? '/run-scenario-step-mode' : '/run-scenario-async';
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(scenarioPayload)
@@ -157,11 +173,16 @@ export const useScenarioRunner = () => {
                     }
                 };
 
+                source.addEventListener('paused', () => {
+                    setIsPaused(true);
+                });
+
                 source.addEventListener('done', (event) => {
                     try {
                         const payload = JSON.parse((event as MessageEvent).data) as { status?: string; error?: string };
                         source.close();
                         eventSourceRef.current = null;
+                        setIsPaused(false);
                         if (payload.status === 'error') {
                             reject(new Error(payload.error || 'Scenario run failed'));
                             return;
@@ -206,8 +227,10 @@ export const useScenarioRunner = () => {
             return null;
         } finally {
             setIsRunning(false);
+            setIsPaused(false);
+            setIsStepMode(false);
         }
     }, []);
 
-    return { isRunning, runScenario, stopScenario };
+    return { isRunning, isPaused, isStepMode, runScenario, resumeStep, stopScenario };
 };

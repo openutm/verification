@@ -407,6 +407,19 @@ async def run_scenario_async(scenario: ScenarioDefinition, runner: SessionManage
     return {"run_id": run_id}
 
 
+@app.post("/run-scenario-step-mode")
+async def run_scenario_step_mode(scenario: ScenarioDefinition, runner: SessionManager = Depends(get_session_manager)):
+    runner._step_mode = True
+    await runner.start_scenario_task(scenario)
+    return {"run_id": "step-mode"}
+
+
+@app.post("/resume-step")
+async def resume_step(runner: SessionManager = Depends(get_session_manager)):
+    runner.resume_step()
+    return {"resumed": True}
+
+
 @app.post("/stop-scenario")
 async def stop_scenario(runner: SessionManager = Depends(get_session_manager)):
     """Stop the currently running scenario."""
@@ -419,6 +432,7 @@ async def run_scenario_events(runner: SessionManager = Depends(get_session_manag
     async def event_stream():
         # Track consecutive idle iterations for adaptive sleep
         idle_iterations = 0
+        last_paused = False
 
         while True:
             status_payload = runner.get_run_status()
@@ -431,6 +445,12 @@ async def run_scenario_events(runner: SessionManager = Depends(get_session_manag
                     yield f"data: {result.model_dump_json()}\n\n"
                     had_results = True
                     idle_iterations = 0
+
+            # Emit paused event exactly once when execution pauses between steps
+            current_paused = runner._is_paused
+            if current_paused and not last_paused:
+                yield f"event: paused\ndata: {json.dumps({'step_id': runner._current_paused_step_id})}\n\n"
+            last_paused = current_paused
 
             if status_payload.get("status") != "running" and not runner.has_pending_tasks():
                 done_payload = {

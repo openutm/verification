@@ -67,3 +67,25 @@
   background-color: var(--accent-hover);
   border-color: var(--accent-hover);
 }
+
+.secondary {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.secondary:hover {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+.success {
+  background-color: #238636;
+  color: white;
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-sm);
+}
+
+.success:hover {
+  background-color: #2ea043;
+  box-shadow: var(--shadow-md);
+}

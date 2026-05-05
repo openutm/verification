@@ -1,4 +1,4 @@
-import { Activity, Moon, Sun, Layout, FilePlus, Save, Play, Loader2, Copy, Square, Layers, Settings } from 'lucide-react';
+import { Activity, Moon, Sun, Layout, FilePlus, Save, Play, Loader2, Copy, Square, Layers, Settings, FastForward, StepForward } from 'lucide-react';
 import styles from '../../styles/Header.module.css';
 import btnStyles from '../../styles/Button.module.css';
 
@@ -10,8 +10,12 @@ interface HeaderProps {
     onSave: () => void;
     onSaveAs: () => void;
     onRun: () => void;
+    onStepRun: () => void;
     onStop: () => void;
+    onResume: () => void;
     isRunning: boolean;
+    isPaused: boolean;
+    isStepMode: boolean;
     groupedByPhase: boolean;
     onToggleGroupByPhase: () => void;
 }
@@ -24,8 +28,12 @@ export const Header = ({
     onSave,
     onSaveAs,
     onRun,
+    onStepRun,
     onStop,
+    onResume,
     isRunning,
+    isPaused,
+    isStepMode,
     groupedByPhase,
     onToggleGroupByPhase,
 }: HeaderProps) => {
@@ -64,15 +72,32 @@ export const Header = ({
                     <Copy size={16} />
                     Save As
                 </button>
-                <button className={`${btnStyles.button} ${btnStyles.primary}`} onClick={onRun} disabled={isRunning} title="Run scenario" type="button">
-                    {isRunning ? <Loader2 size={16} className={styles.spin} /> : <Play size={16} />}
-                    Run Scenario
-                </button>
-                {isRunning && (
-                    <button className={`${btnStyles.button} ${btnStyles.danger}`} onClick={onStop} title="Stop scenario" type="button">
-                        <Square size={16} />
-                        Stop
-                    </button>
+                {!isRunning ? (
+                    <>
+                        <button className={`${btnStyles.button} ${btnStyles.primary}`} onClick={onRun} title="Run all steps at once" type="button">
+                            <FastForward size={16} />
+                            Run All
+                        </button>
+                        <button className={`${btnStyles.button} ${btnStyles.secondary}`} onClick={onStepRun} title="Run one step at a time" type="button">
+                            <StepForward size={16} />
+                            Step Through
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        {isStepMode && isPaused ? (
+                            <button className={`${btnStyles.button} ${btnStyles.success}`} onClick={onResume} title="Execute next step" type="button">
+                                <Play size={16} />
+                                Next Step
+                            </button>
+                        ) : (
+                            <Loader2 size={16} className={styles.spin} />
+                        )}
+                        <button className={`${btnStyles.button} ${btnStyles.danger}`} onClick={onStop} title="Stop scenario" type="button">
+                            <Square size={16} />
+                            Stop
+                        </button>
+                    </>
                 )}
                 <button
                     className={btnStyles.button}

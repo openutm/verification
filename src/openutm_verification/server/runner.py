@@ -56,6 +56,11 @@ class SessionManager:
         self.current_output_dir: Path | None = None
         self.current_timestamp_str: str | None = None
         self.current_start_time: datetime | None = None
+        self._step_mode: bool = False
+        self._is_paused: bool = False
+        self._current_paused_step_id: str | None = None
+        self._step_resume_event: asyncio.Event = asyncio.Event()
+        self._step_resume_event.set()
         self._initialized = True
 
     async def start_scenario_task(self, scenario: ScenarioDefinition):
@@ -76,6 +81,9 @@ class SessionManager:
         self.current_timestamp_str = None
         self.current_start_time = None
         self.current_run_error = None
+        self._is_paused = False
+        self._current_paused_step_id = None
+        self._step_resume_event.set()
 
         task = asyncio.create_task(self.run_scenario(scenario))
         self.current_run_task = task
@@ -101,9 +109,23 @@ class SessionManager:
             "error": self.current_run_error,
         }
 
+    async def _pause_if_step_mode(self, step_id: str) -> None:
+        if not getattr(self, "_step_mode", False):
+            return
+        self._current_paused_step_id = step_id
+        self._is_paused = True
+        self._step_resume_event.clear()
+        await self._step_resume_event.wait()
+        self._is_paused = False
+
+    def resume_step(self) -> None:
+        self._step_resume_event.set()
+
     async def stop_scenario(self) -> bool:
         """Stop the currently running scenario and all background tasks."""
         logger.info("Stopping scenario...")
+        self._step_mode = False
+        self._step_resume_event.set()
         stopped = False
         tasks_to_cancel = []
 
@@ -827,6 +849,7 @@ class SessionManager:
                         else:
                             logger.error(f"Loop for group '{step.id}' failed, breaking scenario")
                             break
+                    await self._pause_if_step_mode(step.id or step.step)
                 else:
                     group_results = await self._execute_group(step, scenario)
                     if any(r.status == Status.FAIL for r in group_results):
@@ -836,6 +859,7 @@ class SessionManager:
                         else:
                             logger.error(f"Group '{step.id}' failed, breaking scenario")
                             break
+                    await self._pause_if_step_mode(step.id or step.step)
             else:
                 # Regular step execution
                 # Handle loop execution
@@ -849,6 +873,7 @@ class SessionManager:
                         else:
                             logger.error(f"Loop for step '{step.id}' failed, breaking scenario")
                             break
+                    await self._pause_if_step_mode(step.id or step.step)
                 else:
                     result = await self.execute_single_step(step)
                     if result.status == Status.FAIL and should_continue_on_error:
@@ -857,6 +882,7 @@ class SessionManager:
                         if self.session_context:
                             with self.session_context:
                                 self.session_context.update_result(result)
+                    await self._pause_if_step_mode(step.id or step.step)
         # An empty scenario (or one whose every step was skipped before any
         # `with self.session_context:` block ran) leaves session_context.state
         # unset; return an empty list rather than crashing.
