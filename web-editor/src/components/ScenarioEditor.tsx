@@ -183,7 +183,8 @@ const ScenarioEditorContent = () => {
         edgesRef.current = edges;
     }, [nodes, edges]);
 
-    const { isRunning, runScenario, stopScenario } = useScenarioRunner();
+    const { isRunning, isPaused, runScenario, stopScenario, advanceStep } = useScenarioRunner();
+    const [runMode, setRunMode] = useState<'all' | 'step' | null>(null);
     const { handleSaveToServer, handleSaveAs } = useScenarioFile(
         nodes,
         edges,
@@ -862,6 +863,7 @@ const ScenarioEditorContent = () => {
     }, []);
 
     const handleRun = useCallback(async () => {
+        setRunMode('all');
         // Clear previous results/errors from the UI immediately
         setNodes((nds) => nds.map(node => ({
             ...node,
@@ -907,6 +909,58 @@ const ScenarioEditorContent = () => {
             currentScenarioGroups,
             currentScenarioDescription
         );
+        setRunMode(null);
+    }, [
+        runScenario,
+        currentScenarioName,
+        currentScenarioGroups,
+        currentScenarioDescription,
+        operations,
+        setNodes,
+        updateNodesWithResults,
+        reactFlowInstance
+    ]);
+
+    const handleStepByStep = useCallback(async () => {
+        setRunMode('step');
+        // Clear previous results/errors from the UI immediately
+        setNodes((nds) => nds.map(node => ({
+            ...node,
+            data: {
+                ...node.data,
+                status: undefined,
+                result: undefined
+            }
+        })));
+
+        const currentNodes = reactFlowInstance ? reactFlowInstance.getNodes() : nodesRef.current;
+        const currentEdges = reactFlowInstance ? reactFlowInstance.getEdges() : edgesRef.current;
+
+        const onStepComplete = (stepResult: { id: string; status: 'success' | 'failure' | 'error' | 'skipped' | 'running' | 'waiting'; result?: unknown }) => {
+            setNodes((nds) => updateNodesWithResults(nds, [stepResult]));
+        };
+
+        const onStepStart = (nodeId: string) => {
+            setNodes((nds) => nds.map(node => {
+                if (node.id === nodeId) {
+                    return { ...node, data: { ...node.data, status: 'waiting' } };
+                }
+                return node;
+            }));
+        };
+
+        await runScenario(
+            currentNodes,
+            currentEdges,
+            currentScenarioName || "Interactive Session",
+            onStepComplete,
+            onStepStart,
+            operations,
+            currentScenarioGroups,
+            currentScenarioDescription,
+            true
+        );
+        setRunMode(null);
     }, [
         runScenario,
         currentScenarioName,
@@ -919,6 +973,7 @@ const ScenarioEditorContent = () => {
     ]);
 
     const handleStop = useCallback(async () => {
+        setRunMode(null);
         await stopScenario();
         // Clear running/waiting status from all nodes
         setNodes((nds) => nds.map(node => {
@@ -1185,7 +1240,11 @@ const ScenarioEditorContent = () => {
                 onSaveAs={handleSaveAs}
                 onRun={handleRun}
                 onStop={handleStop}
+                onRunStepByStep={handleStepByStep}
+                onAdvanceStep={advanceStep}
                 isRunning={isRunning}
+                isPaused={isPaused}
+                isStepMode={runMode === 'step'}
                 groupedByPhase={groupedByPhase}
                 onToggleGroupByPhase={toggleGroupByPhase}
             />

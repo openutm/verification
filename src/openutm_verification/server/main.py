@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Optional, TypeVar
 
 import uvicorn
-from fastapi import Body, Depends, FastAPI, Request
+from fastapi import Body, Depends, FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -402,9 +402,16 @@ async def run_scenario(scenario: ScenarioDefinition, runner: SessionManager = De
 
 
 @app.post("/run-scenario-async")
-async def run_scenario_async(scenario: ScenarioDefinition, runner: SessionManager = Depends(get_session_manager)):
-    run_id = await runner.start_scenario_task(scenario)
+async def run_scenario_async(scenario: ScenarioDefinition, auto_pause: bool = Query(False), runner: SessionManager = Depends(get_session_manager)):
+    run_id = await runner.start_scenario_task(scenario, auto_pause=auto_pause)
     return {"run_id": run_id}
+
+
+@app.post("/scenario/advance-step")
+async def advance_step(runner: SessionManager = Depends(get_session_manager)):
+    """Advance execution by one step when in step-by-step (auto-pause) mode."""
+    runner._step_resume_event.set()
+    return {"advanced": True}
 
 
 @app.post("/stop-scenario")
@@ -419,6 +426,7 @@ async def run_scenario_events(runner: SessionManager = Depends(get_session_manag
     async def event_stream():
         # Track consecutive idle iterations for adaptive sleep
         idle_iterations = 0
+        paused_event_sent = False
 
         while True:
             status_payload = runner.get_run_status()
@@ -431,6 +439,14 @@ async def run_scenario_events(runner: SessionManager = Depends(get_session_manag
                     yield f"data: {result.model_dump_json()}\n\n"
                     had_results = True
                     idle_iterations = 0
+
+            # Emit paused event once per pause boundary
+            if runner._is_paused and not paused_event_sent:
+                yield "event: paused\ndata: {{}}\n\n"
+                paused_event_sent = True
+                idle_iterations = 0
+            elif not runner._is_paused:
+                paused_event_sent = False
 
             if status_payload.get("status") != "running" and not runner.has_pending_tasks():
                 done_payload = {

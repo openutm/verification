@@ -44,6 +44,11 @@ def _make_runner() -> SessionManager:
     runner.current_run_error = None
     runner.data_files = None
     runner._stop_event = None
+    runner._auto_pause = False
+    runner._is_paused = False
+    import asyncio
+
+    runner._step_resume_event = asyncio.Event()
     return runner
 
 

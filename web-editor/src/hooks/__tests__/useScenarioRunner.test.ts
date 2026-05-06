@@ -19,7 +19,7 @@ describe('useScenarioRunner', () => {
         vi.restoreAllMocks();
     });
 
-    it('initializes with isRunning false', () => {
+    it('initializes with isRunning and isPaused false', () => {
         const mockEventSource = {
             onmessage: null as ((event: MessageEvent) => void) | null,
             onerror: null as ((event: Event) => void) | null,
@@ -42,6 +42,19 @@ describe('useScenarioRunner', () => {
 
         const { result } = renderHook(() => useScenarioRunner());
         expect(result.current.isRunning).toBe(false);
+        expect(result.current.isPaused).toBe(false);
+    });
+
+    it('advanceStep POSTs to /scenario/advance-step', async () => {
+        (globalThis.fetch as Mock).mockResolvedValue({ ok: true });
+
+        const { result } = renderHook(() => useScenarioRunner());
+
+        await act(async () => {
+            await result.current.advanceStep();
+        });
+
+        expect(globalThis.fetch).toHaveBeenCalledWith('/scenario/advance-step', { method: 'POST' });
     });
 
     it('runs scenario successfully', async () => {

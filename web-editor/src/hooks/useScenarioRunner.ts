@@ -5,6 +5,7 @@ import { convertGraphToYaml } from '../utils/scenarioConversion';
 
 export const useScenarioRunner = () => {
     const [isRunning, setIsRunning] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const eventSourceRef = useRef<EventSource | null>(null);
 
     const stopScenario = useCallback(async () => {
@@ -26,6 +27,16 @@ export const useScenarioRunner = () => {
             console.error('Error stopping scenario:', error);
         } finally {
             setIsRunning(false);
+            setIsPaused(false);
+        }
+    }, []);
+
+    const advanceStep = useCallback(async () => {
+        setIsPaused(false);
+        try {
+            await fetch('/scenario/advance-step', { method: 'POST' });
+        } catch (error) {
+            console.error('Error advancing step:', error);
         }
     }, []);
 
@@ -37,7 +48,8 @@ export const useScenarioRunner = () => {
         onStepStart?: (nodeId: string) => void,
         operations: Operation[] = [],
         groups?: Record<string, GroupDefinition>,
-        description: string = 'Run from Web UI'
+        description: string = 'Run from Web UI',
+        autoPause: boolean = false
     ) => {
         if (nodes.length === 0) return null;
 
@@ -106,7 +118,8 @@ export const useScenarioRunner = () => {
                 groups
             );
 
-            const response = await fetch('/run-scenario-async', {
+            const runUrl = autoPause ? '/run-scenario-async?auto_pause=true' : '/run-scenario-async';
+            const response = await fetch(runUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(scenarioPayload)
@@ -149,6 +162,7 @@ export const useScenarioRunner = () => {
                 source.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data) as { id?: string; status?: string; result?: unknown; error?: unknown; error_message?: string; logs?: string[] };
+                        setIsPaused(false);
                         handleStepResult(data);
                     } catch (err) {
                         source.close();
@@ -156,6 +170,10 @@ export const useScenarioRunner = () => {
                         reject(err);
                     }
                 };
+
+                source.addEventListener('paused', () => {
+                    setIsPaused(true);
+                });
 
                 source.addEventListener('done', (event) => {
                     try {
@@ -206,8 +224,9 @@ export const useScenarioRunner = () => {
             return null;
         } finally {
             setIsRunning(false);
+            setIsPaused(false);
         }
     }, []);
 
-    return { isRunning, runScenario, stopScenario };
+    return { isRunning, isPaused, runScenario, stopScenario, advanceStep };
 };

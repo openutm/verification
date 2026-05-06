@@ -56,14 +56,21 @@ class SessionManager:
         self.current_output_dir: Path | None = None
         self.current_timestamp_str: str | None = None
         self.current_start_time: datetime | None = None
+        self._auto_pause: bool = False
+        self._is_paused: bool = False
+        self._step_resume_event: asyncio.Event = asyncio.Event()
         self._initialized = True
 
-    async def start_scenario_task(self, scenario: ScenarioDefinition):
+    async def start_scenario_task(self, scenario: ScenarioDefinition, auto_pause: bool = False):
         if not self.session_resolver:
             await self.initialize_session()
 
         if self.current_run_task and not self.current_run_task.done():
             self.current_run_task.cancel()
+
+        self._auto_pause = auto_pause
+        self._is_paused = False
+        self._step_resume_event = asyncio.Event()  # starts CLEARED → first step pauses immediately
 
         # Each server-driven scenario must produce its own isolated run
         # directory so reports (including ``allure-results``) are not shared
@@ -106,6 +113,10 @@ class SessionManager:
         logger.info("Stopping scenario...")
         stopped = False
         tasks_to_cancel = []
+
+        # Unblock a paused step-by-step run so the task can be cancelled
+        self._is_paused = False
+        self._step_resume_event.set()
 
         # Cancel the main scenario task
         if self.current_run_task and not self.current_run_task.done():
@@ -809,6 +820,13 @@ class SessionManager:
                     with self.session_context:
                         self.session_context.update_result(skipped_result)
                 continue
+
+            # Pause before executing this step if step-by-step mode is active
+            if self._auto_pause:
+                self._is_paused = True
+                await self._step_resume_event.wait()
+                self._step_resume_event.clear()
+                self._is_paused = False
 
             # Wait for declared dependencies (useful for background steps)
             await self._wait_for_dependencies(step)
