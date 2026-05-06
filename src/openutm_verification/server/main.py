@@ -442,7 +442,7 @@ async def run_scenario_events(runner: SessionManager = Depends(get_session_manag
 
             # Emit paused event once per pause boundary
             if runner._is_paused and not paused_event_sent:
-                yield "event: paused\ndata: {{}}\n\n"
+                yield "event: paused\ndata: {}\n\n"
                 paused_event_sent = True
                 idle_iterations = 0
             elif not runner._is_paused:
