@@ -821,12 +821,18 @@ class SessionManager:
                         self.session_context.update_result(skipped_result)
                 continue
 
-            # Pause before executing this step if step-by-step mode is active
+            # Pause before executing this step if step-by-step mode is active.
+            # For normal runs, explicitly clear any stale step-by-step state so a
+            # previous paused execution cannot leak into this run and block it.
             if self._auto_pause:
                 self._is_paused = True
                 await self._step_resume_event.wait()
                 self._step_resume_event.clear()
                 self._is_paused = False
+            else:
+                self._auto_pause = False
+                self._is_paused = False
+                self._step_resume_event.set()
 
             # Wait for declared dependencies (useful for background steps)
             await self._wait_for_dependencies(step)
