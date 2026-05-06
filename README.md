@@ -90,9 +90,7 @@ Reports land in `reports/<timestamp>/` (`report.json`, `report.html`,
 `report.log`, plus per-scenario artefacts). Open the HTML report in a browser
 to inspect results.
 
-If Flight Blender is already running elsewhere (e.g. on `:8000` natively),
-skip steps 2 and 4 and just point the config at it via
-`flight_blender.url` or `FLIGHT_BLENDER_URL=...`.
+If Flight Blender is already running elsewhere (e.g. on `:8000` natively), skip steps 2 and 4 and just point the config at it via `flight_blender.url` or `FLIGHT_BLENDER_URL=...`.
 
 ### Local development (no Docker)
 
