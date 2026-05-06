@@ -32,9 +32,15 @@ export const useScenarioRunner = () => {
     }, []);
 
     const advanceStep = useCallback(async () => {
-        setIsPaused(false);
         try {
-            await fetch('/scenario/advance-step', { method: 'POST' });
+            const response = await fetch('/scenario/advance-step', { method: 'POST' });
+
+            if (!response.ok) {
+                console.error('Failed to advance step:', response.status, response.statusText);
+                return;
+            }
+
+            setIsPaused(false);
         } catch (error) {
             console.error('Error advancing step:', error);
         }
