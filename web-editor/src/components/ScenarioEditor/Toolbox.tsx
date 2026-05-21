@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Box } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronLeft, Box } from 'lucide-react';
 import styles from '../../styles/Toolbox.module.css';
 import { getPhaseColor, PHASE_LABELS, PHASE_ORDER } from '../../utils/phaseColors';
 import layoutStyles from '../../styles/EditorLayout.module.css';
@@ -7,8 +7,19 @@ import type { Operation } from '../../types/scenario';
 
 type GroupBy = 'client' | 'phase';
 
-const ToolboxGroup = ({ title, ops, badge }: { title: string, ops: Operation[], badge?: { code: string } }) => {
-    const [isExpanded, setIsExpanded] = useState(true);
+const ToolboxGroup = ({
+    title,
+    ops,
+    badge,
+    forceExpanded,
+}: {
+    title: string;
+    ops: Operation[];
+    badge?: { code: string };
+    forceExpanded?: boolean;
+}) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const expanded = forceExpanded ?? isExpanded;
 
     return (
         <div>
@@ -18,7 +29,7 @@ const ToolboxGroup = ({ title, ops, badge }: { title: string, ops: Operation[], 
                 style={{ width: '100%', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer' }}
                 type="button"
             >
-                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 {badge && (
                     <span
                         className={styles.phaseBadge}
@@ -30,8 +41,11 @@ const ToolboxGroup = ({ title, ops, badge }: { title: string, ops: Operation[], 
                     >{PHASE_LABELS[badge.code] || badge.code}</span>
                 )}
                 {title}
+                <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 400, opacity: 0.7 }}>
+                    {ops.length}
+                </span>
             </button>
-            {isExpanded && (
+            {expanded && (
                 <div className={styles.groupContent}>
                     {ops.map((op) => (
                         <div
@@ -46,9 +60,9 @@ const ToolboxGroup = ({ title, ops, badge }: { title: string, ops: Operation[], 
                             role="button"
                             tabIndex={0}
                         >
-                            <Box size={16} color="#8b949e" />
+                            <Box size={16} color="#8b949e" style={{ flexShrink: 0 }} />
                             <div className={styles.nodeItemContent}>
-                                <span>{op.name}</span>
+                                <span style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{op.name}</span>
                                 {op.phase && (
                                     <span
                                         className={styles.phaseBadge}
@@ -68,16 +82,22 @@ const ToolboxGroup = ({ title, ops, badge }: { title: string, ops: Operation[], 
     );
 };
 
-export const Toolbox = ({ operations, children }: { operations: Operation[], children?: React.ReactNode }) => {
+interface ToolboxProps {
+    operations: Operation[];
+    children?: React.ReactNode;
+    isCollapsed?: boolean;
+    onToggleCollapse?: () => void;
+}
+
+export const Toolbox = ({ operations, children, isCollapsed = false, onToggleCollapse }: ToolboxProps) => {
     const [activeTab, setActiveTab] = useState<'toolbox' | 'scenarios'>('scenarios');
     const [groupBy, setGroupBy] = useState<GroupBy>('client');
+    const [filterText, setFilterText] = useState('');
 
     const groupedByClient = useMemo(() => {
         const grouped = operations.reduce((acc, op) => {
             const groupName = op.category || 'General';
-            if (!acc[groupName]) {
-                acc[groupName] = [];
-            }
+            if (!acc[groupName]) acc[groupName] = [];
             acc[groupName].push(op);
             return acc;
         }, {} as Record<string, Operation[]>);
@@ -92,14 +112,11 @@ export const Toolbox = ({ operations, children }: { operations: Operation[], chi
     const groupedByPhase = useMemo(() => {
         const grouped = operations.reduce((acc, op) => {
             const phase = op.phase || '_none';
-            if (!acc[phase]) {
-                acc[phase] = [];
-            }
+            if (!acc[phase]) acc[phase] = [];
             acc[phase].push(op);
             return acc;
         }, {} as Record<string, Operation[]>);
 
-        // Sort keys: known phases in flight order, then unknown, then _none last
         const sortedKeys = Object.keys(grouped).sort((a, b) => {
             const ai = PHASE_ORDER.indexOf(a);
             const bi = PHASE_ORDER.indexOf(b);
@@ -117,8 +134,59 @@ export const Toolbox = ({ operations, children }: { operations: Operation[], chi
         return { grouped, sortedKeys };
     }, [operations]);
 
+    const filter = filterText.toLowerCase().trim();
+
+    const filteredByClient = useMemo(() => {
+        if (!filter) return groupedByClient;
+        const grouped: Record<string, Operation[]> = {};
+        for (const key of groupedByClient.sortedKeys) {
+            const ops = groupedByClient.grouped[key].filter(op => op.name.toLowerCase().includes(filter));
+            if (ops.length > 0) grouped[key] = ops;
+        }
+        return { grouped, sortedKeys: Object.keys(grouped).sort((a, b) => a.localeCompare(b)) };
+    }, [groupedByClient, filter]);
+
+    const filteredByPhase = useMemo(() => {
+        if (!filter) return groupedByPhase;
+        const grouped: Record<string, Operation[]> = {};
+        for (const key of groupedByPhase.sortedKeys) {
+            const ops = groupedByPhase.grouped[key].filter(op => op.name.toLowerCase().includes(filter));
+            if (ops.length > 0) grouped[key] = ops;
+        }
+        return { grouped, sortedKeys: Object.keys(grouped) };
+    }, [groupedByPhase, filter]);
+
+    const sidebarClass = `${layoutStyles.sidebar}${isCollapsed ? ` ${layoutStyles.sidebarCollapsed}` : ''}`;
+
+    if (isCollapsed) {
+        return (
+            <aside className={sidebarClass}>
+                <button
+                    type="button"
+                    onClick={onToggleCollapse}
+                    title="Expand sidebar"
+                    style={{
+                        width: '32px',
+                        height: '48px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--text-secondary)',
+                    }}
+                >
+                    <ChevronRight size={16} />
+                </button>
+            </aside>
+        );
+    }
+
+    const activeGroups = groupBy === 'client' ? filteredByClient : filteredByPhase;
+
     return (
-        <aside className={layoutStyles.sidebar}>
+        <aside className={sidebarClass}>
             <div className={styles.tabContainer}>
                 <button
                     className={`${styles.tabButton} ${activeTab === 'scenarios' ? styles.activeTab : ''}`}
@@ -131,6 +199,22 @@ export const Toolbox = ({ operations, children }: { operations: Operation[], chi
                     onClick={() => setActiveTab('toolbox')}
                 >
                     Toolbox
+                </button>
+                <button
+                    type="button"
+                    onClick={onToggleCollapse}
+                    title="Collapse sidebar"
+                    style={{
+                        padding: '0 10px',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                    }}
+                >
+                    <ChevronLeft size={16} />
                 </button>
             </div>
 
@@ -148,16 +232,29 @@ export const Toolbox = ({ operations, children }: { operations: Operation[], chi
                                 onClick={() => setGroupBy('phase')}
                             >Phase</button>
                         </div>
+                        <input
+                            className={styles.searchInput}
+                            type="text"
+                            placeholder="Search operations…"
+                            value={filterText}
+                            onChange={e => setFilterText(e.target.value)}
+                        />
                         {groupBy === 'client'
-                            ? groupedByClient.sortedKeys.map(category => (
-                                <ToolboxGroup key={category} title={category} ops={groupedByClient.grouped[category]} />
+                            ? activeGroups.sortedKeys.map(category => (
+                                <ToolboxGroup
+                                    key={category}
+                                    title={category}
+                                    ops={(activeGroups as typeof filteredByClient).grouped[category]}
+                                    forceExpanded={filter.length > 0 ? true : undefined}
+                                />
                             ))
-                            : groupedByPhase.sortedKeys.map(phase => (
+                            : activeGroups.sortedKeys.map(phase => (
                                 <ToolboxGroup
                                     key={phase}
                                     title={phase === '_none' ? 'No Phase' : (PHASE_LABELS[phase] || phase)}
-                                    ops={groupedByPhase.grouped[phase]}
+                                    ops={(activeGroups as typeof filteredByPhase).grouped[phase]}
                                     badge={phase !== '_none' ? { code: phase } : undefined}
+                                    forceExpanded={filter.length > 0 ? true : undefined}
                                 />
                             ))
                         }

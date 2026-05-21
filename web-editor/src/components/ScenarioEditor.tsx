@@ -116,6 +116,7 @@ const ScenarioEditorContent = () => {
     const [currentScenarioConfig, setCurrentScenarioConfig] = useState<ScenarioConfig>(initialState.config);
     const [currentScenarioGroups, setCurrentScenarioGroups] = useState<Record<string, GroupDefinition>>(initialState.groups || {});
     const [scenarioListRefreshKey, setScenarioListRefreshKey] = useState(0);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [isDirty, setIsDirty] = useState(initialState.isDirty);
     const [reportError, setReportError] = useState<{ title: string; message: string } | null>(null);
     const [groupedByPhase, setGroupedByPhase] = useState(false);
@@ -1191,7 +1192,11 @@ const ScenarioEditorContent = () => {
             />
 
             <div className={layoutStyles.workspace}>
-                <MemoizedToolbox operations={operations}>
+                <MemoizedToolbox
+                    operations={operations}
+                    isCollapsed={sidebarCollapsed}
+                    onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+                >
                     <ScenarioList
                         onLoadScenario={loadScenarioFromYaml}
                         operations={operations}

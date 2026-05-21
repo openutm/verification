@@ -163,3 +163,64 @@
   background-color: var(--accent-primary);
   color: #fff;
 }
+
+.listItem {
+  background-color: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  padding: 6px 10px;
+  border-radius: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  transition: background-color 0.15s ease;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-primary);
+  width: 100%;
+  text-align: left;
+}
+
+.listItem span {
+  white-space: normal;
+  word-break: break-word;
+  flex: 1;
+  min-width: 0;
+}
+
+.listItem svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.listItem:hover {
+  background-color: var(--bg-secondary);
+}
+
+.listItemActive {
+  border-left-color: var(--accent-primary);
+  background-color: var(--bg-secondary);
+  color: var(--accent-primary);
+}
+
+.searchInput {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 12px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+
+.searchInput::placeholder {
+  color: var(--text-tertiary);
+}
+
+.searchInput:focus {
+  border-color: var(--accent-primary);
+}

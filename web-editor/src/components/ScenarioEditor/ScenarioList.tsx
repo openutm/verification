@@ -19,7 +19,8 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
     const [scenarios, setScenarios] = useState<string[]>([]);
     const [suites, setSuites] = useState<SuiteMap>({});
     const [loading, setLoading] = useState(false);
-    const [collapsedSuites, setCollapsedSuites] = useState<Set<string>>(new Set());
+    const [activeSuite, setActiveSuite] = useState<string | null>(null);
+    const [filterText, setFilterText] = useState('');
 
     useEffect(() => {
         const fetchScenarios = async (): Promise<string[]> => {
@@ -49,7 +50,16 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
         ]).then(([scenarioList, suiteMap]) => {
             setScenarios(scenarioList.sort());
             setSuites(suiteMap);
+
+            // Open the suite containing the currently loaded scenario, if any
+            if (currentScenarioName) {
+                const matchingSuite = Object.entries(suiteMap).find(([, items]) =>
+                    items.includes(currentScenarioName)
+                );
+                if (matchingSuite) setActiveSuite(matchingSuite[0]);
+            }
         }).catch(err => console.error('Failed to load scenarios:', err));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refreshKey]);
 
     const hasSuites = Object.keys(suites).length > 0;
@@ -95,27 +105,15 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
         return groups;
     }, [scenarios, suites]);
 
-    const toggleSuite = (suite: string) => {
-        setCollapsedSuites(prev => {
-            const next = new Set(prev);
-            if (next.has(suite)) next.delete(suite);
-            else next.add(suite);
-            return next;
-        });
-    };
-
     const handleLoad = async (filename: string) => {
         if (loading) return;
         setLoading(true);
         try {
             const res = await fetch(`/api/scenarios/${filename}`);
             const scenario: ScenarioDefinition = await res.json();
-
             const { nodes, edges, config } = convertYamlToGraph(scenario, operations);
-
             onLoadScenario(nodes, edges, config, scenario.groups, scenario.description);
             onSelectScenario(filename);
-
         } catch (err) {
             console.error('Failed to load scenario:', err);
             alert('Failed to load scenario');
@@ -124,106 +122,154 @@ export const ScenarioList = ({ onLoadScenario, operations, currentScenarioName, 
         }
     };
 
-    const renderScenarioItem = (name: string) => {
+    const renderScenarioItem = (name: string, suiteLabel?: string) => {
         const displayName = name.split('/').pop() ?? name;
+        const isActive = name === currentScenarioName;
         return (
             <button
                 key={name}
                 type="button"
-                className={styles.nodeItem}
+                className={`${styles.listItem} ${isActive ? styles.listItemActive : ''}`}
                 onClick={() => handleLoad(name)}
                 title={name}
                 disabled={loading}
-                style={{
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    opacity: loading ? 0.5 : 1,
-                    borderColor: name === currentScenarioName ? 'var(--accent-primary)' : 'var(--border-color)',
-                    backgroundColor: name === currentScenarioName ? 'var(--bg-secondary)' : 'var(--bg-primary)'
-                }}
+                style={{ opacity: loading ? 0.5 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
             >
-                <FileText size={16} color={name === currentScenarioName ? "var(--accent-primary)" : "#8b949e"} />
-                <span>{displayName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                <FileText size={14} style={{ marginTop: 2 }} color={isActive ? 'var(--accent-primary)' : '#8b949e'} />
+                <div style={{ minWidth: 0 }}>
+                    <div>{displayName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                    {suiteLabel && (
+                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                            {suiteLabel}
+                        </div>
+                    )}
+                </div>
             </button>
         );
     };
 
+    const filter = filterText.toLowerCase().trim();
+
+    // When filter is active, show flat list across all groups with suite label
+    const filteredItems = useMemo(() => {
+        if (!filter) return null;
+        const results: { name: string; suiteLabel: string }[] = [];
+        if (hasSuites) {
+            for (const { label, items } of groupedScenarios) {
+                for (const name of items) {
+                    const displayName = (name.split('/').pop() ?? name).replace(/_/g, ' ');
+                    if (displayName.toLowerCase().includes(filter) || name.toLowerCase().includes(filter)) {
+                        results.push({ name, suiteLabel: label });
+                    }
+                }
+            }
+        } else {
+            for (const scenario of scenarios) {
+                const displayName = (scenario.split('/').pop() ?? scenario).replace(/_/g, ' ');
+                if (displayName.toLowerCase().includes(filter) || scenario.toLowerCase().includes(filter)) {
+                    results.push({ name: scenario, suiteLabel: '' });
+                }
+            }
+        }
+        return results;
+    }, [filter, hasSuites, groupedScenarios, scenarios]);
+
     return (
         <div>
-            <div className={styles.groupContent}>
-                <div style={{ padding: '8px', color: '#666', fontSize: '12px', marginBottom: '8px' }}>
-                    <MessageCircleQuestionMark size={16} style={{ marginRight: '8px', color: '#666' }} />
-                    {hasSuites ? 'Pre-built scenarios grouped by test suite' : 'Pre-built scenarios'}
-                </div>
+            <div style={{ padding: '8px 8px 0' }}>
+                <input
+                    className={styles.searchInput}
+                    type="text"
+                    placeholder="Search scenarios…"
+                    value={filterText}
+                    onChange={e => setFilterText(e.target.value)}
+                />
+            </div>
 
-                {hasSuites ? (
+            <div className={styles.groupContent} style={{ padding: '8px' }}>
+                {!filter && (
+                    <div style={{ color: '#666', fontSize: '12px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <MessageCircleQuestionMark size={14} color="#666" />
+                        {hasSuites ? 'Grouped by test suite' : 'Pre-built scenarios'}
+                    </div>
+                )}
+
+                {filteredItems ? (
+                    // Flat filtered list
+                    filteredItems.length > 0
+                        ? filteredItems.map(({ name, suiteLabel }) => renderScenarioItem(name, suiteLabel || undefined))
+                        : <div style={{ padding: '8px', color: '#666', fontSize: '12px' }}>No matches</div>
+                ) : hasSuites ? (
+                    // Accordion grouped by suite
                     groupedScenarios.map(({ suite, label, items }) => {
-                        const isCollapsed = collapsedSuites.has(suite);
+                        const isOpen = activeSuite === suite;
                         return (
-                            <div key={suite} style={{ marginBottom: '4px' }}>
+                            <div key={suite} style={{ marginBottom: '2px' }}>
                                 <button
                                     type="button"
                                     className={styles.groupHeader}
-                                    onClick={() => toggleSuite(suite)}
-                                    aria-expanded={!isCollapsed}
-                                    style={{ padding: '6px 4px', marginTop: 4, marginBottom: 4, background: 'none', border: 'none', width: '100%' }}
+                                    onClick={() => setActiveSuite(isOpen ? null : suite)}
+                                    aria-expanded={isOpen}
+                                    style={{ padding: '6px 4px', marginTop: 2, marginBottom: 2, background: 'none', border: 'none', width: '100%' }}
                                 >
-                                    {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                                    {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                     <FolderOpen size={14} />
                                     {label}
                                     <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 400, opacity: 0.7 }}>
                                         {items.length}
                                     </span>
                                 </button>
-                                {!isCollapsed && (
-                                    <div style={{ paddingLeft: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        {items.map(renderScenarioItem)}
+                                {isOpen && (
+                                    <div style={{ paddingLeft: '8px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                        {items.map(name => renderScenarioItem(name))}
                                     </div>
                                 )}
                             </div>
                         );
                     })
                 ) : folderGroups.some(([folder]) => folder !== '') ? (
+                    // Accordion grouped by folder
                     folderGroups.map(([folder, items]) => {
-                        const isCollapsed = collapsedSuites.has(`__folder__${folder}`);
+                        const key = `__folder__${folder}`;
+                        const isOpen = activeSuite === key;
                         const label = folder === ''
                             ? 'Root'
                             : folder.replace(/\//g, ' / ').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                         return folder === '' ? (
-                            <div key="root" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {items.map(renderScenarioItem)}
+                            <div key="root" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                {items.map(name => renderScenarioItem(name))}
                             </div>
                         ) : (
-                            <div key={folder} style={{ marginBottom: '4px' }}>
+                            <div key={folder} style={{ marginBottom: '2px' }}>
                                 <button
                                     type="button"
                                     className={styles.groupHeader}
-                                    onClick={() => toggleSuite(`__folder__${folder}`)}
-                                    aria-expanded={!isCollapsed}
-                                    style={{ padding: '6px 4px', marginTop: 4, marginBottom: 4, background: 'none', border: 'none', width: '100%' }}
+                                    onClick={() => setActiveSuite(isOpen ? null : key)}
+                                    aria-expanded={isOpen}
+                                    style={{ padding: '6px 4px', marginTop: 2, marginBottom: 2, background: 'none', border: 'none', width: '100%' }}
                                 >
-                                    {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                                    {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                     <FolderOpen size={14} />
                                     {label}
                                     <span style={{ marginLeft: 'auto', fontSize: '11px', fontWeight: 400, opacity: 0.7 }}>
                                         {items.length}
                                     </span>
                                 </button>
-                                {!isCollapsed && (
-                                    <div style={{ paddingLeft: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        {items.map(renderScenarioItem)}
+                                {isOpen && (
+                                    <div style={{ paddingLeft: '8px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                        {items.map(name => renderScenarioItem(name))}
                                     </div>
                                 )}
                             </div>
                         );
                     })
                 ) : (
-                    scenarios.map(renderScenarioItem)
+                    // Flat list (no grouping)
+                    scenarios.map(name => renderScenarioItem(name))
                 )}
 
-                {scenarios.length === 0 && (
-                    <div style={{ padding: '8px', color: '#666', fontSize: '12px' }}>
-                        No scenarios found
-                    </div>
+                {scenarios.length === 0 && !filter && (
+                    <div style={{ padding: '8px', color: '#666', fontSize: '12px' }}>No scenarios found</div>
                 )}
             </div>
         </div>
