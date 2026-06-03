@@ -1,0 +1,109 @@
+# config/default.yaml
+version: "1.0" # Configuration schema version
+
+run_id: "daily-conformance-check" # An optional identifier for the run
+
+# Details of the Flight Blender deployment under test
+flight_blender:
+  url: "http://localhost:8000"
+  # Auth can be 'none' or 'passport'
+  auth:
+    type: "none" # For using the dummy-oauth provider
+    # type: "passport" # For using a real Passport instance
+    # client_id: "your-client-id"
+    # client_secret: "your-client-secret"
+    # token_endpoint: "/oauth/token/"
+    # passport_base_url: "https://passport.testflight.openutm.net"
+    audience: "testflight.flightblender.com" # Audience for OAuth tokens, default for local testing
+    scopes: [ "flightblender.write", "flightblender.read" ] # Scopes for write and read access
+
+# Details for connecting to the OpenSky Network API
+opensky:
+  auth:
+    type: "none" # 'none' for no auth, 'oauth2' for OAuth2 client credentials
+    client_id: "your-client-id"
+    client_secret: "your-client-secret"
+
+# Default air traffic simulator settings (can be overridden per step in scenario YAML)
+air_traffic_simulator_settings:
+  number_of_aircraft: 3
+  simulation_duration: 10
+  single_or_multiple_sensors: "single" # this setting specifies if the traffic data is submitted from a single sensor or multiple sensors
+  sensor_ids: [ "a0b7d47e5eac45dc8cbaf47e6fe0e558" ] # List of sensor IDs to use when 'multiple' is selected
+  session_ids: [ "ee9405e564ea4373823e37d950858e6a" ] # List of session IDs to use when 'multiple' is selected
+
+# AMQP/RabbitMQ configuration for event monitoring
+# Set AMQP_URL environment variable or configure here
+amqp:
+  url: "" # e.g., amqp://guest:guest@localhost:5672/ (can also use AMQP_URL env var)
+  exchange_name: "operational_events"
+  exchange_type: "topic"
+  routing_key: "#" # Flight declaration ID or '#' for all messages
+  queue_name: "" # Empty means auto-generate exclusive queue
+
+data_files:
+  trajectory: "config/bern/trajectory_f1.json" # Path to flight declarations JSON file
+  simulation: "config/bern/blue_sky_sim_example.scn" # Path to air traffic simulation scenario file, used for BlueSky enabled simulations only.
+  flight_declaration: "config/bern/flight_declaration.json" # Path to flight declarations JSON file
+  flight_declaration_via_operational_intent: "config/bern/flight_declaration_via_operational_intent.json" # Path to flight declaration via operational intent JSON file
+  geo_fence: "config/bern/geo_fence.geojson" # Path to geo-fences
+
+# List of test scenario IDs to execute
+suites:
+  basic_conformance:
+    scenarios:
+      # - name: F1_flow_no_telemetry_with_user_input
+      - name: F1_happy_path
+        trajectory: "config/bern/trajectory_f1.json"
+      - name: F2_contingent_path
+        trajectory: "config/bern/trajectory_f2.json"
+  astm_f3623:
+    scenarios:
+      - name: sdsp_track
+      - name: sdsp_heartbeat
+      - name: bluesky_sim_air_traffic_data_latency_issues
+      - name: bayesian_sim_air_traffic_data_varying_refresh_rates
+      # - name: verify_sdsp_metrics
+      # - name: sdsp_verify_sensor_failure_report
+  air_traffic_simulations:
+    scenarios:
+      - name: openutm_sim_air_traffic_data
+      - name: opensky_live_data
+      - name: bayesian_sim_air_traffic_data
+      # - name: bluesky_sim_air_traffic_data
+      #   simulation: "config/bern/blue_sky_sim_example.scn"
+  extra:
+    scenarios:
+      - name: F3_non_conforming_path
+        trajectory: "config/bern/trajectory_f3.json"
+      - name: add_flight_declaration
+      - name: geo_fence_upload
+  # astm_f3442:
+  #   scenarios:
+  #     - name: daa_a1_head_on_cooperative
+  #     - name: daa_a2_crossing_cooperative
+  #     - name: daa_a3_overtake_cooperative
+  #     - name: daa_b1_multi_intruder_cooperative
+  #     - name: daa_b2_staggered_arrival_cooperative
+  #     - name: daa_b3_intruder_swarm_cooperative
+  #     - name: daa_c1_two_ownships_shared_intruder_cooperative
+  #     - name: daa_c2_three_ownships_multi_intruder_cooperative
+
+# Reporting configuration
+reporting:
+  output_dir: "reports"
+  formats: [ "json", "html", "log" ] # 'json' is raw, 'html' is summarized
+  # A place to add metadata about the system under test
+  deployment_details:
+    name: "Local Flight Blender Dev Instance"
+    version: "v0.12.0"
+    notes: "Running against local Docker Compose setup."
+  # Allure reporting (opt-in). When enabled, results are written under
+  # <output_dir>/<run_timestamp>/allure-results and HTML can be generated via
+  # POST /api/allure/generate. Set capture_http=true to also attach the raw
+  # HTTP request/response exchanges to each step (sensitive headers and
+  # request body fields are redacted; bodies are truncated).
+  allure:
+    enabled: true
+    capture_http: true
+    results_dir: "allure-results"
