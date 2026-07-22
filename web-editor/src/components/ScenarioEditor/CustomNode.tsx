@@ -117,7 +117,7 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
             <Handle type="target" position={Position.Top} style={{ background: 'var(--rf-handle)' }} />
             <div className={styles.customNodeHeader}>
                 <Box size={16} className={styles.icon} />
-                <span>{data.label}</span>
+                <span className={styles.customNodeLabel}>{data.label}</span>
                 {phaseColors && (
                     <div
                         className={styles.phaseBadge}
