@@ -136,9 +136,6 @@
   border-radius: 4px;
   font-size: 10px;
   font-weight: 500;
-  color: var(--text-secondary);
-  background-color: rgba(107, 114, 128, 0.1);
-  border: 1px solid rgba(107, 114, 128, 0.2);
   white-space: nowrap;
   margin-top: -4px;
   margin-bottom: 0;

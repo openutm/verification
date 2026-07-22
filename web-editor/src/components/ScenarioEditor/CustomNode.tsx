@@ -5,6 +5,7 @@ import { Box, CheckCircle, XCircle, AlertTriangle, Loader2, MinusCircle, RotateC
 
 import styles from '../../styles/Node.module.css';
 import { getPhaseColor, PHASE_LABELS } from '../../utils/phaseColors';
+import { getClientColor } from '../../utils/clientColors';
 import type { NodeData } from '../../types/scenario';
 
 const ConditionIcon = ({ condition }: { condition: string }) => {
@@ -111,6 +112,7 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
     }
 
     const phaseColors = data.phase ? getPhaseColor(data.phase) : null;
+    const clientColors = data.category ? getClientColor(data.category) : null;
 
     return (
         <div className={`${styles.customNode} ${statusClass} ${selectedClass}`}>
@@ -156,8 +158,16 @@ export const CustomNode = ({ data, selected }: NodeProps<Node<NodeData>>) => {
                     </div>
                 )}
             </div>
-            {data.category && (
-                <div className={styles.clientBadge} title={`Client: ${data.category}`}>
+            {data.category && clientColors && (
+                <div
+                    className={styles.clientBadge}
+                    title={`Client: ${data.category}`}
+                    style={{
+                        backgroundColor: clientColors.bg,
+                        color: clientColors.text,
+                        border: `1px solid ${clientColors.border}`,
+                    }}
+                >
                     <Monitor size={11} />
                     <span>{data.category}</span>
                 </div>
