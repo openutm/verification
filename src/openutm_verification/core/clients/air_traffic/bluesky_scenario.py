@@ -180,7 +180,9 @@ class BlueSkyScenarioDefinition(BaseModel):
 
         # Polygon areas
         for area in self.areas:
-            coord_str = " ".join(f"{lat},{lon}" for lat, lon in area.bounds)
+            coord_str = " ".join(
+                f"{_fmt_coord(lat)},{_fmt_coord(lon)}" for lat, lon in area.bounds
+            )
             lines.append(f"00:00:00.00>POLY {area.name} {coord_str}")
             r, g, b = area.color
             lines.append(f"00:00:00.00>COLOR {area.name} {r},{g},{b}")
