@@ -62,3 +62,48 @@ def generate_telemetry(
     except Exception as e:
         logger.error(f"Failed to generate telemetry states from {config_path}: {e}")
         raise
+
+
+def generate_telemetry_from_multiple_line_feature_geojson(
+    config_path: str,
+    number_of_flights: int = 1,
+    duration: int = DEFAULT_TELEMETRY_DURATION,
+    reference_time: str | None = None,
+    altitude_m: float | None = None,
+) -> list[RIDAircraftState]:
+    """Generate telemetry states from the GeoJSON feature collection with multiple line features, each representing a flight path."""
+    all_states = []
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            geojson_data = json.load(f)
+    except Exception as e:
+        logger.error(f"Failed to generate telemetry states from {config_path}: {e}")
+        raise
+    features = geojson_data.get("features", [])
+    feature_count = len(features)
+    if number_of_flights < feature_count:
+        # Error if the number of flights requested is less than the number of features in the GeoJSON
+        logger.error(f"Number of flights requested ({number_of_flights}) is less than the number of features in the GeoJSON: ({feature_count}).")
+        raise ValueError(f"Number of flights requested ({number_of_flights}) is less than the number of features in the GeoJSON({feature_count}).")
+
+    for i in range(number_of_flights):
+        feature = features[i % feature_count]
+        flight_geojson = {"type": "FeatureCollection", "features": [feature]}
+        try:
+            logger.debug(f"Generating telemetry states from {relative_path(config_path)} for duration {duration} seconds")
+
+            config_args = {"geojson": flight_geojson}
+            if reference_time:
+                config_args["reference_time"] = StringBasedDateTime(reference_time)
+            if altitude_m is not None:
+                config_args["altitude_of_ground_level_wgs_84"] = altitude_m
+
+            simulator_config = GeoJSONFlightsSimulatorConfiguration(**config_args)
+            simulator = GeoJSONFlightsSimulator(simulator_config)
+
+            simulator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=simulator_config.altitude_of_ground_level_wgs_84)
+            all_states.extend(simulator.generate_states(duration=duration))
+        except Exception as e:
+            logger.error(f"Failed to generate telemetry states from {config_path}: {e}")
+            raise
+    return all_states
