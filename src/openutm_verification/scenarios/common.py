@@ -9,6 +9,7 @@ from openutm_verification.simulator.flight_declaration import FlightDeclarationG
 from openutm_verification.simulator.geo_json_telemetry import GeoJSONFlightsSimulator
 from openutm_verification.simulator.models.declaration_models import FlightDeclaration, FlightDeclarationViaOperationalIntent
 from openutm_verification.simulator.models.flight_data_types import (
+    FullFlightRecord,
     GeoJSONFlightsSimulatorConfiguration,
 )
 from openutm_verification.utils.paths import relative_path
@@ -64,15 +65,15 @@ def generate_telemetry(
         raise
 
 
-def generate_telemetry_from_multiple_line_feature_geojson(
+def generate_flight_record_from_multiple_line_feature_geojson(
     config_path: str,
     number_of_flights: int = 1,
     duration: int = DEFAULT_TELEMETRY_DURATION,
     reference_time: str | None = None,
     altitude_m: float | None = None,
-) -> list[RIDAircraftState]:
+) -> list[FullFlightRecord]:
     """Generate telemetry states from the GeoJSON feature collection with multiple line features, each representing a flight path."""
-    all_states = []
+    all_flight_records = []
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             geojson_data = json.load(f)
@@ -81,10 +82,10 @@ def generate_telemetry_from_multiple_line_feature_geojson(
         raise
     features = geojson_data.get("features", [])
     feature_count = len(features)
-    if number_of_flights < feature_count:
+    if number_of_flights > feature_count:
         # Error if the number of flights requested is less than the number of features in the GeoJSON
-        logger.error(f"Number of flights requested ({number_of_flights}) is less than the number of features in the GeoJSON: ({feature_count}).")
-        raise ValueError(f"Number of flights requested ({number_of_flights}) is less than the number of features in the GeoJSON({feature_count}).")
+        logger.error(f"Number of flights requested ({number_of_flights}) is more than the number of features in the GeoJSON: ({feature_count}).")
+        raise ValueError(f"Number of flights requested ({number_of_flights}) is more than the number of features in the GeoJSON({feature_count}).")
 
     for i in range(number_of_flights):
         feature = features[i % feature_count]
@@ -102,8 +103,8 @@ def generate_telemetry_from_multiple_line_feature_geojson(
             simulator = GeoJSONFlightsSimulator(simulator_config)
 
             simulator.generate_flight_grid_and_path_points(altitude_of_ground_level_wgs_84=simulator_config.altitude_of_ground_level_wgs_84)
-            all_states.extend(simulator.generate_states(duration=duration))
+            all_flight_records.extend(simulator.flights)
         except Exception as e:
             logger.error(f"Failed to generate telemetry states from {config_path}: {e}")
             raise
-    return all_states
+    return all_flight_records
