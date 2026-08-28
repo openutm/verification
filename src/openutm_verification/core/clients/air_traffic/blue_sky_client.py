@@ -18,6 +18,7 @@ from openutm_verification.core.clients.air_traffic.base_client import (
     BaseBlueSkyAirTrafficClient,
     BlueSkyAirTrafficSettings,
 )
+from openutm_verification.core.clients.air_traffic.bluesky_scenario import resolve_scn_path
 from openutm_verification.core.clients.flight_blender.base_client import (
     BaseBlenderAPIClient,
 )
@@ -55,9 +56,13 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
             time-series sampled at 1 Hz.
         """
 
-        scn_path = config_path or self.settings.simulation_config_path
-        if scn_path:
-            scn_path = str(Path(scn_path).expanduser().resolve())
+        raw_path = config_path or self.settings.simulation_config_path
+        if not raw_path:
+            raise ValueError("No scenario path provided. Provide config_path or set settings.simulation_config_path.")
+
+        # Auto-convert YAML/JSON scenario definitions to a .scn file
+        resolved_path, is_temp_scn = resolve_scn_path(str(Path(raw_path).expanduser().resolve()))
+        scn_path = resolved_path
         duration_s = int(duration or self.settings.simulation_duration or 30)
 
         sensor_ids = self.settings.sensor_ids
@@ -70,89 +75,90 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
             logger.error(f"Invalid sensor ID in configuration, it should be a valid UUID: {exc}")
             raise
 
-        if not scn_path:
-            raise ValueError("No scenario path provided. Provide config_path or set settings.simulation_config_path.")
-
         # ---- Init BlueSky headless ----
         # detached=True prevents UI/event loop from blocking.
         # Use a temporary directory for BlueSky working files to avoid polluting ~/bluesky
         # BlueSky's pathfinder.init() auto-creates required subdirs (scenario, plugins, output, cache)
-        with tempfile.TemporaryDirectory(prefix="openutm-bluesky-") as tmp_dir:
-            cfg_path = os.path.join(tmp_dir, "settings.cfg")
-            bs.init(mode="sim", detached=True, workdir=tmp_dir, configfile=cfg_path)
+        try:
+            with tempfile.TemporaryDirectory(prefix="openutm-bluesky-") as tmp_dir:
+                cfg_path = os.path.join(tmp_dir, "settings.cfg")
+                bs.init(mode="sim", detached=True, workdir=tmp_dir, configfile=cfg_path)
 
-            # Route console output to stdout (useful for debugging stack commands)
-            bs.scr = ScreenDummy()
-            now = arrow.now()
-            logger.info(f"Initializing BlueSky (headless) and loading scenario: {relative_path(scn_path)} with duration {duration_s}s")
+                # Route console output to stdout (useful for debugging stack commands)
+                bs.scr = ScreenDummy()
+                now = arrow.now()
+                logger.info(f"Initializing BlueSky (headless) and loading scenario: {relative_path(scn_path)} with duration {duration_s}s")
 
-            # ---- Load scenario ----
-            # BlueSky scenario files (like scenario/DEMO/bluesky_flight.scn) are typically loaded with IC.
-            # NOTE: Use absolute paths if relative paths cause issues inside Docker.
-            bs.stack.stack(f"IC {scn_path}")
+                # ---- Load scenario ----
+                # BlueSky scenario files (like scenario/DEMO/bluesky_flight.scn) are typically loaded with IC.
+                # NOTE: Use absolute paths if relative paths cause issues inside Docker.
+                bs.stack.stack(f"IC {scn_path}")
 
-            # Ensure 1 Hz stepping; FF starts fast-time running mode, but we will still step manually.
-            # Some setups work fine with DT 1 and calling bs.sim.step().
-            bs.stack.stack("DT 1.0")
+                # Ensure 1 Hz stepping; FF starts fast-time running mode, but we will still step manually.
+                # Some setups work fine with DT 1 and calling bs.sim.step().
+                bs.stack.stack("DT 1.0")
 
-            # ---- Sample data at 1 Hz for duration_s seconds ----
-            # Store per-aircraft series
-            results_by_acid: dict[str, list[FlightObservationSchema]] = {}
+                # ---- Sample data at 1 Hz for duration_s seconds ----
+                # Store per-aircraft series
+                results_by_acid: dict[str, list[FlightObservationSchema]] = {}
 
-            for t in range(1, duration_s + 1):
-                # Advance sim by one step (DT=1 sec)
-                bs.sim.step()
-                timestamp = now.shift(seconds=t)
-                timestamp_microseconds = int(timestamp.float_timestamp * 1_000_000)  # microseconds
+                for t in range(1, duration_s + 1):
+                    # Advance sim by one step (DT=1 sec)
+                    bs.sim.step()
+                    timestamp = now.shift(seconds=t)
+                    timestamp_microseconds = int(timestamp.float_timestamp * 1_000_000)  # microseconds
 
-                # Snapshot traffic arrays
-                acids: list[str] = list(getattr(bs.traf, "id", []))
-                lats: list[float] = _tolist(getattr(bs.traf, "lat", []))
-                lons: list[float] = _tolist(getattr(bs.traf, "lon", []))
-                alts: list[float] = _tolist(getattr(bs.traf, "alt", []))
-                ground_speeds: list[float] = _tolist(getattr(bs.traf, "gs", []))
-                headings: list[float] = _tolist(getattr(bs.traf, "hdg", []))
-                vertical_speeds: list[float] = _tolist(getattr(bs.traf, "vs", []))
+                    # Snapshot traffic arrays
+                    acids: list[str] = list(getattr(bs.traf, "id", []))
+                    lats: list[float] = _tolist(getattr(bs.traf, "lat", []))
+                    lons: list[float] = _tolist(getattr(bs.traf, "lon", []))
+                    alts: list[float] = _tolist(getattr(bs.traf, "alt", []))
+                    ground_speeds: list[float] = _tolist(getattr(bs.traf, "gs", []))
+                    headings: list[float] = _tolist(getattr(bs.traf, "hdg", []))
+                    vertical_speeds: list[float] = _tolist(getattr(bs.traf, "vs", []))
 
-                for i, acid in enumerate(acids):
-                    lat = float(lats[i])
-                    lon = float(lons[i])
-                    alt_m_or_ft = float(alts[i])
+                    for i, acid in enumerate(acids):
+                        lat = float(lats[i])
+                        lon = float(lons[i])
+                        alt_m_or_ft = float(alts[i])
 
-                    # BlueSky typically uses meters internally for alt, but some scenarios use FL/ft inputs.
-                    # We store altitude_mm as "millimeters"; keep it consistent with your schema.
-                    # If alt is actually feet, you can convert here: alt_m = alt_ft * 0.3048
-                    altitude_mm = alt_m_or_ft * 1000.0
+                        # BlueSky typically uses meters internally for alt, but some scenarios use FL/ft inputs.
+                        # We store altitude_mm as "millimeters"; keep it consistent with your schema.
+                        # If alt is actually feet, you can convert here: alt_m = alt_ft * 0.3048
+                        altitude_mm = alt_m_or_ft * 1000.0
 
-                    # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
-                    selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
-                    metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
-                    # Include kinematics so the DAA system can coast intruder tracks
-                    metadata["current_state"] = {
-                        "speed": float(ground_speeds[i]) if i < len(ground_speeds) else 0.0,
-                        "track": float(headings[i]) if i < len(headings) else 0.0,
-                        "vertical_speed": float(vertical_speeds[i]) if i < len(vertical_speeds) else 0.0,
-                    }
+                        # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
+                        selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
+                        metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
+                        # Include kinematics so the DAA system can coast intruder tracks
+                        metadata["current_state"] = {
+                            "speed": float(ground_speeds[i]) if i < len(ground_speeds) else 0.0,
+                            "track": float(headings[i]) if i < len(headings) else 0.0,
+                            "vertical_speed": float(vertical_speeds[i]) if i < len(vertical_speeds) else 0.0,
+                        }
 
-                    obs = FlightObservationSchema(
-                        lat_dd=lat,
-                        lon_dd=lon,
-                        altitude_mm=altitude_mm,
-                        traffic_source=0,
-                        source_type=0,
-                        icao_address=acid,
-                        timestamp=timestamp_microseconds,
-                        metadata=metadata,
-                    )
-                    results_by_acid.setdefault(acid, []).append(obs)
+                        obs = FlightObservationSchema(
+                            lat_dd=lat,
+                            lon_dd=lon,
+                            altitude_mm=altitude_mm,
+                            traffic_source=0,
+                            source_type=0,
+                            icao_address=acid,
+                            timestamp=timestamp_microseconds,
+                            metadata=metadata,
+                        )
+                        results_by_acid.setdefault(acid, []).append(obs)
 
-                    logger.debug(f"{acid:>6} lat={lat:.6f} lon={lon:.6f} alt_mm={altitude_mm:.1f}")
+                        logger.debug(f"{acid:>6} lat={lat:.6f} lon={lon:.6f} alt_mm={altitude_mm:.1f}")
 
-            # Flatten dict -> list[FlightObservationSchema] with stable ordering
-            all_obs: list[FlightObservationSchema] = []
-            for acid in sorted(results_by_acid.keys()):
-                all_obs.extend(results_by_acid[acid])
-            return all_obs
+                # Flatten dict -> list[FlightObservationSchema] with stable ordering
+                all_obs: list[FlightObservationSchema] = []
+                for acid in sorted(results_by_acid.keys()):
+                    all_obs.extend(results_by_acid[acid])
+                return all_obs
+        finally:
+            if is_temp_scn:
+                Path(scn_path).unlink(missing_ok=True)
 
     @internal_step("Generate BlueSky Simulation Air Traffic Data with latency issues", phase=FlightPhase.PRE_FLIGHT)
     async def generate_bluesky_sim_air_traffic_data_with_sensor_latency_issues(
@@ -162,9 +168,13 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
     ) -> list[FlightObservationSchema]:
         """This method generates"""
 
-        scn_path = config_path or self.settings.simulation_config_path
-        if scn_path:
-            scn_path = str(Path(scn_path).expanduser().resolve())
+        raw_path = config_path or self.settings.simulation_config_path
+        if not raw_path:
+            raise ValueError("No scenario path provided. Provide config_path or set settings.simulation_config_path.")
+
+        # Auto-convert YAML/JSON scenario definitions to a .scn file
+        resolved_path, is_temp_scn = resolve_scn_path(str(Path(raw_path).expanduser().resolve()))
+        scn_path = resolved_path
         duration_s = int(duration or self.settings.simulation_duration or 30)
 
         sensor_ids = self.settings.sensor_ids
@@ -177,88 +187,89 @@ class BlueSkyClient(BaseBlueSkyAirTrafficClient, BaseBlenderAPIClient):
             logger.error(f"Invalid sensor ID in configuration, it should be a valid UUID: {exc}")
             raise
 
-        if not scn_path:
-            raise ValueError("No scenario path provided. Provide config_path or set settings.simulation_config_path.")
-
         # ---- Init BlueSky headless ----
         # detached=True prevents UI/event loop from blocking.
         # Use a temporary directory for BlueSky working files to avoid polluting ~/bluesky
         # BlueSky's pathfinder.init() auto-creates required subdirs (scenario, plugins, output, cache)
         flight_observations: list[FlightObservationSchema] = []
-        with tempfile.TemporaryDirectory(prefix="openutm-bluesky-") as tmp_dir:
-            cfg_path = os.path.join(tmp_dir, "settings.cfg")
-            bs.init(mode="sim", detached=True, workdir=tmp_dir, configfile=cfg_path)
+        try:
+            with tempfile.TemporaryDirectory(prefix="openutm-bluesky-") as tmp_dir:
+                cfg_path = os.path.join(tmp_dir, "settings.cfg")
+                bs.init(mode="sim", detached=True, workdir=tmp_dir, configfile=cfg_path)
 
-            # Route console output to stdout (useful for debugging stack commands)
-            bs.scr = ScreenDummy()
-            now = arrow.now()
-            logger.info(f"Initializing BlueSky (headless) and loading scenario: {relative_path(scn_path)} with duration {duration_s}s")
+                # Route console output to stdout (useful for debugging stack commands)
+                bs.scr = ScreenDummy()
+                now = arrow.now()
+                logger.info(f"Initializing BlueSky (headless) and loading scenario: {relative_path(scn_path)} with duration {duration_s}s")
 
-            # ---- Load scenario ----
-            # BlueSky scenario files (like scenario/DEMO/bluesky_flight.scn) are typically loaded with IC.
-            # NOTE: Use absolute paths if relative paths cause issues inside Docker.
-            bs.stack.stack(f"IC {scn_path}")
+                # ---- Load scenario ----
+                # BlueSky scenario files (like scenario/DEMO/bluesky_flight.scn) are typically loaded with IC.
+                # NOTE: Use absolute paths if relative paths cause issues inside Docker.
+                bs.stack.stack(f"IC {scn_path}")
 
-            # Ensure 1 Hz stepping; FF starts fast-time running mode, but we will still step manually.
-            # Some setups work fine with DT 1 and calling bs.sim.step().
-            bs.stack.stack("DT 1.0")
+                # Ensure 1 Hz stepping; FF starts fast-time running mode, but we will still step manually.
+                # Some setups work fine with DT 1 and calling bs.sim.step().
+                bs.stack.stack("DT 1.0")
 
-            # ---- Sample data at 1 Hz for duration_s seconds ----
-            # Store per-aircraft series
-            results_by_acid: dict[str, list[FlightObservationSchema]] = {}
+                # ---- Sample data at 1 Hz for duration_s seconds ----
+                # Store per-aircraft series
+                results_by_acid: dict[str, list[FlightObservationSchema]] = {}
 
-            for t in range(1, duration_s + 1):
-                # Advance sim by one step (DT=1 sec)
-                bs.sim.step()
-                timestamp = now.shift(seconds=t)
-                timestamp_microseconds = int(timestamp.float_timestamp * 1_000_000)  # microseconds
+                for t in range(1, duration_s + 1):
+                    # Advance sim by one step (DT=1 sec)
+                    bs.sim.step()
+                    timestamp = now.shift(seconds=t)
+                    timestamp_microseconds = int(timestamp.float_timestamp * 1_000_000)  # microseconds
 
-                # Snapshot traffic arrays
-                acids: list[str] = list(getattr(bs.traf, "id", []))
-                lats: list[float] = _tolist(getattr(bs.traf, "lat", []))
-                lons: list[float] = _tolist(getattr(bs.traf, "lon", []))
-                alts: list[float] = _tolist(getattr(bs.traf, "alt", []))
-                ground_speeds: list[float] = _tolist(getattr(bs.traf, "gs", []))
-                headings: list[float] = _tolist(getattr(bs.traf, "hdg", []))
-                vertical_speeds: list[float] = _tolist(getattr(bs.traf, "vs", []))
+                    # Snapshot traffic arrays
+                    acids: list[str] = list(getattr(bs.traf, "id", []))
+                    lats: list[float] = _tolist(getattr(bs.traf, "lat", []))
+                    lons: list[float] = _tolist(getattr(bs.traf, "lon", []))
+                    alts: list[float] = _tolist(getattr(bs.traf, "alt", []))
+                    ground_speeds: list[float] = _tolist(getattr(bs.traf, "gs", []))
+                    headings: list[float] = _tolist(getattr(bs.traf, "hdg", []))
+                    vertical_speeds: list[float] = _tolist(getattr(bs.traf, "vs", []))
 
-                for i, acid in enumerate(acids):
-                    lat = float(lats[i])
-                    lon = float(lons[i])
-                    alt_m_or_ft = float(alts[i])
+                    for i, acid in enumerate(acids):
+                        lat = float(lats[i])
+                        lon = float(lons[i])
+                        alt_m_or_ft = float(alts[i])
 
-                    # BlueSky typically uses meters internally for alt, but some scenarios use FL/ft inputs.
-                    # We store altitude_mm as "millimeters"; keep it consistent with your schema.
-                    # If alt is actually feet, you can convert here: alt_m = alt_ft * 0.3048
-                    altitude_mm = alt_m_or_ft * 1000.0
+                        # BlueSky typically uses meters internally for alt, but some scenarios use FL/ft inputs.
+                        # We store altitude_mm as "millimeters"; keep it consistent with your schema.
+                        # If alt is actually feet, you can convert here: alt_m = alt_ft * 0.3048
+                        altitude_mm = alt_m_or_ft * 1000.0
 
-                    # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
-                    selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
-                    metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
-                    # Include kinematics so the DAA system can coast intruder tracks
-                    metadata["current_state"] = {
-                        "speed": float(ground_speeds[i]) if i < len(ground_speeds) else 0.0,
-                        "track": float(headings[i]) if i < len(headings) else 0.0,
-                        "vertical_speed": float(vertical_speeds[i]) if i < len(vertical_speeds) else 0.0,
-                    }
+                        # Assign sensor ID: randomly select from list if multiple sensors, otherwise use first
+                        selected_sensor_id = random.choice(sensor_ids) if use_multiple_sensors and len(sensor_ids) > 1 else sensor_ids[0]
+                        metadata = {"sensor_id": str(selected_sensor_id)} if selected_sensor_id else {}
+                        # Include kinematics so the DAA system can coast intruder tracks
+                        metadata["current_state"] = {
+                            "speed": float(ground_speeds[i]) if i < len(ground_speeds) else 0.0,
+                            "track": float(headings[i]) if i < len(headings) else 0.0,
+                            "vertical_speed": float(vertical_speeds[i]) if i < len(vertical_speeds) else 0.0,
+                        }
 
-                    obs = FlightObservationSchema(
-                        lat_dd=lat,
-                        lon_dd=lon,
-                        altitude_mm=altitude_mm,
-                        traffic_source=0,
-                        source_type=0,
-                        icao_address=acid,
-                        timestamp=timestamp_microseconds,
-                        metadata=metadata,
-                    )
-                    results_by_acid.setdefault(acid, []).append(obs)
+                        obs = FlightObservationSchema(
+                            lat_dd=lat,
+                            lon_dd=lon,
+                            altitude_mm=altitude_mm,
+                            traffic_source=0,
+                            source_type=0,
+                            icao_address=acid,
+                            timestamp=timestamp_microseconds,
+                            metadata=metadata,
+                        )
+                        results_by_acid.setdefault(acid, []).append(obs)
 
-                    logger.debug(f"{acid:>6} lat={lat:.6f} lon={lon:.6f} alt_mm={altitude_mm:.1f}")
+                        logger.debug(f"{acid:>6} lat={lat:.6f} lon={lon:.6f} alt_mm={altitude_mm:.1f}")
 
-            # Flatten dict -> list[FlightObservationSchema] with stable ordering
-            for acid in sorted(results_by_acid.keys()):
-                flight_observations.extend(results_by_acid[acid])
+                # Flatten dict -> list[FlightObservationSchema] with stable ordering
+                for acid in sorted(results_by_acid.keys()):
+                    flight_observations.extend(results_by_acid[acid])
+        finally:
+            if is_temp_scn:
+                Path(scn_path).unlink(missing_ok=True)
 
         # This method modifies the retrieved simulation data by changing the timestamp and adding latency to the observed dataset
         LATENCY_PROBABILITY = 0.1  # 10% chance to have latency issues

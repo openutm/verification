@@ -1,0 +1,36 @@
+name: "A1 Head-On Approach (Cooperative)"
+description: >
+  ASTM F3442 Category A1 - Head-On scenario.
+  Edmonton Area B (suburban): Ownship at 53.5200, -113.6000 heading East.
+  Intruder INTA1 (Cessna 172) starts at 53.5200, -113.5500 heading West.
+  Initial separation: ~4.2 km horizontal, 22 m vertical.
+
+display:
+  pan: [53.5200, -113.5750]
+  trails: true
+  reso: false
+  rtf: 10
+
+areas:
+  - name: EDM_A1_BOX
+    color: [0, 255, 0]
+    bounds:
+      - [53.5100, -113.6100]
+      - [53.5100, -113.5400]
+      - [53.5300, -113.5400]
+      - [53.5300, -113.6100]
+
+aircraft:
+  - callsign: INTA1
+    type: C172
+    lat: 53.5200
+    lon: -113.5500
+    heading: 270
+    altitude_ft: 400
+    speed_kts: 87
+    waypoints:
+      - [53.5200, -113.5750]
+      - [53.5200, -113.6000]
+      - [53.5200, -113.6200]
+
+hold_time: "00:02:00.00"
